@@ -7,8 +7,13 @@ a custom iOS app (local + internet) and Apple HomeKit (local only, for now).
 
 ## Build order
 1. ~~Local control + DMX~~ — **done, working.**
-2. **HomeKit integration** — next.
-3. **Cloudflare remote access + iOS app** — last.
+2. ~~iOS app + control over the local network~~ — **done.** The app is a full
+   DMX console: fixture library, patching, per-fixture control, grand master,
+   channel monitor. Verified end to end against `tools/fake-node.py`; the
+   firmware half is compiled and reviewed but has not been run on hardware.
+3. **HomeKit integration** — next.
+4. **Cloudflare remote access** — last. The wire protocol is already transport
+   agnostic, so this is a second socket rather than a second protocol.
 
 ## Hardware
 - **Board:** Arduino Uno R4 WiFi. Only the onboard ESP32-S3 is used.
@@ -60,7 +65,8 @@ A correct compile reports `Maximum is 3145728 bytes`. If it says ~1.25 MB the
 partition scheme didn't take, and HomeSpan won't fit later.
 
 ## Toolchain
-arduino-esp32 core 3.3.11 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · HomeSpan 2.1.8
+arduino-esp32 core 3.3.11 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · HomeSpan 2.1.8 ·
+WebSockets 2.7.2 · ArduinoJson 7.4.3
 
 **esp_dmx needs patching on this core.** Version 4.1.0 doesn't build against
 ESP-IDF ≥ 5.3 — ESP-IDF removed `.module` from `uart_signal_conn_t`. After
@@ -70,6 +76,31 @@ keeps a `.orig` backup). Once patched it builds and runs fine.
 **Use `DMX_NUM_1`.** Port 0 is the console UART, and `DMX_NUM_2` crashes in
 `dmx_driver_install()` — esp_dmx drops the third UART's context entry
 ([#228](https://github.com/someweisguy/esp_dmx/issues/228)).
+
+**WebSockets 2.7.2** (Markus Sattler) and **ArduinoJson 7.4.3**, both from
+Library Manager. Together they cost **43 KB of flash** — 975,773 bytes with the
+WebSocket layer against 931,977 for the same sketch with it removed. That is
+the whole price of talking to the app; the 578 KB before it is the WiFi and
+mDNS stack, which HomeKit was going to pull in anyway.
+
+Not an async web server: the HTTP surface PROTOCOL.md needs is one upgrade on
+one path, which does not justify a second TCP task with its own stack. The JSON
+is shaped simply enough to scan by hand, but it arrives off a socket from a
+client that may be any version, and a parser that has been fuzzed is worth its
+share of the 43 KB.
+
+Pin the versions. This was compiled against 2.7.2; WebSockets reaches straight
+into the core's TCP client class, and arduino-esp32 3.x renamed that class, so
+an older release picked up from a tutorial is a plausible way to get a wall of
+template errors that has nothing to do with your sketch.
+
+WebSockets' reads block, with a timeout measured in seconds. That is safe only
+because `DmxBus` clocks the universe from its own FreeRTOS task — see the
+comment at the top of `DmxBus.h`. Do not move DMX back into `loop()`.
+
+Stage 1 was 340,174 bytes. With the network layer it is 975,773, and adding
+HomeSpan 2.1.8 with one LightBulb service on top compiles to 1,448,541 — 46% of
+the partition, so stage 2 fits with room to spare.
 
 ## Fixture channel map (14-channel mode)
 
@@ -105,18 +136,32 @@ Glow/                       app source, Assets.xcassets, Icon.icon,
 design/icon-layers/         app icon layer sources (SVG, 1024 canvas)
 design/sf-symbol/           the custom moving-head symbol artwork
 firmware/dmx_console/       the ESP32-S3 sketch
+docs/PROTOCOL.md            the app<->node wire protocol. A contract: the iOS
+                            client is written against it, so it changes first
+                            and the firmware follows
 PROJECT.md                  this file
 ```
 
 Firmware files:
 
 ```
-dmx_console.ino   setup/loop + a red/green/blue serial console
-Config.h          pins, wiring, fixture profile   <- the file to edit
-DmxBus.h/.cpp     the 513-byte universe + esp_dmx. Bounds-checks every write
+dmx_console.ino   setup/loop + a red/green/blue/net serial console
+Config.h          pins, wiring, fixture profile, node name   <- the file to edit
+DmxBus.h/.cpp     the 513-byte universe + esp_dmx, clocked by its own task.
+                  Bounds-checks every write, and the only code that touches the
+                  frame. Read the writers note in the header before stage 2
 Fixture.h/.cpp    channel map -> meaning. No transport
+Net.h/.cpp        WiFi station + mDNS. Never blocks, never gives up
+Link.h/.cpp       the WebSocket server at /ws. Speaks docs/PROTOCOL.md and
+                  knows nothing about fixtures
+secrets.h.example WiFi credentials template. Copy to secrets.h and fill in
 patch_esp_dmx.sh  the ESP-IDF 5.3+ fix for esp_dmx
 ```
+
+`secrets.h` is gitignored and is not in the repo. Without it the sketch still
+compiles and still drives DMX — it says what is missing at 115200 every 30
+seconds and never starts the radio. A missing password is not a reason for the
+light to go out.
 
 ## Brand
 
@@ -132,8 +177,8 @@ deliberately the brand colour rather than red or blue: the UI will constantly
 display whatever colour the user has set the fixture to, and the accent has to
 read as *the app* rather than as *the light's current state*.
 
-Boots lit (centred, white, shutter open) and stays lit. Typing `red`, `green`
-or `blue` at 115200 changes the colour.
+Boots lit (centred, white, shutter open) and stays lit. At 115200, `red`,
+`green` and `blue` change the colour and `net` reports WiFi and link state.
 
 `Fixture` is the seam: it's transport-agnostic, so a HomeSpan service and a
 WebSocket handler can both call `Fixture::setColor()` without either knowing

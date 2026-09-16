@@ -81,3 +81,56 @@ static const uint8_t DIMMER_OFF  = 0;
 static const uint8_t DIMMER_OPEN = 255;
 static const uint8_t MODE_MANUAL = 0;
 static const uint8_t MACRO_RGBW  = 0;
+
+// ----------------------------------------------------------------- network --
+// Station mode only - the node joins the house WiFi, it never runs an AP.
+//
+// Credentials live in secrets.h, which is gitignored. Copy secrets.h.example
+// over it and fill it in. Without it the node still boots and still drives
+// DMX; it just says so at 115200 and never touches the radio. A missing
+// password is not a reason for the light to go out.
+//
+// Port 80 is deliberate. HomeSpan's HAP server defaults to 1201, so stage 2
+// moves in without a port fight.
+
+#define GLOW_FW_VERSION "1.1.0"
+
+// Macros and not statics: a string constant a translation unit happens not to
+// use is a warning at -Wall, and most of these are used by exactly one file.
+#define GLOW_NODE_NAME "Glow"    // TXT name=, and status.name
+#define GLOW_HOSTNAME  "glow"    // -> glow.local
+#define GLOW_SERVICE   "glow"    // -> _glow._tcp
+#define GLOW_WS_PATH   "/ws"
+
+static const uint16_t GLOW_WS_PORT = 80;
+
+// 2.4GHz in a flat full of 2.4GHz drops out. Treat that as normal: retry
+// forever, never block boot on it, never let it touch DMX timing.
+static const uint32_t WIFI_RETRY_MS = 10000;
+
+// ------------------------------------------------------------------ output --
+// The universe is clocked by a task of its own (see DmxBus.cpp), so this rate
+// is what the wire actually runs at no matter what the network is doing.
+//
+// 44Hz is the ceiling because a full 513-slot frame at 250kbaud 8N2 takes
+// 22.7ms to send: ask for more and you are asking for frames the wire has no
+// room for. PROTOCOL.md's 10..44 range is the same range for the same reason.
+static const int DMX_REFRESH_HZ     = 40;
+static const int DMX_REFRESH_HZ_MIN = 10;
+static const int DMX_REFRESH_HZ_MAX = 44;
+
+// Core 1 is where Arduino's loop() runs; the WiFi and lwIP tasks live on core
+// 0 at priority 23 and would preempt a frame if this shared with them.
+// Priority 5 is above loop()'s 1, so a socket read that blocks for seconds
+// cannot delay a frame either.
+static const int DMX_TASK_CORE     = 1;
+static const int DMX_TASK_PRIORITY = 5;
+static const int DMX_TASK_STACK    = 3072;
+
+// There is no user LED on the ESP32-S3 side of an UNO R4 WiFi - the built-in
+// LED and the matrix both hang off the RA4M1. So identify flashes the output
+// instead: whatever is patched blinks, which answers "which box is that?" just
+// as well. Wire an LED to a free GPIO and name it here and it blinks too.
+static const int      IDENTIFY_LED_PIN  = -1;
+static const uint32_t IDENTIFY_MS       = 1500;   // length of the whole pattern
+static const uint32_t IDENTIFY_BLINK_MS = 150;    // half-period of the blink
