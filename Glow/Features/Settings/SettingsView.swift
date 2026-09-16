@@ -1,9 +1,21 @@
 import SwiftUI
 
+/// Settings, in five parts, because two different people open this screen.
+///
+/// One of them has a light that has stopped responding and wants the node
+/// first: what it is called, whether it is connected, and a way to get it back.
+/// The other has a box still in its packaging and wants the second section and
+/// nothing else. Everything that is only interesting once something has gone
+/// wrong — round-trip time, firmware build, the last error the node sent — is
+/// one tap down in Diagnostics, where it cannot make the first screen look like
+/// an instrument panel.
+///
+/// Footers say why a control is here rather than repeating its name. A footer
+/// that restates the label is a row and a half of wasted screen.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @State private var manualHost = ""
-    @State private var isEditingHost = false
+    @State private var setupMode: NodeSetupModel.Mode?
+    @State private var isShowingGuide = false
 
     var body: some View {
         @Bindable var engine = model.engine
@@ -11,84 +23,26 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent("Status") { ConnectionStatusView() }
-                    LabeledContent("Node", value: model.endpoint.displayName)
-
-                    if let status = model.engine.nodeStatus {
-                        LabeledContent("Firmware", value: status.firmware)
-                        LabeledContent("Uptime", value: Duration.seconds(status.uptime).formatted(.units(allowed: [.days, .hours, .minutes])))
+                    NavigationLink {
+                        NodeSettingsView()
+                    } label: {
+                        NodeSummaryRow()
                     }
-
-                    if case let .failed(reason) = model.engine.connection {
-                        Text(reason).font(.footnote).foregroundStyle(.red)
-                    }
-
-                    Button("Reconnect now", systemImage: "arrow.clockwise") {
-                        model.engine.retry()
-                    }
-                    Button("Identify", systemImage: "light.beacon.max") {
-                        model.engine.identify()
-                    }
-                    .disabled(!model.engine.connection.isConnected)
-                } header: {
-                    Text("Connection")
                 } footer: {
-                    Text("Glow talks straight to the node over your Wi-Fi. Both have to be on the same network.")
+                    Text("Glow is the desk and the node is the output. Every move you make goes straight to it over Wi-Fi, so your iPhone and the node have to be on the same network.")
                 }
 
                 Section {
-                    if model.discovery.endpoints.isEmpty {
-                        HStack {
-                            Text("Looking for nodes…")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            ProgressView()
-                        }
-                    } else {
-                        ForEach(model.discovery.endpoints) { endpoint in
-                            Button {
-                                model.endpoint = endpoint
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(endpoint.displayName)
-                                        Text(endpoint.host)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    if endpoint.id == model.endpoint.id {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(.tint)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
+                    Button("Set up a new node", systemImage: "shippingbox") {
+                        setupMode = .newNode
+                    }
+                    Button("Change the node's Wi-Fi network", systemImage: "wifi") {
+                        setupMode = .changeNetwork(currentHost: model.endpoint.host)
                     }
                 } header: {
-                    Text("Found on this network")
+                    Text("Set up")
                 } footer: {
-                    if model.discovery.permissionDenied {
-                        Text("Glow can't search the local network. Turn on Local Network for Glow in Settings › Privacy & Security.")
-                            .foregroundStyle(.orange)
-                    }
-                }
-
-                Section {
-                    HStack {
-                        TextField("Host or IP", text: $manualHost)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .submitLabel(.done)
-                            .onSubmit(applyManualHost)
-                        Button("Use") { applyManualHost() }
-                            .disabled(manualHost.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                } header: {
-                    Text("Connect manually")
-                } footer: {
-                    Text("Use this when Bonjour discovery is blocked, which is common on guest and mesh networks. The default is glow.local. Add “:8080” to reach a node on another port.")
+                    Text("The node has no screen and no buttons, so everything it needs to know — including which Wi-Fi network to join — is entered here. You never have to plug it into a computer.")
                 }
 
                 Section {
@@ -100,42 +54,67 @@ struct SettingsView: View {
                 } header: {
                     Text("Output")
                 } footer: {
-                    Text("DMX512 tops out a little above 44 Hz for a full universe. Lower rates are gentler on a busy Wi-Fi network.")
+                    Text("How many times a second the node re-sends the whole rig to the lights. DMX512 tops out a little above 44 Hz for a full universe. Drop it if fades look uneven on a busy Wi-Fi network — the lights hold their last value between frames, so a lower rate costs smoothness rather than brightness.")
                 }
 
-                Section("About") {
-                    LabeledContent("Version", value: Bundle.main.shortVersion)
-                    LabeledContent("Protocol", value: "v\(Wire.version)")
+                Section {
+                    NavigationLink {
+                        DiagnosticsView()
+                    } label: {
+                        Label("Diagnostics", systemImage: "waveform.path")
+                    }
+                } footer: {
+                    Text("Response time, firmware version, how long the node has been running, and the last thing it complained about. Worth opening when a light is not doing what you asked and you want to know whether the app or the rig is at fault.")
+                }
+
+                Section {
+                    Button("Welcome guide", systemImage: "questionmark.circle") {
+                        isShowingGuide = true
+                    }
+                    LabeledContent("Glow version", value: Bundle.main.shortVersion)
+                    LabeledContent("Wire protocol", value: "v\(Wire.version)")
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("The guide is the same short explanation Glow shows the first time it opens: what the box is, what a fixture is, and what an address does.")
                 }
             }
             .formStyle(.grouped)
             .navigationTitle("Settings")
-            .onAppear { manualHost = model.endpoint.source == .manual ? model.endpoint.host : "" }
+        }
+        .sheet(item: $setupMode) { mode in
+            NodeSetupView(mode: mode)
+        }
+        .sheet(isPresented: $isShowingGuide) {
+            OnboardingView()
         }
     }
+}
 
-    /// Accepts "glow.local", "192.168.1.40" or "192.168.1.40:8080". The port
-    /// suffix matters for the fake node in tools/, which cannot bind port 80
-    /// without root.
-    private func applyManualHost() {
-        let entry = manualHost.trimmingCharacters(in: .whitespaces)
-        guard !entry.isEmpty else { return }
+/// The row at the top: which node, and whether Glow is talking to it.
+///
+/// Laid out like the Wi-Fi row in Settings — name on the left, current state on
+/// the right — because that is the question being asked and it is the answer
+/// people already know how to read.
+private struct NodeSummaryRow: View {
+    @Environment(AppModel.self) private var model
 
-        var host = entry
-        var port = 80
-        if let separator = entry.lastIndex(of: ":"),
-           let parsed = Int(entry[entry.index(after: separator)...]),
-           (1...65535).contains(parsed) {
-            host = String(entry[..<separator])
-            port = parsed
+    private var name: String {
+        model.engine.nodeStatus?.name ?? model.endpoint.displayName
+    }
+
+    var body: some View {
+        LabeledContent {
+            ConnectionStatusView()
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                Text(model.endpoint.host)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-
-        model.endpoint = ControllerEndpoint(
-            host: host,
-            port: port,
-            displayName: entry,
-            source: .manual
-        )
+        .accessibilityElement(children: .combine)
     }
 }
 
