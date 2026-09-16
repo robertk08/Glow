@@ -29,13 +29,13 @@ int get(Function fn) {
 }
 
 void setColor(uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
-  set(FN_COLOR_MACRO, MACRO_RGBW);   // or colour comes from a macro instead
+  set(FN_COLOR_MACRO, MACRO_RGBW);   // or colour comes from a macro
   set(FN_RED, r); set(FN_GREEN, g); set(FN_BLUE, b); set(FN_WHITE, w);
 }
 
 void lampOn() {
   set(FN_MODE,     MODE_MANUAL);     // or the fixture runs its own program
-  set(FN_RESET,    0);               // must never idle in 150..200
+  set(FN_RESET,    0);               // 150..200 resets continuously
   set(FN_XY_SPEED, 0);
   set(FN_PAN,  128);  set(FN_PAN_FINE,  0);
   set(FN_TILT, 128);  set(FN_TILT_FINE, 0);
