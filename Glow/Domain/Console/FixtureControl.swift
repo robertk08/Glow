@@ -83,7 +83,9 @@ import SwiftUI
             case .dedicated:
                 normalised(.intensity)
 
-            case let .band(channel, from, to, openFrom):
+            case let .band(channel, from, to, _):
+                // Anything above the dimming band is either wide open or
+                // strobing, and both are full output.
                 switch value(of: channel) {
                 case ..<from: 0
                 case from...to: Double(value(of: channel) - from) / Double(max(1, to - from))

@@ -42,6 +42,10 @@ struct MonitorView: View {
                 .padding(.bottom)
             }
             .navigationTitle("Monitor")
+            // Inline, because the summary bar is pinned directly beneath the
+            // navigation bar and a large title leaves a band of empty grey
+            // between the two.
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Toggle("Patched only", systemImage: "line.3.horizontal.decrease.circle", isOn: $showsOnlyPatched)
