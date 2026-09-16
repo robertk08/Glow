@@ -31,6 +31,10 @@ nonisolated struct ControllerEndpoint: Sendable, Hashable, Codable, Identifiable
     var displayName: String
     var source: Source = .manual
 
+    /// The node's own identifier from its Bonjour TXT record, where one was
+    /// advertised. Stable across address changes, unlike the host.
+    var nodeID: String?
+
     var id: String { "\(host):\(port)" }
 
     var webSocketURL: URL? {

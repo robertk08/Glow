@@ -67,6 +67,10 @@ import Observation
         browser?.cancel()
         browser = nil
         isBrowsing = false
+        // Anything found belongs to the network we were on. After a setup
+        // flow the phone has usually moved networks, and a stale row that
+        // cannot be reached is worse than an empty list.
+        endpoints = []
     }
 
     private func update(with results: Set<NWBrowser.Result>) async {
@@ -82,13 +86,24 @@ import Observation
                         host: resolved.host,
                         port: resolved.port,
                         displayName: name,
-                        source: .discovered
+                        source: .discovered,
+                        nodeID: Self.nodeID(from: result.metadata)
                     )
                 )
             }
         }
 
         endpoints = found.sorted { $0.displayName < $1.displayName }
+    }
+
+    /// The `id=` TXT record, which is the node's MAC as twelve hex digits.
+    ///
+    /// Without it, two nodes on one network are distinguishable only by the
+    /// name someone gave them, and the setup flow cannot tell "the node I just
+    /// provisioned" from "a node that was already here".
+    private static func nodeID(from metadata: NWBrowser.Result.Metadata) -> String? {
+        guard case let .bonjour(record) = metadata else { return nil }
+        return record["id"]
     }
 
     /// Opens a throwaway TCP connection purely to learn the address Bonjour

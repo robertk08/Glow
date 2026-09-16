@@ -23,3 +23,6 @@ xcuserdata/
 secrets.h
 Secrets.swift
 *.xcconfig.local
+
+# Agent worktrees — transient, and each is its own checkout
+.claude/worktrees/

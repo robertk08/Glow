@@ -51,7 +51,11 @@ nonisolated struct ProvisioningClient: Sendable {
         var errorDescription: String? {
             switch self {
             case .unreachable:
-                "Couldn't reach the node. Check that you're connected to its “Glow Setup” network."
+                // Deliberately does not name the setup network: provision and
+                // forget both work on the home network too, where telling
+                // someone to join "Glow Setup" is wrong advice. Callers that
+                // know they are on the setup path say so themselves.
+                "Couldn't reach the node."
             case let .rejected(reason):
                 reason
             case .malformed:
@@ -61,6 +65,11 @@ nonisolated struct ProvisioningClient: Sendable {
     }
 
     var host: String = "192.168.4.1"
+
+    /// Always 80 on real hardware, where mDNS advertises it. Configurable so
+    /// the flow can be exercised against tools/fake-node.py, which cannot bind
+    /// 80 without root.
+    var port: Int = 80
 
     private var session: URLSession {
         let configuration = URLSessionConfiguration.ephemeral
@@ -96,7 +105,12 @@ nonisolated struct ProvisioningClient: Sendable {
     // MARK: - Transport
 
     private func url(_ path: String) throws -> URL {
-        guard let url = URL(string: "http://\(host)\(path)") else { throw Failure.unreachable }
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = host
+        components.port = port == 80 ? nil : port
+        components.path = path
+        guard let url = components.url else { throw Failure.unreachable }
         return url
     }
 
