@@ -29,7 +29,17 @@ START = time.time()
 
 universe = bytearray(512)
 state = {"blackout": False, "hz": 40, "frames": 0, "bytes": 0}
+setup = {"provisioned": True, "ssid": None, "scan_delay": 3.0}
 lock = threading.Lock()
+
+# Pretend neighbours, so the network list has something in it to pick from.
+FAKE_NETWORKS = [
+    {"ssid": "Krause", "rssi": -44, "secure": True, "channel": 6},
+    {"ssid": "Krause 5G", "rssi": -58, "secure": True, "channel": 44},
+    {"ssid": "FRITZ!Box 7530 GH", "rssi": -67, "secure": True, "channel": 11},
+    {"ssid": "Gastzugang", "rssi": -71, "secure": False, "channel": 1},
+    {"ssid": "o2-WLAN94", "rssi": -83, "secure": True, "channel": 3},
+]
 
 
 # ---------------------------------------------------------------- framing --
@@ -172,10 +182,86 @@ def handle_text(conn, payload):
         send_json(conn, {"t": "error", "code": "unknown", "message": str(kind)})
 
 
+# ------------------------------------------------------------------- setup --
+
+def http_reply(conn, payload, status="200 OK"):
+    body = json.dumps(payload).encode()
+    conn.sendall(
+        (
+            f"HTTP/1.1 {status}\r\n"
+            "Content-Type: application/json\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Connection: close\r\n\r\n"
+        ).encode()
+        + body
+    )
+
+
+def handle_http(conn, request):
+    """The /api/* setup surface from docs/PROTOCOL.md."""
+    line = request.split("\r\n", 1)[0]
+    try:
+        method, path, _ = line.split(" ")
+    except ValueError:
+        http_reply(conn, {"ok": False, "error": "bad request"}, "400 Bad Request")
+        return
+
+    body = {}
+    if "\r\n\r\n" in request:
+        raw = request.split("\r\n\r\n", 1)[1].strip()
+        if raw:
+            try:
+                body = json.loads(raw)
+            except ValueError:
+                pass
+
+    if path == "/api/info":
+        http_reply(conn, {
+            "fw": FW_VERSION,
+            "id": "aabbccddeeff",
+            "name": "Fake Glow node",
+            "state": "provisioned" if setup["provisioned"] else "unprovisioned",
+        })
+        print(f"  GET /api/info -> {'provisioned' if setup['provisioned'] else 'unprovisioned'}")
+
+    elif path == "/api/scan":
+        # A real scan blocks for seconds. Reproducing that is the point: it is
+        # what the app's progress state exists for.
+        print(f"  GET /api/scan (taking {setup['scan_delay']}s, as real hardware does)")
+        time.sleep(setup["scan_delay"])
+        http_reply(conn, {"networks": FAKE_NETWORKS})
+
+    elif path == "/api/provision" and method == "POST":
+        ssid = body.get("ssid", "")
+        if not ssid:
+            http_reply(conn, {"ok": False, "error": "no network given"})
+            return
+        setup["provisioned"] = True
+        setup["ssid"] = ssid
+        # Never print the password. The real node does not log it either.
+        print(f"  POST /api/provision -> joining {ssid!r}")
+        http_reply(conn, {"ok": True})
+
+    elif path == "/api/forget" and method == "POST":
+        setup["provisioned"] = False
+        setup["ssid"] = None
+        print("  POST /api/forget -> back to setup")
+        http_reply(conn, {"ok": True})
+
+    else:
+        http_reply(conn, {"ok": False, "error": "no such endpoint"}, "404 Not Found")
+
+
 def serve(conn, address):
     print(f"\nconnected: {address[0]}")
     try:
         request = conn.recv(4096).decode(errors="replace")
+
+        # Plain HTTP unless it is asking to become a WebSocket.
+        if "upgrade: websocket" not in request.lower():
+            handle_http(conn, request)
+            return
+
         if not handshake(conn, request):
             return
         while True:
@@ -213,9 +299,10 @@ def render():
             cells = " ".join(f"{values[base + i]:3d}" for i in range(16))
             rows.append(f"  {base + 1:3d} | {cells}")
         blackout = "  BLACKOUT" if state["blackout"] else ""
+        joined = f"  network {setup['ssid']}" if setup["ssid"] else "  UNPROVISIONED"
         sys.stdout.write("\033[H\033[J")
         sys.stdout.write(
-            f"Glow fake node — {state['hz']} Hz{blackout}\n"
+            f"Glow fake node — {state['hz']} Hz{blackout}{joined if not setup['provisioned'] or setup['ssid'] else ''}\n"
             f"frames {frames}   bytes {sent}   active channels {active}\n\n"
             + "\n".join(rows)
             + "\n\nCtrl-C to stop.\n"
@@ -226,7 +313,16 @@ def render():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument(
+        "--unprovisioned",
+        action="store_true",
+        help="start as a node that has never been given a network, to exercise setup",
+    )
+    parser.add_argument("--scan-delay", type=float, default=3.0)
     args = parser.parse_args()
+
+    setup["provisioned"] = not args.unprovisioned
+    setup["scan_delay"] = args.scan_delay
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
