@@ -3,13 +3,16 @@ import SwiftUI
 
 /// Full control of one fixture, built from its profile.
 ///
-/// Every section here is conditional on the profile actually having those
-/// channels, so the same view drives a one-channel dimmer and a fourteen
-/// channel moving head without either looking padded or truncated.
+/// The sections run in tier order — see ``DetailLevel`` for what the tiers are
+/// and why they may not be reshuffled. Every section is also conditional on
+/// the profile actually having those channels, so the same view drives a
+/// one-channel dimmer and a fourteen-channel moving head without either
+/// looking padded or truncated.
 struct FixtureDetailView: View {
     @Environment(AppModel.self) private var model
     @Bindable var fixture: PatchedFixture
 
+    @AppStorage(DetailLevel.storageKey) private var detail = DetailLevel.simple
     @State private var pendingConfirmation: PendingRange?
 
     private struct PendingRange: Identifiable {
@@ -24,28 +27,27 @@ struct FixtureDetailView: View {
     var body: some View {
         Form {
             if let profile, let control {
-                intensitySection(profile, control)
-                FixtureColorControl(control: control)
+                disclosureSection
+                brightnessSection(profile, control)
+                FixtureColorControl(control: control, showsAdvanced: detail.showsRawValues)
                 positionSection(profile, control)
-                rangedSections(profile, control)
-                FixtureChannelControl(control: control, startAddress: fixture.startAddress)
-                actionsSection(control)
-            } else {
-                Section {
-                    ContentUnavailableView(
-                        "Unknown profile",
-                        systemImage: "questionmark.circle",
-                        description: Text("No profile with the id “\(fixture.profileID)” is in the library, so this fixture can't be controlled. Re-patch it to fix this.")
-                    )
+                functionsSection(profile, control)
+                actionsSection(profile, control)
+                if detail == .full {
+                    FixtureChannelControl(control: control, startAddress: fixture.startAddress)
                 }
+            } else {
+                unknownProfileSection
             }
         }
         .formStyle(.grouped)
         .navigationTitle(fixture.name)
+        .navigationSubtitle(subtitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 ConnectionStatusView(compact: true)
+                BlackoutButton(compact: true)
             }
         }
         .alert(item: $pendingConfirmation) { pending in
@@ -60,10 +62,46 @@ struct FixtureDetailView: View {
         }
     }
 
-    // MARK: - Sections
+    /// What this fixture is, in the navigation bar rather than in a row: it is
+    /// the answer to "which light am I holding", which you want while you
+    /// scroll, not once at the top.
+    private var subtitle: String {
+        guard let profile else { return "Profile missing" }
+        // A freshly patched fixture is named after its model, so spelling the
+        // model out again would cost the address its room in the bar.
+        var parts: [String] = []
+        if !fixture.name.localizedCaseInsensitiveContains(profile.model) {
+            parts.append(profile.displayName)
+        }
+        if !profile.mode.isEmpty { parts.append(profile.mode) }
+        if detail.showsRawValues {
+            let range = Patch.range(of: fixture, profile: profile)
+            parts.append("DMX \(range.lowerBound)–\(range.upperBound)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: - Disclosure and settings
+
+    private var disclosureSection: some View {
+        Section {
+            DetailLevelPicker(selection: $detail)
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+
+            NavigationLink {
+                FixtureSettingsView(fixture: fixture)
+            } label: {
+                Label("Fixture settings", systemImage: "gearshape")
+            }
+        } footer: {
+            Text(detail.explanation)
+        }
+    }
+
+    // MARK: - Tier 1
 
     @ViewBuilder
-    private func intensitySection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
+    private func brightnessSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
         if control.supportsIntensity {
             Section {
                 LevelFader(
@@ -72,7 +110,8 @@ struct FixtureDetailView: View {
                     tint: .yellow,
                     value: control.intensityBinding
                 )
-                HStack {
+
+                HStack(spacing: 6) {
                     ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { level in
                         Button {
                             withAnimation(.snappy) { control.intensity = level }
@@ -85,24 +124,29 @@ struct FixtureDetailView: View {
                 }
                 .font(.caption.monospacedDigit())
             } header: {
-                Text("Intensity")
+                Text("Brightness")
             } footer: {
-                Text(intensityExplanation(profile))
+                Text(brightnessExplanation(profile))
             }
         }
     }
 
-    /// Says how this fixture actually dims, because on half a small rig it is
-    /// not a dimmer channel and the difference shows up as surprising
-    /// behaviour otherwise.
-    private func intensityExplanation(_ profile: FixtureProfile) -> String {
+    /// Says how this fixture actually dims. On half a small rig it is not a
+    /// dimmer channel, and the difference turns up as surprising behaviour if
+    /// nothing says so.
+    private func brightnessExplanation(_ profile: FixtureProfile) -> String {
         switch profile.intensityModel {
         case .dedicated:
-            "Drives this fixture's dimmer channel."
+            detail.showsRawValues ? "Drives this fixture's dimmer channel." : ""
+
         case let .band(channel, from, to, _):
-            "“\(channel.name)” is one channel doing two jobs, so the level maps into its dimming band (\(from)–\(to)) instead of the full range."
+            detail.showsRawValues
+                ? "“\(channel.name)” is one channel doing two jobs, so the level maps into its dimming band (\(from)–\(to)) rather than the full range."
+                : "This fixture dims and strobes on the same channel, so the slider uses only the part of it that dims."
+
         case .virtual:
-            "This fixture has no dimmer, so the level scales the colour mix and keeps the hue."
+            "This fixture has no dimmer, so the slider scales the colour mix and keeps the hue."
+
         case .none:
             ""
         }
@@ -111,7 +155,7 @@ struct FixtureDetailView: View {
     @ViewBuilder
     private func positionSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
         if profile.hasMovement {
-            Section("Position") {
+            Section {
                 PositionPad(
                     pan: control.normalisedBinding(.pan),
                     tilt: control.normalisedBinding(.tilt),
@@ -120,66 +164,114 @@ struct FixtureDetailView: View {
                 )
                 .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
 
-                LevelFader(title: "Pan", systemImage: "arrow.left.and.right", value: control.normalisedBinding(.pan))
-                LevelFader(title: "Tilt", systemImage: "arrow.up.and.down", value: control.normalisedBinding(.tilt))
-
-                if let speed = profile.channel(role: .movementSpeed) {
-                    ChannelFader(
-                        title: speed.name,
-                        subtitle: "0 is fastest on most fixtures.",
-                        value: control.binding(for: speed)
-                    )
-                }
-
-                Button("Centre", systemImage: "scope") {
+                ActionRow(
+                    title: "Centre",
+                    systemImage: "arrow.up.and.down.and.arrow.left.and.right"
+                ) {
                     withAnimation(.snappy) {
                         control.setNormalised(0.5, for: .pan)
                         control.setNormalised(0.5, for: .tilt)
                     }
                 }
+
+                if detail == .full {
+                    LevelFader(title: "Pan", systemImage: "arrow.left.and.right", value: control.normalisedBinding(.pan))
+                    LevelFader(title: "Tilt", systemImage: "arrow.up.and.down", value: control.normalisedBinding(.tilt))
+
+                    if let speed = profile.channel(role: .movementSpeed) {
+                        ChannelFader(
+                            title: speed.name,
+                            subtitle: "0 is fastest on most fixtures.",
+                            value: control.binding(for: speed)
+                        )
+                    }
+                }
+            } header: {
+                Text("Position")
+            } footer: {
+                Text("Drag the pad to point the light. Up on the pad points the head up.")
             }
         }
     }
 
-    /// Channels whose manual describes bands rather than a continuous sweep —
-    /// shutter, gobo, colour macro, mode. A picker of named options beats a
-    /// fader you have to land on the right value with.
+    // MARK: - Tier 2
+
+    /// Channels whose manual describes named bands rather than a continuous
+    /// sweep — shutter, gobo, colour macro, mode. A menu of the fixture's own
+    /// words beats a fader you have to land on the right value with.
     @ViewBuilder
-    private func rangedSections(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
+    private func functionsSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
         let ranged = profile.channels.filter { !$0.ranges.isEmpty }
         if !ranged.isEmpty {
-            Section("Settings") {
+            Section {
                 ForEach(ranged) { channel in
                     RangedChannelRow(
                         channel: channel,
                         control: control,
+                        showsRawValues: detail.showsRawValues,
                         onConfirmationNeeded: { range in
                             pendingConfirmation = PendingRange(channel: channel, range: range)
                         }
                     )
                 }
+            } header: {
+                Text("Functions")
+            } footer: {
+                Text("Built into the fixture, named the way its own manual names them.")
             }
         }
     }
 
-    private func actionsSection(_ control: FixtureControl) -> some View {
+    // MARK: - Actions
+
+    private func actionsSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
         Section {
-            Button("Home", systemImage: "house") {
+            ActionRow(
+                title: "Home",
+                subtitle: homeSubtitle(profile, control),
+                systemImage: "scope"
+            ) {
                 withAnimation(.snappy) { control.home() }
             }
-            Button("Reset to profile defaults", systemImage: "arrow.counterclockwise") {
+
+            ActionRow(title: "Reset to profile defaults", systemImage: "arrow.counterclockwise") {
                 withAnimation(.snappy) { control.applyDefaults() }
             }
-            Button("Zero", systemImage: "moon", role: .destructive) {
-                withAnimation(.snappy) { control.zeroIntensity() }
+
+            if control.supportsIntensity {
+                ActionRow(title: "Zero the level", systemImage: "arrow.down.to.line") {
+                    withAnimation(.snappy) { control.zeroIntensity() }
+                }
             }
+        } header: {
+            Text("Actions")
+        } footer: {
+            Text("Home is where to come back to when a fixture is not doing what you expect. Reset only puts the channels back where the profile says they belong, without moving the light or bringing it up.")
         }
     }
 
-    private func address(of channel: FixtureChannel, _ control: FixtureControl) -> String? {
-        control.address(of: channel).map { "DMX \($0.rawValue)" }
+    /// Spelled out rather than left as jargon: "Home" is one word and up to
+    /// three separate changes, and which three depends on the fixture.
+    private func homeSubtitle(_ profile: FixtureProfile, _ control: FixtureControl) -> String {
+        var parts: [String] = []
+        if profile.hasMovement { parts.append("centres the head") }
+        if control.supportsIntensity { parts.append("brings it up") }
+        if control.supportsColor { parts.append("goes to white") }
+        guard !parts.isEmpty else { return "Puts every channel back to its default." }
+        return parts.joined(separator: ", ").capitalisingFirstLetter + "."
     }
 
+    // MARK: - Failure
+
+    private var unknownProfileSection: some View {
+        Section {
+            ContentUnavailableView {
+                Label("Profile missing", systemImage: "questionmark.circle")
+            } description: {
+                Text("Nothing in the library has the id “\(fixture.profileID)”, so Glow does not know what this fixture's channels do. Re-patch it from the library to fix this.")
+            }
+        }
+    }
 }
 
 /// A channel with named bands: a menu to choose one, and a fader scoped to the
@@ -187,6 +279,7 @@ struct FixtureDetailView: View {
 struct RangedChannelRow: View {
     let channel: FixtureChannel
     let control: FixtureControl
+    var showsRawValues = false
     let onConfirmationNeeded: (FixtureChannelRange) -> Void
 
     private var value: UInt8 { control.value(of: channel) }
@@ -198,26 +291,13 @@ struct RangedChannelRow: View {
                 Label(channel.name, systemImage: channel.role.symbolName)
                     .font(.subheadline.weight(.medium))
                 Spacer()
-                Menu {
-                    ForEach(channel.ranges) { range in
-                        Button {
-                            if range.requiresConfirmation {
-                                onConfirmationNeeded(range)
-                            } else {
-                                control.setValue(range.representativeValue, of: channel)
-                            }
-                        } label: {
-                            Label(
-                                range.label,
-                                systemImage: range.requiresConfirmation ? "exclamationmark.triangle" : ""
-                            )
-                        }
-                    }
-                } label: {
-                    Text(activeRange?.label ?? "Value \(Int(value))")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
+                menu
+            }
+
+            if showsRawValues, let address = control.address(of: channel) {
+                Text("DMX \(address.rawValue) · \(Int(value))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
 
             if let activeRange, activeRange.kind == .proportional {
@@ -231,7 +311,43 @@ struct RangedChannelRow: View {
                 ) {
                     Text(activeRange.label)
                 }
+                .accessibilityLabel("\(channel.name), \(activeRange.label)")
             }
         }
+    }
+
+    private var menu: some View {
+        Menu {
+            ForEach(channel.ranges) { range in
+                Button {
+                    if range.requiresConfirmation {
+                        onConfirmationNeeded(range)
+                    } else {
+                        control.setValue(range.representativeValue, of: channel)
+                    }
+                } label: {
+                    if range.requiresConfirmation {
+                        Label(range.label, systemImage: "exclamationmark.triangle")
+                    } else {
+                        Text(range.label)
+                    }
+                }
+            }
+        } label: {
+            Text(activeRange?.label ?? "Value \(Int(value))")
+                .font(.subheadline)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel(channel.name)
+        .accessibilityValue(activeRange?.label ?? "\(Int(value))")
+    }
+}
+
+extension String {
+    /// Sentence-cases a phrase assembled from fragments, without touching the
+    /// rest — `localizedCapitalized` would also capitalise "White".
+    var capitalisingFirstLetter: String {
+        guard let first else { return self }
+        return first.uppercased() + dropFirst()
     }
 }

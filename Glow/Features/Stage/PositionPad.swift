@@ -56,25 +56,24 @@ struct PositionPad: View {
         }
         .aspectRatio(1.4, contentMode: .fit)
         .sensoryFeedback(.selection, trigger: isDragging)
-        .accessibilityElement()
-        .accessibilityLabel("Position")
-        .accessibilityValue(accessibilityValue)
-        .accessibilityAdjustableAction { direction in
-            let step = 0.02
-            switch direction {
-            case .increment: pan = (pan + step).clamped(to: 0...1)
-            case .decrement: pan = (pan - step).clamped(to: 0...1)
-            @unknown default: break
+        // A pad is a two-axis control and an adjustable action is one axis, so
+        // VoiceOver gets two real sliders instead of a crosshair it can only
+        // move sideways.
+        .accessibilityRepresentation {
+            VStack {
+                Slider(value: $pan, in: 0...1) { Text("Pan") }
+                    .accessibilityValue(angle(pan, over: panDegrees))
+                Slider(value: $tilt, in: 0...1) { Text("Tilt") }
+                    .accessibilityValue(angle(tilt, over: tiltDegrees))
             }
         }
     }
 
-    private var accessibilityValue: String {
-        if let panDegrees, let tiltDegrees {
-            let panAngle = Int((pan - 0.5) * panDegrees)
-            let tiltAngle = Int((tilt - 0.5) * tiltDegrees)
-            return "Pan \(panAngle) degrees, tilt \(tiltAngle) degrees"
-        }
-        return "Pan \(Int(pan * 100)) percent, tilt \(Int(tilt * 100)) percent"
+    /// Degrees off centre when the profile knows the travel, percent when it
+    /// does not. Nobody points a light in percent, but a wrong angle is worse
+    /// than an honest percentage.
+    private func angle(_ value: Double, over degrees: Double?) -> String {
+        guard let degrees else { return "\(Int((value * 100).rounded())) percent" }
+        return "\(Int(((value - 0.5) * degrees).rounded())) degrees"
     }
 }
