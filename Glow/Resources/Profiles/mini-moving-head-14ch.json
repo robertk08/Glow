@@ -6,7 +6,6 @@
   "symbolName": "light.beacon.max",
   "panDegrees": 540,
   "tiltDegrees": 270,
-  "isOwned": true,
   "channels": [
     {
       "offset": 1,
