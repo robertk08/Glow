@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The node is an ESP32 on the local network speaking ws://, not wss://.
+	     It has no certificate and no name anyone could issue one for, so App
+	     Transport Security would refuse the connection on device. This is the
+	     narrow exception Apple provides for exactly that case: it permits
+	     cleartext to local addresses only, and leaves ATS fully in force for
+	     everything routed off the LAN — which matters, because stage 4 adds a
+	     Cloudflare Worker that must stay wss://.
+
+	     Xcode merges the build-setting-generated keys into this file, so the
+	     INFOPLIST_KEY_* settings still apply and only the nested dictionary
+	     that they cannot express lives here. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
