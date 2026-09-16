@@ -7,22 +7,12 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 
-# Swift Package Manager
-.swiftpm/
-.build/
-
-# Arduino build artefacts
+# Arduino
 *.bin
 *.elf
 *.map
 *.hex
 *.orig
 
-# Secrets - WiFi credentials, HomeKit pairing codes, Cloudflare tokens.
-# Provisioning will make these real; keep them out of history from the start.
+# WiFi credentials, HomeKit pairing codes, Cloudflare tokens
 secrets.h
-Secrets.swift
-*.xcconfig.local
-
-# Agent worktrees — transient, and each is its own checkout
-.claude/worktrees/

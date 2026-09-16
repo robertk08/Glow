@@ -107,6 +107,12 @@ struct LightRow: View {
         return FixtureControl(profile: profile, start: fixture.start, console: console)
     }
 
+    private var iconColor: Color {
+        if let tint = fixture.tint.color { return tint }
+        guard let control, control.profile.mixesColor else { return .accentColor }
+        return control.displayColor
+    }
+
     var body: some View {
         LabeledContent {
             if let control, control.dims {
@@ -124,7 +130,7 @@ struct LightRow: View {
                 }
             } icon: {
                 Image(systemName: fixture.symbol(profile))
-                    .foregroundStyle(fixture.tint.color ?? control?.displayColor ?? .accentColor)
+                    .foregroundStyle(iconColor)
             }
         }
     }

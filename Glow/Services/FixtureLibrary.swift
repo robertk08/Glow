@@ -5,11 +5,16 @@ import SwiftUI
 final class FixtureLibrary {
     private(set) var profiles: [FixtureProfile] = []
 
-    func load() {
+    init() {
+        load()
+    }
+
+    private func load() {
         let decoder = JSONDecoder()
-        let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "Profiles")
-            ?? Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil)
-            ?? []
+        let inFolder = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "Profiles") ?? []
+        let urls = inFolder.isEmpty
+            ? Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
+            : inFolder
 
         profiles = urls
             .compactMap { url -> FixtureProfile? in

@@ -7,10 +7,6 @@ struct GlowApp: App {
     @State private var library = FixtureLibrary()
     @State private var discovery = NodeDiscovery()
 
-    init() {
-        library.load()
-    }
-
     var body: some Scene {
         WindowGroup {
             LightsView()

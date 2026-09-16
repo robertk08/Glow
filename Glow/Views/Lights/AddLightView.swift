@@ -21,18 +21,7 @@ struct AddLightView: View {
                         Text("\(profile.channelCount) ch")
                             .foregroundStyle(.secondary)
                     } label: {
-                        Label {
-                            VStack(alignment: .leading) {
-                                Text(profile.model)
-                                if !profile.mode.isEmpty {
-                                    Text(profile.mode)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        } icon: {
-                            Image(systemName: profile.symbol)
-                        }
+                        Label(profile.model, systemImage: profile.symbol)
                     }
                 }
                 .buttonStyle(.plain)
