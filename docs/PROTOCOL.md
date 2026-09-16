@@ -25,6 +25,14 @@ reflash.
 - WebSocket at `ws://<host>/ws`
 - TXT records: `v=1`, `id=<mac>`, `name=<user-visible name>`
 
+`id` is the station MAC as **12 lowercase hex digits with no separators**, and
+is the same string the `status` message carries.
+
+**The client must not offer a WebSocket subprotocol.** There is none. A client
+that sends `Sec-WebSocket-Protocol` gets `arduino` echoed back by the node's
+library and a strict client will then reject its own connection. This is the
+most likely way a new client fails on its first attempt.
+
 ## Frames
 
 Binary frames carry DMX. Text frames (JSON) carry everything else. A binary
@@ -41,8 +49,10 @@ bytes 4-5   length     uint16 LE, number of channel bytes that follow
 bytes 6..   values     `length` bytes
 ```
 
-`start + length - 1` must be <= 512 or the node ignores the frame. Partial
-updates are legal and expected: the app sends only the range it changed.
+`start + length - 1` must be <= 512, `start` must be >= 1, and `length` must be
+greater than zero — a zero-length update is answered with `bad_length` rather
+than silently accepted. Partial updates are legal and expected: the app sends
+only the range it changed.
 
 ### Text: JSON messages
 
@@ -58,13 +68,29 @@ App -> node:
 | `refresh` | `hz` (int, 10-44) | Change the DMX refresh rate. |
 | `identify` | — | Flash the node's LED so you can tell which box it is. |
 
+Types are checked strictly, because a controller that guesses at malformed
+input is a controller that does something unexpected to a light. `hz` must be a
+JSON integer — `40.0` is rejected — and `on` must be a real boolean, not `1`.
+
 Node -> app:
 
 | `t` | Fields | Meaning |
 |---|---|---|
-| `status` | `fw`, `id`, `name`, `hz`, `blackout`, `uptime` | Sent on `hello` and on any state change. |
+| `status` | `fw`, `id`, `name`, `hz`, `blackout`, `uptime` | Sent on `hello` and on any state change. `uptime` is whole seconds. |
 | `pong` | `seq` | Heartbeat reply. |
 | `error` | `code`, `message` | Malformed frame, out-of-range address. Never fatal. |
+
+**`status` is not sent spontaneously on connect.** A client that opens the
+socket and starts streaming DMX without saying `hello` never learns the node's
+refresh rate or whether it is blacked out. Say `hello` first.
+
+`code` is one of a closed set, so a client may switch on it:
+
+`bad_frame`, `bad_opcode`, `bad_universe`, `bad_length`, `range`, `bad_json`,
+`bad_message`, `bad_value`, `unknown_type`
+
+`message` is a human-readable elaboration and is not stable — log it, do not
+parse it.
 
 ## Behaviour on disconnect
 

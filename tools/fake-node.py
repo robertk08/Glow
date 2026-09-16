@@ -39,6 +39,12 @@ def handshake(conn, request):
     for line in request.split("\r\n"):
         if line.lower().startswith("sec-websocket-key:"):
             key = line.split(":", 1)[1].strip()
+        elif line.lower().startswith("sec-websocket-protocol:"):
+            # The real node has no subprotocol and its library echoes back
+            # "arduino", which a strict client then rejects. Catching it here
+            # is the difference between a five-minute fix and an afternoon.
+            print(f"  WARNING: client offered a subprotocol ({line.split(':', 1)[1].strip()}).")
+            print("  The node does not support one. Do not set it.")
     if key is None:
         conn.sendall(b"HTTP/1.1 400 Bad Request\r\n\r\n")
         return False
