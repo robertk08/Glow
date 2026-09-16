@@ -1,6 +1,12 @@
 import SwiftData
 import SwiftUI
 
+/// The tabs, and nothing else.
+///
+/// Before adding a screen, read ``DetailLevel``. It holds the rule the whole
+/// app follows for serving a first-time user and a lighting operator from the
+/// same layout, and a screen that ignores it is the one that makes the app
+/// feel like two apps.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Query(sort: \PatchedFixture.sortIndex) private var fixtures: [PatchedFixture]
