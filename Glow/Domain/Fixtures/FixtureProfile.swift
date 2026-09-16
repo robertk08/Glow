@@ -18,6 +18,15 @@ nonisolated struct FixtureChannelRange: Codable, Hashable, Sendable, Identifiabl
     var label: String
     var kind: Kind = .discrete
 
+    /// Marks the band on a macro or wheel channel that leaves the emitter
+    /// faders in charge.
+    ///
+    /// Every manufacturer parks "the console decides" somewhere on the channel
+    /// and labels it differently — "RGBW mix", "Off (RGB faders active)",
+    /// "Open (white)". Saying so in the profile beats matching on wording,
+    /// which works until a profile arrives in German.
+    var releasesMix: Bool = false
+
     /// Bands that do something disruptive — a lamp strike, a motor reset, a
     /// factory wipe. The UI asks before entering one, because on several of
     /// these fixtures a stray drag across the fader resets the head mid-show.
@@ -44,14 +53,23 @@ nonisolated struct FixtureChannelRange: Codable, Hashable, Sendable, Identifiabl
         label = try container.decode(String.self, forKey: .label)
         kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .discrete
         requiresConfirmation = try container.decodeIfPresent(Bool.self, forKey: .requiresConfirmation) ?? false
+        releasesMix = try container.decodeIfPresent(Bool.self, forKey: .releasesMix) ?? false
     }
 
-    init(from: UInt8, to: UInt8, label: String, kind: Kind = .discrete, requiresConfirmation: Bool = false) {
+    init(
+        from: UInt8,
+        to: UInt8,
+        label: String,
+        kind: Kind = .discrete,
+        requiresConfirmation: Bool = false,
+        releasesMix: Bool = false
+    ) {
         self.from = from
         self.to = to
         self.label = label
         self.kind = kind
         self.requiresConfirmation = requiresConfirmation
+        self.releasesMix = releasesMix
     }
 }
 

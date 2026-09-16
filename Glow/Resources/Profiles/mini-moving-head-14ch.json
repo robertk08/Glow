@@ -107,7 +107,8 @@
         {
           "from": 0,
           "to": 7,
-          "label": "RGBW mix (CH7-CH10 active)"
+          "label": "RGBW mix (CH7-CH10 active)",
+          "releasesMix": true
         },
         {
           "from": 8,

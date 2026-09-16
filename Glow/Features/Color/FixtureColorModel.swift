@@ -163,11 +163,12 @@ nonisolated struct ColorOverride: Equatable, Sendable {
 
     /// The band that leaves the emitters in charge.
     ///
-    /// Every manufacturer parks "the console decides" at the bottom of the
-    /// channel and then labels it differently — "RGBW mix", "Off (RGB faders
-    /// active)", "Open (white)". Match the wording first and fall back to the
-    /// lowest band, which is the convention even when the label is unhelpful.
+    /// A profile that says which band this is wins. Otherwise fall back to
+    /// matching the wording manufacturers use, and then to the lowest band,
+    /// which is the convention even when the label is unhelpful.
     static func releaseBand(of channel: FixtureChannel) -> FixtureChannelRange? {
+        if let declared = channel.ranges.first(where: \.releasesMix) { return declared }
+
         let hints = ["mix", "rgb", "faders active", "no function", "off", "open", "manual"]
 
         if let named = channel.ranges.first(where: { range in

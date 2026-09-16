@@ -34,7 +34,8 @@
         {
           "from": 0,
           "to": 7,
-          "label": "Off (RGB faders active)"
+          "label": "Off (RGB faders active)",
+          "releasesMix": true
         },
         {
           "from": 8,
