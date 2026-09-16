@@ -3,25 +3,70 @@
   "model": "LED Derby",
   "mode": "6 channel",
   "symbolName": "wand.and.rays",
-  "notes": "A rotating multi-beam effect: the colours are real RGB faders, but the beams only read as anything with haze in the air. Motor direction bands differ between OEMs — some split 0-127 forward and 128-255 reverse with no stop band at all, so a derby that will not hold still is usually CH6 sitting one value too high.",
   "channels": [
-    { "offset": 1, "role": "intensity", "name": "Master dimmer", "defaultValue": 255 },
-    { "offset": 2, "role": "red", "defaultValue": 255 },
-    { "offset": 3, "role": "green", "defaultValue": 255 },
-    { "offset": 4, "role": "blue", "defaultValue": 255 },
     {
-      "offset": 5, "role": "shutter", "name": "Strobe", "defaultValue": 0,
+      "offset": 1,
+      "role": "intensity",
+      "name": "Master dimmer",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "red",
+      "defaultValue": 255
+    },
+    {
+      "offset": 3,
+      "role": "green",
+      "defaultValue": 255
+    },
+    {
+      "offset": 4,
+      "role": "blue",
+      "defaultValue": 255
+    },
+    {
+      "offset": 5,
+      "role": "shutter",
+      "name": "Strobe",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 7, "label": "Open" },
-        { "from": 8, "to": 255, "label": "Strobe slow to fast", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Open"
+        },
+        {
+          "from": 8,
+          "to": 255,
+          "label": "Strobe slow to fast",
+          "kind": "proportional"
+        }
       ]
     },
     {
-      "offset": 6, "role": "speed", "name": "Motor rotation", "defaultValue": 0,
+      "offset": 6,
+      "role": "speed",
+      "name": "Motor rotation",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 7, "label": "Stopped" },
-        { "from": 8, "to": 127, "label": "Clockwise slow to fast", "kind": "proportional" },
-        { "from": 128, "to": 255, "label": "Anticlockwise slow to fast", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Stopped"
+        },
+        {
+          "from": 8,
+          "to": 127,
+          "label": "Clockwise slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 128,
+          "to": 255,
+          "label": "Anticlockwise slow to fast",
+          "kind": "proportional"
+        }
       ]
     }
   ]

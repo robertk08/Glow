@@ -213,12 +213,6 @@ struct PatchDetailView: View {
                         ProfileDetailView(profile: profile)
                     }
                 }
-
-                if let notes = profile.notes {
-                    Section("Notes") {
-                        Text(notes).font(.callout)
-                    }
-                }
             }
         }
         .formStyle(.grouped)

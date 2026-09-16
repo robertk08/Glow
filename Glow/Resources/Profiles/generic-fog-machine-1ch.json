@@ -3,13 +3,24 @@
   "model": "Fog Machine",
   "mode": "1 channel",
   "symbolName": "smoke",
-  "notes": "Defaults to no output, which is the only sane place to patch a fogger. Most of these ignore DMX while the heater is below temperature and then fire the instant it is ready, so a fader left up during warm-up produces a surprise cloud several minutes later. Many models are on/off rather than proportional despite the fader.",
   "channels": [
     {
-      "offset": 1, "role": "custom", "name": "Fog output", "defaultValue": 0,
+      "offset": 1,
+      "role": "custom",
+      "name": "Fog output",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 9, "label": "Off" },
-        { "from": 10, "to": 255, "label": "Fog output", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 9,
+          "label": "Off"
+        },
+        {
+          "from": 10,
+          "to": 255,
+          "label": "Fog output",
+          "kind": "proportional"
+        }
       ]
     }
   ]

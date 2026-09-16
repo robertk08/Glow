@@ -3,17 +3,45 @@
   "model": "RGB LED Bar",
   "mode": "5 channel",
   "symbolName": "light.strip.2",
-  "notes": "The whole bar as one colour. Bars of this class also offer a pixel mode (three channels per segment) that needs a different profile — check which mode the bar's display is in before patching, because the addresses do not line up.",
   "channels": [
-    { "offset": 1, "role": "red", "defaultValue": 255 },
-    { "offset": 2, "role": "green", "defaultValue": 255 },
-    { "offset": 3, "role": "blue", "defaultValue": 255 },
-    { "offset": 4, "role": "intensity", "name": "Dimmer", "defaultValue": 255 },
     {
-      "offset": 5, "role": "shutter", "name": "Strobe", "defaultValue": 0,
+      "offset": 1,
+      "role": "red",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "green",
+      "defaultValue": 255
+    },
+    {
+      "offset": 3,
+      "role": "blue",
+      "defaultValue": 255
+    },
+    {
+      "offset": 4,
+      "role": "intensity",
+      "name": "Dimmer",
+      "defaultValue": 255
+    },
+    {
+      "offset": 5,
+      "role": "shutter",
+      "name": "Strobe",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 2, "label": "Open" },
-        { "from": 3, "to": 255, "label": "Strobe slow to fast", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 2,
+          "label": "Open"
+        },
+        {
+          "from": 3,
+          "to": 255,
+          "label": "Strobe slow to fast",
+          "kind": "proportional"
+        }
       ]
     }
   ]

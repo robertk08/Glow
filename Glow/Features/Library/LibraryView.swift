@@ -104,12 +104,6 @@ struct ProfileDetailView: View {
                 }
             }
 
-            if let notes = profile.notes {
-                Section("Notes") {
-                    Text(notes).font(.callout)
-                }
-            }
-
             Section("Channels") {
                 ForEach(profile.channels) { channel in
                     VStack(alignment: .leading, spacing: 6) {

@@ -3,10 +3,21 @@
   "model": "RGB LED PAR",
   "mode": "3 channel",
   "symbolName": "light.panel",
-  "notes": "The smallest mode almost every RGB flat PAR offers. There is no master dimmer — intensity comes from the colour levels themselves, so a fade to black means fading all three.",
   "channels": [
-    { "offset": 1, "role": "red", "defaultValue": 255 },
-    { "offset": 2, "role": "green", "defaultValue": 255 },
-    { "offset": 3, "role": "blue", "defaultValue": 255 }
+    {
+      "offset": 1,
+      "role": "red",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "green",
+      "defaultValue": 255
+    },
+    {
+      "offset": 3,
+      "role": "blue",
+      "defaultValue": 255
+    }
   ]
 }

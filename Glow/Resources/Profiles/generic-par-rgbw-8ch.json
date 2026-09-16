@@ -3,28 +3,80 @@
   "model": "RGBW LED PAR",
   "mode": "8 channel",
   "symbolName": "light.panel",
-  "notes": "Master dimmer, four colours, then the usual strobe/program/speed tail. CH7 above 7 hands the fixture to its own auto or sound program and the colour faders stop doing anything.",
   "channels": [
-    { "offset": 1, "role": "intensity", "name": "Master dimmer", "defaultValue": 255 },
-    { "offset": 2, "role": "red", "defaultValue": 255 },
-    { "offset": 3, "role": "green", "defaultValue": 255 },
-    { "offset": 4, "role": "blue", "defaultValue": 255 },
-    { "offset": 5, "role": "white", "defaultValue": 255 },
     {
-      "offset": 6, "role": "shutter", "name": "Strobe", "defaultValue": 0,
+      "offset": 1,
+      "role": "intensity",
+      "name": "Master dimmer",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "red",
+      "defaultValue": 255
+    },
+    {
+      "offset": 3,
+      "role": "green",
+      "defaultValue": 255
+    },
+    {
+      "offset": 4,
+      "role": "blue",
+      "defaultValue": 255
+    },
+    {
+      "offset": 5,
+      "role": "white",
+      "defaultValue": 255
+    },
+    {
+      "offset": 6,
+      "role": "shutter",
+      "name": "Strobe",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 7, "label": "Open" },
-        { "from": 8, "to": 255, "label": "Strobe slow to fast", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Open"
+        },
+        {
+          "from": 8,
+          "to": 255,
+          "label": "Strobe slow to fast",
+          "kind": "proportional"
+        }
       ]
     },
     {
-      "offset": 7, "role": "program", "name": "Program", "defaultValue": 0,
+      "offset": 7,
+      "role": "program",
+      "name": "Program",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 7, "label": "Manual (responds to DMX)" },
-        { "from": 8, "to": 127, "label": "Colour change and fade programs" },
-        { "from": 128, "to": 255, "label": "Sound active" }
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Manual (responds to DMX)"
+        },
+        {
+          "from": 8,
+          "to": 127,
+          "label": "Colour change and fade programs"
+        },
+        {
+          "from": 128,
+          "to": 255,
+          "label": "Sound active"
+        }
       ]
     },
-    { "offset": 8, "role": "programSpeed", "name": "Program speed", "defaultValue": 0 }
+    {
+      "offset": 8,
+      "role": "programSpeed",
+      "name": "Program speed",
+      "defaultValue": 0
+    }
   ]
 }

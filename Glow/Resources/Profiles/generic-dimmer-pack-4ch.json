@@ -3,11 +3,30 @@
   "model": "4-Channel Dimmer Pack",
   "mode": "4 channel",
   "symbolName": "light.max",
-  "notes": "Four independent dimmer outputs on consecutive addresses. Many packs have a per-channel switch for dimming vs. switched (relay) output; in switched mode a channel snaps on somewhere near half and ignores everything between.",
   "channels": [
-    { "offset": 1, "role": "intensity", "name": "Output 1", "defaultValue": 255 },
-    { "offset": 2, "role": "intensity", "name": "Output 2", "defaultValue": 255 },
-    { "offset": 3, "role": "intensity", "name": "Output 3", "defaultValue": 255 },
-    { "offset": 4, "role": "intensity", "name": "Output 4", "defaultValue": 255 }
+    {
+      "offset": 1,
+      "role": "intensity",
+      "name": "Output 1",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "intensity",
+      "name": "Output 2",
+      "defaultValue": 255
+    },
+    {
+      "offset": 3,
+      "role": "intensity",
+      "name": "Output 3",
+      "defaultValue": 255
+    },
+    {
+      "offset": 4,
+      "role": "intensity",
+      "name": "Output 4",
+      "defaultValue": 255
+    }
   ]
 }

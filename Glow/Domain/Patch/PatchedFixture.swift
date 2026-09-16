@@ -18,6 +18,14 @@ final class PatchedFixture {
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
 
+    /// Overrides the profile's icon. Nil means "whatever the profile says",
+    /// which is what almost every fixture wants until a rig has two of the
+    /// same thing and they need telling apart.
+    var iconName: String?
+
+    /// A colour label, stored as the raw value of ``FixtureTint``.
+    var tintName: String?
+
     init(profileID: String, name: String, startAddress: DMXAddress, sortIndex: Int = 0) {
         self.profileID = profileID
         self.name = name
@@ -29,6 +37,18 @@ final class PatchedFixture {
     var startAddress: DMXAddress {
         get { DMXAddress(clamping: startAddressValue) }
         set { startAddressValue = newValue.rawValue }
+    }
+
+    var tint: FixtureTint {
+        get { tintName.flatMap(FixtureTint.init(rawValue:)) ?? .none }
+        set { tintName = newValue == .none ? nil : newValue.rawValue }
+    }
+
+    /// The icon to draw: the fixture's own if it has been given one, otherwise
+    /// the profile's, otherwise a bulb.
+    func symbolName(profile: FixtureProfile?) -> String {
+        if let iconName, FixtureIcon.isKnown(iconName) { return iconName }
+        return profile?.symbolName ?? FixtureIcon.fallback
     }
 }
 

@@ -104,3 +104,43 @@ exceptional.
 Opcode `0x02` is reserved for a full 512-byte sync frame, `0x03` for
 multi-universe. Universe byte is present now so adding a second one later is
 not a protocol break.
+
+## Setup: getting the node onto WiFi
+
+The node must be usable by someone who never opens the Arduino IDE, so
+credentials are entered in the app, never compiled in. A node with nothing
+stored brings up its own open access point and waits.
+
+```
+SSID          Glow Setup
+address       192.168.4.1
+lifetime      only while unprovisioned, or for 5 minutes after a long reset
+```
+
+These are plain HTTP (not the WebSocket), because the phone has to talk to the
+node before either of them knows anything about the other.
+
+| Method | Path | Body | Reply |
+|---|---|---|---|
+| `GET` | `/api/info` | — | `{"fw","id","name","state"}` where `state` is `unprovisioned` or `provisioned` |
+| `GET` | `/api/scan` | — | `{"networks":[{"ssid","rssi","secure","channel"}]}`, strongest first, duplicates collapsed |
+| `POST` | `/api/provision` | `{"ssid","password"}` | `{"ok":true}` then join, or `{"ok":false,"error":"..."}` |
+| `POST` | `/api/forget` | — | `{"ok":true}` then reboot into setup |
+
+`/api/scan` may take several seconds — a WiFi scan is not instant, and the node
+is single-threaded about it. The app shows progress rather than timing out at
+one second.
+
+`/api/provision` replies **before** it tries to join, because the moment it
+joins it is no longer on the setup network and the reply could never arrive.
+The app confirms success by finding the node again over Bonjour on the home
+network, not by the reply. A node that fails to join returns to the setup AP,
+so the recovery path is to reconnect to `Glow Setup` and try again.
+
+`/api/forget` and `/api/provision` also work on the home network, so changing
+router or password never needs a cable.
+
+**The setup AP is open**, which is a deliberate trade for hardware with no
+screen and no keyboard. It exists only until the node has credentials, and
+anyone close enough to join it is close enough to reach the reset button. Do
+not extend the same endpoints to the general internet in stage 4.

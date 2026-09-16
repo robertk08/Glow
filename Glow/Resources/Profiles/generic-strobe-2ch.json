@@ -3,14 +3,30 @@
   "model": "LED Strobe",
   "mode": "2 channel",
   "symbolName": "bolt",
-  "notes": "Channel order is not standardised on these — plenty of strobes put the rate first and the dimmer second, and the fixture's display will not tell you which. If the intensity fader changes the flash rate instead, you have the other one. Defaults give a steady, un-flashing full output.",
   "channels": [
-    { "offset": 1, "role": "intensity", "name": "Dimmer", "defaultValue": 255 },
     {
-      "offset": 2, "role": "shutter", "name": "Strobe rate", "defaultValue": 0,
+      "offset": 1,
+      "role": "intensity",
+      "name": "Dimmer",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "shutter",
+      "name": "Strobe rate",
+      "defaultValue": 0,
       "ranges": [
-        { "from": 0, "to": 7, "label": "Off (constant output)" },
-        { "from": 8, "to": 255, "label": "Strobe slow to fast", "kind": "proportional" }
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Off (constant output)"
+        },
+        {
+          "from": 8,
+          "to": 255,
+          "label": "Strobe slow to fast",
+          "kind": "proportional"
+        }
       ]
     }
   ]

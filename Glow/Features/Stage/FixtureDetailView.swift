@@ -10,7 +10,6 @@ struct FixtureDetailView: View {
     @Environment(AppModel.self) private var model
     @Bindable var fixture: PatchedFixture
 
-    @State private var showingRawChannels = false
     @State private var pendingConfirmation: PendingRange?
 
     private struct PendingRange: Identifiable {
@@ -26,10 +25,10 @@ struct FixtureDetailView: View {
         Form {
             if let profile, let control {
                 intensitySection(profile, control)
-                colorSection(profile, control)
+                FixtureColorControl(control: control)
                 positionSection(profile, control)
                 rangedSections(profile, control)
-                rawSection(profile, control)
+                FixtureChannelControl(control: control, startAddress: fixture.startAddress)
                 actionsSection(control)
             } else {
                 Section {
@@ -110,39 +109,6 @@ struct FixtureDetailView: View {
     }
 
     @ViewBuilder
-    private func colorSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
-        if profile.hasColorMixing {
-            Section("Colour") {
-                ColorPicker("Mix", selection: control.colorBinding, supportsOpacity: false)
-
-                HStack(spacing: 8) {
-                    ForEach(Self.quickColors, id: \.name) { swatch in
-                        Button {
-                            withAnimation(.snappy) { control.color = swatch.color }
-                        } label: {
-                            Circle()
-                                .fill(swatch.color)
-                                .frame(height: 30)
-                                .overlay { Circle().strokeBorder(.separator) }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(swatch.name)
-                    }
-                }
-
-                ForEach(control.auxiliaryColorChannels) { channel in
-                    ChannelFader(
-                        title: channel.name,
-                        subtitle: nil,
-                        tint: channel.role.mixingTint,
-                        value: control.binding(for: channel)
-                    )
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
     private func positionSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
         if profile.hasMovement {
             Section("Position") {
@@ -196,26 +162,6 @@ struct FixtureDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private func rawSection(_ profile: FixtureProfile, _ control: FixtureControl) -> some View {
-        Section {
-            DisclosureGroup("All \(profile.channelCount) channels", isExpanded: $showingRawChannels) {
-                ForEach(profile.channels) { channel in
-                    ChannelFader(
-                        title: channel.name,
-                        subtitle: address(of: channel, control),
-                        tint: channel.role.mixingTint,
-                        value: control.binding(for: channel)
-                    )
-                }
-            }
-        } header: {
-            Text("Raw")
-        } footer: {
-            Text("Patched at \(fixture.startAddressValue), using \(profile.channelCount) channels.")
-        }
-    }
-
     private func actionsSection(_ control: FixtureControl) -> some View {
         Section {
             Button("Home", systemImage: "house") {
@@ -234,10 +180,6 @@ struct FixtureDetailView: View {
         control.address(of: channel).map { "DMX \($0.rawValue)" }
     }
 
-    private static let quickColors: [(name: String, color: Color)] = [
-        ("White", .white), ("Red", .red), ("Amber", .orange), ("Yellow", .yellow),
-        ("Green", .green), ("Cyan", .cyan), ("Blue", .blue), ("Magenta", Color(red: 1, green: 0, blue: 1)),
-    ]
 }
 
 /// A channel with named bands: a menu to choose one, and a fader scoped to the
