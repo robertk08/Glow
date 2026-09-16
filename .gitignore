@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Arduino build artefacts
+*.bin
+*.elf
+*.map
+*.hex
+*.orig
+
+# Secrets - WiFi credentials, HomeKit pairing codes, Cloudflare tokens.
+# Provisioning will make these real; keep them out of history from the start.
+secrets.h
+Secrets.swift
+*.xcconfig.local
