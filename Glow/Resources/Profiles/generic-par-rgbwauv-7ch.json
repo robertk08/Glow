@@ -1,0 +1,16 @@
+{
+  "id": "generic-par-rgbwauv-7ch",
+  "model": "RGBWA+UV LED PAR",
+  "mode": "7 channel",
+  "symbolName": "light.panel",
+  "notes": "The six-in-one mode with a master dimmer in front of it. Amber and UV default to zero so the patched fixture starts on a clean white.",
+  "channels": [
+    { "offset": 1, "role": "intensity", "name": "Master dimmer", "defaultValue": 255 },
+    { "offset": 2, "role": "red", "defaultValue": 255 },
+    { "offset": 3, "role": "green", "defaultValue": 255 },
+    { "offset": 4, "role": "blue", "defaultValue": 255 },
+    { "offset": 5, "role": "white", "defaultValue": 255 },
+    { "offset": 6, "role": "amber", "defaultValue": 0 },
+    { "offset": 7, "role": "uv", "defaultValue": 0 }
+  ]
+}

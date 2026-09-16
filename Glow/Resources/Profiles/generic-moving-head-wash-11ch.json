@@ -1,0 +1,42 @@
+{
+  "id": "generic-moving-head-wash-11ch",
+  "model": "Mini LED Moving Head",
+  "mode": "11 channel",
+  "symbolName": "light.beacon.max",
+  "panDegrees": 540,
+  "tiltDegrees": 270,
+  "notes": "16-bit pan and tilt, RGBW, and a colour macro on CH11. CH11 above 7 overrides CH7-CH10 with a preset, which is the usual reason a head goes the wrong colour and stays there. CH6 below 8 is a blackout. This is the same layout as the 14-channel mode minus the macro speed, auto/sound and reset channels.",
+  "channels": [
+    { "offset": 1, "role": "pan", "defaultValue": 128 },
+    { "offset": 2, "role": "pan", "name": "Pan fine", "isFine": true, "defaultValue": 0 },
+    { "offset": 3, "role": "tilt", "defaultValue": 128 },
+    { "offset": 4, "role": "tilt", "name": "Tilt fine", "isFine": true, "defaultValue": 0 },
+    {
+      "offset": 5, "role": "movementSpeed", "name": "Pan/tilt speed", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 255, "label": "Fast to slow (inverted)", "kind": "proportional" }
+      ]
+    },
+    {
+      "offset": 6, "role": "shutter", "name": "Dimmer/strobe", "defaultValue": 255,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Closed" },
+        { "from": 8, "to": 134, "label": "Dimmer", "kind": "proportional" },
+        { "from": 135, "to": 239, "label": "Strobe slow to fast", "kind": "proportional" },
+        { "from": 240, "to": 255, "label": "Open" }
+      ]
+    },
+    { "offset": 7, "role": "red", "defaultValue": 255 },
+    { "offset": 8, "role": "green", "defaultValue": 255 },
+    { "offset": 9, "role": "blue", "defaultValue": 255 },
+    { "offset": 10, "role": "white", "defaultValue": 255 },
+    {
+      "offset": 11, "role": "colorMacro", "name": "Colour macro", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "RGBW mix (CH7-CH10 active)" },
+        { "from": 8, "to": 231, "label": "Colour macro" },
+        { "from": 232, "to": 255, "label": "Colour jumping" }
+      ]
+    }
+  ]
+}

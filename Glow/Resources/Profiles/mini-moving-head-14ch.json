@@ -1,0 +1,63 @@
+{
+  "id": "mini-moving-head-14ch",
+  "manufacturer": "Generic",
+  "model": "Mini LED Moving Head",
+  "mode": "14 channel",
+  "symbolName": "light.beacon.max",
+  "panDegrees": 540,
+  "tiltDegrees": 270,
+  "isOwned": true,
+  "notes": "Four channels decide whether this fixture listens to DMX at all. CH6 below 8 is a blackout. CH11 above 7 replaces the RGBW faders with a built-in colour macro. CH13 above 7 runs the fixture's own auto or sound program — it keeps moving while ignoring every other channel, which looks like it is responding. CH14 parked in 150-200 resets the head continuously. The defaults here are the same values the firmware's lampOn() writes.",
+  "channels": [
+    { "offset": 1, "role": "pan", "name": "Pan", "defaultValue": 128 },
+    { "offset": 2, "role": "pan", "name": "Pan fine", "isFine": true, "defaultValue": 0 },
+    { "offset": 3, "role": "tilt", "name": "Tilt", "defaultValue": 128 },
+    { "offset": 4, "role": "tilt", "name": "Tilt fine", "isFine": true, "defaultValue": 0 },
+    {
+      "offset": 5, "role": "movementSpeed", "name": "XY speed", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 255, "label": "Fast to slow (inverted)", "kind": "proportional" }
+      ]
+    },
+    {
+      "offset": 6, "role": "shutter", "name": "Dimmer/strobe", "defaultValue": 255,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Closed" },
+        { "from": 8, "to": 134, "label": "Dimmer", "kind": "proportional" },
+        { "from": 135, "to": 239, "label": "Strobe slow to fast", "kind": "proportional" },
+        { "from": 240, "to": 255, "label": "Open" }
+      ]
+    },
+    { "offset": 7, "role": "red", "defaultValue": 255 },
+    { "offset": 8, "role": "green", "defaultValue": 255 },
+    { "offset": 9, "role": "blue", "defaultValue": 255 },
+    { "offset": 10, "role": "white", "defaultValue": 255 },
+    {
+      "offset": 11, "role": "colorMacro", "name": "Colour macro", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "RGBW mix (CH7-CH10 active)" },
+        { "from": 8, "to": 231, "label": "Colour macro" },
+        { "from": 232, "to": 255, "label": "Colour jumping" }
+      ]
+    },
+    { "offset": 12, "role": "programSpeed", "name": "Jump speed", "defaultValue": 0 },
+    {
+      "offset": 13, "role": "program", "name": "Mode", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Manual (responds to DMX)" },
+        { "from": 8, "to": 63, "label": "Auto fast" },
+        { "from": 64, "to": 127, "label": "Auto slow" },
+        { "from": 128, "to": 191, "label": "Sound 1" },
+        { "from": 192, "to": 255, "label": "Sound 2" }
+      ]
+    },
+    {
+      "offset": 14, "role": "reset", "name": "Reset", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 149, "label": "No function" },
+        { "from": 150, "to": 200, "label": "Reset head", "requiresConfirmation": true },
+        { "from": 201, "to": 255, "label": "No function" }
+      ]
+    }
+  ]
+}

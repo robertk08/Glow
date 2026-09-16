@@ -1,0 +1,13 @@
+{
+  "id": "generic-par-rgbw-4ch",
+  "model": "RGBW LED PAR",
+  "mode": "4 channel",
+  "symbolName": "light.panel",
+  "notes": "Direct RGBW with no master dimmer. The white emitter is a separate LED, not a mix, so full RGB plus full white is brighter and cooler than full RGB alone.",
+  "channels": [
+    { "offset": 1, "role": "red", "defaultValue": 255 },
+    { "offset": 2, "role": "green", "defaultValue": 255 },
+    { "offset": 3, "role": "blue", "defaultValue": 255 },
+    { "offset": 4, "role": "white", "defaultValue": 255 }
+  ]
+}

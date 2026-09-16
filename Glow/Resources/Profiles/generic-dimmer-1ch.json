@@ -1,0 +1,15 @@
+{
+  "id": "generic-dimmer-1ch",
+  "model": "Dimmer Channel",
+  "mode": "1 channel",
+  "symbolName": "light.max",
+  "notes": "One proportional level and nothing else — a dimmer pack channel, an LED driver, or any fixture you only ever need to fade. Patch one of these per dimmer output.",
+  "channels": [
+    {
+      "offset": 1, "role": "intensity", "name": "Intensity", "defaultValue": 255,
+      "ranges": [
+        { "from": 0, "to": 255, "label": "Off to full", "kind": "proportional" }
+      ]
+    }
+  ]
+}

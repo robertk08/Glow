@@ -1,0 +1,15 @@
+{
+  "id": "generic-par-rgbwauv-6ch",
+  "model": "RGBWA+UV LED PAR",
+  "mode": "6 channel",
+  "symbolName": "light.panel",
+  "notes": "Six-in-one flat PAR, direct control with no master dimmer. Amber and UV default to zero: both skew every mix they are added to, and UV reads as a dim violet haze rather than as light.",
+  "channels": [
+    { "offset": 1, "role": "red", "defaultValue": 255 },
+    { "offset": 2, "role": "green", "defaultValue": 255 },
+    { "offset": 3, "role": "blue", "defaultValue": 255 },
+    { "offset": 4, "role": "white", "defaultValue": 255 },
+    { "offset": 5, "role": "amber", "defaultValue": 0 },
+    { "offset": 6, "role": "uv", "defaultValue": 0 }
+  ]
+}

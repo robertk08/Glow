@@ -1,0 +1,37 @@
+{
+  "id": "generic-laser-rg-4ch",
+  "model": "RG Pattern Laser",
+  "mode": "4 channel",
+  "symbolName": "laser.burst",
+  "notes": "Laser channel maps vary more than any other fixture type, so treat this as a starting point and check the projector's own chart. CH1 below 10 shuts the diodes off; above 100 the projector runs its own programs and CH2-CH4 stop doing anything. Point it above head height and never into an audience.",
+  "channels": [
+    {
+      "offset": 1, "role": "function", "name": "Mode", "defaultValue": 50,
+      "ranges": [
+        { "from": 0, "to": 9, "label": "Laser off" },
+        { "from": 10, "to": 99, "label": "DMX control (responds to CH2-CH4)" },
+        { "from": 100, "to": 169, "label": "Auto programs" },
+        { "from": 170, "to": 255, "label": "Sound active" }
+      ]
+    },
+    { "offset": 2, "role": "gobo", "name": "Pattern", "defaultValue": 0 },
+    {
+      "offset": 3, "role": "goboRotation", "name": "Pattern rotation", "defaultValue": 64,
+      "ranges": [
+        { "from": 0, "to": 127, "label": "Static angle", "kind": "proportional" },
+        { "from": 128, "to": 191, "label": "Rotate clockwise", "kind": "proportional" },
+        { "from": 192, "to": 255, "label": "Rotate anticlockwise", "kind": "proportional" }
+      ]
+    },
+    {
+      "offset": 4, "role": "colorMacro", "name": "Colour", "defaultValue": 32,
+      "ranges": [
+        { "from": 0, "to": 9, "label": "Blackout" },
+        { "from": 10, "to": 63, "label": "Red and green" },
+        { "from": 64, "to": 127, "label": "Red" },
+        { "from": 128, "to": 191, "label": "Green" },
+        { "from": 192, "to": 255, "label": "Red/green alternating" }
+      ]
+    }
+  ]
+}

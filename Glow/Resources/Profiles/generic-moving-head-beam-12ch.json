@@ -1,0 +1,65 @@
+{
+  "id": "generic-moving-head-beam-12ch",
+  "model": "LED Beam Moving Head",
+  "mode": "12 channel",
+  "symbolName": "light.beacon.max",
+  "panDegrees": 540,
+  "tiltDegrees": 270,
+  "notes": "A colour wheel and a gobo wheel instead of colour mixing, so there is no RGB here — CH8 picks one of a fixed set of dichroic filters. CH12 carries both the auto/sound programs and the motor reset: leave it at 0 for DMX control, and keep it out of 200-209 or the head resets mid-show. Exact band edges differ between OEMs; check the fixture's own chart for the wheel slot positions.",
+  "channels": [
+    { "offset": 1, "role": "pan", "defaultValue": 128 },
+    { "offset": 2, "role": "pan", "name": "Pan fine", "isFine": true, "defaultValue": 0 },
+    { "offset": 3, "role": "tilt", "defaultValue": 128 },
+    { "offset": 4, "role": "tilt", "name": "Tilt fine", "isFine": true, "defaultValue": 0 },
+    {
+      "offset": 5, "role": "movementSpeed", "name": "Pan/tilt speed", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 255, "label": "Fast to slow (inverted)", "kind": "proportional" }
+      ]
+    },
+    { "offset": 6, "role": "intensity", "name": "Dimmer", "defaultValue": 255 },
+    {
+      "offset": 7, "role": "shutter", "name": "Shutter/strobe", "defaultValue": 255,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Closed" },
+        { "from": 8, "to": 15, "label": "Open" },
+        { "from": 16, "to": 239, "label": "Strobe slow to fast", "kind": "proportional" },
+        { "from": 240, "to": 255, "label": "Open" }
+      ]
+    },
+    {
+      "offset": 8, "role": "colorWheel", "name": "Colour wheel", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 9, "label": "Open (white)" },
+        { "from": 10, "to": 127, "label": "Colour slots" },
+        { "from": 128, "to": 255, "label": "Continuous rotation", "kind": "proportional" }
+      ]
+    },
+    {
+      "offset": 9, "role": "gobo", "name": "Gobo wheel", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Open (no gobo)" },
+        { "from": 8, "to": 127, "label": "Gobo slots" },
+        { "from": 128, "to": 255, "label": "Gobo shake and rotation" }
+      ]
+    },
+    {
+      "offset": 10, "role": "prism", "name": "Prism", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 127, "label": "Prism out" },
+        { "from": 128, "to": 255, "label": "Prism in" }
+      ]
+    },
+    { "offset": 11, "role": "focus", "name": "Focus", "defaultValue": 128 },
+    {
+      "offset": 12, "role": "function", "name": "Function", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 7, "label": "Manual (responds to DMX)" },
+        { "from": 8, "to": 99, "label": "Auto programs" },
+        { "from": 100, "to": 199, "label": "Sound active" },
+        { "from": 200, "to": 209, "label": "Reset head", "requiresConfirmation": true },
+        { "from": 210, "to": 255, "label": "No function" }
+      ]
+    }
+  ]
+}

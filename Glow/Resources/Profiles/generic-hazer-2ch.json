@@ -1,0 +1,22 @@
+{
+  "id": "generic-hazer-2ch",
+  "model": "Hazer",
+  "mode": "2 channel",
+  "symbolName": "smoke",
+  "notes": "Haze output first, fan second. The fan defaults to full: it is what spreads the haze and keeps the machine cool, and on several models it never fully stops regardless of what you send. Output defaults to zero so a freshly patched hazer does not start filling the room.",
+  "channels": [
+    {
+      "offset": 1, "role": "custom", "name": "Haze output", "defaultValue": 0,
+      "ranges": [
+        { "from": 0, "to": 9, "label": "Off" },
+        { "from": 10, "to": 255, "label": "Haze output", "kind": "proportional" }
+      ]
+    },
+    {
+      "offset": 2, "role": "custom", "name": "Fan speed", "defaultValue": 255,
+      "ranges": [
+        { "from": 0, "to": 255, "label": "Fan slow to fast", "kind": "proportional" }
+      ]
+    }
+  ]
+}
