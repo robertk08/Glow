@@ -105,7 +105,7 @@ struct LibraryView: View {
 				deleting = nil
 			}
 		} message: {
-			Text(library.patched(deleting?.identifier, among: fixtures).isEmpty ? "The profile goes, and anything you patched from it stays where it is." : "\(library.patched(deleting?.identifier, among: fixtures).formatted(.list(type: .and))) use it and will stop working until you patch them again.")
+			Text(library.patched(deleting?.identifier, among: fixtures).isEmpty ? "Nothing is patched from it." : "\(library.patched(deleting?.identifier, among: fixtures).formatted(.list(type: .and))) are patched from it and go with it.")
 		}
 	}
 }

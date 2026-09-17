@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ShowsView: View {
+	@Environment(Console.self) private var console
 	@Environment(ShowLibrary.self) private var shows
 	
 	@State private var isNaming = false
@@ -17,6 +18,7 @@ struct ShowsView: View {
 			Section {
 				ForEach(shows.shows) { show in
 					Button {
+						console.clearSelection()
 						shows.activate(show)
 					} label: {
 						LabeledContent {
@@ -83,11 +85,13 @@ struct ShowsView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
 			guard let url = try? result.get() else { return }
+			console.clearSelection()
 			shows.adopt(contentsOf: url)
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
 		.sheet(isPresented: $isNaming) {
 			NameSheet(title: "New Show", prompt: "Show", hint: "Starts empty, and switches to it.", name: $newName) { name in
+				console.clearSelection()
 				shows.create(name: name)
 			}
 		}

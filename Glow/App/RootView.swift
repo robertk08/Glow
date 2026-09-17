@@ -118,7 +118,6 @@ struct RootView: View {
 		}
 		.task {
 			library.setCustom(customProfiles.map(\.profile))
-			console.clearSelection()
 			console.prune(fixtures, library: library, context: context)
 		}
 	}
