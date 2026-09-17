@@ -103,9 +103,16 @@ Serial console at 115200: `red | green | blue | net | setup | forget`.
 arduino-esp32 core 3.3.11 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
 ArduinoJson 7.4.3
 
-**esp_dmx needs patching.** 4.1.0 does not build against ESP-IDF ≥ 5.3, which
-removed `.module` from `uart_signal_conn_t`. Run `./patch_esp_dmx.sh` after
-installing it from Library Manager. Idempotent, keeps a `.orig` backup.
+**esp_dmx needs patching, twice.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
+which removed `.module` from `uart_signal_conn_t`. And its ISR only goes into
+IRAM when `CONFIG_DMX_ISR_IN_IRAM` is set, which Kconfig does under ESP-IDF but
+cannot under Arduino, so by default the ISR sits in flash and any flash access
+that drops the cache corrupts the packet on the wire as a visible flicker. Run
+`./patch_esp_dmx.sh` after installing from Library Manager. Idempotent, keeps
+`.orig` backups.
+
+The core does not set `CONFIG_GPTIMER_ISR_IRAM_SAFE`, so the timer half of the
+driver stays in flash even after the patch.
 
 **Use `DMX_NUM_1`.** Port 0 is the console UART, and `DMX_NUM_2` crashes in
 `dmx_driver_install()`, because esp_dmx drops the third UART's context entry
