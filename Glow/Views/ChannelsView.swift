@@ -35,16 +35,16 @@ struct ChannelsView: View {
 					HStack {
 						Text(parameter.name)
 						Spacer()
-						Text("DMX \(control.addressLabel(of: parameter))")
+						Text(control.channelLabel(of: parameter))
 							.monospacedDigit()
 					}
 				}
 			}
 		}
-		.navigationTitle("Channels")
+		.navigationTitle("Advanced")
 		.navigationBarTitleDisplayMode(.inline)
 		.alert("Set \(editing?.name ?? "")", isPresented: Binding { editing != nil } set: { _ in editing = nil }) {
-			TextField("0 to \(editing?.maximum ?? 255)", text: $entry)
+			TextField("0 to \(editing?.maximum ?? 255, format: .number.grouping(.never))", text: $entry)
 				.keyboardType(.numberPad)
 			Button("Cancel", role: .cancel) { editing = nil }
 			Button("Set") {
@@ -89,7 +89,7 @@ private struct ParameterRow: View {
 				Button(action: edit) {
 					HStack(spacing: 6) {
 						Text(control.percent(of: parameter), format: .percent.precision(.fractionLength(0)))
-						Text("\(control.rawValue(of: parameter))")
+						Text(control.rawValue(of: parameter), format: .number.grouping(.never))
 							.foregroundStyle(.secondary)
 					}
 					.monospacedDigit()

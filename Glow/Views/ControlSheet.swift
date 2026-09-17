@@ -84,6 +84,16 @@ struct ControlSheet: View {
 					}
 				}
 				
+				if control.profile != nil {
+					Section {
+						NavigationLink("Advanced") {
+							ChannelsView(control: control)
+						}
+					} footer: {
+						Text("Every channel the fixture has, as a slider on the raw DMX value.")
+					}
+				}
+				
 				Section {
 					Button("Bring Up") {
 						control.home()
@@ -91,12 +101,6 @@ struct ControlSheet: View {
 					
 					Button("Reset to Defaults") {
 						control.applyDefaults()
-					}
-					
-					if control.isSingle {
-						NavigationLink("All Channels") {
-							ChannelsView(control: control)
-						}
 					}
 				} footer: {
 					Text("Bring Up centres the head, opens it and goes to white. Reset puts every channel back where the fixture profile says it starts.")

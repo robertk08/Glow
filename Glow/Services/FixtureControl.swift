@@ -433,11 +433,13 @@ struct FixtureControl {
 		parameter.coarse.range(containing: value(of: parameter.coarse))
 	}
 	
-	func addressLabel(of parameter: FixtureParameter) -> String {
-		guard let first = targets.first, let coarse = first.start.offset(by: parameter.coarse.offset - 1) else { return "" }
-		guard let fine = parameter.fine, let second = first.start.offset(by: fine.offset - 1) else {
-			return "\(coarse.value)"
+	func channelLabel(of parameter: FixtureParameter) -> String {
+		guard isSingle, let first = targets.first, let coarse = first.start.offset(by: parameter.coarse.offset - 1) else {
+			return "CH \(parameter.coarse.offset)"
 		}
-		return "\(coarse.value)+\(second.value)"
+		guard let fine = parameter.fine, let second = first.start.offset(by: fine.offset - 1) else {
+			return "DMX \(coarse.value)"
+		}
+		return "DMX \(coarse.value)+\(second.value)"
 	}
 }
