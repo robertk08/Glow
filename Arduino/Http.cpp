@@ -83,6 +83,7 @@ void info(NetworkClient &c) {
   doc["id"]   = Net::id();
   doc["name"] = GLOW_NODE_NAME;
   doc["state"] = Net::provisioned() ? "provisioned" : "unprovisioned";
+  doc["join"]  = Net::joinState();
   String out;
   serializeJson(doc, out);
   sendJson(c, 200, out);
@@ -108,7 +109,6 @@ void scan(NetworkClient &c) {
     o["rssi"]       = g_nets[i].rssi;
     o["secure"]     = g_nets[i].secure;
     o["enterprise"] = g_nets[i].enterprise;
-    o["channel"]    = g_nets[i].channel;
   }
   String out;
   serializeJson(doc, out);
@@ -232,19 +232,20 @@ void handle(NetworkClient &client) {
   }
   if (query) *query = '\0';
 
+  char   header[REQUEST_LINE_MAX];
   size_t contentLength = 0;
   bool   headersEnded  = false;
   for (int i = 0; i < REQUEST_HEADERS_MAX; i++) {
-    if (!readLine(client, line, sizeof(line), deadline)) {
+    if (!readLine(client, header, sizeof(header), deadline)) {
       client.stop();
       return;
     }
-    if (!line[0]) {
+    if (!header[0]) {
       headersEnded = true;
       break;
     }
-    if (!strncasecmp(line, "Content-Length:", 15))
-      contentLength = strtoul(line + 15, nullptr, 10);
+    if (!strncasecmp(header, "Content-Length:", 15))
+      contentLength = strtoul(header + 15, nullptr, 10);
   }
   if (!headersEnded) {
     client.stop();

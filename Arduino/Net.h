@@ -10,6 +10,7 @@ void tick();
 bool        up();
 bool        apUp();
 bool        provisioned();
+const char *joinState();
 const char *id();
 IPAddress   ip();
 
@@ -18,7 +19,6 @@ bool fromSetupAp(const IPAddress &peer);
 struct Network {
   char    ssid[33];
   int32_t rssi;
-  int32_t channel;
   bool    secure;
   bool    enterprise;
 };

@@ -43,10 +43,14 @@ on its own network. The app confirms by finding it again afterwards.
 Credentials are written only after the join succeeds, so a wrong password cannot
 displace a working network.
 
-**Getting back to setup:** power the controller off and on three times, leaving
-it on for less than five seconds each time. This only raises the setup network
-for five minutes and erases nothing. Serial `forget`, or the app's forget
-button, is what erases. Reflashing does not, because credentials live in NVS.
+**Getting back to setup:** the controller raises **Glow Setup** by itself after
+a minute of not finding its stored network, and keeps it up until it joins, so
+one carried somewhere new is reachable without being touched. To ask for it
+while the stored network is fine, power the controller off and on three times,
+leaving it on for less than five seconds each time, which raises the setup
+network for five minutes. Neither erases anything. Serial `forget`, or the app's
+forget button, is what erases. Reflashing does not, because credentials live in
+NVS.
 
 Only 2.4 GHz: the ESP32-S3 has no 5 GHz radio, so a 5 GHz-only network never
 appears in the list.
@@ -136,9 +140,9 @@ Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/forget`. `/api/scan` is served only on the
-setup network, because a scan blocks the socket for seconds and must not be able
-to freeze a running show. It is slow by nature, so the app shows progress rather
-than timing out.
+setup network, because scanning takes the radio off the air and must not be able
+to disturb a running show. It starts the scan and answers straight away, so the
+app polls until the list arrives.
 
 **On disconnect the controller holds its last look.** A light going dark because
 Wi-Fi hiccuped is worse than a light staying put, and drops are routine.

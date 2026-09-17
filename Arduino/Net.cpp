@@ -31,6 +31,10 @@ char     g_tryPass[65] = "";
 bool g_bootCleared = false;
 bool g_scanning    = false;
 
+bool     g_apLost    = false;
+uint32_t g_downSince = 0;
+bool     g_joinFailed = false;
+
 void readIdentity() {
   uint8_t mac[6] = {0};
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -160,6 +164,7 @@ void begin() {
 
   if (Creds::have()) {
     startStation(Creds::ssid(), Creds::user(), Creds::password());
+    g_downSince = millis();
     if (asked) raiseAp(SETUP_AP_MS);
   } else {
     raiseAp(0);
@@ -181,9 +186,14 @@ void tick() {
     if (now) {
       Serial.printf("WiFi: %s\n", WiFi.localIP().toString().c_str());
       announce();
+      if (g_apLost) {
+        g_apLost = false;
+        lowerAp();
+      }
     } else {
       Serial.println(F("WiFi: dropped"));
-      g_lastTry = millis();
+      g_lastTry   = millis();
+      g_downSince = millis();
     }
   }
 
@@ -199,7 +209,8 @@ void tick() {
       lowerAp();
 
     } else if (millis() - g_joinStart >= JOIN_TIMEOUT_MS) {
-      g_trying = false;
+      g_trying     = false;
+      g_joinFailed = true;
       Serial.printf("WiFi: could not join \"%s\"\n", g_trySsid);
       if (Creds::have()) {
         startStation(Creds::ssid(), Creds::user(), Creds::password());
@@ -220,10 +231,21 @@ void tick() {
     return;
   }
 
+  if (!now && !g_ap && millis() - g_downSince >= SETUP_LOST_MS) {
+    Serial.printf("setup: \"%s\" is out of reach\n", Creds::ssid());
+    g_apLost = true;
+    raiseAp(0);
+  }
+
   if (!now && millis() - g_lastTry >= WIFI_RETRY_MS) {
     WiFi.disconnect();
     startStation(Creds::ssid(), Creds::user(), Creds::password());
   }
+}
+
+const char *joinState() {
+  if (g_trying) return "trying";
+  return g_joinFailed ? "failed" : "idle";
 }
 
 bool        up()          { return g_up; }
@@ -277,7 +299,6 @@ int scan(Network *out, int max) {
     if (dup >= 0) {
       if (rssi > out[dup].rssi) {
         out[dup].rssi       = rssi;
-        out[dup].channel    = WiFi.channel(i);
         out[dup].secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
         out[dup].enterprise = isEnterprise(WiFi.encryptionType(i));
       }
@@ -287,7 +308,6 @@ int scan(Network *out, int max) {
     Network entry;
     snprintf(entry.ssid, sizeof(entry.ssid), "%s", ssid.c_str());
     entry.rssi       = rssi;
-    entry.channel    = WiFi.channel(i);
     entry.secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
     entry.enterprise = isEnterprise(WiFi.encryptionType(i));
 
@@ -329,9 +349,10 @@ bool provision(const char *ssid, const char *user, const char *password) {
 
   if (!g_ap) raiseAp(SETUP_AP_MS);
 
-  g_trying    = true;
-  g_tryLetGo  = false;
-  g_joinStart = millis();
+  g_trying     = true;
+  g_tryLetGo   = false;
+  g_joinFailed = false;
+  g_joinStart  = millis();
   WiFi.disconnect();
   startStation(g_trySsid, g_tryUser, g_tryPass);
   return true;

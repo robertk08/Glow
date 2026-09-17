@@ -2,15 +2,19 @@ import Foundation
 
 struct NodeSetup: Sendable {
 	struct Info: Decodable, Sendable {
+		var id = ""
 		var name = "Glow"
 		var isProvisioned = false
+		var didRefuse = false
 		
-		private enum CodingKeys: String, CodingKey { case name, state }
+		private enum CodingKeys: String, CodingKey { case id, name, state, join }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
-			name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Glow"
-			isProvisioned = (try container.decodeIfPresent(String.self, forKey: .state)) == "provisioned"
+			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			name = try container.decode(String.self, forKey: .name)
+			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
+			didRefuse = (try container.decodeIfPresent(String.self, forKey: .join)) == "failed"
 		}
 	}
 	
@@ -58,7 +62,7 @@ struct NodeSetup: Sendable {
 	
 	private var session: URLSession {
 		let configuration = URLSessionConfiguration.ephemeral
-		configuration.timeoutIntervalForRequest = 20
+		configuration.timeoutIntervalForRequest = 5
 		configuration.waitsForConnectivity = false
 		configuration.allowsCellularAccess = false
 		return URLSession(configuration: configuration)

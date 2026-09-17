@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NodeSetupView: View {
 	@Environment(Console.self) private var console
+	@Environment(NodeDiscovery.self) private var discovery
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openURL
 	
@@ -39,11 +40,7 @@ struct NodeSetupView: View {
 					}
 				}
 			} footer: {
-				if let failure = model.failure {
-					Text(failure)
-				} else {
-					Text("Waiting for the controller…")
-				}
+				Text("Waiting for the controller…")
 			}
 		}
 		.task {
@@ -79,7 +76,7 @@ struct NodeSetupView: View {
 							
 							if !network.secure {
 								Task {
-									await model.join(console: console)
+									await model.join(console: console, discovery: discovery)
 								}
 							}
 						} label: {
@@ -122,17 +119,21 @@ struct NodeSetupView: View {
 					.submitLabel(.join)
 					.onSubmit {
 						Task {
-							await model.join(console: console)
+							await model.join(console: console, discovery: discovery)
 						}
 					}
 			} header: {
 				Text(model.selected?.ssid ?? "")
+			} footer: {
+				if let failure = model.failure {
+					Text(failure)
+				}
 			}
 			
 			Section {
 				Button("Join") {
 					Task {
-						await model.join(console: console)
+						await model.join(console: console, discovery: discovery)
 					}
 				}
 				.disabled(!model.canJoin)
@@ -142,17 +143,30 @@ struct NodeSetupView: View {
 	
 	private var joining: some View {
 		List {
-			Section {
-				HStack {
-					Text("Joining \(model.selected?.ssid ?? "")")
-					Spacer()
-					ProgressView()
-				}
-			} footer: {
-				if let failure = model.failure {
+			if let failure = model.failure {
+				Section {
+					Button("Pick Another Network") {
+						model.failure = nil
+						model.step = .chooseNetwork
+					}
+				} footer: {
 					Text(failure)
-				} else {
-					Text("The controller leaves its own network now, so your iPhone will drop back to your usual Wi-Fi.")
+				}
+			} else {
+				Section {
+					HStack {
+						Text("Joining \(model.selected?.ssid ?? "")")
+						Spacer()
+						ProgressView()
+					}
+					
+					Button("Open Wi-Fi Settings") {
+						if let url = URL(string: UIApplication.openSettingsURLString) {
+							openURL(url)
+						}
+					}
+				} footer: {
+					Text("The controller has left Glow Setup, so your iPhone needs to be back on your usual Wi-Fi for Glow to find it again.")
 				}
 			}
 		}
@@ -162,7 +176,7 @@ struct NodeSetupView: View {
 		ContentUnavailableView {
 			Label("Ready", systemImage: "checkmark.circle")
 		} description: {
-			Text("The controller is on \(model.selected?.ssid ?? "your network").")
+			Text("The controller is on \(model.selected?.ssid ?? "your network"). \(console.link.summary(latency: console.latency)).")
 		} actions: {
 			Button("Done") { dismiss() }
 				.buttonStyle(.borderedProminent)

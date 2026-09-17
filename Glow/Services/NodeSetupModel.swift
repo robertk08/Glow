@@ -14,6 +14,8 @@ final class NodeSetupModel {
 	var password = ""
 	var failure: String?
 	
+	private var nodeID = ""
+	
 	var canJoin: Bool {
 		guard !password.isEmpty else { return false }
 		return selected?.enterprise != true || !user.isEmpty
@@ -23,7 +25,8 @@ final class NodeSetupModel {
 	
 	func waitForController() async {
 		while step == .findController, !Task.isCancelled {
-			if (try? await setup.info()) != nil {
+			if let info = try? await setup.info() {
+				nodeID = info.id
 				step = .chooseNetwork
 				return
 			}
@@ -56,7 +59,7 @@ final class NodeSetupModel {
 		step = network.secure ? .password : .joining
 	}
 	
-	func join(console: Console) async {
+	func join(console: Console, discovery: NodeDiscovery) async {
 		step = .joining
 		failure = nil
 		
@@ -64,23 +67,32 @@ final class NodeSetupModel {
 		
 		do {
 			try await setup.join(ssid: ssid, user: user, password: password)
-			user = ""
-			password = ""
 		} catch {
 			failure = error.localizedDescription
+			step = .password
 			return
 		}
 		
-		for _ in 0..<30 {
+		discovery.start()
+		
+		for _ in 0..<40 {
 			try? await Task.sleep(for: .seconds(2))
 			
-			if let info = try? await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).info(), info.isProvisioned {
-				step = .done
-				console.connect()
+			if let info = try? await setup.info(), info.didRefuse {
+				failure = "\(ssid) turned that password down."
+				step = .password
 				return
 			}
+			
+			guard let found = discovery.endpoints.first(where: { $0.nodeID == nodeID }) ?? discovery.endpoints.first else { continue }
+			
+			user = ""
+			password = ""
+			console.endpoint = found
+			step = .done
+			return
 		}
 		
-		failure = "Couldn't find the controller afterwards. If it could not join, it goes back to making its own Glow Setup network so you can try again."
+		failure = "Glow lost sight of the controller. Put your iPhone back on \(ssid), then pick the controller in Settings."
 	}
 }
