@@ -10,29 +10,40 @@ struct NodeView: View {
 	var body: some View {
 		List {
 			Section {
-				LabeledContent("Status") {
-					Label(console.link.summary(latency: console.latency), systemImage: console.link.isConnected ? "wifi" : "wifi.exclamationmark")
+				LabeledContent {
+					Text(console.link.summary(latency: console.latency))
 						.foregroundStyle(console.link.isConnected ? Color.green : Color.orange)
+				} label: {
+					Label {
+						Text("Status")
+					} icon: {
+						Image(systemName: console.link.isConnected ? "wifi" : "wifi.exclamationmark")
+							.foregroundStyle(console.link.isConnected ? Color.green : Color.orange)
+					}
 				}
+				
+				LabeledContent("Address", value: console.endpoint.host)
 				
 				if let node = console.node {
 					LabeledContent("Name", value: node.name)
 					LabeledContent("Firmware", value: node.firmware)
 				}
-				
-				LabeledContent("Address", value: console.endpoint.host)
 			}
 			
 			Section {
 				Button("Change Wi-Fi Network", systemImage: "wifi.router") {
 					isSettingUp = true
 				}
-				
+			} footer: {
+				Text("Nothing is entered on the controller itself. Glow hands it the network.")
+			}
+			
+			Section {
 				Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
 					isForgetting = true
 				}
 			} footer: {
-				Text("Nothing is entered on the controller itself. Glow hands it the network.")
+				Text("The controller drops its stored network and raises Glow Setup again.")
 			}
 			
 			Section("On This Network") {
@@ -69,7 +80,7 @@ struct NodeView: View {
 				}
 			}
 		} message: {
-			Text("The controller restarts and makes its own Glow Setup network again.")
+			Text("It restarts and you set it up from scratch.")
 		}
 		.task {
 			discovery.start()

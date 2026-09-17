@@ -16,6 +16,11 @@ struct LinkStatusButton: ToolbarContent {
 			.popover(isPresented: $isShowing) {
 				NavigationStack {
 					NodeView()
+						.toolbar {
+							ToolbarItem(placement: .confirmationAction) {
+								Button(role: .close) { isShowing = false }
+							}
+						}
 				}
 				.frame(idealWidth: 420, idealHeight: 620)
 			}
