@@ -20,8 +20,9 @@ nonisolated enum Wire {
 		case hello
 		case ping(seq: Int)
 		case blackout(Bool)
+		case refresh(hz: Int)
 		
-		private enum CodingKeys: String, CodingKey { case t, client, version, seq, on }
+		private enum CodingKeys: String, CodingKey { case t, client, version, seq, on, hz }
 		
 		func encode(to encoder: any Encoder) throws {
 			var container = encoder.container(keyedBy: CodingKeys.self)
@@ -36,6 +37,9 @@ nonisolated enum Wire {
 			case let .blackout(on):
 				try container.encode("blackout", forKey: .t)
 				try container.encode(on, forKey: .on)
+			case let .refresh(hz):
+				try container.encode("refresh", forKey: .t)
+				try container.encode(hz, forKey: .hz)
 			}
 		}
 		
@@ -50,8 +54,9 @@ nonisolated enum Wire {
 		var id = ""
 		var name = "Glow"
 		var uptime = 0
+		var hz = 30
 		
-		private enum CodingKeys: String, CodingKey { case fw, id, name, uptime }
+		private enum CodingKeys: String, CodingKey { case fw, id, name, uptime, hz }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -59,6 +64,7 @@ nonisolated enum Wire {
 			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
 			name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Glow"
 			uptime = try container.decodeIfPresent(Int.self, forKey: .uptime) ?? 0
+			hz = try container.decodeIfPresent(Int.self, forKey: .hz) ?? 30
 		}
 	}
 	

@@ -71,7 +71,7 @@ static const uint32_t SETUP_HOLD_MS    = 3000;
 static const uint8_t  RECOVERY_BOOTS   = 3;
 static const uint32_t RECOVERY_BOOT_MS = 5000;
 
-static const int DMX_REFRESH_HZ     = 40;
+static const int DMX_REFRESH_HZ     = 30;
 static const int DMX_REFRESH_HZ_MIN = 10;
 static const int DMX_REFRESH_HZ_MAX = 44;
 

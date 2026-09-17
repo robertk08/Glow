@@ -21,6 +21,15 @@ struct NodeView: View {
 			}
 			
 			Section {
+				Stepper(value: Binding { console.node?.hz ?? 30 } set: { console.setRefresh(hz: $0) }, in: 10...44) {
+					LabeledContent("Refresh rate", value: "\(console.node?.hz ?? 30) Hz")
+				}
+				.disabled(!console.link.isConnected)
+			} footer: {
+				Text("A full universe takes 22.7 ms to clock out, so 44 Hz leaves nothing spare and Wi-Fi can push a packet late enough for lights to flicker. 30 Hz leaves a third of the cycle free.")
+			}
+			
+			Section {
 				Button("Change Wi-Fi Network") {
 					isSettingUp = true
 				}
