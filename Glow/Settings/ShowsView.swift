@@ -29,7 +29,6 @@ struct ShowsView: View {
 						.contentShape(.rect)
 					}
 					.buttonStyle(.plain)
-					.accessibilityAddTraits(show.id == shows.activeID ? [.isSelected] : [])
 					.swipeActions {
 						Button("Delete", systemImage: "trash", role: .destructive) {
 							deleting = show

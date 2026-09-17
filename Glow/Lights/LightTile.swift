@@ -68,10 +68,6 @@ struct LightTile: View {
 		.buttonStyle(.plain)
 		.containerShape(.rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.accessibilityElement(children: .combine)
-		.accessibilityLabel(fixture.name)
-		.accessibilityValue(clashes ? "address clash" : programmer?.spokenState ?? "unpatched")
-		.accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
 		.contextMenu {
 			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "lightbulb.slash" : "lightbulb.max") {
 				programmer?.toggleOn()

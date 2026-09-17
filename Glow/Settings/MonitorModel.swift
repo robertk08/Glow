@@ -5,10 +5,29 @@ import SwiftUI
 final class MonitorModel {
 	var patchedOnly = false
 	private(set) var adjusting: Int?
+	private(set) var values = [UInt8](repeating: 0, count: Universe.channelCount)
 	
+	private var poll: Task<Void, Never>?
 	private var armed: Int?
 	private var origin: UInt8 = 0
 	private var written: UInt8 = 0
+	
+	func watch(_ console: Console) {
+		guard poll == nil else { return }
+		
+		poll = Task { [weak self] in
+			while !Task.isCancelled {
+				let snapshot = console.universe.values
+				if snapshot != self?.values { self?.values = snapshot }
+				try? await Task.sleep(for: .seconds(0.1))
+			}
+		}
+	}
+	
+	func stop() {
+		poll?.cancel()
+		poll = nil
+	}
 	
 	func owners(among fixtures: [Fixture], library: FixtureLibrary) -> Set<Int> {
 		var found: Set<Int> = []
@@ -53,9 +72,4 @@ final class MonitorModel {
 		return value == 0 ? .clear : .orange
 	}
 	
-	func nudge(_ address: Int, direction: AccessibilityAdjustmentDirection, console: Console) {
-		guard let target = DMXAddress(address) else { return }
-		let step = direction == .increment ? 1 : -1
-		console.set(UInt8(min(max(Int(console.value(at: target)) + step, 0), 255)), at: target)
-	}
 }

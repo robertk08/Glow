@@ -12,7 +12,6 @@ struct ClearButton: View {
 		}
 		.keyboardShortcut(.escape, modifiers: [])
 		.disabled(!console.hasSelection)
-		.accessibilityHint("Drops the selection. Hold for more.")
 		.contextMenu {
 			Button("Release Values", systemImage: "arrow.uturn.backward", role: .destructive) {
 				console.releaseValues(among: fixtures, library: library)

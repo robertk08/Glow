@@ -76,8 +76,14 @@ final class ShowLibrary {
 	func shareable(_ show: Show) -> URL? {
 		let encoder = JSONEncoder()
 		encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+		encoder.dateEncodingStrategy = .iso8601
 		guard let data = try? encoder.encode(contents(of: show)) else { return nil }
-		let url = URL.temporaryDirectory.appending(path: "\(show.name).json")
+		
+		let folder = URL.temporaryDirectory.appending(path: "Shared", directoryHint: .isDirectory)
+		try? FileManager.default.removeItem(at: folder)
+		try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+		
+		let url = folder.appending(path: "\(show.name).json")
 		try? data.write(to: url)
 		return url
 	}
@@ -147,7 +153,10 @@ final class ShowLibrary {
 	func adopt(contentsOf url: URL) {
 		guard url.startAccessingSecurityScopedResource() else { return }
 		defer { url.stopAccessingSecurityScopedResource() }
-		guard let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(ShowFile.self, from: data) else { return }
+		let decoder = JSONDecoder()
+		decoder.dateDecodingStrategy = .iso8601
+		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data) else { return }
+		guard file.version ?? "" <= ShowFile.current else { return }
 		adopt(file)
 	}
 	
@@ -198,6 +207,13 @@ final class ShowLibrary {
 	
 	private static func open(_ id: String) -> ModelContainer {
 		let configuration = ModelConfiguration(url: store(id))
+		let container = (try? ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)) ?? scratch()
+		container.mainContext.undoManager = UndoManager()
+		return container
+	}
+	
+	private static func scratch() -> ModelContainer {
+		let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
 		return try! ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)
 	}
 	

@@ -59,27 +59,6 @@ nonisolated struct LightColor: Equatable, Sendable {
 		return luma > 0.55 ? .black : .white
 	}
 	
-	var name: String {
-		let c = clamped
-		let low = min(c.red, min(c.green, c.blue))
-		guard c.peak > 0.02 else { return "off" }
-		guard c.peak - low > 0.15 * c.peak else { return "white" }
-		
-		let hue = Angle(radians: atan2(1.732_050_808 * (c.green - c.blue), 2 * c.red - c.green - c.blue)).degrees
-		
-		switch (hue + 360).truncatingRemainder(dividingBy: 360) {
-		case ..<15, 345...: return "red"
-		case ..<45: return "orange"
-		case ..<70: return "amber"
-		case ..<90: return "yellow"
-		case ..<160: return "green"
-		case ..<200: return "cyan"
-		case ..<260: return "blue"
-		case ..<290: return "violet"
-		default: return "magenta"
-		}
-	}
-	
 	func distance(to other: LightColor) -> Double {
 		let dr = red - other.red, dg = green - other.green, db = blue - other.blue
 		return (dr * dr + dg * dg + db * db).squareRoot()

@@ -14,12 +14,15 @@ struct ShowDocument: FileDocument {
 		guard let data = configuration.file.regularFileContents else {
 			throw CocoaError(.fileReadCorruptFile)
 		}
-		show = try JSONDecoder().decode(ShowFile.self, from: data)
+		let decoder = JSONDecoder()
+		decoder.dateDecodingStrategy = .iso8601
+		show = try decoder.decode(ShowFile.self, from: data)
 	}
 	
 	func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
 		let encoder = JSONEncoder()
 		encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+		encoder.dateEncodingStrategy = .iso8601
 		return FileWrapper(regularFileWithContents: try encoder.encode(show))
 	}
 }

@@ -36,6 +36,17 @@ reached on its own or through any group it belongs to. The master fader and the
 momentary blackout hold the accessory whenever nothing is selected, and the iPad
 keeps them in the bottom bar.
 
+Editing is undoable. The patch, the groups, the fixtures built here and the
+scenes all sit in one store with an undo manager, so removing a light or a group
+is one tap away from coming back. The light returns where it was and off, since
+its channels were zeroed on the way out and undo does not put light back on a
+stage.
+
+A light whose fixture profile no longer exists is removed on the next launch.
+Nothing can drive it and nothing can read it, so leaving it in the patch only
+makes a tile that does nothing. This only runs when the fixture library loaded,
+so a bad build cannot take the patch with it.
+
 A light tile is a pane of glass carrying the fixture's own colour in its chip
 and its level bar, and the bar fills to the intensity the light is actually at.
 A fixture putting out white shows its lamp's colour temperature rather than
@@ -65,6 +76,10 @@ AirDrop, Files or anything else that carries a document. It leaves as readable
 text rather than the store itself, because a store is a schema version and a
 pile of journal files, and a show has to open on a device that is a build or
 two behind.
+
+The file carries the date its format was settled and the date it was written.
+A file from a format newer than the app knows is refused rather than half read,
+and one with no version at all is from before this and is taken as it comes.
 
 ## Setting up a controller
 

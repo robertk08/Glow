@@ -5,6 +5,7 @@ struct RootView: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.horizontalSizeClass) private var sizeClass
+	@Environment(\.modelContext) private var context
 	@Query private var customProfiles: [CustomProfile]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
@@ -113,10 +114,12 @@ struct RootView: View {
 		}
 		.onChange(of: customProfiles) {
 			library.setCustom(customProfiles.map(\.profile))
+			console.prune(fixtures, library: library, context: context)
 		}
 		.task {
 			library.setCustom(customProfiles.map(\.profile))
 			console.clearSelection()
+			console.prune(fixtures, library: library, context: context)
 		}
 	}
 }

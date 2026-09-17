@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct MonitorView: View {
+	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Query(sort: \Fixture.address) private var fixtures: [Fixture]
 	
@@ -40,6 +41,12 @@ struct MonitorView: View {
 				.toggleStyle(.button)
 		}
 		.sensoryFeedback(.impact(flexibility: .rigid), trigger: monitor.adjusting)
+		.task {
+			monitor.watch(console)
+		}
+		.onDisappear {
+			monitor.stop()
+		}
 	}
 }
 
@@ -51,7 +58,7 @@ private struct ChannelCell: View {
 	let monitor: MonitorModel
 	
 	var body: some View {
-		let value = console.universe.values[address - 1]
+		let value = monitor.values[address - 1]
 		let isArmed = monitor.adjusting == address
 		
 		return VStack(spacing: 1) {
@@ -92,12 +99,6 @@ private struct ChannelCell: View {
 		}.onEnded { _ in
 			monitor.commit()
 		})
-		.accessibilityElement(children: .combine)
-		.accessibilityLabel("Channel \(address)")
-		.accessibilityValue("\(value)")
-		.accessibilityAdjustableAction { direction in
-			monitor.nudge(address, direction: direction, console: console)
-		}
 	}
 	
 }

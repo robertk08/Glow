@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct PositionPad: View {
-	@Environment(\.accessibilityReduceMotion) private var reduceMotion
-	
 	@Binding var pan: Double
 	@Binding var tilt: Double
 	
@@ -27,7 +25,7 @@ struct PositionPad: View {
 				
 				Circle()
 					.fill(.tint)
-					.frame(width: isDragging && !reduceMotion ? 32 : 24)
+					.frame(width: isDragging ? 32 : 24)
 					.position(position)
 					.animation(.snappy(duration: 0.15), value: isDragging)
 			}
@@ -44,16 +42,5 @@ struct PositionPad: View {
 		}
 		.frame(height: 220)
 		.sensoryFeedback(.selection, trigger: isDragging)
-		.accessibilityRepresentation {
-			VStack {
-				Slider(value: $pan) {
-					Text("Pan")
-				}
-				
-				Slider(value: $tilt) {
-					Text("Tilt")
-				}
-			}
-		}
 	}
 }

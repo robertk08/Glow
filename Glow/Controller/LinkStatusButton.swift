@@ -12,7 +12,6 @@ struct LinkStatusButton: ToolbarContent {
 			}
 			.labelStyle(.iconOnly)
 			.tint(console.link.isConnected ? Color.green : Color.orange)
-			.accessibilityValue(console.link.summary(latency: console.latency))
 			.popover(isPresented: $isShowing) {
 				NavigationStack {
 					NodeView()

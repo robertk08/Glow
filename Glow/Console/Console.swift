@@ -60,7 +60,10 @@ final class Console {
 	private var lastSave = Date.distantPast
 	
 	private static let endpointKey = "node.endpoint"
-	private static let lookKey = "console.look"
+	
+	private static var lookFile: URL {
+		URL.applicationSupportDirectory.appending(path: "look.dmx")
+	}
 	
 	struct Dimmer: Equatable {
 		enum Kind: Equatable {
@@ -162,14 +165,6 @@ final class Console {
 		universe.set(values, at: address)
 	}
 	
-	func flashBlackout() {
-		blackout = true
-		
-		Task {
-			try? await Task.sleep(for: .seconds(5))
-			blackout = false
-		}
-	}
 	
 	var hasSelection: Bool { !selection.isEmpty }
 	
@@ -303,6 +298,14 @@ final class Console {
 		needsFullOutput = true
 	}
 	
+	func prune(_ fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
+		guard !library.profiles.isEmpty else { return }
+		
+		for fixture in fixtures where library.profile(fixture.profileID) == nil {
+			remove(fixture, context: context, library: library)
+		}
+	}
+	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }
@@ -373,9 +376,8 @@ final class Console {
 	}
 	
 	private func restoreLook() {
-		guard let data = UserDefaults.standard.data(forKey: Self.lookKey),
-			  data.count == Universe.channelCount
-		else { return }
+		try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
+		guard let data = try? Data(contentsOf: Self.lookFile), data.count == Universe.channelCount else { return }
 		universe.set([UInt8](data), at: DMXAddress(1)!)
 		savedLook = [UInt8](data)
 		needsFullSource = true
@@ -386,7 +388,7 @@ final class Console {
 		guard universe.values != savedLook, Date().timeIntervalSince(lastSave) > 2 else { return }
 		savedLook = universe.values
 		lastSave = Date()
-		UserDefaults.standard.set(Data(universe.values), forKey: Self.lookKey)
+		try? Data(universe.values).write(to: Self.lookFile)
 	}
 	
 	private static func storedEndpoint() -> NodeEndpoint? {

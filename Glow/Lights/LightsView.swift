@@ -89,6 +89,14 @@ struct LightsView: View {
 		.toolbar {
 			LinkStatusButton()
 			
+			if context.undoManager?.canUndo == true {
+				ToolbarItem(placement: .topBarTrailing) {
+					Button("Undo", systemImage: "arrow.uturn.backward") {
+						context.undoManager?.undo()
+					}
+				}
+			}
+			
 			ToolbarItem(placement: .topBarTrailing) {
 				Menu("Add", systemImage: "plus") {
 					Button("Add Light", systemImage: "lightbulb") {
@@ -147,7 +155,6 @@ private struct GroupChip: View {
 		.buttonStyle(.glass)
 		.buttonBorderShape(.capsule)
 		.tint(group.tint.color ?? .accentColor)
-		.accessibilityValue("^[\(group.members.count) light](inflect: true)")
 		.contextMenu {
 			Button("Edit Group", systemImage: "slider.horizontal.3") {
 				editing = group

@@ -34,10 +34,6 @@ struct MasterBar: View {
 			.onDisappear {
 				console.blackout = false
 			}
-			.accessibilityHint("Hold to black out every light")
-			.accessibilityAction(named: "Blackout for five seconds") {
-				console.flashBlackout()
-			}
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, 12)

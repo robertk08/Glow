@@ -32,7 +32,6 @@ struct ConsoleBar: View {
 							if !console.link.isConnected {
 								Image(systemName: "wifi.exclamationmark")
 									.foregroundStyle(.orange)
-									.accessibilityLabel(console.link.name)
 							}
 						}
 						.contentShape(.rect)
@@ -40,7 +39,6 @@ struct ConsoleBar: View {
 					.buttonStyle(.plain)
 					.layoutPriority(1)
 					.matchedTransitionSource(id: "programmer", in: transition)
-					.accessibilityHint("Opens the programmer")
 					
 					if programmer.dims, placement == .expanded {
 						Slider(value: programmer.brightnessBinding, in: 0...1) {

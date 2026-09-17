@@ -23,8 +23,6 @@ struct AppearancePicker: View {
 						.background(symbol == option ? Color.accentColor.opacity(0.18) : .clear, in: .circle)
 				}
 				.buttonStyle(.plain)
-				.accessibilityLabel(option)
-				.accessibilityAddTraits(symbol == option ? [.isButton, .isSelected] : .isButton)
 			}
 		}
 		.padding(.vertical, 4)
@@ -51,8 +49,6 @@ struct AppearancePicker: View {
 							}
 					}
 					.buttonStyle(.plain)
-					.accessibilityLabel(option.name)
-					.accessibilityAddTraits(tint.wrappedValue == option ? [.isButton, .isSelected] : .isButton)
 				}
 			}
 			.padding(.vertical, 4)

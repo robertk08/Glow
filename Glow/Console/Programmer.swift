@@ -293,13 +293,6 @@ struct Programmer {
 		return emitted.color
 	}
 	
-	var spokenState: String {
-		guard isOn else { return "off" }
-		guard dims else { return mixesColor ? light.name : "on" }
-		let level = brightness.formatted(.percent.precision(.fractionLength(0)))
-		return mixesColor ? "\(level), \(light.name)" : level
-	}
-	
 	func apply(_ light: LightColor) {
 		for target in targets where target.profile.mixesColor {
 			apply(.mixing(light, emitters: target.profile.emitters, mixing: target.profile.mixing), to: target)

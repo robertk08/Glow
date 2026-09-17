@@ -1,6 +1,8 @@
 import Foundation
 
 nonisolated struct ShowFile: Codable, Sendable {
+	static let current = "2026-09-17"
+	
 	struct Light: Codable, Sendable {
 		var identifier: String
 		var profileID: String
@@ -33,6 +35,8 @@ nonisolated struct ShowFile: Codable, Sendable {
 		var levels: Data
 	}
 	
+	var version: String? = ShowFile.current
+	var exportedAt: Date? = .now
 	var name: String
 	var lights: [Light]
 	var groups: [Group]
