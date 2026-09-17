@@ -9,21 +9,46 @@ a dumb output that clocks whatever it is sent onto the DMX line. Fixture support
 is therefore a JSON file in the app, never a reflash.
 
 ```
-Glow/        the iOS app
-  Models/    value types - universe, profiles, colour maths
-  Services/  console, socket, discovery, setup, library
-  Views/     one file per screen
-  Profiles/  bundled fixture profiles
-Arduino/     the ESP32-S3 sketch
+Glow/          the iOS app
+  App/         the shell and what it puts on screen first
+  Model/       value types - universe, profiles, colour maths
+  Console/     the universe, the programmer, the two libraries
+  Controller/  socket, discovery, Wi-Fi setup, and their screens
+  Lights/      the patch, the tiles, the fixture builder
+  Programmer/  everything that drives the selection
+  Scenes/
+  Settings/
+  Shared/      controls used by more than one of the above
+  Profiles/    bundled fixture profiles
+  Resources/   assets, icon, privacy manifest
+Arduino/       the ESP32-S3 sketch
 ```
 
 Selecting lights is how you control them. Tap one or several in Lights and the
 programmer drives the whole selection at once, the way a grandMA programmer
-does. On iPhone it opens as a sheet low enough to keep tapping the list behind
-it, on iPad it sits in a column beside the list. The selection stays until you
-clear it. A group is a saved selection, not a container, so a light can be
+does. On iPhone the programmer takes over the tab bar accessory the moment
+something is selected, and tapping it raises a sheet low enough to keep tapping
+the grid behind it. On iPad it is an inspector beside the grid. The selection
+stays until you clear it. Tapping Clear drops the selection, and holding it
+offers Release Values, which puts every selected light back where its profile
+says it starts. A group is a saved selection, not a container, so a light can be
 reached on its own or through any group it belongs to. The master fader and the
-momentary blackout sit in the tab bar accessory and stay reachable everywhere.
+momentary blackout hold the accessory whenever nothing is selected, and the iPad
+keeps them in the bottom bar.
+
+A light tile is a pane of glass carrying the fixture's own colour in its chip
+and its level bar, and the bar fills to the intensity the light is actually at.
+A fixture putting out white shows its lamp's colour temperature rather than
+paper white, warm for an LED and cool for a discharge head, because white on
+white reads as nothing. Removing a light writes zeros across its channels on the
+way out, because a patch entry disappearing is not a reason for the lamp to stay
+lit.
+
+Colour is one control for two kinds of fixture. An LED fixture adds emitters
+together, and a discharge head subtracts cyan, magenta and yellow flags from a
+white lamp. A profile says which it is with `colorMixing`, the same swatches and
+the same colour picker drive both, and a fixture built in the app can declare
+itself subtractive too.
 
 A scene stores where every patched light is and puts it back on one tap. It
 records lights rather than addresses, so re-addressing one later does not point

@@ -1,0 +1,153 @@
+import SwiftUI
+
+nonisolated struct LightColor: Equatable, Sendable {
+	var red: Double
+	var green: Double
+	var blue: Double
+	
+	static let black = LightColor(red: 0, green: 0, blue: 0)
+	
+	init(red: Double, green: Double, blue: Double) {
+		self.red = red
+		self.green = green
+		self.blue = blue
+	}
+	
+	init(hue: Double, saturation: Double) {
+		let h = (hue - hue.rounded(.down)) * 6
+		let sector = Int(h)
+		let f = h - Double(sector)
+		let p = 1 - saturation
+		let q = 1 - f * saturation
+		let t = 1 - (1 - f) * saturation
+		
+		switch sector {
+		case 0: self.init(red: 1, green: t, blue: p)
+		case 1: self.init(red: q, green: 1, blue: p)
+		case 2: self.init(red: p, green: 1, blue: t)
+		case 3: self.init(red: p, green: q, blue: 1)
+		case 4: self.init(red: t, green: p, blue: 1)
+		default: self.init(red: 1, green: p, blue: q)
+		}
+	}
+	
+	@MainActor init(_ color: Color) {
+		var red: CGFloat = 0
+		var green: CGFloat = 0
+		var blue: CGFloat = 0
+		var alpha: CGFloat = 0
+		UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+		self.init(red: red, green: green, blue: blue)
+	}
+	
+	var peak: Double { max(red, max(green, blue)) }
+	
+	var normalised: LightColor { peak > 0 ? self * (1 / peak) : self }
+	
+	var clamped: LightColor {
+		LightColor(red: red.clampedToUnit, green: green.clampedToUnit, blue: blue.clampedToUnit)
+	}
+	
+	var color: Color {
+		let c = clamped
+		return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
+	}
+	
+	var contrastingInk: Color {
+		let c = clamped
+		let luma = 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue
+		return luma > 0.55 ? .black : .white
+	}
+	
+	var name: String {
+		let c = clamped
+		let low = min(c.red, min(c.green, c.blue))
+		guard c.peak > 0.02 else { return "off" }
+		guard c.peak - low > 0.15 * c.peak else { return "white" }
+		
+		let hue = Angle(radians: atan2(1.732_050_808 * (c.green - c.blue), 2 * c.red - c.green - c.blue)).degrees
+		
+		switch (hue + 360).truncatingRemainder(dividingBy: 360) {
+		case ..<15, 345...: return "red"
+		case ..<45: return "orange"
+		case ..<70: return "amber"
+		case ..<90: return "yellow"
+		case ..<160: return "green"
+		case ..<200: return "cyan"
+		case ..<260: return "blue"
+		case ..<290: return "violet"
+		default: return "magenta"
+		}
+	}
+	
+	func distance(to other: LightColor) -> Double {
+		let dr = red - other.red, dg = green - other.green, db = blue - other.blue
+		return (dr * dr + dg * dg + db * db).squareRoot()
+	}
+	
+	func dot(_ other: Self) -> Double {
+		red * other.red + green * other.green + blue * other.blue
+	}
+	
+	static func + (lhs: Self, rhs: Self) -> Self {
+		LightColor(red: lhs.red + rhs.red, green: lhs.green + rhs.green, blue: lhs.blue + rhs.blue)
+	}
+	
+	static func - (lhs: Self, rhs: Self) -> Self {
+		LightColor(red: lhs.red - rhs.red, green: lhs.green - rhs.green, blue: lhs.blue - rhs.blue)
+	}
+	
+	static func * (lhs: Self, rhs: Double) -> Self {
+		LightColor(red: lhs.red * rhs, green: lhs.green * rhs, blue: lhs.blue * rhs)
+	}
+}
+
+nonisolated enum ColorTemperature {
+	static let range: ClosedRange<Double> = 2000...10000
+	
+	static let warm: Double = 2700
+	static let neutral: Double = 4000
+	static let cool: Double = 6500
+	
+	static let lamp: Double = 3400
+	static let arc: Double = 7800
+	
+	static func light(kelvin: Double) -> LightColor {
+		let t = min(max(kelvin, 1000), 40000) / 100
+		
+		let red: Double = t <= 66 ? 255 : 329.698_727_446 * pow(t - 60, -0.133_204_759_2)
+		
+		let green: Double =
+			if t <= 66 { 99.470_802_586_1 * log(t) - 161.119_568_166_1 }
+			else { 288.122_169_528_3 * pow(t - 60, -0.075_514_849_2) }
+		
+		let blue: Double =
+			if t >= 66 { 255 }
+			else if t <= 19 { 0 }
+			else { 138.517_731_223_1 * log(t - 10) - 305.044_792_730_7 }
+		
+		return LightColor(red: red / 255, green: green / 255, blue: blue / 255).clamped.normalised
+	}
+	
+	static func nearest(to light: LightColor) -> Double? {
+		let target = light.normalised
+		var best = range.lowerBound
+		var bestDistance = Double.infinity
+		
+		for kelvin in stride(from: range.lowerBound, through: range.upperBound, by: 50) {
+			let distance = self.light(kelvin: kelvin).distance(to: target)
+			if distance < bestDistance {
+				bestDistance = distance
+				best = kelvin
+			}
+		}
+		
+		guard bestDistance <= 0.045 else { return nil }
+		return best
+	}
+}
+
+nonisolated extension Double {
+	var clampedToUnit: Double { min(max(self, 0), 1) }
+	
+}

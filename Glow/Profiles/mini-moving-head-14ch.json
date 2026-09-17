@@ -1,6 +1,5 @@
 {
   "id": "mini-moving-head-14ch",
-  "manufacturer": "",
   "model": "Mini LED Moving Head",
   "mode": "14 channel",
   "symbolName": "light.beacon.max",
@@ -10,7 +9,6 @@
     {
       "offset": 1,
       "role": "pan",
-      "name": "Pan",
       "defaultValue": 128
     },
     {
@@ -23,7 +21,6 @@
     {
       "offset": 3,
       "role": "tilt",
-      "name": "Tilt",
       "defaultValue": 128
     },
     {
@@ -36,7 +33,7 @@
     {
       "offset": 5,
       "role": "movementSpeed",
-      "name": "XY speed",
+      "name": "Pan/tilt speed",
       "defaultValue": 0,
       "ranges": [
         {

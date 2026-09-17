@@ -6,6 +6,7 @@
   "symbolName": "light.beacon.max",
   "panDegrees": 540,
   "tiltDegrees": 270,
+  "colorMixing": "subtractive",
   "channels": [
     {
       "offset": 1,
@@ -82,37 +83,37 @@
     },
     {
       "offset": 8,
-      "role": "blue",
-      "defaultValue": 255
+      "role": "cyan",
+      "defaultValue": 0
     },
     {
       "offset": 9,
-      "role": "blue",
-      "name": "Blue fine",
+      "role": "cyan",
+      "name": "Cyan fine",
       "isFine": true,
       "defaultValue": 0
     },
     {
       "offset": 10,
-      "role": "red",
-      "defaultValue": 255
+      "role": "magenta",
+      "defaultValue": 0
     },
     {
       "offset": 11,
-      "role": "red",
-      "name": "Red fine",
+      "role": "magenta",
+      "name": "Magenta fine",
       "isFine": true,
       "defaultValue": 0
     },
     {
       "offset": 12,
-      "role": "green",
-      "defaultValue": 255
+      "role": "yellow",
+      "defaultValue": 0
     },
     {
       "offset": 13,
-      "role": "green",
-      "name": "Green fine",
+      "role": "yellow",
+      "name": "Yellow fine",
       "isFine": true,
       "defaultValue": 0
     },
@@ -578,7 +579,7 @@
     },
     {
       "offset": 27,
-      "role": "custom",
+      "role": "goboRotation",
       "name": "Gobo 3 rotation",
       "defaultValue": 0
     },
