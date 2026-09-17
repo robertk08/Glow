@@ -60,6 +60,7 @@ struct LightsView: View {
                             }
                         }
                         .onDelete(perform: delete)
+                        .onMove(perform: move)
                     }
                 }
             }
@@ -120,6 +121,14 @@ struct LightsView: View {
 
     private func delete(_ offsets: IndexSet) {
         for index in offsets { context.delete(ungrouped[index]) }
+    }
+
+    private func move(_ source: IndexSet, _ destination: Int) {
+        var ordered = ungrouped
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, fixture) in ordered.enumerated() {
+            fixture.sortIndex = index
+        }
     }
 }
 
