@@ -33,7 +33,6 @@ struct ColorControl: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(preset.name)
                 }
             }
             .padding(.vertical, 4)

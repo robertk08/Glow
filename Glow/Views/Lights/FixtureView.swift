@@ -41,16 +41,19 @@ struct FixtureView: View {
                         PositionPad(pan: control.fractionBinding(.pan), tilt: control.fractionBinding(.tilt))
                             .listRowInsets(EdgeInsets())
                         
-                        LabeledContent("Pan") {
+                        VStack(alignment: .leading) {
+                            Text("Pan")
                             Slider(value: control.fractionBinding(.pan))
                         }
                         
-                        LabeledContent("Tilt") {
+                        VStack(alignment: .leading) {
+                            Text("Tilt")
                             Slider(value: control.fractionBinding(.tilt))
                         }
                         
                         if let speed = profile.channel(.movementSpeed) {
-                            LabeledContent(speed.name) {
+                            VStack(alignment: .leading) {
+                                Text(speed.name)
                                 Slider(value: control.binding(speed), in: 0...255, step: 1)
                             }
                         }

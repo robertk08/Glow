@@ -48,7 +48,7 @@ struct MonitorView: View {
                 }
             }
             .sheet(isPresented: $isAdding) {
-                AddLightView()
+                AddLightView(isPresented: $isAdding)
             }
         }
     }
@@ -91,9 +91,6 @@ private struct ChannelCell: View {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(owned ? Color.accentColor.opacity(0.4) : .clear)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Channel \(address)")
-        .accessibilityValue("\(value)")
     }
     
     private var background: some ShapeStyle {

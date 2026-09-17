@@ -5,6 +5,8 @@ struct AddLightView: View {
     @Environment(FixtureLibrary.self) private var library
     @Environment(\.dismiss) private var dismiss
     
+    @Binding var isPresented: Bool
+    
     @State private var query = ""
     @State private var isBuilding = false
     
@@ -23,7 +25,7 @@ struct AddLightView: View {
                 Section {
                     ForEach(results) { profile in
                         NavigationLink {
-                            PatchFixtureView(profile: profile)
+                            PatchFixtureView(profile: profile, isPresented: $isPresented)
                         } label: {
                             LabeledContent {
                                 Text("\(profile.channelCount) ch")
@@ -60,10 +62,11 @@ struct PatchFixtureView: View {
     @Environment(FixtureLibrary.self) private var library
     @Environment(Console.self) private var console
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
     @Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
     
     let profile: FixtureProfile
+    
+    @Binding var isPresented: Bool
     
     @State private var name = ""
     @State private var count = 1
@@ -124,7 +127,7 @@ struct PatchFixtureView: View {
                         index += 1
                     }
                     
-                    dismiss()
+                    isPresented = false
                 }
                 .disabled(!fits)
             }

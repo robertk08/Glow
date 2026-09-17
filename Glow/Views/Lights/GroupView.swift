@@ -56,7 +56,6 @@ struct GroupView: View {
                                         .overlay { Circle().strokeBorder(.separator) }
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(preset.name)
                             }
                         }
                         .padding(.vertical, 4)

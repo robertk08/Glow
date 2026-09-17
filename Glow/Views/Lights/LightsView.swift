@@ -31,7 +31,16 @@ struct LightsView: View {
                             Image(systemName: "sun.max")
                         }
                         
-                        Toggle("Blackout", isOn: $console.blackout)
+                        Label("Hold for Blackout", systemImage: "power")
+                            .foregroundStyle(console.blackout ? Color.red : Color.primary)
+                            .contentShape(.rect)
+                            .gesture(DragGesture(minimumDistance: 0).onChanged { _ in
+                                guard !console.blackout else { return }
+                                Haptic.feedback(.heavy)
+                                console.blackout = true
+                            }.onEnded { _ in
+                                console.blackout = false
+                            })
                     }
                 }
                 
@@ -47,6 +56,14 @@ struct LightsView: View {
                         .onDelete { offsets in
                             for index in offsets {
                                 context.delete(groups[index])
+                            }
+                        }
+                        .onMove { source, destination in
+                            var ordered = groups
+                            ordered.move(fromOffsets: source, toOffset: destination)
+                            
+                            for (index, group) in ordered.enumerated() {
+                                group.sortIndex = index
                             }
                         }
                     }
@@ -87,6 +104,10 @@ struct LightsView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Add Light", systemImage: "plus") {
@@ -105,7 +126,7 @@ struct LightsView: View {
                 }
             }
             .sheet(isPresented: $isAdding) {
-                AddLightView()
+                AddLightView(isPresented: $isAdding)
             }
             .alert("New Group", isPresented: $isNamingGroup) {
                 TextField("Name", text: $newGroupName)

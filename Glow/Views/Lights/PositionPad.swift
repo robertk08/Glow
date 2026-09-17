@@ -42,8 +42,5 @@ struct PositionPad: View {
         }
         .frame(height: 220)
         .sensoryFeedback(.selection, trigger: isDragging)
-        .accessibilityElement()
-        .accessibilityLabel("Position")
-        .accessibilityValue("Pan \(Int(pan * 100)) percent, tilt \(Int(tilt * 100)) percent")
     }
 }

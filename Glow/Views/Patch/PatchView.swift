@@ -78,7 +78,7 @@ struct PatchView: View {
                 }
             }
             .sheet(isPresented: $isAdding) {
-                AddLightView()
+                AddLightView(isPresented: $isAdding)
             }
         }
     }
