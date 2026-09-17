@@ -87,6 +87,80 @@ final class ShowLibrary {
 		container = Self.open(next.id)
 	}
 	
+	func contents(of show: Show) -> ShowFile {
+		let context = ModelContext(show.id == activeID ? container : Self.open(show.id))
+		
+		let fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+		let groups = (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+		let profiles = (try? context.fetch(FetchDescriptor<CustomProfile>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []
+		let looks = (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+		
+		var file = ShowFile(name: show.name, lights: [], groups: [], profiles: [], scenes: [])
+		
+		for group in groups {
+			file.groups.append(ShowFile.Group(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
+		}
+		
+		for fixture in fixtures {
+			file.lights.append(ShowFile.Light(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, tint: fixture.tintName, group: fixture.group?.name))
+		}
+		
+		for profile in profiles {
+			file.profiles.append(ShowFile.Profile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList))
+		}
+		
+		for look in looks {
+			file.scenes.append(ShowFile.Scene(name: look.name, sortIndex: look.sortIndex, levels: look.levels))
+		}
+		
+		return file
+	}
+	
+	func adopt(_ file: ShowFile) {
+		let show = Show(name: file.name)
+		shows.append(show)
+		Self.save(shows)
+		
+		let context = ModelContext(Self.open(show.id))
+		var groups: [String: FixtureGroup] = [:]
+		
+		for entry in file.groups {
+			let group = FixtureGroup(name: entry.name, sortIndex: entry.sortIndex)
+			group.symbolOverride = entry.symbol
+			group.tintName = entry.tint
+			context.insert(group)
+			groups[entry.name] = group
+		}
+		
+		for entry in file.lights {
+			guard let address = DMXAddress(entry.address) else { continue }
+			let fixture = Fixture(profileID: entry.profileID, name: entry.name, address: address, sortIndex: entry.sortIndex)
+			fixture.identifier = entry.identifier
+			fixture.symbolOverride = entry.symbol
+			fixture.tintName = entry.tint
+			context.insert(fixture)
+			
+			if let name = entry.group {
+				fixture.group = groups[name]
+			}
+		}
+		
+		for entry in file.profiles {
+			let profile = CustomProfile(name: entry.name, symbol: entry.symbol, channels: entry.channels)
+			profile.identifier = entry.identifier
+			context.insert(profile)
+		}
+		
+		for entry in file.scenes {
+			let look = Look(name: entry.name, sortIndex: entry.sortIndex, levels: [:])
+			look.levels = entry.levels
+			context.insert(look)
+		}
+		
+		try? context.save()
+		activate(show)
+	}
+	
 	private static func open(_ id: String) -> ModelContainer {
 		let configuration = ModelConfiguration(url: store(id))
 		return try! ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)

@@ -35,6 +35,12 @@ the app, so a house rig and a touring rig never see each other. The controller
 you send to belongs to the device, not the show, because it is about where you
 are standing. An existing patch becomes the first show on upgrade.
 
+A show exports as one JSON file and imports as a new show, so it travels by
+AirDrop, Files or anything else that carries a document. It leaves as readable
+text rather than the store itself, because a store is a schema version and a
+pile of journal files, and a show has to open on a device that is a build or
+two behind.
+
 ## Setting up a controller
 
 Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ShowsView: View {
 	@Environment(ShowLibrary.self) private var shows
@@ -7,6 +8,9 @@ struct ShowsView: View {
 	@State private var newName = ""
 	@State private var renaming: Show?
 	@State private var renamed = ""
+	@State private var exporting: ShowDocument?
+	@State private var exportName = ""
+	@State private var isImporting = false
 	
 	var body: some View {
 		List {
@@ -36,12 +40,29 @@ struct ShowsView: View {
 						}
 						.tint(.accentColor)
 					}
+					.swipeActions(edge: .leading) {
+						Button("Export", systemImage: "square.and.arrow.up") {
+							exportName = show.name
+							exporting = ShowDocument(show: shows.contents(of: show))
+						}
+						.tint(.accentColor)
+					}
 				}
 			} footer: {
 				Text("A show holds its own patch, groups, built fixtures and scenes. The controller you send to stays with this device.")
 			}
 			
 			Section {
+				Button("Import Show", systemImage: "square.and.arrow.down") {
+					isImporting = true
+				}
+				.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+					guard let url = try? result.get(), url.startAccessingSecurityScopedResource() else { return }
+					defer { url.stopAccessingSecurityScopedResource() }
+					guard let data = try? Data(contentsOf: url), let file = try? JSONDecoder().decode(ShowFile.self, from: data) else { return }
+					shows.adopt(file)
+				}
+				
 				Button("New Show", systemImage: "plus") {
 					newName = ""
 					isNaming = true
@@ -59,6 +80,7 @@ struct ShowsView: View {
 				}
 			}
 		}
+		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exportName) { _ in }
 		.navigationTitle("Shows")
 		.navigationBarTitleDisplayMode(.inline)
 		.alert("Rename Show", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }) {
