@@ -32,6 +32,7 @@ bool g_bootCleared = false;
 bool g_scanning    = false;
 
 bool     g_apLost    = false;
+bool     g_apHeld    = false;
 uint32_t g_downSince = 0;
 bool     g_joinFailed = false;
 
@@ -79,7 +80,7 @@ bool isEnterprise(wifi_auth_mode_t mode) {
 
 void startStation(const char *ssid, const char *user, const char *password) {
   WiFi.mode(g_ap ? WIFI_AP_STA : WIFI_STA);
-  WiFi.setAutoReconnect(true);
+  WiFi.setAutoReconnect(false);
   WiFi.setSleep(false);
 
   if (user && user[0]) {
@@ -186,7 +187,7 @@ void tick() {
     if (now) {
       Serial.printf("WiFi: %s\n", WiFi.localIP().toString().c_str());
       announce();
-      if (g_apLost) {
+      if (g_apLost && !g_trying) {
         g_apLost = false;
         lowerAp();
       }
@@ -206,7 +207,10 @@ void tick() {
         Serial.println(F("creds: NVS write failed"));
       else
         Serial.printf("creds: \"%s\" stored\n", g_trySsid);
-      lowerAp();
+      g_apLost  = false;
+      g_apUntil = millis() + SETUP_DONE_MS;
+      Serial.printf("setup: \"%s\" stays up so the app can confirm\n",
+                    GLOW_SETUP_SSID);
 
     } else if (millis() - g_joinStart >= JOIN_TIMEOUT_MS) {
       g_trying     = false;
@@ -233,11 +237,24 @@ void tick() {
 
   if (!now && !g_ap && millis() - g_downSince >= SETUP_LOST_MS) {
     Serial.printf("setup: \"%s\" is out of reach\n", Creds::ssid());
-    g_apLost = true;
+    g_apLost  = true;
+    g_lastTry = millis();
+    WiFi.disconnect();
     raiseAp(0);
   }
 
-  if (!now && millis() - g_lastTry >= WIFI_RETRY_MS) {
+  if (g_ap && !now && WiFi.softAPgetStationNum()) {
+    if (!g_apHeld) {
+      g_apHeld = true;
+      WiFi.disconnect();
+      Serial.println(F("setup: the radio is held still while setup is open"));
+    }
+    return;
+  }
+  g_apHeld = false;
+
+  uint32_t retry = g_ap ? SETUP_RETRY_MS : WIFI_RETRY_MS;
+  if (!now && millis() - g_lastTry >= retry) {
     WiFi.disconnect();
     startStation(Creds::ssid(), Creds::user(), Creds::password());
   }

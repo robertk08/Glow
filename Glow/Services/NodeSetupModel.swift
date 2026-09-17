@@ -78,10 +78,20 @@ final class NodeSetupModel {
 		for _ in 0..<40 {
 			try? await Task.sleep(for: .seconds(2))
 			
-			if let info = try? await setup.info(), info.didRefuse {
-				failure = "\(ssid) turned that password down."
-				step = .password
-				return
+			if let info = try? await setup.info() {
+				if info.didRefuse {
+					failure = "\(ssid) turned that password down."
+					step = .password
+					return
+				}
+				
+				if info.isProvisioned, !info.ip.isEmpty {
+					user = ""
+					password = ""
+					console.endpoint = NodeEndpoint(host: info.ip, name: info.name, nodeID: info.id)
+					step = .done
+					return
+				}
 			}
 			
 			guard let found = discovery.endpoints.first(where: { $0.nodeID == nodeID }) ?? discovery.endpoints.first else { continue }

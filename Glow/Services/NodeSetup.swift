@@ -3,15 +3,17 @@ import Foundation
 struct NodeSetup: Sendable {
 	struct Info: Decodable, Sendable {
 		var id = ""
+		var ip = ""
 		var name = "Glow"
 		var isProvisioned = false
 		var didRefuse = false
 		
-		private enum CodingKeys: String, CodingKey { case id, name, state, join }
+		private enum CodingKeys: String, CodingKey { case id, ip, name, state, join }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
 			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
 			name = try container.decode(String.self, forKey: .name)
 			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
 			didRefuse = (try container.decodeIfPresent(String.self, forKey: .join)) == "failed"

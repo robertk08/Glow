@@ -176,7 +176,7 @@ struct NodeSetupView: View {
 		ContentUnavailableView {
 			Label("Ready", systemImage: "checkmark.circle")
 		} description: {
-			Text("The controller is on \(model.selected?.ssid ?? "your network"). \(console.link.summary(latency: console.latency)).")
+			Text("The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host). Put your iPhone back on that network to control it.")
 		} actions: {
 			Button("Done") { dismiss() }
 				.buttonStyle(.borderedProminent)

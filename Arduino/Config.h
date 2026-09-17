@@ -61,6 +61,8 @@ static const uint32_t WIFI_RETRY_MS = 10000;
 static const uint32_t JOIN_TIMEOUT_MS = 20000;
 static const uint32_t SETUP_AP_MS     = 5UL * 60 * 1000;
 static const uint32_t SETUP_LOST_MS   = 60000;
+static const uint32_t SETUP_RETRY_MS  = 60000;
+static const uint32_t SETUP_DONE_MS   = 60000;
 static const int      SCAN_MAX        = 20;
 static const uint32_t SCAN_CHANNEL_MS = 120;
 

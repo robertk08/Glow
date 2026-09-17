@@ -84,6 +84,7 @@ void info(NetworkClient &c) {
   doc["name"] = GLOW_NODE_NAME;
   doc["state"] = Net::provisioned() ? "provisioned" : "unprovisioned";
   doc["join"]  = Net::joinState();
+  doc["ip"]    = Net::ip().toString();
   String out;
   serializeJson(doc, out);
   sendJson(c, 200, out);
