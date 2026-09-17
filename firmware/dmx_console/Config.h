@@ -6,7 +6,6 @@ static const int DMX_TX_PIN     = 42;   // not 43: ESP_TXD0, held up by the RA4M
 static const int DMX_RX_PIN     = -1;
 static const int DMX_ENABLE_PIN = -1;
 
-// DMX_NUM_2 crashes in dmx_driver_install(); port 0 is the console UART.
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
 static const int FIXTURE_START_ADDRESS = 1;
@@ -63,23 +62,19 @@ static const uint32_t JOIN_TIMEOUT_MS = 20000;
 static const uint32_t SETUP_AP_MS     = 5UL * 60 * 1000;
 static const int      SCAN_MAX        = 20;
 
-// ESP_DOWNLOAD on the 2x3 header (GPIO0). -1 disables the gesture.
 static const int      SETUP_PIN        = 0;
 static const uint32_t SETUP_HOLD_MS    = 3000;
 static const uint8_t  RECOVERY_BOOTS   = 3;
 static const uint32_t RECOVERY_BOOT_MS = 5000;
 
-// 44Hz ceiling: a 513-slot frame at 250kbaud 8N2 takes 22.7ms.
 static const int DMX_REFRESH_HZ     = 40;
 static const int DMX_REFRESH_HZ_MIN = 10;
 static const int DMX_REFRESH_HZ_MAX = 44;
 
-// Core 1, above loop()'s priority: WiFi and lwIP run on core 0 at 23.
 static const int DMX_TASK_CORE     = 1;
 static const int DMX_TASK_PRIORITY = 5;
 static const int DMX_TASK_STACK    = 3072;
 
-// No LED on the ESP32-S3 side of an UNO R4 WiFi, so identify flashes the output.
 static const int      IDENTIFY_LED_PIN  = -1;
 static const uint32_t IDENTIFY_MS       = 1500;
 static const uint32_t IDENTIFY_BLINK_MS = 150;

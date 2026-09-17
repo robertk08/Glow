@@ -5,11 +5,11 @@ struct LibraryView: View {
     @Environment(FixtureLibrary.self) private var library
     @Environment(\.modelContext) private var context
     @Query private var customProfiles: [CustomProfile]
-
+    
     @State private var query = ""
-
+    
     private var results: [FixtureProfile] { library.search(query) }
-
+    
     var body: some View {
         List {
             if !customProfiles.isEmpty {
@@ -26,7 +26,7 @@ struct LibraryView: View {
                     }
                 }
             }
-
+            
             Section {
                 ForEach(library.bundled.filter { results.contains($0) }) { profile in
                     NavigationLink {
@@ -50,7 +50,7 @@ struct LibraryView: View {
 
 struct ProfileView: View {
     let profile: FixtureProfile
-
+    
     var body: some View {
         List {
             Section {
@@ -69,7 +69,7 @@ struct ProfileView: View {
                     LabeledContent("Tilt", value: "\(Int(tilt))°")
                 }
             }
-
+            
             ForEach(profile.channels) { channel in
                 Section {
                     ForEach(channel.ranges) { range in

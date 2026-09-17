@@ -26,7 +26,6 @@ struct Hold {
 TickType_t periodTicks(int hz) {
   if (hz < DMX_REFRESH_HZ_MIN) hz = DMX_REFRESH_HZ_MIN;
   if (hz > DMX_REFRESH_HZ_MAX) hz = DMX_REFRESH_HZ_MAX;
-  // Rounded up: 1000/44 truncates below the 22.7ms a frame takes.
   TickType_t ticks = pdMS_TO_TICKS((1000u + hz - 1) / hz);
   return ticks ? ticks : 1;
 }
@@ -65,7 +64,6 @@ void refreshTask(void *) {
       xSemaphoreGive(g_wireLock);
     }
 
-    // A pause leaves xTaskDelayUntil owing frames it would send back to back.
     if (g_resync) {
       g_resync = false;
       wake = xTaskGetTickCount();

@@ -22,7 +22,6 @@ struct Network {
   bool    secure;
 };
 
-// Blocks for seconds. Strongest first, duplicate SSIDs collapsed.
 int scan(Network *out, int max);
 
 bool provision(const char *ssid, const char *password);

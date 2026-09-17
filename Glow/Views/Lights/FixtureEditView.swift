@@ -7,11 +7,11 @@ struct FixtureEditView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
-
+    
     @Bindable var fixture: Fixture
-
+    
     private var profile: FixtureProfile? { library.profile(fixture.profileID) }
-
+    
     private var overlapping: [Fixture] {
         let range = fixture.range(profile)
         return fixtures.filter {
@@ -19,15 +19,15 @@ struct FixtureEditView: View {
                 && $0.range(library.profile($0.profileID)).overlaps(range)
         }
     }
-
+    
     private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-
+    
     var body: some View {
         Form {
             Section {
                 TextField("Name", text: $fixture.name)
             }
-
+            
             Section("Icon") {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(FixtureSymbol.all, id: \.self) { symbol in
@@ -46,14 +46,14 @@ struct FixtureEditView: View {
                     }
                 }
                 .padding(.vertical, 4)
-
+                
                 Picker("Colour", selection: $fixture.tint) {
                     ForEach(FixtureTint.allCases) { tint in
                         Text(tint.rawValue.capitalized).tag(tint)
                     }
                 }
             }
-
+            
             if !groups.isEmpty {
                 Section("Group") {
                     Picker("Group", selection: $fixture.group) {
@@ -65,12 +65,12 @@ struct FixtureEditView: View {
                     .labelsHidden()
                 }
             }
-
+            
             Section {
                 Stepper(value: $fixture.address, in: DMXAddress.range) {
                     LabeledContent("Address", value: "\(fixture.address)")
                 }
-
+                
                 if let profile {
                     LabeledContent("Channels", value: "\(profile.channelCount)")
                     LabeledContent("Fixture", value: profile.name)
@@ -80,7 +80,7 @@ struct FixtureEditView: View {
                     Text("Shares channels with \(overlapping.map(\.name).formatted(.list(type: .and))). They will move together.")
                 }
             }
-
+            
             Section {
                 Button("Remove Light", role: .destructive) {
                     context.delete(fixture)

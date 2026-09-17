@@ -4,23 +4,23 @@ nonisolated struct ChannelRange: Decodable, Hashable, Sendable, Identifiable {
     nonisolated enum Kind: String, Codable, Sendable {
         case discrete, proportional
     }
-
+    
     var from: UInt8
     var to: UInt8
     var label: String
     var kind: Kind = .discrete
     var requiresConfirmation = false
     var releasesMix = false
-
+    
     var id: String { "\(from)-\(to)" }
     var midpoint: UInt8 { UInt8((Int(from) + Int(to)) / 2) }
-
+    
     func contains(_ value: UInt8) -> Bool { (from...to).contains(value) }
-
+    
     private enum CodingKeys: String, CodingKey {
         case from, to, label, kind, requiresConfirmation, releasesMix
     }
-
+    
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         from = try container.decode(UInt8.self, forKey: .from)
@@ -39,17 +39,17 @@ nonisolated struct ProfileChannel: Decodable, Hashable, Sendable, Identifiable {
     var isFine = false
     var defaultValue: UInt8 = 0
     var ranges: [ChannelRange] = []
-
+    
     var id: Int { offset }
-
+    
     func range(containing value: UInt8) -> ChannelRange? {
         ranges.first { $0.contains(value) }
     }
-
+    
     private enum CodingKeys: String, CodingKey {
         case offset, role, name, isFine, defaultValue, ranges
     }
-
+    
     init(offset: Int, role: ChannelRole, name: String? = nil, isFine: Bool = false, defaultValue: UInt8 = 0, ranges: [ChannelRange] = []) {
         self.offset = offset
         self.role = role
@@ -58,7 +58,7 @@ nonisolated struct ProfileChannel: Decodable, Hashable, Sendable, Identifiable {
         self.defaultValue = defaultValue
         self.ranges = ranges
     }
-
+    
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         offset = try container.decode(Int.self, forKey: .offset)
@@ -77,7 +77,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         case emitters([ProfileChannel])
         case none
     }
-
+    
     var id: String
     var manufacturer: String
     var model: String
@@ -86,21 +86,21 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
     var symbol: String
     var panDegrees: Double?
     var tiltDegrees: Double?
-
+    
     var name: String { manufacturer.isEmpty ? model : "\(manufacturer) \(model)" }
     var channelCount: Int { channels.map(\.offset).max() ?? 0 }
-
+    
     func channel(_ role: ChannelRole, fine: Bool = false) -> ProfileChannel? {
         channels.first { $0.role == role && $0.isFine == fine }
     }
-
+    
     var emitterChannels: [ProfileChannel] {
         channels.filter { $0.role.isEmitter && !$0.isFine }
     }
-
+    
     var movesHead: Bool { channel(.pan) != nil && channel(.tilt) != nil }
     var mixesColor: Bool { emitterChannels.count >= 3 }
-
+    
     var defaults: [UInt8] {
         var values = [UInt8](repeating: 0, count: channelCount)
         for channel in channels where (1...channelCount).contains(channel.offset) {
@@ -108,7 +108,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         }
         return values
     }
-
+    
     var dimming: Dimming {
         if let dedicated = channel(.intensity) {
             return .channel(dedicated)
@@ -122,9 +122,9 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         let emitters = emitterChannels
         return emitters.isEmpty ? .none : .emitters(emitters)
     }
-
+    
     var dims: Bool { dimming != .none }
-
+    
     private static func dimmingBand(of channel: ProfileChannel) -> ChannelRange? {
         let proportional = channel.ranges.filter { $0.kind == .proportional }
         if let named = proportional.first(where: { $0.label.localizedCaseInsensitiveContains("dim") }) {
@@ -134,7 +134,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
             .filter { !$0.label.localizedCaseInsensitiveContains("strob") }
             .min { $0.from < $1.from }
     }
-
+    
     init(
         id: String,
         manufacturer: String = "",
@@ -154,7 +154,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         self.panDegrees = panDegrees
         self.tiltDegrees = tiltDegrees
     }
-
+    
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -166,7 +166,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         panDegrees = try container.decodeIfPresent(Double.self, forKey: .panDegrees)
         tiltDegrees = try container.decodeIfPresent(Double.self, forKey: .tiltDegrees)
     }
-
+    
     private enum CodingKeys: String, CodingKey {
         case id, manufacturer, model, mode, channels, symbolName, panDegrees, tiltDegrees
     }

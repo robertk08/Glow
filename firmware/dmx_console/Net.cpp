@@ -28,7 +28,6 @@ char     g_tryPass[64] = "";
 
 bool g_bootCleared = false;
 
-// esp_read_mac() answers with the radio off; WiFi.macAddress() does not.
 void readIdentity() {
   uint8_t mac[6] = {0};
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -74,7 +73,6 @@ void raiseAp(uint32_t ms) {
   if (!(g_ap && g_apUntil == 0)) g_apUntil = ms ? millis() + ms : 0;
   if (g_ap) return;
 
-  // AP_STA, not AP: scanNetworks() needs the station interface.
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(GLOW_SETUP_IP, GLOW_SETUP_IP, GLOW_SETUP_MASK);
   if (!WiFi.softAP(GLOW_SETUP_SSID)) {
@@ -106,7 +104,6 @@ void pollSetupPin() {
     downSince = 0;
     return;
   }
-  // Low since boot is the flashing jumper, not a gesture.
   if (!seenHigh) return;
   if (!downSince) {
     downSince = millis();
@@ -125,10 +122,8 @@ void pollSetupPin() {
 void begin() {
   readIdentity();
 
-  // Creds owns the credentials; this also stops WiFi.begin() writing flash.
   WiFi.persistent(false);
 
-  // Before mode(), or the netif is created without it.
   WiFi.setHostname(GLOW_HOSTNAME);
 
   if (SETUP_PIN >= 0) pinMode(SETUP_PIN, INPUT_PULLUP);
@@ -171,8 +166,6 @@ void tick() {
   }
 
   if (g_trying) {
-    // The connected bit clears from the WiFi event task, so it can still be
-    // the old network's for a moment after WiFi.disconnect().
     if (!now) g_tryLetGo = true;
 
     if (now && g_tryLetGo) {
@@ -205,8 +198,6 @@ void tick() {
     return;
   }
 
-  // Handles the AP that came back on another channel; setAutoReconnect()
-  // handles the ordinary drop.
   if (!now && millis() - g_lastTry >= WIFI_RETRY_MS) {
     WiFi.disconnect();
     WiFi.begin(Creds::ssid(), Creds::password());
@@ -296,7 +287,6 @@ bool provision(const char *ssid, const char *password) {
   snprintf(g_trySsid, sizeof(g_trySsid), "%s", ssid);
   snprintf(g_tryPass, sizeof(g_tryPass), "%s", password ? password : "");
 
-  // Keep the AP up until the join is known to have worked.
   if (!g_ap) raiseAp(SETUP_AP_MS);
 
   g_trying    = true;

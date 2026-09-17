@@ -7,15 +7,15 @@ nonisolated enum ChannelRole: String, Codable, Sendable, CaseIterable, Identifia
     case pan, tilt, movementSpeed
     case gobo, goboRotation, prism, prismRotation, focus, zoom, iris, frost
     case function, reset, program, programSpeed, sound, speed, custom
-
+    
     var id: String { rawValue }
-
+    
     static let emitters: Set<ChannelRole> = [
         .red, .green, .blue, .white, .amber, .uv, .lime, .cyan, .magenta, .yellow,
     ]
-
+    
     var isEmitter: Bool { Self.emitters.contains(self) }
-
+    
     var name: String {
         switch self {
         case .intensity: "Brightness"
@@ -53,7 +53,7 @@ nonisolated enum ChannelRole: String, Codable, Sendable, CaseIterable, Identifia
         case .custom: "Channel"
         }
     }
-
+    
     var color: Color? {
         switch self {
         case .red: .red

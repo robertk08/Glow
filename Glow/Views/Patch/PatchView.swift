@@ -5,13 +5,13 @@ struct PatchView: View {
     @Environment(FixtureLibrary.self) private var library
     @Environment(\.modelContext) private var context
     @Query(sort: \Fixture.address) private var fixtures: [Fixture]
-
+    
     @State private var isAdding = false
-
+    
     private var used: Int {
         fixtures.reduce(0) { $0 + (library.profile($1.profileID)?.channelCount ?? 0) }
     }
-
+    
     private var clashing: Set<PersistentIdentifier> {
         var found: Set<PersistentIdentifier> = []
         for (index, fixture) in fixtures.enumerated() {
@@ -24,7 +24,7 @@ struct PatchView: View {
         }
         return found
     }
-
+    
     var body: some View {
         NavigationStack {
             List {
@@ -41,13 +41,20 @@ struct PatchView: View {
                         }
                         .swipeActions(edge: .leading) {
                             Button("Duplicate", systemImage: "plus.square.on.square") {
-                                duplicate(fixture)
+                                Haptic.feedback(.rigid)
+                                let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
+                                let copy = Fixture(profileID: fixture.profileID, name: fixture.name, address: DMXAddress(clamping: fixture.address + width), sortIndex: (fixtures.map(\.sortIndex).max() ?? 0) + 1)
+                                copy.symbolOverride = fixture.symbolOverride
+                                copy.tintName = fixture.tintName
+                                context.insert(copy)
                             }
                             .tint(.accentColor)
                         }
                     }
                     .onDelete { offsets in
-                        for index in offsets { context.delete(fixtures[index]) }
+                        for index in offsets {
+                            context.delete(fixtures[index])
+                        }
                     }
                 } footer: {
                     if !fixtures.isEmpty {
@@ -75,41 +82,26 @@ struct PatchView: View {
             }
         }
     }
-
-    private func duplicate(_ fixture: Fixture) {
-        Haptic.feedback(.rigid)
-        let profile = library.profile(fixture.profileID)
-        let width = max(1, profile?.channelCount ?? 1)
-        let copy = Fixture(
-            profileID: fixture.profileID,
-            name: fixture.name,
-            address: DMXAddress(clamping: fixture.address + width),
-            sortIndex: (fixtures.map(\.sortIndex).max() ?? 0) + 1
-        )
-        copy.symbolOverride = fixture.symbolOverride
-        copy.tintName = fixture.tintName
-        context.insert(copy)
-    }
 }
 
 private struct PatchRow: View {
     let fixture: Fixture
     let profile: FixtureProfile?
     let clashes: Bool
-
+    
     private var range: String {
         let span = fixture.range(profile)
         return span.lowerBound == span.upperBound
             ? "\(span.lowerBound)"
             : "\(span.lowerBound)–\(span.upperBound)"
     }
-
+    
     var body: some View {
         LabeledContent {
             VStack(alignment: .trailing) {
                 Text(range)
                     .monospacedDigit()
-
+                
                 if clashes {
                     Text("Overlaps")
                         .font(.caption2)

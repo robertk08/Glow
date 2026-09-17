@@ -32,7 +32,6 @@ const char *sketch() {
   return WIFI_SSID;
 }
 
-// Stops the wire while the flash cache is off. See DmxBus.h.
 template <typename Fn>
 bool guarded(Fn write) {
   DmxBus::pause();
@@ -84,7 +83,6 @@ bool save(const char *ssid, const char *password) {
   return guarded([] {
     bool ssidOk = g_nvs.putString(KEY_SSID, g_ssid) > 0;
     g_nvs.putString(KEY_PASS, g_pass);
-    // putString returns bytes written, so an empty password reads as failure.
     bool passOk = g_pass[0] ? g_nvs.isKey(KEY_PASS) : true;
     return ssidOk ? passOk : false;
   });

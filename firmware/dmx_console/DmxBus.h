@@ -21,8 +21,6 @@ bool blackout();
 
 void identify();
 
-// Bracket every flash write: an erase disables the flash cache and the esp_dmx
-// ISR lives in flash. pause() can take a frame time to return; do not nest.
 void pause();
 void resume();
 

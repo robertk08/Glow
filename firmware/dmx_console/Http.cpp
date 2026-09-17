@@ -12,7 +12,6 @@ namespace {
 NetworkServer g_server(GLOW_PORT);
 bool          g_running = false;
 
-// REQUEST_LINE_MAX and not LINE_MAX, which is a POSIX macro from limits.h.
 const uint32_t REQUEST_MS          = 3000;
 const size_t   REQUEST_LINE_MAX    = 256;
 const size_t   REQUEST_BODY_MAX    = 512;
@@ -90,7 +89,6 @@ void info(NetworkClient &c) {
 }
 
 void scan(NetworkClient &c) {
-  // Setup network only: a scan blocks this loop, which also pumps the WebSocket.
   if (!Net::fromSetupAp(c.remoteIP())) {
     sendResult(c, 404, false, "not_on_setup_ap");
     return;
@@ -148,7 +146,6 @@ void provision(NetworkClient &c, const char *body, size_t len) {
     }
   }
 
-  // Reply and close before the radio moves: joining takes this network away.
   sendResult(c, 200, true, nullptr);
   c.stop();
 
@@ -204,7 +201,6 @@ void handle(NetworkClient &client) {
   sp = strchr(target, ' ');
   if (sp) *sp = '\0';
 
-  // Decided on the request line alone: Link::adopt() needs the headers unread.
   char  *query   = strchr(target, '?');
   size_t pathLen = query ? (size_t)(query - target) : strlen(target);
   if (pathLen == strlen(GLOW_WS_PATH) &&

@@ -4,7 +4,7 @@ import SwiftUI
 struct CustomChannel: Codable, Hashable, Identifiable {
     var role: ChannelRole = .custom
     var name: String = ""
-
+    
     var id: String { "\(role.rawValue)-\(name)" }
 }
 
@@ -15,7 +15,7 @@ final class CustomProfile {
     var symbol: String = "lightbulb"
     var channelList: [CustomChannel] = []
     var createdAt: Date = Date.now
-
+    
     init(name: String, symbol: String, channels: [CustomChannel]) {
         identifier = "custom-\(UUID().uuidString)"
         self.name = name
@@ -23,7 +23,7 @@ final class CustomProfile {
         channelList = channels
         createdAt = .now
     }
-
+    
     var profile: FixtureProfile {
         FixtureProfile(
             id: identifier,

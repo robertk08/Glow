@@ -6,7 +6,7 @@ struct GlowApp: App {
     @State private var console = Console()
     @State private var library = FixtureLibrary()
     @State private var discovery = NodeDiscovery()
-
+    
     var body: some Scene {
         WindowGroup {
             RootView()

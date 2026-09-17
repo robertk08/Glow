@@ -64,7 +64,6 @@ void setup() {
   Serial.printf("\nDMX on GPIO%d at %dHz, start address %d\n", DMX_TX_PIN,
                 DmxBus::refreshHz(), Fixture::startAddress());
 
-  // After DMX: Creds writes NVS, which needs the driver already running.
   Creds::begin();
   Net::begin();
   Link::begin();

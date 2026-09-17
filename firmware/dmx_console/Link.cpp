@@ -10,7 +10,6 @@
 namespace Link {
 namespace {
 
-// The Core class owns no listener: Http accepts on port 80 and calls adopt().
 class Sockets : public WebSocketsServerCore {
  public:
   bool adopt(NetworkClient &tcp, const char *url) {
@@ -55,7 +54,6 @@ size_t buildStatus() {
   doc["name"] = GLOW_NODE_NAME;
   doc["hz"] = DmxBus::refreshHz();
   doc["blackout"] = DmxBus::blackout();
-  // esp_timer and not millis(), which wraps after 49 days.
   doc["uptime"] = (uint32_t)(esp_timer_get_time() / 1000000LL);
   return serializeJson(doc, g_out, sizeof(g_out));
 }
@@ -151,7 +149,6 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     DmxBus::identify();
 
   } else {
-    // Only echoed back if short: g_out has to hold whatever comes back out.
     sendError(num, "unknown_type", strlen(t) < 32 ? t : "unknown message type");
   }
 }
@@ -163,7 +160,6 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
       break;
 
     case WStype_DISCONNECTED:
-      // Holds the last look on purpose.
       Serial.printf("ws[%u]: gone\n", num);
       break;
 

@@ -2,11 +2,11 @@ import SwiftUI
 
 struct ChannelsView: View {
     let control: FixtureControl
-
+    
     @State private var editing: FixtureParameter?
     @State private var entry = ""
     @State private var confirming: (FixtureParameter, ChannelRange)?
-
+    
     var body: some View {
         List {
             ForEach(control.parameters) { parameter in
@@ -15,9 +15,18 @@ struct ChannelsView: View {
                         editing = parameter
                         entry = String(control.rawValue(of: parameter))
                     }
-
-                    if !parameter.ranges.isEmpty {
-                        Picker("Setting", selection: bandSelection(parameter)) {
+                    
+                    if parameter.isBanded {
+                        Picker("Setting", selection: Binding { control.band(of: parameter)?.id ?? "" } set: { id in
+                            guard let range = parameter.ranges.first(where: { $0.id == id }) else { return }
+                            
+                            if range.requiresConfirmation {
+                                confirming = (parameter, range)
+                            } else {
+                                Haptic.feedback(.selection)
+                                control.set(range.midpoint, of: parameter.coarse)
+                            }
+                        }) {
                             ForEach(parameter.ranges) { range in
                                 Text(range.label).tag(range.id)
                             }
@@ -58,27 +67,13 @@ struct ChannelsView: View {
             Text("The light stops responding for a few seconds.")
         }
     }
-
-    private func bandSelection(_ parameter: FixtureParameter) -> Binding<String> {
-        Binding(
-            get: { control.band(of: parameter)?.id ?? "" },
-            set: { id in
-                guard let range = parameter.ranges.first(where: { $0.id == id }) else { return }
-                if range.requiresConfirmation {
-                    confirming = (parameter, range)
-                } else {
-                    control.set(range.midpoint, of: parameter.coarse)
-                }
-            }
-        )
-    }
 }
 
 private struct ParameterRow: View {
     let control: FixtureControl
     let parameter: FixtureParameter
     let edit: () -> Void
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -89,9 +84,9 @@ private struct ParameterRow: View {
                     Text(parameter.role.name)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Spacer()
-
+                
                 Button(action: edit) {
                     HStack(spacing: 6) {
                         Text(control.percent(of: parameter), format: .percent.precision(.fractionLength(0)))
@@ -103,7 +98,7 @@ private struct ParameterRow: View {
                 .buttonStyle(.plain)
             }
             .font(.subheadline)
-
+            
             Slider(
                 value: Binding(
                     get: { Double(control.rawValue(of: parameter)) },

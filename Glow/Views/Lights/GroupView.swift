@@ -7,19 +7,19 @@ struct GroupView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
-
+    
     @Bindable var group: FixtureGroup
-
+    
     @State private var hue: Double = 0
     @State private var saturation: Double = 1
     @State private var isChoosingMembers = false
-
+    
     private var control: GroupControl {
-        GroupControl(controls: group.members.compactMap(makeControl))
+        GroupControl(controls: group.members.compactMap { FixtureControl(fixture: $0, library: library, console: console) })
     }
-
+    
     private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-
+    
     var body: some View {
         Form {
             if group.members.isEmpty {
@@ -41,7 +41,7 @@ struct GroupView: View {
                         }
                     }
                 }
-
+                
                 if control.mixesColor {
                     Section("Colour") {
                         LazyVGrid(columns: columns, spacing: 12) {
@@ -60,15 +60,15 @@ struct GroupView: View {
                             }
                         }
                         .padding(.vertical, 4)
-
+                        
                         Slider(value: $hue, in: 0...1) { Text("Hue") }
                             .onChange(of: hue) { control.apply(hue: hue, saturation: saturation) }
-
+                        
                         Slider(value: $saturation, in: 0...1) { Text("Saturation") }
                             .onChange(of: saturation) { control.apply(hue: hue, saturation: saturation) }
                     }
                 }
-
+                
                 if control.movesHead {
                     Section("Position") {
                         PositionPad(
@@ -85,7 +85,7 @@ struct GroupView: View {
                     }
                 }
             }
-
+            
             Section {
                 ForEach(group.members) { fixture in
                     NavigationLink {
@@ -95,9 +95,11 @@ struct GroupView: View {
                     }
                 }
                 .onDelete { offsets in
-                    for index in offsets { group.members[index].group = nil }
+                    for index in offsets {
+                        group.members[index].group = nil
+                    }
                 }
-
+                
                 Button("Choose Lights", systemImage: "plus") {
                     Haptic.feedback(.rigid)
                     isChoosingMembers = true
@@ -105,13 +107,13 @@ struct GroupView: View {
             } header: {
                 Text("Lights")
             }
-
+            
             Section {
                 Button("Reset") {
                     Haptic.feedback(.rigid)
                     control.home()
                 }
-
+                
                 Button("Delete Group", role: .destructive) {
                     context.delete(group)
                     dismiss()
@@ -132,23 +134,19 @@ struct GroupView: View {
         }
     }
 
-    private func makeControl(_ fixture: Fixture) -> FixtureControl? {
-        guard let profile = library.profile(fixture.profileID) else { return nil }
-        return FixtureControl(profile: profile, start: fixture.start, console: console)
-    }
 }
 
 struct GroupEditView: View {
     @Bindable var group: FixtureGroup
-
+    
     private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-
+    
     var body: some View {
         Form {
             Section {
                 TextField("Name", text: $group.name)
             }
-
+            
             Section("Icon") {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(FixtureSymbol.all, id: \.self) { symbol in
@@ -165,7 +163,7 @@ struct GroupEditView: View {
                     }
                 }
                 .padding(.vertical, 4)
-
+                
                 Picker("Colour", selection: $group.tint) {
                     ForEach(FixtureTint.allCases) { tint in
                         Text(tint.rawValue.capitalized).tag(tint)
@@ -180,10 +178,10 @@ struct GroupEditView: View {
 
 private struct MemberPicker: View {
     @Environment(\.dismiss) private var dismiss
-
+    
     let group: FixtureGroup
     let fixtures: [Fixture]
-
+    
     var body: some View {
         NavigationStack {
             List(fixtures) { fixture in

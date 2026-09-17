@@ -4,17 +4,17 @@ import SwiftUI
 struct CustomFixtureView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-
+    
     @State private var name = ""
     @State private var symbol = "lightbulb"
     @State private var channels: [CustomChannel] = [CustomChannel(role: .intensity, name: "")]
-
+    
     private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-
+    
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && !channels.isEmpty
     }
-
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -24,7 +24,7 @@ struct CustomFixtureView: View {
                 } footer: {
                     Text("Anything with a DMX address can go here. Read the channel list off the fixture's manual and copy it in order.")
                 }
-
+                
                 Section("Icon") {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(FixtureSymbol.all, id: \.self) { option in
@@ -42,7 +42,7 @@ struct CustomFixtureView: View {
                     }
                     .padding(.vertical, 4)
                 }
-
+                
                 Section {
                     ForEach($channels) { $channel in
                         VStack(alignment: .leading) {
@@ -51,7 +51,7 @@ struct CustomFixtureView: View {
                                     Text(role.name).tag(role)
                                 }
                             }
-
+                            
                             TextField(channel.role.name, text: $channel.name)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -59,7 +59,7 @@ struct CustomFixtureView: View {
                     }
                     .onDelete { channels.remove(atOffsets: $0) }
                     .onMove { channels.move(fromOffsets: $0, toOffset: $1) }
-
+                    
                     Button("Add Channel", systemImage: "plus") {
                         Haptic.feedback(.rigid)
                         channels.append(CustomChannel(role: .custom, name: ""))
@@ -76,24 +76,16 @@ struct CustomFixtureView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(role: .close) { dismiss() }
                 }
-
+                
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
+                    Button("Save") {
+                        Haptic.feedback(.success)
+                        context.insert(CustomProfile(name: name.trimmingCharacters(in: .whitespaces), symbol: symbol, channels: channels))
+                        dismiss()
+                    }
+                    .disabled(!canSave)
                 }
             }
         }
-    }
-
-    private func save() {
-        Haptic.feedback(.success)
-        context.insert(
-            CustomProfile(
-                name: name.trimmingCharacters(in: .whitespaces),
-                symbol: symbol,
-                channels: channels
-            )
-        )
-        dismiss()
     }
 }

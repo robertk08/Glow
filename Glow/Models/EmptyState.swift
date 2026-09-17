@@ -2,7 +2,7 @@ import SwiftUI
 
 enum EmptyState {
     case lights, patch, groups, library, search, monitor
-
+    
     var symbolName: String {
         switch self {
         case .lights: "lightbulb"
@@ -13,7 +13,7 @@ enum EmptyState {
         case .monitor: "waveform"
         }
     }
-
+    
     var title: LocalizedStringKey {
         switch self {
         case .lights: "No Lights Yet"
@@ -24,7 +24,7 @@ enum EmptyState {
         case .monitor: "No Output"
         }
     }
-
+    
     var subtitle: LocalizedStringKey {
         switch self {
         case .lights: "Add the lights on your DMX line, then tap one to control it."
@@ -35,7 +35,7 @@ enum EmptyState {
         case .monitor: "Nothing is being sent yet. Patch a light and bring it up."
         }
     }
-
+    
     var buttonLabel: Label<Text, Image> {
         switch self {
         case .lights, .patch: Label("Add Light", systemImage: "plus")

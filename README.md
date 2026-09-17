@@ -32,8 +32,8 @@ displace a working network.
 
 **Getting back to setup:** power the controller off and on three times, leaving
 it on for less than five seconds each time. This only raises the setup network
-for five minutes; it erases nothing. Serial `forget`, or the app's forget
-button, is what erases. Reflashing does not — credentials live in NVS.
+for five minutes and erases nothing. Serial `forget`, or the app's forget
+button, is what erases. Reflashing does not, because credentials live in NVS.
 
 Only 2.4 GHz: the ESP32-S3 has no 5 GHz radio, so a 5 GHz-only network never
 appears in the list.
@@ -71,8 +71,8 @@ Bridge `GND` and `ESP_DOWNLOAD` on the 2×3 header, connect USB, flash, then
 
 All four board settings are required, and none are saved with the sketch:
 
-- Board: **ESP32S3 Dev Module** — not "Arduino UNO R4 WiFi", which targets the RA4M1
-- **USB CDC On Boot: Enabled** — or `Serial` never reaches the USB port
+- Board: **ESP32S3 Dev Module**, not "Arduino UNO R4 WiFi", which targets the RA4M1
+- **USB CDC On Boot: Enabled**, or `Serial` never reaches the USB port
 - Flash Size: **8MB**
 - Partition Scheme: **Huge APP (3MB No OTA/1MB SPIFFS)**
 
@@ -91,13 +91,11 @@ removed `.module` from `uart_signal_conn_t`. Run `./patch_esp_dmx.sh` after
 installing it from Library Manager. Idempotent, keeps a `.orig` backup.
 
 **Use `DMX_NUM_1`.** Port 0 is the console UART, and `DMX_NUM_2` crashes in
-`dmx_driver_install()` — esp_dmx drops the third UART's context entry
+`dmx_driver_install()`, because esp_dmx drops the third UART's context entry
 ([#228](https://github.com/someweisguy/esp_dmx/issues/228)).
 
-Current build is 990,525 bytes, 31% of the partition. With HomeSpan 2.1.8 and
-one service on top it is 46%, so the HomeKit stage fits. Always measure with
-`secrets.h` present — without it the linker drops the radio and the number is
-meaningless.
+Current build is 990,541 bytes, 31% of the partition. With HomeSpan 2.1.8 and
+one service on top it is 46%, so the HomeKit stage fits.
 
 ## Wire protocol
 
@@ -120,13 +118,13 @@ bytes 6..   values
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
 `blackout`, `identify`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds),
-`pong`, `error`. Types are strict — an integer is not a float, a boolean is not
+`pong`, `error`. Types are strict, an integer is not a float and a boolean is not
 `1`. `status` is only sent in reply to `hello`, so say hello first.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/forget`. `/api/scan` is served only on the
 setup network, because a scan blocks the socket for seconds and must not be able
-to freeze a running show. It is slow by nature; the app shows progress rather
+to freeze a running show. It is slow by nature, so the app shows progress rather
 than timing out.
 
 **On disconnect the controller holds its last look.** A light going dark because
