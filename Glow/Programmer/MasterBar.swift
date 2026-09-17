@@ -20,20 +20,18 @@ struct MasterBar: View {
 				.foregroundStyle(.secondary)
 				.frame(width: 40, alignment: .trailing)
 			
-			Button("Blackout", systemImage: "power") {
+			Button {
+				console.blackout.toggle()
+			} label: {
+				Image(systemName: "power")
+					.font(.title3)
+					.foregroundStyle(console.blackout ? Color.white : Color.primary)
+					.frame(width: 32, height: 32)
+					.background(console.blackout ? Color.red : Color.clear, in: .circle)
+					.frame(width: 44, height: 40)
+					.contentShape(.rect)
 			}
-			.labelStyle(.iconOnly)
 			.buttonStyle(.plain)
-			.font(.title3)
-			.foregroundStyle(console.blackout ? Color.red : Color.primary)
-			.frame(width: 44, height: 30)
-			.contentShape(.rect)
-			.onLongPressGesture(minimumDuration: 0, perform: {}, onPressingChanged: { isPressing in
-				console.blackout = isPressing
-			})
-			.onDisappear {
-				console.blackout = false
-			}
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, 12)

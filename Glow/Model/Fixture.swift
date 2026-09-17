@@ -10,6 +10,8 @@ final class Fixture {
 	var sortIndex: Int = 0
 	var symbolOverride: String?
 	var tintName: String?
+	var invertsPan: Bool = false
+	var invertsTilt: Bool = false
 	var group: FixtureGroup?
 	
 	init(profileID: String, name: String, address: DMXAddress, sortIndex: Int) {

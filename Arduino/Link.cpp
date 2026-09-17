@@ -162,9 +162,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
       sendError(num, "bad_value", "blackout needs on as a bool");
       return;
     }
-    DmxBus::setBlackout(on.as<bool>());
     relayText(num, p, len);
-    broadcastStatus();
 
   } else if (!strcmp(t, "master")) {
     JsonVariant level = doc["level"];

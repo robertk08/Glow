@@ -94,6 +94,8 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
 	var channels: [ProfileChannel]
 	var symbol: String
 	var mixing: ColorMixing
+	var invertsPan: Bool
+	var invertsTilt: Bool
 	var panDegrees: Double?
 	var tiltDegrees: Double?
 	
@@ -163,7 +165,7 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
 			.min { $0.from < $1.from }
 	}
 	
-	init(id: String, manufacturer: String = "", model: String, mode: String = "", channels: [ProfileChannel], symbol: String = "lightbulb", mixing: ColorMixing = .additive, panDegrees: Double? = nil, tiltDegrees: Double? = nil) {
+	init(id: String, manufacturer: String = "", model: String, mode: String = "", channels: [ProfileChannel], symbol: String = "lightbulb", mixing: ColorMixing = .additive, invertsPan: Bool = false, invertsTilt: Bool = false, panDegrees: Double? = nil, tiltDegrees: Double? = nil) {
 		self.id = id
 		self.manufacturer = manufacturer
 		self.model = model
@@ -171,6 +173,8 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
 		self.channels = channels
 		self.symbol = symbol
 		self.mixing = mixing
+		self.invertsPan = invertsPan
+		self.invertsTilt = invertsTilt
 		self.panDegrees = panDegrees
 		self.tiltDegrees = tiltDegrees
 	}
@@ -184,11 +188,13 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
 		channels = try container.decode([ProfileChannel].self, forKey: .channels)
 		symbol = try container.decodeIfPresent(String.self, forKey: .symbolName) ?? "lightbulb"
 		mixing = try container.decodeIfPresent(ColorMixing.self, forKey: .colorMixing) ?? .additive
+		invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan) ?? false
+		invertsTilt = try container.decodeIfPresent(Bool.self, forKey: .invertsTilt) ?? false
 		panDegrees = try container.decodeIfPresent(Double.self, forKey: .panDegrees)
 		tiltDegrees = try container.decodeIfPresent(Double.self, forKey: .tiltDegrees)
 	}
 	
 	private enum CodingKeys: String, CodingKey {
-		case id, manufacturer, model, mode, channels, symbolName, colorMixing, panDegrees, tiltDegrees
+		case id, manufacturer, model, mode, channels, symbolName, colorMixing, invertsPan, invertsTilt, panDegrees, tiltDegrees
 	}
 }

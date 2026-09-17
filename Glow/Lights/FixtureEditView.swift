@@ -36,6 +36,17 @@ struct FixtureEditView: View {
 				}
 			}
 			
+			if profile?.movesHead == true {
+				Section {
+					Toggle("Invert Pan", isOn: $fixture.invertsPan)
+					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
+				} header: {
+					Text("Orientation")
+				} footer: {
+					Text("For a head hung upside down or facing the other way, so the pad matches the stage.")
+				}
+			}
+			
 			Section {
 				Stepper(value: $fixture.address, in: DMXAddress.range) {
 					LabeledContent("Address", value: "\(fixture.address)")

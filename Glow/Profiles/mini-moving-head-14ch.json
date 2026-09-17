@@ -5,6 +5,8 @@
   "symbolName": "light.beacon.max",
   "panDegrees": 540,
   "tiltDegrees": 270,
+  "invertsPan": true,
+  "invertsTilt": true,
   "channels": [
     {
       "offset": 1,

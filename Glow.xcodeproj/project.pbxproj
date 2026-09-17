@@ -6,7 +6,18 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		23332B2D305C6492000BD28E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 23A53D01305AA40D00460BBB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 23A53D08305AA40D00460BBB;
+			remoteInfo = Glow;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		23332B29305C6492000BD28E /* GlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		23A53D09305AA40D00460BBB /* Glow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -21,6 +32,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		23332B2A305C6492000BD28E /* GlowTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GlowTests;
+			sourceTree = "<group>";
+		};
 		23A53D0B305AA40D00460BBB /* Glow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +48,11 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		23332B26305C6492000BD28E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 		23A53D06305AA40D00460BBB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -44,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				23A53D0B305AA40D00460BBB /* Glow */,
+				23332B2A305C6492000BD28E /* GlowTests */,
 				23A53D0A305AA40D00460BBB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -52,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				23A53D09305AA40D00460BBB /* Glow.app */,
+				23332B29305C6492000BD28E /* GlowTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -59,6 +82,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		23332B28305C6492000BD28E /* GlowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23332B31305C6492000BD28E /* Build configuration list for PBXNativeTarget "GlowTests" */;
+			buildPhases = (
+				23332B25305C6492000BD28E /* Sources */,
+				23332B26305C6492000BD28E /* Frameworks */,
+				23332B27305C6492000BD28E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				23332B2E305C6492000BD28E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				23332B2A305C6492000BD28E /* GlowTests */,
+			);
+			name = GlowTests;
+			productName = GlowTests;
+			productReference = 23332B29305C6492000BD28E /* GlowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		23A53D08305AA40D00460BBB /* Glow */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 23A53D14305AA40F00460BBB /* Build configuration list for PBXNativeTarget "Glow" */;
@@ -87,6 +131,10 @@
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
+					23332B28305C6492000BD28E = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 23A53D08305AA40D00460BBB;
+					};
 					23A53D08305AA40D00460BBB = {
 						CreatedOnToolsVersion = 27.0;
 					};
@@ -107,11 +155,17 @@
 			projectRoot = "";
 			targets = (
 				23A53D08305AA40D00460BBB /* Glow */,
+				23332B28305C6492000BD28E /* GlowTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		23332B27305C6492000BD28E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 		23A53D07305AA40D00460BBB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
@@ -120,6 +174,11 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		23332B25305C6492000BD28E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 		23A53D05305AA40D00460BBB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
@@ -127,7 +186,65 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		23332B2E305C6492000BD28E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 23A53D08305AA40D00460BBB /* Glow */;
+			targetProxy = 23332B2D305C6492000BD28E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		23332B2F305C6492000BD28E /* Debug configuration for PBXNativeTarget "GlowTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertkrause.Glow.GlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Glow";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		23332B30305C6492000BD28E /* Release configuration for PBXNativeTarget "GlowTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertkrause.Glow.GlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Glow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Glow";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
 		23A53D12305AA40F00460BBB /* Debug configuration for PBXProject "Glow" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -255,7 +372,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = RVY4C99FC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -273,7 +390,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertkrause.Glow;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -292,7 +409,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = RVY4C99FC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -310,7 +427,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertkrause.Glow;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -326,6 +443,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		23332B31305C6492000BD28E /* Build configuration list for PBXNativeTarget "GlowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23332B2F305C6492000BD28E /* Debug configuration for PBXNativeTarget "GlowTests" */,
+				23332B30305C6492000BD28E /* Release configuration for PBXNativeTarget "GlowTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
 		23A53D04305AA40D00460BBB /* Build configuration list for PBXProject "Glow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

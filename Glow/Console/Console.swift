@@ -231,6 +231,8 @@ final class Console {
 		let copy = Fixture(profileID: fixture.profileID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
 		copy.tintName = fixture.tintName
+		copy.invertsPan = fixture.invertsPan
+		copy.invertsTilt = fixture.invertsTilt
 		copy.group = fixture.group
 		context.insert(copy)
 	}
@@ -244,7 +246,10 @@ final class Console {
 		for number in 0..<count {
 			guard let start = DMXAddress(next) else { break }
 			let title = count == 1 ? Fixture.unusedName(base, among: fixtures) : "\(base) \(number + 1)"
-			context.insert(Fixture(profileID: profile.id, name: title, address: start, sortIndex: index))
+			let fixture = Fixture(profileID: profile.id, name: title, address: start, sortIndex: index)
+			fixture.invertsPan = profile.invertsPan
+			fixture.invertsTilt = profile.invertsTilt
+			context.insert(fixture)
 			Programmer(profile: profile, start: start, console: self).applyDefaults()
 			next += width
 			index += 1
@@ -314,14 +319,14 @@ final class Console {
 	}
 	
 	private func output() -> [UInt8] {
-		guard !blackout else { return [UInt8](repeating: 0, count: Universe.channelCount) }
-		guard master < 1 else { return universe.values }
+		let level = blackout ? 0 : master
+		guard level < 1 else { return universe.values }
 		
 		var values = universe.values
 		
 		for dimmer in dimmers {
 			let index = dimmer.address.value - 1
-			values[index] = dimmer.scale(values[index], by: master)
+			values[index] = dimmer.scale(values[index], by: level)
 		}
 		
 		return values

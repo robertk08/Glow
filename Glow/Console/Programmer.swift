@@ -5,6 +5,16 @@ struct Programmer {
 	nonisolated struct Target: Equatable, Sendable {
 		let profile: FixtureProfile
 		let start: DMXAddress
+		var invertsPan = false
+		var invertsTilt = false
+		
+		func inverts(_ role: ChannelRole) -> Bool {
+			switch role {
+			case .pan: invertsPan
+			case .tilt: invertsTilt
+			default: false
+			}
+		}
 	}
 	
 	let targets: [Target]
@@ -13,14 +23,14 @@ struct Programmer {
 	var tint: Color?
 	
 	init(profile: FixtureProfile, start: DMXAddress, console: Console) {
-		targets = [Target(profile: profile, start: start)]
+		targets = [Target(profile: profile, start: start, invertsPan: profile.invertsPan, invertsTilt: profile.invertsTilt)]
 		title = profile.model
 		self.console = console
 	}
 	
 	init?(fixture: Fixture, library: FixtureLibrary, console: Console) {
 		guard let profile = library.profile(fixture.profileID) else { return nil }
-		targets = [Target(profile: profile, start: fixture.start)]
+		targets = [Target(profile: profile, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)]
 		title = fixture.name
 		tint = fixture.tint.color
 		self.console = console
@@ -29,7 +39,7 @@ struct Programmer {
 	init(fixtures: [Fixture], library: FixtureLibrary, console: Console) {
 		targets = fixtures.compactMap { fixture in
 			guard let profile = library.profile(fixture.profileID) else { return nil }
-			return Target(profile: profile, start: fixture.start)
+			return Target(profile: profile, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)
 		}
 		title = fixtures.count == 1 ? fixtures[0].name : "\(fixtures.count) Lights"
 		self.console = console
@@ -86,13 +96,19 @@ struct Programmer {
 	private func fraction(_ role: ChannelRole, in target: Target) -> Double {
 		guard let coarse = target.profile.channel(role) else { return 0 }
 		let high = Double(value(of: coarse, in: target))
-		guard let fine = target.profile.channel(role, fine: true) else { return high / 255 }
-		return (high * 256 + Double(value(of: fine, in: target))) / 65535
+		var raw = high / 255
+		
+		if let fine = target.profile.channel(role, fine: true) {
+			raw = (high * 256 + Double(value(of: fine, in: target))) / 65535
+		}
+		
+		return target.inverts(role) ? 1 - raw : raw
 	}
 	
 	private func setFraction(_ newValue: Double, for role: ChannelRole, in target: Target) {
 		guard let coarse = target.profile.channel(role) else { return }
-		let clamped = min(max(newValue, 0), 1)
+		let wanted = min(max(newValue, 0), 1)
+		let clamped = target.inverts(role) ? 1 - wanted : wanted
 		
 		guard let fine = target.profile.channel(role, fine: true) else {
 			set(UInt8((clamped * 255).rounded()), of: coarse, in: target)
@@ -336,7 +352,7 @@ struct Programmer {
 	var isSubtractive: Bool { targets.contains { $0.profile.mixing == .subtractive } }
 	
 	func enabledBounds(of parameter: FixtureParameter) -> ClosedRange<Double>? {
-		guard parameter.fine == nil, parameter.isBanded, let active = band(of: parameter), active.kind == .proportional else { return nil }
+		guard parameter.fine == nil, parameter.isBanded, let active = band(of: parameter) else { return nil }
 		return Double(active.from)...Double(active.to)
 	}
 	

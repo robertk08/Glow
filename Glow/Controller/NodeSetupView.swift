@@ -176,8 +176,12 @@ struct NodeSetupView: View {
 		} description: {
 			Text("The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host). Put your iPhone back on that network to control it.")
 		} actions: {
-			Button("Done") { dismiss() }
-				.buttonStyle(.borderedProminent)
+			Button("Done", systemImage: "checkmark") {
+				dismiss()
+			}
+			.font(.headline)
+			.buttonStyle(.glassProminent)
+			.controlSize(.large)
 		}
 	}
 }

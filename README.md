@@ -32,9 +32,13 @@ the grid behind it. On iPad it is an inspector beside the grid. The selection
 stays until you clear it. Tapping Clear drops the selection, and holding it
 offers Release Values, which puts every selected light back where its profile
 says it starts. A group is a saved selection, not a container, so a light can be
-reached on its own or through any group it belongs to. The master fader and the
-momentary blackout hold the accessory whenever nothing is selected, and the iPad
-keeps them in the bottom bar.
+reached on its own or through any group it belongs to. The master fader and
+blackout hold the accessory whenever nothing is selected, and the iPad keeps them
+in the bottom bar.
+
+Blackout latches and pulls only the dimmers down, the same channels and the same
+way the master fader does. A head keeps its position and its colour through a
+blackout, so bringing it back does not mean finding the look again.
 
 Editing is undoable. The patch, the groups, the fixtures built here and the
 scenes all sit in one store with an undo manager, so removing a light or a group
@@ -46,6 +50,11 @@ A light whose fixture profile no longer exists is removed on the next launch.
 Nothing can drive it and nothing can read it, so leaving it in the patch only
 makes a tile that does nothing. This only runs when the fixture library loaded,
 so a bad build cannot take the patch with it.
+
+A moving head can be told to invert pan, tilt or both, because a head hung upside
+down answers a move the wrong way round. The fixture profile carries what is
+usual for that model and each patched light can differ, since it is about how
+that one is rigged.
 
 A light tile is a pane of glass carrying the fixture's own colour in its chip
 and its level bar, and the bar fills to the intensity the light is actually at.

@@ -5,6 +5,11 @@ struct ChannelsView: View {
 	
 	var body: some View {
 		List {
+			Section {
+			} footer: {
+				Text("A slider stays inside the setting the channel is on, so nothing resets a head by accident. Pick another setting below it, or type the value.")
+			}
+			
 			ForEach(programmer.parameters) { parameter in
 				Section {
 					LabeledContent {
