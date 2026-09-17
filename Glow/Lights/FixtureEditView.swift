@@ -11,6 +11,8 @@ struct FixtureEditView: View {
 	
 	@Bindable var fixture: Fixture
 	
+	@State private var isRemoving = false
+	
 	private var profile: FixtureProfile? { library.profile(fixture.profileID) }
 	
 	var body: some View {
@@ -31,7 +33,6 @@ struct FixtureEditView: View {
 							Text(group.name).tag(FixtureGroup?.some(group))
 						}
 					}
-					.labelsHidden()
 				}
 			}
 			
@@ -57,14 +58,19 @@ struct FixtureEditView: View {
 			
 			Section {
 				Button("Remove Light", role: .destructive) {
-					console.remove(fixture, context: context, library: library)
-					dismiss()
+					isRemoving = true
 				}
-			} footer: {
-				Text("Its channels go back to zero on the way out.")
 			}
 		}
 		.navigationTitle(fixture.name)
 		.navigationBarTitleDisplayMode(.inline)
+		.confirmationDialog("Remove \(fixture.name)?", isPresented: $isRemoving, titleVisibility: .visible) {
+			Button("Remove Light", role: .destructive) {
+				console.remove(fixture, context: context, library: library)
+				dismiss()
+			}
+		} message: {
+			Text("Its channels go back to zero and any scene holding it forgets it.")
+		}
 	}
 }

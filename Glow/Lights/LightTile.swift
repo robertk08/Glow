@@ -12,6 +12,8 @@ struct LightTile: View {
 	
 	@Binding var editing: Fixture?
 	
+	@State private var isRemoving = false
+	
 	var body: some View {
 		let profile = library.profile(fixture.profileID)
 		let programmer = Programmer(fixture: fixture, library: library, console: console)
@@ -65,6 +67,7 @@ struct LightTile: View {
 		}
 		.buttonStyle(.plain)
 		.containerShape(.rect(cornerRadius: 24, style: .continuous))
+		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.accessibilityElement(children: .combine)
 		.accessibilityLabel(fixture.name)
 		.accessibilityValue(clashes ? "address clash" : programmer?.spokenState ?? "unpatched")
@@ -83,8 +86,15 @@ struct LightTile: View {
 			}
 			
 			Button("Remove Light", systemImage: "trash", role: .destructive) {
+				isRemoving = true
+			}
+		}
+		.confirmationDialog("Remove \(fixture.name)?", isPresented: $isRemoving, titleVisibility: .visible) {
+			Button("Remove Light", role: .destructive) {
 				console.remove(fixture, context: context, library: library)
 			}
+		} message: {
+			Text("Its channels go back to zero and any scene holding it forgets it.")
 		}
 	}
 }

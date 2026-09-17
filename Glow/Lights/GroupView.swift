@@ -8,6 +8,8 @@ struct GroupView: View {
 	
 	@Bindable var group: FixtureGroup
 	
+	@State private var isDeleting = false
+	
 	var body: some View {
 		Form {
 			Section {
@@ -30,12 +32,19 @@ struct GroupView: View {
 			
 			Section {
 				Button("Delete Group", role: .destructive) {
-					context.delete(group)
-					dismiss()
+					isDeleting = true
 				}
 			}
 		}
 		.navigationTitle(group.name)
 		.navigationBarTitleDisplayMode(.inline)
+		.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+			Button("Delete Group", role: .destructive) {
+				context.delete(group)
+				dismiss()
+			}
+		} message: {
+			Text("The lights in it stay patched.")
+		}
 	}
 }

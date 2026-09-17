@@ -67,6 +67,33 @@ final class ShowLibrary {
 		activate(show)
 	}
 	
+	func duplicate(_ show: Show) {
+		var file = contents(of: show)
+		file.name = Self.unusedName(show.name, among: shows)
+		adopt(file)
+	}
+	
+	func shareable(_ show: Show) -> URL? {
+		let encoder = JSONEncoder()
+		encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+		guard let data = try? encoder.encode(contents(of: show)) else { return nil }
+		let url = URL.temporaryDirectory.appending(path: "\(show.name).json")
+		try? data.write(to: url)
+		return url
+	}
+	
+	static func unusedName(_ base: String, among shows: [Show]) -> String {
+		let taken = Set(shows.map(\.name))
+		guard taken.contains(base) else { return base }
+		var index = 2
+		
+		while taken.contains("\(base) \(index)") {
+			index += 1
+		}
+		
+		return "\(base) \(index)"
+	}
+	
 	func rename(_ show: Show, to name: String) {
 		guard let index = shows.firstIndex(where: { $0.id == show.id }) else { return }
 		shows[index].name = name
@@ -125,7 +152,7 @@ final class ShowLibrary {
 	}
 	
 	func adopt(_ file: ShowFile) {
-		let show = Show(name: file.name)
+		let show = Show(name: Self.unusedName(file.name, among: shows))
 		shows.append(show)
 		Self.save(shows)
 		

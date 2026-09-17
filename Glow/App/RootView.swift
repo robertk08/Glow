@@ -116,6 +116,7 @@ struct RootView: View {
 		}
 		.task {
 			library.setCustom(customProfiles.map(\.profile))
+			console.clearSelection()
 		}
 	}
 }

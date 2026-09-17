@@ -47,7 +47,7 @@ struct ProgrammerView: View {
 						if let speed = programmer.profile?.channel(.movementSpeed) {
 							VStack(alignment: .leading) {
 								Text(speed.name)
-								Slider(value: programmer.binding(speed), in: 0...255, step: 1, neutralValue: Double(speed.defaultValue)) {
+								Slider(value: programmer.binding(speed), in: 0...255, neutralValue: Double(speed.defaultValue)) {
 									Text(speed.name)
 								}
 							}
@@ -67,9 +67,9 @@ struct ProgrammerView: View {
 						}
 						
 						if let active = programmer.adjustableBand(of: channel) {
-							Slider(value: programmer.binding(channel), in: Double(active.from)...Double(active.to), step: 1)
+							Slider(value: programmer.binding(channel), in: Double(active.from)...Double(active.to))
 						} else if channel.ranges.isEmpty {
-							Slider(value: programmer.binding(channel), in: 0...255, step: 1, neutralValue: Double(channel.defaultValue)) {
+							Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
 								Text(channel.name)
 							}
 						}
@@ -89,15 +89,9 @@ struct ProgrammerView: View {
 				}
 				
 				Section {
-					Button("Bring Up") {
-						programmer.home()
-					}
-					
 					Button("Reset to Defaults") {
 						programmer.applyDefaults()
 					}
-				} footer: {
-					Text("Bring Up centres the head, opens it and goes to white. Reset puts every channel back where the fixture profile says it starts.")
 				}
 				
 				if sizeClass == .compact {

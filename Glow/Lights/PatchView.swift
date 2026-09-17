@@ -58,12 +58,17 @@ struct PatchView: View {
 			}
 			
 			Section {
-				Button("Add") {
+				Button("Add to the Patch") {
 					console.patch(profile, count: count, at: address, named: name, among: fixtures, context: context)
 					isPresented = false
 				}
+				.font(.headline)
+				.buttonStyle(.glassProminent)
+				.controlSize(.large)
+				.frame(maxWidth: .infinity)
 				.disabled(!fits)
 			}
+			.listRowBackground(Color.clear)
 		}
 		.navigationTitle(profile.model)
 		.navigationBarTitleDisplayMode(.inline)

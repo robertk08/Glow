@@ -39,7 +39,7 @@ struct MonitorView: View {
 			Toggle("Patched only", systemImage: "line.3.horizontal.decrease", isOn: $monitor.patchedOnly)
 				.toggleStyle(.button)
 		}
-		.sensoryFeedback(.impact(flexibility: .rigid), trigger: monitor.armed)
+		.sensoryFeedback(.impact(flexibility: .rigid), trigger: monitor.adjusting)
 	}
 }
 
@@ -52,7 +52,7 @@ private struct ChannelCell: View {
 	
 	var body: some View {
 		let value = console.universe.values[address - 1]
-		let isArmed = monitor.armed == address
+		let isArmed = monitor.adjusting == address
 		
 		return VStack(spacing: 1) {
 			Text("\(address)")

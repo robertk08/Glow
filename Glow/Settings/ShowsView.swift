@@ -8,6 +8,7 @@ struct ShowsView: View {
 	@State private var newName = ""
 	@State private var renaming: Show?
 	@State private var renamed = ""
+	@State private var deleting: Show?
 	@State private var exporting: ShowDocument?
 	@State private var isImporting = false
 	
@@ -25,26 +26,40 @@ struct ShowsView: View {
 						} label: {
 							Label(show.name, systemImage: "theatermasks.circle")
 						}
+						.contentShape(.rect)
 					}
 					.buttonStyle(.plain)
 					.accessibilityAddTraits(show.id == shows.activeID ? [.isSelected] : [])
 					.swipeActions {
 						Button("Delete", systemImage: "trash", role: .destructive) {
-							shows.delete(show)
+							deleting = show
 						}
 						.disabled(shows.shows.count < 2)
-						
+					}
+					.contextMenu {
 						Button("Rename", systemImage: "pencil") {
 							renaming = show
 							renamed = show.name
 						}
-						.tint(.accentColor)
-					}
-					.swipeActions(edge: .leading) {
-						Button("Export", systemImage: "square.and.arrow.up") {
+						
+						Button("Duplicate", systemImage: "plus.square.on.square") {
+							shows.duplicate(show)
+						}
+						
+						if let url = shows.shareable(show) {
+							ShareLink(item: url) {
+								Label("Share", systemImage: "square.and.arrow.up")
+							}
+						}
+						
+						Button("Save to Files", systemImage: "folder") {
 							exporting = ShowDocument(show: shows.contents(of: show))
 						}
-						.tint(.accentColor)
+						
+						Button("Delete", systemImage: "trash", role: .destructive) {
+							deleting = show
+						}
+						.disabled(shows.shows.count < 2)
 					}
 				}
 			} footer: {
@@ -61,7 +76,7 @@ struct ShowsView: View {
 					isNaming = true
 				}
 			} footer: {
-				Text("A show leaves as one JSON file, so it travels by AirDrop or Files.")
+				Text("Hold a show for Share, Duplicate and Save to Files.")
 			}
 		}
 		.navigationTitle("Shows")
@@ -80,6 +95,16 @@ struct ShowsView: View {
 			NameSheet(title: "Rename Show", prompt: "Show", name: $renamed) { name in
 				shows.rename(show, to: name)
 			}
+		}
+		.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible) {
+			Button("Delete Show", role: .destructive) {
+				if let deleting {
+					shows.delete(deleting)
+				}
+				deleting = nil
+			}
+		} message: {
+			Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
 		}
 	}
 }

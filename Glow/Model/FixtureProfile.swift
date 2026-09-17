@@ -111,6 +111,21 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
 	var emitters: [ChannelRole] { emitterChannels.map(\.role) }
 	
 	var movesHead: Bool { channel(.pan) != nil && channel(.tilt) != nil }
+	
+	var abilities: [String] {
+		var found: [String] = []
+		if dims { found.append("Dimmer") }
+		if mixesColor { found.append(mixing == .subtractive ? "CMY" : "Colour") }
+		if channel(.colorWheel) != nil || channel(.colorMacro) != nil { found.append("Colour wheel") }
+		if movesHead { found.append("Moving head") }
+		if channel(.shutter) != nil { found.append("Strobe") }
+		if channel(.gobo) != nil { found.append("Gobo") }
+		if channel(.zoom) != nil { found.append("Zoom") }
+		if channel(.focus) != nil { found.append("Focus") }
+		if channel(.prism) != nil { found.append("Prism") }
+		if channel(.frost) != nil { found.append("Frost") }
+		return found
+	}
 	var mixesColor: Bool { emitterChannels.count >= 3 }
 	
 	var defaults: [UInt8] {

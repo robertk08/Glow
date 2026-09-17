@@ -36,7 +36,7 @@ struct ChannelEditView: View {
 				LabeledContent("Starts at", value: "\(channel.defaultValue)")
 					.monospacedDigit()
 				
-				Slider(value: Binding { Double(channel.defaultValue) } set: { channel.defaultValue = UInt8($0.rounded()) }, in: 0...255, step: 1) {
+				Slider(value: Binding { Double(channel.defaultValue) } set: { channel.defaultValue = UInt8($0.rounded()) }, in: 0...255) {
 					Text("Starts at")
 				}
 			} footer: {
@@ -100,12 +100,16 @@ private struct RangeSheet: View {
 					LabeledContent("From", value: "\(Int(from))")
 						.monospacedDigit()
 					
-					Slider(value: $from, in: 0...255, step: 1)
+					Slider(value: Binding { from } set: { from = $0.rounded() }, in: 0...255) {
+						Text("From")
+					}
 					
 					LabeledContent("To", value: "\(Int(to))")
 						.monospacedDigit()
 					
-					Slider(value: $to, in: 0...255, step: 1)
+					Slider(value: Binding { to } set: { to = $0.rounded() }, in: 0...255) {
+						Text("To")
+					}
 				} footer: {
 					if to < from {
 						Text("The end has to come after the start.")

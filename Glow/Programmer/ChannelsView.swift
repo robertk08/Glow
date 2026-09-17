@@ -27,7 +27,7 @@ struct ChannelsView: View {
 					}
 					.font(.subheadline)
 					
-					Slider(value: programmer.rawBinding(parameter), in: 0...Double(parameter.maximum), step: 1, neutralValue: parameter.neutral, enabledBounds: programmer.enabledBounds(of: parameter)) {
+					Slider(value: programmer.rawBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral, enabledBounds: programmer.enabledBounds(of: parameter)) {
 						Text(parameter.name)
 					}
 					.tint(parameter.role.color)

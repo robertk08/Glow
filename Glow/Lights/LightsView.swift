@@ -36,12 +36,13 @@ struct LightsView: View {
 						.reorderable()
 					}
 					.padding(.horizontal)
+					.padding(.vertical, 4)
 					.reorderContainer(for: FixtureGroup.self) { difference in
 						console.move(difference, among: groups, sortIndex: \.sortIndex)
 					}
 				}
 				.scrollIndicators(.hidden)
-				.padding(.bottom, 4)
+				.padding(.bottom, 10)
 			}
 			
 			GlassEffectContainer(spacing: 12) {
@@ -102,11 +103,15 @@ struct LightsView: View {
 			}
 		}
 		.sheet(isPresented: $isAdding) {
-			AddLightView(isPresented: $isAdding)
+			NavigationStack {
+				LibraryView(patching: $isAdding)
+			}
 		}
 		.sheet(isPresented: $isNamingGroup) {
 			NameSheet(title: "New Group", prompt: "Group", name: $newGroupName) {
-				context.insert(FixtureGroup(name: $0, sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex)))
+				let group = FixtureGroup(name: $0, sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
+				context.insert(group)
+				editingGroup = group
 			}
 		}
 		.navigationDestination(item: $editingFixture) { fixture in
@@ -139,7 +144,7 @@ private struct GroupChip: View {
 				.font(.subheadline)
 		}
 		.toggleStyle(.button)
-		.buttonStyle(.bordered)
+		.buttonStyle(.glass)
 		.buttonBorderShape(.capsule)
 		.tint(group.tint.color ?? .accentColor)
 		.accessibilityValue("^[\(group.members.count) light](inflect: true)")

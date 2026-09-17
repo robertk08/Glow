@@ -63,7 +63,7 @@ struct ColorControl: View {
 						}
 						.font(.subheadline)
 						
-						Slider(value: programmer.binding(channel), in: 0...255, step: 1, neutralValue: Double(channel.defaultValue)) {
+						Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
 							Text(channel.name)
 						}
 						.tint(channel.role.color)

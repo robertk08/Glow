@@ -193,8 +193,8 @@ final class Console {
 	}
 	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
-		guard let profile = library.profile(fixture.profileID) else { return }
-		universe.set([UInt8](repeating: 0, count: profile.channelCount), at: fixture.start)
+		let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
+		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
 		needsFullFrame = true
 		selection.remove(fixture.persistentModelID)
 		isProgrammerOpen = isProgrammerOpen && hasSelection

@@ -4,8 +4,9 @@ import SwiftUI
 @Observable @MainActor
 final class MonitorModel {
 	var patchedOnly = false
-	private(set) var armed: Int?
+	private(set) var adjusting: Int?
 	
+	private var armed: Int?
 	private var origin: UInt8 = 0
 	private var written: UInt8 = 0
 	
@@ -31,21 +32,23 @@ final class MonitorModel {
 		written = origin
 	}
 	
+	func commit() {
+		armed = nil
+		adjusting = nil
+	}
+	
 	func adjust(_ address: Int, by translation: CGSize, console: Console) {
 		guard armed == address, let target = DMXAddress(address) else { return }
 		let travel = abs(translation.width) > 60 ? 6.0 : 1.5
 		let value = UInt8(min(max(Double(origin) - translation.height / travel, 0), 255).rounded())
 		guard value != written else { return }
 		written = value
+		adjusting = address
 		console.set(value, at: target)
 	}
 	
-	func commit() {
-		armed = nil
-	}
-	
 	func border(_ address: Int, owned: Bool, value: UInt8) -> Color {
-		if armed == address { return .accentColor }
+		if adjusting == address { return .accentColor }
 		if owned { return .accentColor.opacity(0.4) }
 		return value == 0 ? .clear : .orange
 	}

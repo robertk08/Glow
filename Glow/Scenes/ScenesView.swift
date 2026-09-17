@@ -27,6 +27,7 @@ struct ScenesView: View {
 						} label: {
 							Label(look.name, systemImage: "theatermasks")
 						}
+						.contentShape(.rect)
 					}
 					.buttonStyle(.plain)
 					.swipeActions {
