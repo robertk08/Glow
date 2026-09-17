@@ -33,6 +33,8 @@ bool g_scanning    = false;
 
 bool     g_apLost    = false;
 bool     g_apHeld    = false;
+bool     g_apGrace   = false;
+bool     g_apConfirm = false;
 uint32_t g_downSince = 0;
 bool     g_joinFailed = false;
 
@@ -114,8 +116,10 @@ void raiseAp(uint32_t ms) {
 void lowerAp() {
   if (!g_ap) return;
   WiFi.softAPdisconnect(true);
-  g_ap      = false;
-  g_apUntil = 0;
+  g_ap        = false;
+  g_apUntil   = 0;
+  g_apGrace   = false;
+  g_apConfirm = false;
   WiFi.mode(WIFI_STA);
   Serial.printf("setup: \"%s\" is down\n", GLOW_SETUP_SSID);
 }
@@ -208,6 +212,7 @@ void tick() {
       else
         Serial.printf("creds: \"%s\" stored\n", g_trySsid);
       g_apLost  = false;
+      g_apGrace = true;
       g_apUntil = millis() + SETUP_DONE_MS;
       Serial.printf("setup: \"%s\" stays up so the app can confirm\n",
                     GLOW_SETUP_SSID);
@@ -228,6 +233,7 @@ void tick() {
     return;
   }
 
+  if (g_ap && g_apConfirm) lowerAp();
   if (g_ap && g_apUntil && (int32_t)(millis() - g_apUntil) >= 0) lowerAp();
 
   if (!g_sta) {
@@ -258,6 +264,10 @@ void tick() {
     WiFi.disconnect();
     startStation(Creds::ssid(), Creds::user(), Creds::password());
   }
+}
+
+void confirm() {
+  if (g_apGrace) g_apConfirm = true;
 }
 
 const char *joinState() {

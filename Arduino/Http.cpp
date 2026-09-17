@@ -88,6 +88,8 @@ void info(NetworkClient &c) {
   String out;
   serializeJson(doc, out);
   sendJson(c, 200, out);
+
+  if (Net::up() && Net::fromSetupAp(c.remoteIP())) Net::confirm();
 }
 
 void scan(NetworkClient &c) {

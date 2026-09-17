@@ -11,6 +11,7 @@ bool        up();
 bool        apUp();
 bool        provisioned();
 const char *joinState();
+void        confirm();
 const char *id();
 IPAddress   ip();
 
