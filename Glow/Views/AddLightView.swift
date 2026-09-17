@@ -17,7 +17,6 @@ struct AddLightView: View {
 			List {
 				Section {
 					Button("Build a Fixture", systemImage: "slider.horizontal.3") {
-						Haptic.feedback(.rigid)
 						isBuilding = true
 					}
 				}
@@ -27,11 +26,15 @@ struct AddLightView: View {
 						NavigationLink {
 							PatchFixtureView(profile: profile, isPresented: $isPresented)
 						} label: {
-							LabeledContent {
-								Text("\(profile.channelCount) ch")
-									.foregroundStyle(.secondary)
-							} label: {
-								Label(profile.model, systemImage: profile.symbol)
+							Label {
+								VStack(alignment: .leading) {
+									Text(profile.model)
+									Text(profile.mode)
+										.font(.caption)
+										.foregroundStyle(.secondary)
+								}
+							} icon: {
+								Image(systemName: profile.symbol)
 							}
 						}
 					}
@@ -42,9 +45,15 @@ struct AddLightView: View {
 			.searchable(text: $query)
 			.overlay {
 				if results.isEmpty {
-					EmptyStateView(state: .search) {
-						Haptic.feedback(.rigid)
-						isBuilding = true
+					ContentUnavailableView {
+						Label("Nothing Found", systemImage: "magnifyingglass")
+					} description: {
+						Text("Try a different name, or build the fixture yourself.")
+					} actions: {
+						Button("Build a Fixture", systemImage: "slider.horizontal.3") {
+							isBuilding = true
+						}
+						.buttonStyle(.glassProminent)
 					}
 				}
 			}
@@ -113,7 +122,6 @@ struct PatchFixtureView: View {
 			
 			Section {
 				Button("Add") {
-					Haptic.feedback(.success)
 					var next = address
 					var index = (fixtures.map(\.sortIndex).max() ?? 0) + 1
 					let base = name.trimmingCharacters(in: .whitespaces).isEmpty ? profile.model : name

@@ -10,9 +10,22 @@
 		23A53D09305AA40D00460BBB /* Glow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		23A53D20305AA40D00460BBB /* Exceptions for "Glow" folder in "Glow" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 23A53D08305AA40D00460BBB /* Glow */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		23A53D0B305AA40D00460BBB /* Glow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				23A53D20305AA40D00460BBB /* Exceptions for "Glow" folder in "Glow" target */,
+			);
 			path = Glow;
 			sourceTree = "<group>";
 		};
@@ -246,7 +259,7 @@
 				DEVELOPMENT_TEAM = RVY4C99FC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_FILE = Glow/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Glow;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -283,7 +296,7 @@
 				DEVELOPMENT_TEAM = RVY4C99FC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_FILE = Glow/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Glow;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";

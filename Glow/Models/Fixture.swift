@@ -36,6 +36,21 @@ final class Fixture {
 		address...(address + max(1, profile?.channelCount ?? 1) - 1)
 	}
 	
+	@MainActor static func clashing(among fixtures: [Fixture], library: FixtureLibrary) -> Set<PersistentIdentifier> {
+		var found: Set<PersistentIdentifier> = []
+		
+		for (index, fixture) in fixtures.enumerated() {
+			let range = fixture.range(library.profile(fixture.profileID))
+			
+			for other in fixtures.dropFirst(index + 1) where other.range(library.profile(other.profileID)).overlaps(range) {
+				found.insert(fixture.persistentModelID)
+				found.insert(other.persistentModelID)
+			}
+		}
+		
+		return found
+	}
+	
 	@MainActor static func firstFreeAddress(width: Int, among fixtures: [Fixture], library: FixtureLibrary) -> Int {
 		var candidate = 1
 		
@@ -67,6 +82,8 @@ nonisolated enum FixtureSymbol {
 		"camera.aperture", "circle.hexagongrid", "smoke", "cloud.fog", "flame",
 		"lamp.desk", "lamp.floor", "lamp.ceiling", "chandelier", "bolt", "waveform",
 	]
+	
+	static let groups = ["square.stack.3d.up"] + all
 }
 
 nonisolated enum FixtureTint: String, CaseIterable, Identifiable, Sendable {

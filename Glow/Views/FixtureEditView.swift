@@ -20,8 +20,6 @@ struct FixtureEditView: View {
 		}
 	}
 	
-	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-	
 	var body: some View {
 		Form {
 			Section {
@@ -29,20 +27,7 @@ struct FixtureEditView: View {
 			}
 			
 			Section("Icon") {
-				LazyVGrid(columns: columns, spacing: 12) {
-					ForEach(FixtureSymbol.all, id: \.self) { symbol in
-						Button {
-							fixture.symbolOverride = symbol
-						} label: {
-							Image(systemName: symbol)
-								.font(.title3)
-								.frame(width: 44, height: 44)
-								.background(fixture.symbol(profile) == symbol ? Color.accentColor.opacity(0.2) : .clear, in: .circle)
-						}
-						.buttonStyle(.plain)
-					}
-				}
-				.padding(.vertical, 4)
+				IconPicker(symbols: FixtureSymbol.all, symbol: Binding { fixture.symbol(profile) } set: { fixture.symbolOverride = $0 })
 				
 				Picker("Colour", selection: $fixture.tint) {
 					ForEach(FixtureTint.allCases) { tint in

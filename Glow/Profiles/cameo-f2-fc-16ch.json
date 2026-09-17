@@ -1,0 +1,310 @@
+{
+  "id": "cameo-f2-fc-16ch",
+  "manufacturer": "Cameo",
+  "model": "F2 FC",
+  "mode": "16 channel",
+  "symbolName": "light.panel",
+  "channels": [
+    {
+      "offset": 1,
+      "role": "intensity",
+      "name": "Dimmer",
+      "defaultValue": 255
+    },
+    {
+      "offset": 2,
+      "role": "intensity",
+      "name": "Dimmer fine",
+      "isFine": true,
+      "defaultValue": 0
+    },
+    {
+      "offset": 3,
+      "role": "shutter",
+      "name": "Shutter/strobe",
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Open"
+        },
+        {
+          "from": 6,
+          "to": 10,
+          "label": "Closed"
+        },
+        {
+          "from": 11,
+          "to": 33,
+          "label": "Random pulse",
+          "kind": "proportional"
+        },
+        {
+          "from": 34,
+          "to": 56,
+          "label": "Ramp up",
+          "kind": "proportional"
+        },
+        {
+          "from": 57,
+          "to": 79,
+          "label": "Ramp down",
+          "kind": "proportional"
+        },
+        {
+          "from": 80,
+          "to": 102,
+          "label": "Random strobe",
+          "kind": "proportional"
+        },
+        {
+          "from": 103,
+          "to": 127,
+          "label": "Strobe bursts",
+          "kind": "proportional"
+        },
+        {
+          "from": 128,
+          "to": 250,
+          "label": "Strobe 1 to 20 Hz",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 4,
+      "role": "red",
+      "defaultValue": 255
+    },
+    {
+      "offset": 5,
+      "role": "red",
+      "name": "Red fine",
+      "isFine": true,
+      "defaultValue": 0
+    },
+    {
+      "offset": 6,
+      "role": "green",
+      "defaultValue": 255
+    },
+    {
+      "offset": 7,
+      "role": "green",
+      "name": "Green fine",
+      "isFine": true,
+      "defaultValue": 0
+    },
+    {
+      "offset": 8,
+      "role": "blue",
+      "defaultValue": 255
+    },
+    {
+      "offset": 9,
+      "role": "blue",
+      "name": "Blue fine",
+      "isFine": true,
+      "defaultValue": 0
+    },
+    {
+      "offset": 10,
+      "role": "white",
+      "defaultValue": 255
+    },
+    {
+      "offset": 11,
+      "role": "white",
+      "name": "White fine",
+      "isFine": true,
+      "defaultValue": 0
+    },
+    {
+      "offset": 12,
+      "role": "colorTemperature",
+      "name": "Colour temperature",
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Off"
+        },
+        {
+          "from": 6,
+          "to": 8,
+          "label": "2700 K"
+        },
+        {
+          "from": 9,
+          "to": 11,
+          "label": "3200 K"
+        },
+        {
+          "from": 12,
+          "to": 14,
+          "label": "4000 K"
+        },
+        {
+          "from": 15,
+          "to": 17,
+          "label": "5600 K"
+        },
+        {
+          "from": 18,
+          "to": 20,
+          "label": "6500 K"
+        },
+        {
+          "from": 21,
+          "to": 255,
+          "label": "Variable 2700 to 6500 K",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 13,
+      "role": "custom",
+      "name": "Green shift",
+      "defaultValue": 128,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 0,
+          "label": "No function"
+        },
+        {
+          "from": 1,
+          "to": 127,
+          "label": "Minus green",
+          "kind": "proportional"
+        },
+        {
+          "from": 128,
+          "to": 128,
+          "label": "Neutral"
+        },
+        {
+          "from": 129,
+          "to": 255,
+          "label": "Plus green",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 14,
+      "role": "colorMacro",
+      "name": "Colour macro",
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 25,
+          "label": "Off",
+          "releasesMix": true
+        },
+        {
+          "from": 26,
+          "to": 26,
+          "label": "Red"
+        },
+        {
+          "from": 97,
+          "to": 97,
+          "label": "Orange"
+        },
+        {
+          "from": 105,
+          "to": 105,
+          "label": "Yellow"
+        },
+        {
+          "from": 130,
+          "to": 130,
+          "label": "Cyan"
+        },
+        {
+          "from": 140,
+          "to": 140,
+          "label": "Blue"
+        },
+        {
+          "from": 149,
+          "to": 149,
+          "label": "Dark blue"
+        },
+        {
+          "from": 166,
+          "to": 166,
+          "label": "Purple"
+        },
+        {
+          "from": 178,
+          "to": 178,
+          "label": "Magenta"
+        },
+        {
+          "from": 183,
+          "to": 183,
+          "label": "Pink"
+        },
+        {
+          "from": 209,
+          "to": 209,
+          "label": "Green"
+        },
+        {
+          "from": 245,
+          "to": 245,
+          "label": "White"
+        }
+      ]
+    },
+    {
+      "offset": 15,
+      "role": "speed",
+      "name": "Fade time",
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Off"
+        },
+        {
+          "from": 6,
+          "to": 105,
+          "label": "0.1 to 10 s",
+          "kind": "proportional"
+        },
+        {
+          "from": 106,
+          "to": 214,
+          "label": "11 to 119 s",
+          "kind": "proportional"
+        },
+        {
+          "from": 215,
+          "to": 244,
+          "label": "120 to 290 s",
+          "kind": "proportional"
+        },
+        {
+          "from": 245,
+          "to": 255,
+          "label": "300 to 900 s",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 16,
+      "role": "custom",
+      "name": "Control",
+      "defaultValue": 0
+    }
+  ]
+}

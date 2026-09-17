@@ -27,7 +27,6 @@ struct NodeView: View {
 				.disabled(!console.link.isConnected)
 				
 				Button("Change Wi-Fi Network") {
-					Haptic.feedback(.rigid)
 					isSettingUp = true
 				}
 				
@@ -51,6 +50,7 @@ struct NodeView: View {
 							} label: {
 								Text(endpoint.name)
 							}
+							.contentShape(.rect)
 						}
 						.buttonStyle(.plain)
 					}

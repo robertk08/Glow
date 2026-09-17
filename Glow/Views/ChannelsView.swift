@@ -23,7 +23,6 @@ struct ChannelsView: View {
 							if range.requiresConfirmation {
 								confirming = (parameter, range)
 							} else {
-								Haptic.feedback(.selection)
 								control.set(range.midpoint, of: parameter.coarse)
 							}
 						}) {
@@ -44,7 +43,7 @@ struct ChannelsView: View {
 		}
 		.navigationTitle("Channels")
 		.navigationBarTitleDisplayMode(.inline)
-		.alert("Set \(editing?.name ?? "")", isPresented: .constant(editing != nil)) {
+		.alert("Set \(editing?.name ?? "")", isPresented: Binding { editing != nil } set: { _ in editing = nil }) {
 			TextField("0 to \(editing?.maximum ?? 255)", text: $entry)
 				.keyboardType(.numberPad)
 			Button("Cancel", role: .cancel) { editing = nil }
@@ -55,7 +54,7 @@ struct ChannelsView: View {
 				editing = nil
 			}
 		}
-		.alert("Send \(confirming?.1.label ?? "")?", isPresented: .constant(confirming != nil)) {
+		.alert("Send \(confirming?.1.label ?? "")?", isPresented: Binding { confirming != nil } set: { _ in confirming = nil }) {
 			Button("Cancel", role: .cancel) { confirming = nil }
 			Button("Send", role: .destructive) {
 				if let (parameter, range) = confirming {

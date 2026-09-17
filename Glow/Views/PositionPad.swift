@@ -12,7 +12,7 @@ struct PositionPad: View {
 			let position = CGPoint(x: pan * size.width, y: (1 - tilt) * size.height)
 			
 			ZStack {
-				Rectangle()
+				RoundedRectangle(cornerRadius: 12)
 					.fill(.fill.tertiary)
 				
 				Path { path in
@@ -29,7 +29,7 @@ struct PositionPad: View {
 					.position(position)
 					.animation(.snappy(duration: 0.15), value: isDragging)
 			}
-			.contentShape(.rect)
+			.contentShape(.rect(cornerRadius: 12))
 			.gesture(
 				DragGesture(minimumDistance: 0)
 					.onChanged { value in

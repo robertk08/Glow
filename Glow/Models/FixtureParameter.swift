@@ -8,7 +8,6 @@ struct FixtureParameter: Identifiable {
 	var name: String { coarse.name }
 	var role: ChannelRole { coarse.role }
 	var ranges: [ChannelRange] { coarse.ranges }
-	var isWide: Bool { fine != nil }
-	var maximum: Int { isWide ? 65535 : 255 }
+	var maximum: Int { fine != nil ? 65535 : 255 }
 	var isBanded: Bool { ranges.count > 1 }
 }

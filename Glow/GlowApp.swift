@@ -15,6 +15,6 @@ struct GlowApp: App {
 				.environment(discovery)
 				.task { console.start() }
 		}
-		.modelContainer(for: [Fixture.self, FixtureGroup.self, CustomProfile.self])
+		.modelContainer(for: [Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self])
 	}
 }

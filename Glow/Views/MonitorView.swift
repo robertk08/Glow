@@ -7,61 +7,40 @@ struct MonitorView: View {
 	@Query(sort: \Fixture.address) private var fixtures: [Fixture]
 	
 	@State private var patchedOnly = false
-	@State private var isAdding = false
 	
 	private let columns = [GridItem(.adaptive(minimum: 54, maximum: 74), spacing: 4)]
 	
-	private var owners: [Int: String] {
-		var map: [Int: String] = [:]
+	private var owners: Set<Int> {
+		var found: Set<Int> = []
+		
 		for fixture in fixtures {
-			for address in fixture.range(library.profile(fixture.profileID)) {
-				map[address] = fixture.name
-			}
+			found.formUnion(fixture.range(library.profile(fixture.profileID)))
 		}
-		return map
+		
+		return found
 	}
 	
 	private var addresses: [Int] {
-		let all = Array(DMXAddress.range)
-		guard patchedOnly else { return all }
 		let owned = owners
-		return all.filter { owned[$0] != nil }
+		guard patchedOnly else { return Array(DMXAddress.range) }
+		return DMXAddress.range.filter(owned.contains)
 	}
 	
 	var body: some View {
-		NavigationStack {
-			Group {
-				if fixtures.isEmpty {
-					EmptyStateView(state: .monitor) {
-						Haptic.feedback(.rigid)
-						isAdding = true
-					}
-				} else {
-					grid
-				}
-			}
-			.navigationTitle("Monitor")
-			.toolbar {
-				if !fixtures.isEmpty {
-					Toggle("Patched only", systemImage: "line.3.horizontal.decrease", isOn: $patchedOnly)
-						.toggleStyle(.button)
-				}
-			}
-			.sheet(isPresented: $isAdding) {
-				AddLightView(isPresented: $isAdding)
-			}
-		}
-	}
-	
-	private var grid: some View {
 		ScrollView {
 			LazyVGrid(columns: columns, spacing: 4) {
 				ForEach(addresses, id: \.self) { address in
-					ChannelCell(address: address, value: console.universe.values[address - 1], owned: owners[address] != nil)
+					ChannelCell(address: address, value: console.universe.values[address - 1], owned: owners.contains(address))
 				}
 			}
 			.padding(.horizontal)
 			.padding(.bottom)
+		}
+		.navigationTitle("DMX Output")
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar {
+			Toggle("Patched only", systemImage: "line.3.horizontal.decrease", isOn: $patchedOnly)
+				.toggleStyle(.button)
 		}
 	}
 }

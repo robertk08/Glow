@@ -1,27 +1,21 @@
-import SwiftData
 import SwiftUI
 
-struct FixtureView: View {
+struct ControlSheet: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
 	
-	@Bindable var fixture: Fixture
+	let control: SelectionControl
 	
 	@State private var confirmingRange: ChannelRange?
 	@State private var confirmingChannel: ProfileChannel?
 	
-	private var profile: FixtureProfile? { library.profile(fixture.profileID) }
-	
-	private var control: FixtureControl? {
-		guard let profile else { return nil }
-		return FixtureControl(profile: profile, start: fixture.start, console: console)
-	}
-	
 	var body: some View {
-		Form {
-			if let profile, let control {
+		NavigationStack {
+			Form {
 				if control.dims {
 					Section("Brightness") {
+						LabeledContent("Level", value: control.brightness, format: .percent.precision(.fractionLength(0)))
+							.monospacedDigit()
+						
 						Slider(value: control.brightnessBinding, in: 0...1) {
 							Text("Brightness")
 						} minimumValueLabel: {
@@ -32,14 +26,13 @@ struct FixtureView: View {
 					}
 				}
 				
-				if profile.mixesColor {
+				if control.mixesColor {
 					ColorControl(control: control)
 				}
 				
-				if profile.movesHead {
+				if control.movesHead {
 					Section("Position") {
 						PositionPad(pan: control.fractionBinding(.pan), tilt: control.fractionBinding(.tilt))
-							.listRowInsets(EdgeInsets())
 						
 						VStack(alignment: .leading) {
 							Text("Pan")
@@ -51,7 +44,7 @@ struct FixtureView: View {
 							Slider(value: control.fractionBinding(.tilt))
 						}
 						
-						if let speed = profile.channel(.movementSpeed) {
+						if let speed = control.profile?.channel(.movementSpeed) {
 							VStack(alignment: .leading) {
 								Text(speed.name)
 								Slider(value: control.binding(speed), in: 0...255, step: 1)
@@ -59,9 +52,7 @@ struct FixtureView: View {
 						}
 						
 						Button("Centre") {
-							Haptic.feedback(.rigid)
-							control.setFraction(0.5, for: .pan)
-							control.setFraction(0.5, for: .tilt)
+							control.centre()
 						}
 					}
 				}
@@ -69,14 +60,13 @@ struct FixtureView: View {
 				ForEach(control.settings) { channel in
 					Section(channel.name) {
 						if channel.ranges.count > 1 {
-							Picker(channel.name, selection: Binding { channel.range(containing: control.value(of: channel))?.id ?? "" } set: { id in
+							Picker(channel.name, selection: Binding { control.band(of: channel)?.id ?? "" } set: { id in
 								guard let range = channel.ranges.first(where: { $0.id == id }) else { return }
 								
 								if range.requiresConfirmation {
 									confirmingRange = range
 									confirmingChannel = channel
 								} else {
-									Haptic.feedback(.selection)
 									control.set(range.midpoint, of: channel)
 								}
 							}) {
@@ -87,7 +77,7 @@ struct FixtureView: View {
 							.labelsHidden()
 						}
 						
-						if let active = channel.range(containing: control.value(of: channel)), active.kind == .proportional {
+						if let active = control.band(of: channel), active.kind == .proportional {
 							Slider(value: control.binding(channel), in: Double(active.from)...Double(active.to), step: 1)
 						} else if channel.ranges.count <= 1 {
 							Slider(value: control.binding(channel), in: 0...255, step: 1)
@@ -96,55 +86,49 @@ struct FixtureView: View {
 				}
 				
 				Section {
-					NavigationLink("All Channels") {
-						ChannelsView(control: control)
-					}
-				}
-				
-				Section {
 					Button("Bring Up") {
-						Haptic.feedback(.rigid)
 						control.home()
 					}
 					
 					Button("Reset to Defaults") {
-						Haptic.feedback(.rigid)
 						control.applyDefaults()
+					}
+					
+					if let single = control.single {
+						NavigationLink("All Channels") {
+							ChannelsView(control: single)
+						}
 					}
 				} footer: {
 					Text("Bring Up centres the head, opens it and goes to white. Reset puts every channel back where the fixture profile says it starts.")
 				}
-			} else {
-				Section {
-					ContentUnavailableView("Unknown Fixture", systemImage: "questionmark.circle", description: Text("Its profile is missing. Change it to control this light again."))
+			}
+			.navigationTitle(control.title)
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbar {
+				ToolbarItem(placement: .confirmationAction) {
+					Button("Done") {
+						console.selection.removeAll()
+					}
 				}
 			}
-		}
-		.navigationTitle(fixture.name)
-		.navigationBarTitleDisplayMode(.inline)
-		.toolbar {
-			NavigationLink {
-				FixtureEditView(fixture: fixture)
-			} label: {
-				Image(systemName: "slider.horizontal.3")
-			}
-		}
-		.alert(confirmingRange?.label ?? "", isPresented: Binding { confirmingRange != nil } set: { _ in confirmingRange = nil }) {
-			Button("Cancel", role: .cancel) {
-				confirmingRange = nil
-				confirmingChannel = nil
-			}
-			
-			Button("Send", role: .destructive) {
-				if let confirmingRange, let confirmingChannel, let control {
-					control.set(confirmingRange.midpoint, of: confirmingChannel)
+			.alert(confirmingRange?.label ?? "", isPresented: Binding { confirmingRange != nil } set: { _ in confirmingRange = nil }) {
+				Button("Cancel", role: .cancel) {
+					confirmingRange = nil
+					confirmingChannel = nil
 				}
 				
-				confirmingRange = nil
-				confirmingChannel = nil
+				Button("Send", role: .destructive) {
+					if let confirmingRange, let confirmingChannel {
+						control.set(confirmingRange.midpoint, of: confirmingChannel)
+					}
+					
+					confirmingRange = nil
+					confirmingChannel = nil
+				}
+			} message: {
+				Text("The light stops responding for a few seconds.")
 			}
-		} message: {
-			Text("The light stops responding for a few seconds.")
 		}
 	}
 }

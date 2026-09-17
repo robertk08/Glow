@@ -9,8 +9,6 @@ struct CustomFixtureView: View {
 	@State private var symbol = "lightbulb"
 	@State private var channels: [CustomChannel] = [CustomChannel(role: .intensity, name: "")]
 	
-	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
-	
 	private var canSave: Bool {
 		!name.trimmingCharacters(in: .whitespaces).isEmpty && !channels.isEmpty
 	}
@@ -26,21 +24,7 @@ struct CustomFixtureView: View {
 				}
 				
 				Section("Icon") {
-					LazyVGrid(columns: columns, spacing: 12) {
-						ForEach(FixtureSymbol.all, id: \.self) { option in
-							Button {
-								Haptic.feedback(.selection)
-								symbol = option
-							} label: {
-								Image(systemName: option)
-									.font(.title3)
-									.frame(width: 44, height: 44)
-									.background(symbol == option ? Color.accentColor.opacity(0.2) : .clear, in: .circle)
-							}
-							.buttonStyle(.plain)
-						}
-					}
-					.padding(.vertical, 4)
+					IconPicker(symbols: FixtureSymbol.all, symbol: $symbol)
 				}
 				
 				Section {
@@ -61,7 +45,6 @@ struct CustomFixtureView: View {
 					.onMove { channels.move(fromOffsets: $0, toOffset: $1) }
 					
 					Button("Add Channel", systemImage: "plus") {
-						Haptic.feedback(.rigid)
 						channels.append(CustomChannel(role: .custom, name: ""))
 					}
 				} header: {
@@ -79,7 +62,6 @@ struct CustomFixtureView: View {
 				
 				ToolbarItem(placement: .confirmationAction) {
 					Button("Save") {
-						Haptic.feedback(.success)
 						context.insert(CustomProfile(name: name.trimmingCharacters(in: .whitespaces), symbol: symbol, channels: channels))
 						dismiss()
 					}

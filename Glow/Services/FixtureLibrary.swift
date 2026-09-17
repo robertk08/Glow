@@ -9,25 +9,14 @@ final class FixtureLibrary {
 	var profiles: [FixtureProfile] { custom + bundled }
 	
 	init() {
-		load()
-	}
-	
-	private func load() {
 		let decoder = JSONDecoder()
-		let inFolder = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "Profiles") ?? []
-		let urls = inFolder.isEmpty
-			? Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
-			: inFolder
 		
-		bundled = urls
-			.compactMap { url -> FixtureProfile? in
-				guard let data = try? Data(contentsOf: url),
-					  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-					  object["channels"] is [Any]
-				else { return nil }
+		bundled = (Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
+			.compactMap { url in
+				guard let data = try? Data(contentsOf: url) else { return nil }
 				return try? decoder.decode(FixtureProfile.self, from: data)
 			}
-			.sorted { ($0.manufacturer, $0.model) < ($1.manufacturer, $1.model) }
+			.sorted { ($0.manufacturer, $0.model, $0.channelCount) < ($1.manufacturer, $1.model, $1.channelCount) }
 	}
 	
 	func setCustom(_ profiles: [FixtureProfile]) {

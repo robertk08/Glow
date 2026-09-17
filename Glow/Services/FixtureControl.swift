@@ -19,37 +19,6 @@ struct FixtureControl {
 		self.console = console
 	}
 	
-	var hue: Double {
-		get { mix.light.normalised.hue / 360 }
-		nonmutating set { apply(.mixing(LightColor(hue: newValue, saturation: saturation), with: profile.emitterChannels.map(\.role))) }
-	}
-	
-	var saturation: Double {
-		get { mix.light.normalised.saturation }
-		nonmutating set { apply(.mixing(LightColor(hue: hue, saturation: newValue), with: profile.emitterChannels.map(\.role))) }
-	}
-	
-	var kelvin: Double {
-		get { ColorTemperature.nearest(to: mix.light.normalised) ?? ColorTemperature.neutral }
-		nonmutating set { apply(.white(kelvin: newValue, with: profile.emitterChannels.map(\.role))) }
-	}
-	
-	var balancesWhite: Bool {
-		profile.channel(.white) != nil || profile.channel(.amber) != nil
-	}
-	
-	var hueBinding: Binding<Double> {
-		Binding { hue } set: { hue = $0 }
-	}
-	
-	var saturationBinding: Binding<Double> {
-		Binding { saturation } set: { saturation = $0 }
-	}
-	
-	var kelvinBinding: Binding<Double> {
-		Binding { kelvin } set: { kelvin = $0 }
-	}
-	
 	func address(of channel: ProfileChannel) -> DMXAddress? {
 		start.offset(by: channel.offset - 1)
 	}
@@ -61,10 +30,6 @@ struct FixtureControl {
 	func set(_ value: UInt8, of channel: ProfileChannel) {
 		guard let address = address(of: channel) else { return }
 		console.set(value, at: address)
-	}
-	
-	func binding(_ channel: ProfileChannel) -> Binding<Double> {
-		Binding { Double(value(of: channel)) } set: { set(UInt8(min(max($0.rounded(), 0), 255)), of: channel) }
 	}
 	
 	func fraction(_ role: ChannelRole) -> Double {
@@ -86,10 +51,6 @@ struct FixtureControl {
 		let combined = UInt16((clamped * 65535).rounded())
 		set(UInt8(combined >> 8), of: coarse)
 		set(UInt8(combined & 0xFF), of: fine)
-	}
-	
-	func fractionBinding(_ role: ChannelRole) -> Binding<Double> {
-		Binding(get: { fraction(role) }, set: { setFraction($0, for: role) })
 	}
 	
 	var dims: Bool { profile.dims }
@@ -143,10 +104,6 @@ struct FixtureControl {
 		}
 	}
 	
-	var brightnessBinding: Binding<Double> {
-		Binding(get: { brightness }, set: { brightness = $0 })
-	}
-	
 	var dimmers: [Console.Dimmer] {
 		switch profile.dimming {
 		case let .channel(channel):
@@ -186,6 +143,10 @@ struct FixtureControl {
 	
 	var displayColor: Color {
 		mix.light.color
+	}
+	
+	var displayInk: Color {
+		mix.light.contrastingInk
 	}
 	
 	var macro: ProfileChannel? {

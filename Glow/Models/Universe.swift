@@ -35,8 +35,4 @@ nonisolated struct Universe: Sendable, Equatable {
 			self[target] = value
 		}
 	}
-	
-	func values(from address: DMXAddress, count: Int) -> [UInt8] {
-		(0..<count).map { address.offset(by: $0).map { self[$0] } ?? 0 }
-	}
 }

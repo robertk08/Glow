@@ -9,13 +9,21 @@ a dumb output that clocks whatever it is sent onto the DMX line. Fixture support
 is therefore a JSON file in the app, never a reflash.
 
 ```
-Glow/                 the iOS app
-  Models/             value types - universe, profiles, colour maths
-  Services/           console, socket, discovery, setup, library
-  Views/              Lights, Settings
-  Resources/Profiles/ bundled fixture profiles
-firmware/dmx_console/ the ESP32-S3 sketch
+Glow/        the iOS app
+  Models/    value types - universe, profiles, colour maths
+  Services/  console, socket, discovery, setup, library
+  Views/     one file per screen
+  Profiles/  bundled fixture profiles
+firmware/    the ESP32-S3 sketch
 ```
+
+Selecting lights is how you control them. Tap one or several in Lights and a
+control sheet drives the whole selection at once, the way a grandMA programmer
+does. A group is a saved selection, not a container, so a light can be reached
+on its own or through any group it belongs to. The master fader and the
+momentary blackout sit in the tab bar accessory and stay reachable everywhere.
+
+A scene stores all 512 channels as they are and puts them back on one tap.
 
 ## Setting up a controller
 

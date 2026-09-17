@@ -32,11 +32,15 @@ struct LibraryView: View {
 					NavigationLink {
 						ProfileView(profile: profile)
 					} label: {
-						LabeledContent {
-							Text("\(profile.channelCount) ch")
-								.foregroundStyle(.secondary)
-						} label: {
-							Label(profile.model, systemImage: profile.symbol)
+						Label {
+							VStack(alignment: .leading) {
+								Text(profile.model)
+								Text(profile.mode)
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						} icon: {
+							Image(systemName: profile.symbol)
 						}
 					}
 				}

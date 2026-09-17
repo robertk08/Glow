@@ -7,12 +7,6 @@ nonisolated struct LightColor: Equatable, Sendable {
 	
 	static let black = LightColor(red: 0, green: 0, blue: 0)
 	
-	init(red: Double, green: Double, blue: Double) {
-		self.red = red
-		self.green = green
-		self.blue = blue
-	}
-	
 	var peak: Double { max(red, max(green, blue)) }
 	
 	var normalised: LightColor { peak > 0 ? self * (1 / peak) : self }
@@ -44,27 +38,6 @@ nonisolated struct LightColor: Equatable, Sendable {
 }
 
 nonisolated extension LightColor {
-	var hue: Double {
-		let high = peak
-		let low = min(red, min(green, blue))
-		let delta = high - low
-		guard delta > 0 else { return 0 }
-		
-		let sector: Double =
-			if high == red { (green - blue) / delta }
-			else if high == green { (blue - red) / delta + 2 }
-			else { (red - green) / delta + 4 }
-		
-		let turns = sector / 6
-		return turns < 0 ? turns + 1 : turns
-	}
-	
-	var saturation: Double {
-		let high = peak
-		guard high > 0 else { return 0 }
-		return (high - min(red, min(green, blue))) / high
-	}
-	
 	init(hue: Double, saturation: Double) {
 		let h = (hue - hue.rounded(.down)) * 6
 		let sector = Int(h)
@@ -82,9 +55,7 @@ nonisolated extension LightColor {
 		default: self.init(red: 1, green: p, blue: q)
 		}
 	}
-}
-
-nonisolated extension LightColor {
+	
 	var color: Color {
 		let c = clamped
 		return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
@@ -94,6 +65,15 @@ nonisolated extension LightColor {
 		let c = clamped
 		let luma = 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue
 		return luma > 0.55 ? .black : .white
+	}
+	
+	@MainActor init(_ color: Color) {
+		var red: CGFloat = 0
+		var green: CGFloat = 0
+		var blue: CGFloat = 0
+		var alpha: CGFloat = 0
+		UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+		self.init(red: red, green: green, blue: blue)
 	}
 }
 
@@ -122,29 +102,21 @@ nonisolated enum ColorTemperature {
 		return LightColor(red: red / 255, green: green / 255, blue: blue / 255).clamped.normalised
 	}
 	
-	private struct Sample: Sendable {
-		let kelvin: Double
-		let light: LightColor
-	}
-	
-	private static let locus: [Sample] = stride(from: range.lowerBound, through: range.upperBound, by: 50)
-		.map { Sample(kelvin: $0, light: light(kelvin: $0)) }
-	
-	static func nearest(to light: LightColor, tolerance: Double = 0.045) -> Double? {
+	static func nearest(to light: LightColor) -> Double? {
 		let target = light.normalised
-		var best: Sample?
+		var best = range.lowerBound
 		var bestDistance = Double.infinity
 		
-		for sample in locus {
-			let distance = sample.light.distance(to: target)
+		for kelvin in stride(from: range.lowerBound, through: range.upperBound, by: 50) {
+			let distance = self.light(kelvin: kelvin).distance(to: target)
 			if distance < bestDistance {
 				bestDistance = distance
-				best = sample
+				best = kelvin
 			}
 		}
 		
-		guard let best, bestDistance <= tolerance else { return nil }
-		return best.kelvin
+		guard bestDistance <= 0.045 else { return nil }
+		return best
 	}
 }
 
@@ -176,8 +148,6 @@ nonisolated enum Emitter {
 	static let mixingOrder: [ChannelRole] = [
 		.white, .amber, .lime, .cyan, .magenta, .yellow, .red, .green, .blue,
 	]
-	
-	static func mixable(_ role: ChannelRole) -> Bool { role != .uv && light(of: role) != nil }
 }
 
 nonisolated struct EmitterMix: Equatable, Sendable {
@@ -206,18 +176,11 @@ nonisolated struct EmitterMix: Equatable, Sendable {
 			return total + emitter * entry.value
 		}
 	}
-	
-	func matches(_ other: EmitterMix, tolerance: Double = 0.05) -> Bool {
-		let lhs = normalised
-		let rhs = other.normalised
-		let roles = Set(lhs.levels.keys).union(rhs.levels.keys)
-		return roles.allSatisfy { abs(lhs[$0] - rhs[$0]) <= tolerance }
-	}
 }
 
 nonisolated extension EmitterMix {
 	static func mixing(_ target: LightColor, with available: [ChannelRole]) -> EmitterMix {
-		let emitters = available.filter(Emitter.mixable)
+		let emitters = available.filter { $0 != .uv && Emitter.light(of: $0) != nil }
 		guard !emitters.isEmpty else { return EmitterMix() }
 		
 		var residual = target.normalised.clamped
@@ -262,57 +225,6 @@ nonisolated extension EmitterMix {
 	}
 }
 
-nonisolated enum ColorVocabulary {
-	static func name(of light: LightColor) -> String {
-		let colour = light.normalised
-		
-		guard colour.peak > 0 else { return "Off" }
-		
-		if let kelvin = ColorTemperature.nearest(to: colour) {
-			return whiteName(kelvin: kelvin)
-		}
-		
-		if colour.saturation < 0.12 { return "White" }
-		
-		let name = hueName(colour.hue)
-		return colour.saturation < 0.45 ? "Pale \(name.lowercased())" : name
-	}
-	
-	static func whiteName(kelvin: Double) -> String {
-		switch kelvin {
-		case ..<2400: "Candle white"
-		case ..<3100: "Warm white"
-		case ..<4600: "Neutral white"
-		case ..<5800: "Daylight white"
-		default: "Cool white"
-		}
-	}
-	
-	static func hueName(_ hue: Double) -> String {
-		switch (hue * 360).truncatingRemainder(dividingBy: 360) {
-		case ..<12: "Red"
-		case ..<32: "Orange"
-		case ..<45: "Amber"
-		case ..<64: "Yellow"
-		case ..<80: "Lime"
-		case ..<150: "Green"
-		case ..<172: "Sea green"
-		case ..<196: "Cyan"
-		case ..<215: "Sky blue"
-		case ..<250: "Blue"
-		case ..<270: "Indigo"
-		case ..<292: "Violet"
-		case ..<320: "Magenta"
-		case ..<345: "Pink"
-		default: "Red"
-		}
-	}
-	
-	static func hueDescription(_ hue: Double) -> String {
-		"\(Int((hue * 360).rounded())) degrees, \(hueName(hue).lowercased())"
-	}
-}
-
 nonisolated struct ColorPreset: Identifiable, Equatable, Sendable {
 	enum Recipe: Equatable, Sendable {
 		case white(kelvin: Double)
@@ -333,8 +245,12 @@ nonisolated struct ColorPreset: Identifiable, Equatable, Sendable {
 		}
 	}
 	
-	func swatch(with emitters: [ChannelRole]) -> LightColor {
-		mix(with: emitters).light.normalised
+	var swatch: LightColor {
+		switch recipe {
+		case let .white(kelvin): ColorTemperature.light(kelvin: kelvin)
+		case let .colour(light): light
+		case .ultraviolet: Emitter.light(of: .uv) ?? .black
+		}
 	}
 	
 	static func all(for emitters: [ChannelRole]) -> [ColorPreset] {

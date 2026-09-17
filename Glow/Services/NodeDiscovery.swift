@@ -6,7 +6,6 @@ import os
 @Observable @MainActor
 final class NodeDiscovery {
 	private(set) var endpoints: [NodeEndpoint] = []
-	private(set) var isDenied = false
 	
 	private var browser: NWBrowser?
 	
@@ -14,13 +13,6 @@ final class NodeDiscovery {
 		guard browser == nil else { return }
 		
 		let browser = NWBrowser(for: .bonjour(type: "_glow._tcp", domain: nil), using: NWParameters())
-		
-		browser.stateUpdateHandler = { [weak self] state in
-			Task { @MainActor in
-				guard case let .failed(error) = state else { return }
-				self?.isDenied = "\(error)".localizedCaseInsensitiveContains("policy")
-			}
-		}
 		
 		browser.browseResultsChangedHandler = { [weak self] results, _ in
 			Task { @MainActor in

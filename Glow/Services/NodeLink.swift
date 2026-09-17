@@ -59,13 +59,6 @@ actor NodeLink {
 		}
 	}
 	
-	func disconnect() {
-		supervisor?.cancel()
-		supervisor = nil
-		close()
-		continuation.yield(.state(.offline))
-	}
-	
 	func send(start: DMXAddress, values: [UInt8]) {
 		socket?.send(.data(Wire.frame(start: start, values: values))) { _ in }
 	}

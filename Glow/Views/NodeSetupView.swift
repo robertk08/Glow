@@ -65,7 +65,6 @@ struct NodeSetupView: View {
 				Section {
 					ForEach(model.networks) { network in
 						Button {
-							Haptic.feedback(.selection)
 							model.choose(network: network)
 							
 							if !network.secure {
@@ -85,6 +84,7 @@ struct NodeSetupView: View {
 							} label: {
 								Text(network.ssid)
 							}
+							.contentShape(.rect)
 						}
 						.buttonStyle(.plain)
 					}

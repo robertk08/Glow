@@ -1,4 +1,5 @@
 import Observation
+import SwiftData
 import SwiftUI
 
 @Observable @MainActor
@@ -7,6 +8,8 @@ final class Console {
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
+	
+	var selection: Set<PersistentIdentifier> = []
 	
 	var master: Double = 1 {
 		didSet { needsFullFrame = true }
@@ -120,6 +123,41 @@ final class Console {
 	
 	func set(_ values: [UInt8], at address: DMXAddress) {
 		universe.set(values, at: address)
+	}
+	
+	func isSelected(_ fixture: Fixture) -> Bool {
+		selection.contains(fixture.persistentModelID)
+	}
+	
+	func isSelected(_ group: FixtureGroup) -> Bool {
+		let members = Set(group.members.map(\.persistentModelID))
+		return !members.isEmpty && members.isSubset(of: selection)
+	}
+	
+	func toggle(_ fixture: Fixture) {
+		if selection.contains(fixture.persistentModelID) {
+			selection.remove(fixture.persistentModelID)
+		} else {
+			selection.insert(fixture.persistentModelID)
+		}
+	}
+	
+	func toggle(_ group: FixtureGroup) {
+		let members = Set(group.members.map(\.persistentModelID))
+		if members.isSubset(of: selection) {
+			selection.subtract(members)
+		} else {
+			selection.formUnion(members)
+		}
+	}
+	
+	func control(among fixtures: [Fixture], library: FixtureLibrary) -> SelectionControl {
+		SelectionControl(fixtures: fixtures.filter(isSelected), library: library, console: self)
+	}
+	
+	func recall(_ look: Look) {
+		universe.set(look.channels, at: DMXAddress(1)!)
+		needsFullFrame = true
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
