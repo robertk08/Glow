@@ -13,7 +13,6 @@ int  getSlot(int slot);
 bool writeRange(int start, const uint8_t *values, int length);
 void clear();
 
-bool setRefreshHz(int hz);
 int  refreshHz();
 
 void setBlackout(bool on);

@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
 #include <esp_timer.h>
+#include <string.h>
 
 namespace Link {
 namespace {
@@ -28,8 +29,13 @@ Sockets g_ws;
 
 bool g_running = false;
 
-const uint8_t OP_DMX     = 0x01;
-const size_t  DMX_HEADER = 6;
+const uint8_t  OP_OUTPUT  = 0x01;
+const uint8_t  OP_SOURCE  = 0x02;
+const size_t   DMX_HEADER = 6;
+const uint16_t SLOTS      = 512;
+
+uint8_t g_source[DMX_HEADER + SLOTS];
+bool    g_haveSource = false;
 
 const uint32_t WS_PING_MS    = 15000;
 const uint32_t WS_PONG_MS    = 4000;
@@ -52,8 +58,8 @@ size_t buildStatus() {
   doc["fw"] = GLOW_FW_VERSION;
   doc["id"] = Net::id();
   doc["name"] = GLOW_NODE_NAME;
-  doc["hz"] = DmxBus::refreshHz();
   doc["blackout"] = DmxBus::blackout();
+  doc["src"] = g_haveSource;
   doc["uptime"] = (uint32_t)(esp_timer_get_time() / 1000000LL);
   return serializeJson(doc, g_out, sizeof(g_out));
 }
@@ -68,17 +74,33 @@ void broadcastStatus() {
   g_ws.broadcastTXT(g_out, n);
 }
 
+void relayBinary(uint8_t from, const uint8_t *p, size_t len) {
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (i != from) g_ws.sendBIN(i, const_cast<uint8_t *>(p), len);
+  }
+}
+
+void relayText(uint8_t from, const uint8_t *p, size_t len) {
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (i != from) g_ws.sendTXT(i, const_cast<uint8_t *>(p), len);
+  }
+}
+
+void sendSource(uint8_t num) {
+  g_ws.sendBIN(num, g_source, sizeof(g_source));
+}
+
 void onBinary(uint8_t num, const uint8_t *p, size_t len) {
   if (len < DMX_HEADER) {
     sendError(num, "bad_frame", "binary frame is shorter than its header");
     return;
   }
-  if (p[0] != OP_DMX) {
-    sendError(num, "bad_opcode", "only opcode 0x01 exists in v1");
+  if (p[0] != OP_OUTPUT && p[0] != OP_SOURCE) {
+    sendError(num, "bad_opcode", "opcode must be 0x01 output or 0x02 source");
     return;
   }
   if (p[1] != 0) {
-    sendError(num, "bad_universe", "only universe 0 exists in v1");
+    sendError(num, "bad_universe", "only universe 0 exists");
     return;
   }
 
@@ -89,14 +111,19 @@ void onBinary(uint8_t num, const uint8_t *p, size_t len) {
     sendError(num, "bad_length", "declared length does not match the frame");
     return;
   }
-  if (!DmxBus::writeRange(start, p + DMX_HEADER, length)) {
+  if (start < 1 || length == 0 || (uint32_t)start + length - 1 > SLOTS) {
     sendError(num, "range", "start + length - 1 must be within 1..512");
     return;
   }
 
-  if (g_ws.connectedClients() > 1) {
-    g_ws.broadcastBIN(const_cast<uint8_t *>(p), len);
+  if (p[0] == OP_OUTPUT) {
+    DmxBus::writeRange(start, p + DMX_HEADER, length);
+    return;
   }
+
+  memcpy(g_source + DMX_HEADER + (start - 1), p + DMX_HEADER, length);
+  g_haveSource = true;
+  relayBinary(num, p, len);
 }
 
 void onText(uint8_t num, const uint8_t *p, size_t len) {
@@ -115,6 +142,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
 
   if (!strcmp(t, "hello")) {
     sendStatus(num);
+    if (g_haveSource) sendSource(num);
 
   } else if (!strcmp(t, "ping")) {
     JsonVariant seq = doc["seq"];
@@ -135,20 +163,16 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
       return;
     }
     DmxBus::setBlackout(on.as<bool>());
+    relayText(num, p, len);
     broadcastStatus();
 
-  } else if (!strcmp(t, "refresh")) {
-    JsonVariant hz = doc["hz"];
-    if (!hz.is<int>()) {
-      sendError(num, "bad_value", "refresh needs hz as an int");
+  } else if (!strcmp(t, "master")) {
+    JsonVariant level = doc["level"];
+    if (!level.is<float>()) {
+      sendError(num, "bad_value", "master needs level as a number");
       return;
     }
-    if (!DmxBus::setRefreshHz(hz.as<int>())) {
-      sendError(num, "range", "hz must be 10..44");
-      return;
-    }
-    broadcastStatus();
-
+    relayText(num, p, len);
 
   } else {
     sendError(num, "unknown_type", strlen(t) < 32 ? t : "unknown message type");
@@ -181,6 +205,13 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
 }  // namespace
 
 void begin() {
+  g_source[0] = OP_SOURCE;
+  g_source[1] = 0;
+  g_source[2] = 1;
+  g_source[3] = 0;
+  g_source[4] = (uint8_t)(SLOTS & 0xFF);
+  g_source[5] = (uint8_t)(SLOTS >> 8);
+
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, WS_PING_TRIES);

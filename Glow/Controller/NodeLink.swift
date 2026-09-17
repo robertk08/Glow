@@ -28,6 +28,8 @@ enum LinkEvent: Sendable {
 	case status(Wire.NodeInfo)
 	case latency(TimeInterval)
 	case frame(start: DMXAddress, values: [UInt8])
+	case master(Double)
+	case blackout(Bool)
 }
 
 actor NodeLink {
@@ -60,8 +62,8 @@ actor NodeLink {
 		}
 	}
 	
-	func send(start: DMXAddress, values: [UInt8]) {
-		socket?.send(.data(Wire.frame(start: start, values: values))) { _ in }
+	func send(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) {
+		socket?.send(.data(Wire.frame(opcode, start: start, values: values))) { _ in }
 	}
 	
 	func send(_ command: Wire.Command) {
@@ -138,6 +140,10 @@ actor NodeLink {
 			if let sent = pings.removeValue(forKey: seq) {
 				continuation.yield(.latency(Date().timeIntervalSince(sent)))
 			}
+		case let .master(level):
+			continuation.yield(.master(level))
+		case let .blackout(on):
+			continuation.yield(.blackout(on))
 		}
 	}
 	

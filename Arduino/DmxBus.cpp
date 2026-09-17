@@ -106,12 +106,6 @@ void clear() {
   memset(g_frame + SLOT_MIN, 0, SLOT_MAX);
 }
 
-bool setRefreshHz(int hz) {
-  if (hz < DMX_REFRESH_HZ_MIN || hz > DMX_REFRESH_HZ_MAX) return false;
-  g_hz = hz;
-  return true;
-}
-
 int refreshHz() { return g_hz; }
 
 void setBlackout(bool on) { g_blackout = on; }

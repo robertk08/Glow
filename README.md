@@ -170,16 +170,29 @@ DMX travels as binary frames, because a universe update is 512 bytes raw against
 about 700 base64, and at 40 Hz that difference is real on 2.4 GHz:
 
 ```
-byte 0      opcode    0x01
+byte 0      opcode    0x01 output, 0x02 source
 byte 1      universe  0
 bytes 2-3   start     uint16 LE, 1-based
 bytes 4-5   length    uint16 LE
 bytes 6..   values
 ```
 
+**The opcode says what the frame is for.** `0x01` is the output, what the lamps
+should be doing once master and blackout are in it, and the controller clocks it
+onto the wire and tells nobody. `0x02` is the source, what the programmer holds
+before master touches it, and the controller stores it and passes it to every
+other client without clocking it.
+
+That split is what lets two devices drive one rig. Sending only the output and
+relaying it meant the second device read the first device's master-scaled values
+as its own truth, so master stopped meaning anything and a blackout could be
+written in permanently. A source frame is the same on the way out as on the way
+in, so an echo changes nothing.
+
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds),
-`pong`, `error`. Types are strict, an integer is not a float and a boolean is not
+`blackout`, `master`. In: `status` (`fw`, `id`, `name`, `blackout`, `uptime` in
+seconds, `src`), `pong`, `error`, plus `blackout` and `master` relayed from
+another client. Types are strict, an integer is not a float and a boolean is not
 `1`. `status` is only sent in reply to `hello`, so say hello first.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
@@ -188,11 +201,23 @@ setup network, because scanning takes the radio off the air and must not be able
 to disturb a running show. It starts the scan and answers straight away, so the
 app polls until the list arrives.
 
-**A frame is relayed to every other client.** Two devices on the same node see
-each other's changes, so an iPad patching and an iPhone running scenes stay in
-step. The app sends a full universe only on connect, because WebSocket is TCP
-and a delta cannot be lost. Re-asserting the whole universe on a timer is what
-makes two clients fight over it.
+**A source frame is relayed to every other client, an output frame to nobody.**
+Two devices on the same node see each other's changes, so an iPad patching and
+an iPhone running scenes stay in step. Master and blackout travel the same way,
+as commands the controller passes on, so both devices' faders move together.
+Both devices then send the same output, which is redundant on the wire and
+correct on the stage.
+
+The app sends a full universe only on connect, because WebSocket is TCP and a
+delta cannot be lost. Re-asserting the whole universe on a timer is what makes
+two clients fight over it.
+
+**Who has the look on connect is settled by `src`.** The controller keeps the
+last source it was given, across client churn and disconnects. A joining client
+reads `src` in the status: true means the controller has a look and the client
+takes it, false means there is none and the client asserts its own. Without that
+the second device would overwrite the rig with whatever it happened to have
+saved.
 
 **On disconnect the controller holds its last look.** A light going dark because
 Wi-Fi hiccuped is worse than a light staying put, and drops are routine.
