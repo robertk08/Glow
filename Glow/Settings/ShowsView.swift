@@ -79,6 +79,7 @@ struct ShowsView: View {
 				Text("Hold a show for Share, Duplicate and Save to Files.")
 			}
 		}
+		.sensoryFeedback(.selection, trigger: shows.activeID)
 		.navigationTitle("Shows")
 		.navigationBarTitleDisplayMode(.inline)
 		.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in

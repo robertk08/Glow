@@ -25,7 +25,8 @@ struct ScenesView: View {
 								.font(.subheadline)
 								.foregroundStyle(.secondary)
 						} label: {
-							Label(look.name, systemImage: "theatermasks")
+							Label(look.name, systemImage: recalled == look.persistentModelID ? "theatermasks.fill" : "theatermasks")
+								.foregroundStyle(recalled == look.persistentModelID ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
 						}
 						.contentShape(.rect)
 					}
