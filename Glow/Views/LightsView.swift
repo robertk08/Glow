@@ -5,10 +5,12 @@ struct LightsView: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
 	
 	@State private var isAdding = false
+	@State private var showsProgrammer = false
 	@State private var isNamingGroup = false
 	@State private var newGroupName = ""
 	@State private var editingFixture: Fixture?
@@ -22,162 +24,191 @@ struct LightsView: View {
 		fixtures.reduce(0) { $0 + (library.profile($1.profileID)?.channelCount ?? 0) }
 	}
 	
-	var body: some View {
-		NavigationStack {
-			List {
-				if !groups.isEmpty {
-					Section {
-						ForEach(groups) { group in
-							Button {
-								console.toggle(group)
-							} label: {
-								GroupRow(group: group)
-									.contentShape(.rect)
-							}
-							.buttonStyle(.plain)
-							.listRowBackground(console.isSelected(group) ? Color.accentColor.opacity(0.15) : nil)
-							.swipeActions {
-								Button("Delete", systemImage: "trash", role: .destructive) {
-									context.delete(group)
-								}
-								
-								Button("Edit", systemImage: "slider.horizontal.3") {
-									editingGroup = group
-								}
-								.tint(.accentColor)
-							}
-						}
-						.onMove { source, destination in
-							var ordered = groups
-							ordered.move(fromOffsets: source, toOffset: destination)
-							
-							for (index, group) in ordered.enumerated() {
-								group.sortIndex = index
-							}
-						}
-					} header: {
-						Text("Groups")
-					} footer: {
-						Text("A group selects its lights in one tap.")
-					}
-				}
-				
+	private var lights: some View {
+		List {
+			if !groups.isEmpty {
 				Section {
-					ForEach(fixtures) { fixture in
+					ForEach(groups) { group in
 						Button {
-							console.toggle(fixture)
+							console.toggle(group)
 						} label: {
-							LightRow(fixture: fixture, clashes: clashing.contains(fixture.persistentModelID))
+							GroupRow(group: group)
 								.contentShape(.rect)
 						}
 						.buttonStyle(.plain)
-						.listRowBackground(console.isSelected(fixture) ? Color.accentColor.opacity(0.15) : nil)
+						.listRowBackground(console.isSelected(group) ? Color.accentColor.opacity(0.15) : nil)
 						.swipeActions {
 							Button("Delete", systemImage: "trash", role: .destructive) {
-								context.delete(fixture)
+								context.delete(group)
 							}
 							
 							Button("Edit", systemImage: "slider.horizontal.3") {
-								editingFixture = fixture
-							}
-							.tint(.accentColor)
-						}
-						.swipeActions(edge: .leading) {
-							Button("Duplicate", systemImage: "plus.square.on.square") {
-								let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
-								let copy = Fixture(profileID: fixture.profileID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: (fixtures.map(\.sortIndex).max() ?? 0) + 1)
-								copy.symbolOverride = fixture.symbolOverride
-								copy.tintName = fixture.tintName
-								context.insert(copy)
+								editingGroup = group
 							}
 							.tint(.accentColor)
 						}
 					}
 					.onMove { source, destination in
-						var ordered = fixtures
+						var ordered = groups
 						ordered.move(fromOffsets: source, toOffset: destination)
 						
-						for (index, fixture) in ordered.enumerated() {
-							fixture.sortIndex = index
+						for (index, group) in ordered.enumerated() {
+							group.sortIndex = index
 						}
 					}
 				} header: {
-					Text(groups.isEmpty ? "" : "Lights")
+					Text("Groups")
 				} footer: {
-					if !fixtures.isEmpty {
-						Text("\(used) of 512 channels used.")
-					}
+					Text("A group selects its lights in one tap.")
 				}
 			}
-			.navigationTitle("Lights")
-			.overlay {
-				if fixtures.isEmpty {
-					ContentUnavailableView {
-						Label("No Lights Yet", systemImage: "lightbulb")
-					} description: {
-						Text("Add the lights on your DMX line, then tap them to take control.")
-					} actions: {
-						Button("Add Light", systemImage: "plus") {
-							isAdding = true
-						}
-						.font(.headline)
-						.buttonStyle(.glassProminent)
-						.controlSize(.large)
+			
+			Section {
+				ForEach(fixtures) { fixture in
+					Button {
+						console.toggle(fixture)
+					} label: {
+						LightRow(fixture: fixture, clashes: clashing.contains(fixture.persistentModelID))
+							.contentShape(.rect)
 					}
-				}
-			}
-			.toolbar {
-				SettingsToolbarButton()
-				
-				ToolbarItem(placement: .topBarTrailing) {
-					EditButton()
-				}
-				
-				ToolbarItem(placement: .topBarTrailing) {
-					Menu("Add", systemImage: "plus") {
-						Button("Add Light", systemImage: "lightbulb") {
-							isAdding = true
+					.buttonStyle(.plain)
+					.listRowBackground(console.isSelected(fixture) ? Color.accentColor.opacity(0.15) : nil)
+					.swipeActions {
+						Button("Delete", systemImage: "trash", role: .destructive) {
+							context.delete(fixture)
 						}
 						
-						Button("New Group", systemImage: "square.stack.3d.up") {
-							newGroupName = ""
-							isNamingGroup = true
+						Button("Edit", systemImage: "slider.horizontal.3") {
+							editingFixture = fixture
 						}
+						.tint(.accentColor)
 					}
-					.sheet(isPresented: $isAdding) {
-						AddLightView(isPresented: $isAdding)
-					}
-					.alert("New Group", isPresented: $isNamingGroup) {
-						TextField("Name", text: $newGroupName)
-						Button("Cancel", role: .cancel) {}
-						Button("Create") {
-							let name = newGroupName.trimmingCharacters(in: .whitespaces)
-							guard !name.isEmpty else { return }
-							context.insert(FixtureGroup(name: name, sortIndex: (groups.map(\.sortIndex).max() ?? 0) + 1))
+					.swipeActions(edge: .leading) {
+						Button("Duplicate", systemImage: "plus.square.on.square") {
+							let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
+							let copy = Fixture(profileID: fixture.profileID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: (fixtures.map(\.sortIndex).max() ?? 0) + 1)
+							copy.symbolOverride = fixture.symbolOverride
+							copy.tintName = fixture.tintName
+							context.insert(copy)
 						}
+						.tint(.accentColor)
+					}
+				}
+				.onMove { source, destination in
+					var ordered = fixtures
+					ordered.move(fromOffsets: source, toOffset: destination)
+					
+					for (index, fixture) in ordered.enumerated() {
+						fixture.sortIndex = index
+					}
+				}
+			} header: {
+				Text(groups.isEmpty ? "" : "Lights")
+			} footer: {
+				if !fixtures.isEmpty {
+					Text("\(used) of 512 channels used.")
+				}
+			}
+		}
+		.navigationTitle("Lights")
+		.overlay {
+			if fixtures.isEmpty {
+				ContentUnavailableView {
+					Label("No Lights Yet", systemImage: "lightbulb")
+				} description: {
+					Text("Add the lights on your DMX line, then tap them to take control.")
+				} actions: {
+					Button("Add Light", systemImage: "plus") {
+						isAdding = true
+					}
+					.font(.headline)
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
+				}
+			}
+		}
+		.toolbar {
+			SettingsToolbarButton()
+			
+			if sizeClass == .compact, !console.selection.isEmpty {
+				ToolbarItem(placement: .topBarTrailing) {
+					Button("Programmer", systemImage: "slider.horizontal.3") {
+						showsProgrammer = true
 					}
 				}
 			}
-			.navigationDestination(item: $editingFixture) { fixture in
-				FixtureEditView(fixture: fixture)
+			
+			ToolbarItem(placement: .topBarTrailing) {
+				EditButton()
 			}
-			.navigationDestination(item: $editingGroup) { group in
-				GroupView(group: group)
+			
+			ToolbarItem(placement: .topBarTrailing) {
+				Menu("Add", systemImage: "plus") {
+					Button("Add Light", systemImage: "lightbulb") {
+						isAdding = true
+					}
+					
+					Button("New Group", systemImage: "square.stack.3d.up") {
+						newGroupName = ""
+						isNamingGroup = true
+					}
+				}
+				.sheet(isPresented: $isAdding) {
+					AddLightView(isPresented: $isAdding)
+				}
+				.alert("New Group", isPresented: $isNamingGroup) {
+					TextField("Name", text: $newGroupName)
+					Button("Cancel", role: .cancel) {}
+					Button("Create") {
+						let name = newGroupName.trimmingCharacters(in: .whitespaces)
+						guard !name.isEmpty else { return }
+						context.insert(FixtureGroup(name: name, sortIndex: (groups.map(\.sortIndex).max() ?? 0) + 1))
+					}
+				}
 			}
-			.sheet(isPresented: Binding { !console.selection.isEmpty } set: { shown in
-				guard !shown else { return }
-				console.selection.removeAll()
-			}) {
+		}
+		.navigationDestination(item: $editingFixture) { fixture in
+			FixtureEditView(fixture: fixture)
+		}
+		.navigationDestination(item: $editingGroup) { group in
+			GroupView(group: group)
+		}
+		.sensoryFeedback(.selection, trigger: console.selection)
+		.onChange(of: fixtures) {
+			console.applyPatch(fixtures, library: library)
+		}
+		.task {
+			console.applyPatch(fixtures, library: library)
+		}
+	}
+	
+	var body: some View {
+		if sizeClass == .regular {
+			NavigationSplitView {
+				lights
+					.navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 460)
+			} detail: {
+				if console.selection.isEmpty {
+					ContentUnavailableView {
+						Label("Nothing Selected", systemImage: "slider.horizontal.3")
+					} description: {
+						Text("Tap one or more lights to take control of them.")
+					}
+				} else {
+					ControlSheet(control: console.control(among: fixtures, library: library))
+				}
+			}
+		} else {
+			NavigationStack {
+				lights
+			}
+			.sheet(isPresented: $showsProgrammer) {
 				ControlSheet(control: console.control(among: fixtures, library: library))
-					.presentationDetents([.medium, .large])
-					.presentationBackgroundInteraction(.enabled(upThrough: .medium))
+					.presentationDetents([.height(200), .medium, .large])
+					.presentationBackgroundInteraction(.enabled)
 			}
-			.sensoryFeedback(.selection, trigger: console.selection)
-			.onChange(of: fixtures) {
-				console.applyPatch(fixtures, library: library)
-			}
-			.task {
-				console.applyPatch(fixtures, library: library)
+			.onChange(of: console.selection.isEmpty) { _, isEmpty in
+				showsProgrammer = !isEmpty
 			}
 		}
 	}
@@ -196,12 +227,12 @@ private struct LightRow: View {
 	
 	private var iconColor: Color {
 		if let tint = fixture.tint.color { return tint }
-		guard let control, control.profile.mixesColor else { return .accentColor }
+		guard let control, control.mixesColor else { return .accentColor }
 		return control.displayColor
 	}
 	
 	private var inkColor: Color {
-		guard fixture.tint.color == nil, let control, control.profile.mixesColor else { return .white }
+		guard fixture.tint.color == nil, let control, control.mixesColor else { return .white }
 		return control.displayInk
 	}
 	

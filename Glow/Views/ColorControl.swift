@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ColorControl: View {
-	let control: SelectionControl
+	let control: FixtureControl
 	
 	@State private var kelvin: Double = ColorTemperature.neutral
 	@State private var showsEmitters = false

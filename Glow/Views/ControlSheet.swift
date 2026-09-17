@@ -2,8 +2,10 @@ import SwiftUI
 
 struct ControlSheet: View {
 	@Environment(Console.self) private var console
+	@Environment(\.dismiss) private var dismiss
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	
-	let control: SelectionControl
+	let control: FixtureControl
 	
 	@State private var confirmingRange: ChannelRange?
 	@State private var confirmingChannel: ProfileChannel?
@@ -59,7 +61,7 @@ struct ControlSheet: View {
 				
 				ForEach(control.settings) { channel in
 					Section(channel.name) {
-						if channel.ranges.count > 1 {
+						if control.bands(of: channel).count > 1 {
 							Picker(channel.name, selection: Binding { control.band(of: channel)?.id ?? "" } set: { id in
 								guard let range = channel.ranges.first(where: { $0.id == id }) else { return }
 								
@@ -70,16 +72,16 @@ struct ControlSheet: View {
 									control.set(range.midpoint, of: channel)
 								}
 							}) {
-								ForEach(channel.ranges) { range in
+								ForEach(control.bands(of: channel)) { range in
 									Text(range.label).tag(range.id)
 								}
 							}
 							.labelsHidden()
 						}
 						
-						if let active = control.band(of: channel), active.kind == .proportional {
+						if let active = control.adjustableBand(of: channel) {
 							Slider(value: control.binding(channel), in: Double(active.from)...Double(active.to), step: 1)
-						} else if channel.ranges.count <= 1 {
+						} else if channel.ranges.isEmpty {
 							Slider(value: control.binding(channel), in: 0...255, step: 1)
 						}
 					}
@@ -94,9 +96,9 @@ struct ControlSheet: View {
 						control.applyDefaults()
 					}
 					
-					if let single = control.single {
+					if control.isSingle {
 						NavigationLink("All Channels") {
-							ChannelsView(control: single)
+							ChannelsView(control: control)
 						}
 					}
 				} footer: {
@@ -106,9 +108,17 @@ struct ControlSheet: View {
 			.navigationTitle(control.title)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Done") {
+				ToolbarItem(placement: .cancellationAction) {
+					Button("Clear") {
 						console.selection.removeAll()
+					}
+				}
+				
+				if sizeClass == .compact {
+					ToolbarItem(placement: .confirmationAction) {
+						Button("Done") {
+							dismiss()
+						}
 					}
 				}
 			}

@@ -16,7 +16,12 @@ final class FixtureLibrary {
 				guard let data = try? Data(contentsOf: url) else { return nil }
 				return try? decoder.decode(FixtureProfile.self, from: data)
 			}
-			.sorted { ($0.manufacturer, $0.model, $0.channelCount) < ($1.manufacturer, $1.model, $1.channelCount) }
+			.sorted { first, second in
+				if first.manufacturer.isEmpty != second.manufacturer.isEmpty {
+					return second.manufacturer.isEmpty
+				}
+				return (first.manufacturer, first.model, first.channelCount) < (second.manufacturer, second.model, second.channelCount)
+			}
 	}
 	
 	func setCustom(_ profiles: [FixtureProfile]) {

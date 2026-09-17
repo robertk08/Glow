@@ -5,15 +5,17 @@ import SwiftUI
 final class Look {
 	var name: String = ""
 	var sortIndex: Int = 0
-	var values: Data = Data()
+	var levels: Data = Data()
 	
-	init(name: String, sortIndex: Int, values: [UInt8]) {
+	init(name: String, sortIndex: Int, levels: [String: [UInt8]]) {
 		self.name = name
 		self.sortIndex = sortIndex
-		self.values = Data(values)
+		self.levels = (try? JSONEncoder().encode(levels)) ?? Data()
 	}
 	
-	var channels: [UInt8] { [UInt8](values) }
+	var fixtureLevels: [String: [UInt8]] {
+		(try? JSONDecoder().decode([String: [UInt8]].self, from: levels)) ?? [:]
+	}
 	
-	var litCount: Int { channels.count { $0 > 0 } }
+	var fixtureCount: Int { fixtureLevels.count }
 }

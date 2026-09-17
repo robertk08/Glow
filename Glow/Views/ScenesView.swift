@@ -3,8 +3,10 @@ import SwiftUI
 
 struct ScenesView: View {
 	@Environment(Console.self) private var console
+	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
+	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var isNaming = false
 	@State private var newName = ""
@@ -15,11 +17,11 @@ struct ScenesView: View {
 			List {
 				ForEach(looks) { look in
 					Button {
-						console.recall(look)
+						console.recall(look, among: fixtures)
 						recalled = look.persistentModelID
 					} label: {
 						LabeledContent {
-							Text("\(look.litCount) channels")
+							Text("^[\(look.fixtureCount) light](inflect: true)")
 								.monospacedDigit()
 								.foregroundStyle(.secondary)
 						} label: {
@@ -79,10 +81,10 @@ struct ScenesView: View {
 						Button("Save") {
 							let name = newName.trimmingCharacters(in: .whitespaces)
 							guard !name.isEmpty else { return }
-							context.insert(Look(name: name, sortIndex: (looks.map(\.sortIndex).max() ?? 0) + 1, values: console.universe.values))
+							context.insert(Look(name: name, sortIndex: (looks.map(\.sortIndex).max() ?? 0) + 1, levels: console.levels(among: fixtures, library: library)))
 						}
 					} message: {
-						Text("Keeps every channel exactly where it is right now.")
+						Text("Keeps every light exactly where it is right now, so re-addressing one later does not break the scene.")
 					}
 				}
 			}

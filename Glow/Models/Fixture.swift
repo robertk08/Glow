@@ -3,6 +3,7 @@ import SwiftUI
 
 @Model
 final class Fixture {
+	var identifier: String = UUID().uuidString
 	var profileID: String = ""
 	var name: String = ""
 	var address: Int = 1
@@ -12,6 +13,7 @@ final class Fixture {
 	var group: FixtureGroup?
 	
 	init(profileID: String, name: String, address: DMXAddress, sortIndex: Int) {
+		identifier = UUID().uuidString
 		self.profileID = profileID
 		self.name = name
 		self.address = address.value

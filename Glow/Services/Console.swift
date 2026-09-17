@@ -151,12 +151,36 @@ final class Console {
 		}
 	}
 	
-	func control(among fixtures: [Fixture], library: FixtureLibrary) -> SelectionControl {
-		SelectionControl(fixtures: fixtures.filter(isSelected), library: library, console: self)
+	func control(among fixtures: [Fixture], library: FixtureLibrary) -> FixtureControl {
+		FixtureControl(fixtures: fixtures.filter(isSelected), library: library, console: self)
 	}
 	
-	func recall(_ look: Look) {
-		universe.set(look.channels, at: DMXAddress(1)!)
+	func levels(among fixtures: [Fixture], library: FixtureLibrary) -> [String: [UInt8]] {
+		var levels: [String: [UInt8]] = [:]
+		
+		for fixture in fixtures {
+			guard let profile = library.profile(fixture.profileID) else { continue }
+			var values: [UInt8] = []
+			
+			for offset in 0..<profile.channelCount {
+				guard let address = fixture.start.offset(by: offset) else { break }
+				values.append(universe[address])
+			}
+			
+			levels[fixture.identifier] = values
+		}
+		
+		return levels
+	}
+	
+	func recall(_ look: Look, among fixtures: [Fixture]) {
+		let levels = look.fixtureLevels
+		
+		for fixture in fixtures {
+			guard let values = levels[fixture.identifier] else { continue }
+			universe.set(values, at: fixture.start)
+		}
+		
 		needsFullFrame = true
 	}
 	
