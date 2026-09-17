@@ -109,10 +109,6 @@ final class Console {
 		Task { await connection.connect(to: target) }
 	}
 	
-	func setRefresh(hz: Int) {
-		Task { await connection.send(.refresh(hz: hz)) }
-	}
-	
 	func value(at address: DMXAddress) -> UInt8 {
 		universe[address]
 	}
