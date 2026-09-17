@@ -44,7 +44,7 @@ struct ColorControl: View {
 				VStack(alignment: .leading) {
 					LabeledContent("White balance", value: "\(Int(kelvin)) K")
 					
-					Slider(value: $kelvin, in: ColorTemperature.range, step: 50) {
+					Slider(value: $kelvin, in: ColorTemperature.range) {
 						Text("White balance")
 					} minimumValueLabel: {
 						Image(systemName: "thermometer.sun")
@@ -67,7 +67,7 @@ struct ColorControl: View {
 						}
 						.font(.subheadline)
 						
-						Slider(value: control.binding(channel), in: 0...255, step: 1)
+						Slider(value: control.binding(channel), in: 0...255)
 							.tint(channel.role.color)
 					}
 				}

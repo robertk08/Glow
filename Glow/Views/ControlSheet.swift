@@ -46,7 +46,7 @@ struct ControlSheet: View {
 						if let speed = control.profile?.channel(.movementSpeed) {
 							VStack(alignment: .leading) {
 								Text(speed.name)
-								Slider(value: control.binding(speed), in: 0...255, step: 1)
+								Slider(value: control.binding(speed), in: 0...255)
 							}
 						}
 						
@@ -77,9 +77,9 @@ struct ControlSheet: View {
 						}
 						
 						if let active = control.adjustableBand(of: channel) {
-							Slider(value: control.binding(channel), in: Double(active.from)...Double(active.to), step: 1)
+							Slider(value: control.binding(channel), in: Double(active.from)...Double(active.to))
 						} else if channel.ranges.isEmpty {
-							Slider(value: control.binding(channel), in: 0...255, step: 1)
+							Slider(value: control.binding(channel), in: 0...255)
 						}
 					}
 				}
