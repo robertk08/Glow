@@ -62,13 +62,24 @@ actor NodeLink {
 		}
 	}
 	
-	func send(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) {
-		socket?.send(.data(Wire.frame(opcode, start: start, values: values))) { _ in }
+	func send(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) async {
+		guard let socket else { return }
+		
+		await withCheckedContinuation { continuation in
+			socket.send(.data(Wire.frame(opcode, start: start, values: values))) { _ in
+				continuation.resume()
+			}
+		}
 	}
 	
-	func send(_ command: Wire.Command) {
-		guard let json = command.json else { return }
-		socket?.send(.string(json)) { _ in }
+	func send(_ command: Wire.Command) async {
+		guard let socket, let json = command.json else { return }
+		
+		await withCheckedContinuation { continuation in
+			socket.send(.string(json)) { _ in
+				continuation.resume()
+			}
+		}
 	}
 	
 	private func supervise(_ endpoint: NodeEndpoint) async {
@@ -94,7 +105,7 @@ actor NodeLink {
 		socket = task
 		task.resume()
 		
-		send(.hello)
+		await send(.hello)
 		startHeartbeat()
 		
 		var reached = false
@@ -158,10 +169,10 @@ actor NodeLink {
 		}
 	}
 	
-	private func ping() {
+	private func ping() async {
 		seq += 1
 		pings[seq] = Date()
 		pings = pings.filter { Date().timeIntervalSince($0.value) < 10 }
-		send(.ping(seq: seq))
+		await send(.ping(seq: seq))
 	}
 }

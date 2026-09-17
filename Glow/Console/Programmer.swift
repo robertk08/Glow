@@ -352,8 +352,19 @@ struct Programmer {
 	var isSubtractive: Bool { targets.contains { $0.profile.mixing == .subtractive } }
 	
 	func enabledBounds(of parameter: FixtureParameter) -> ClosedRange<Double>? {
-		guard parameter.fine == nil, parameter.isBanded, let active = band(of: parameter) else { return nil }
+		guard parameter.fine == nil, parameter.isBanded, let active = band(of: parameter), active.kind == .proportional else { return nil }
 		return Double(active.from)...Double(active.to)
+	}
+	
+	func guardedBinding(_ parameter: FixtureParameter) -> Binding<Double> {
+		Binding { Double(rawValue(of: parameter)) } set: { setRawValue(stepping(Int($0.rounded()), of: parameter), of: parameter) }
+	}
+	
+	private func stepping(_ value: Int, of parameter: FixtureParameter) -> Int {
+		guard parameter.fine == nil, (0...255).contains(value) else { return value }
+		guard let blocked = parameter.ranges.first(where: { $0.requiresConfirmation && $0.contains(UInt8(value)) }) else { return value }
+		guard blocked.from > 0 else { return Int(blocked.to) + 1 }
+		return Int(blocked.from) - 1
 	}
 	
 	var balancesWhite: Bool {

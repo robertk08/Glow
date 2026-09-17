@@ -44,32 +44,26 @@ final class MonitorModel {
 		return stride(from: 0, to: addresses.count, by: 32).map { Array(addresses[$0..<min($0 + 32, addresses.count)]) }
 	}
 	
-	func arm(_ address: Int, console: Console) {
-		guard armed != address, let target = DMXAddress(address) else { return }
-		armed = address
-		origin = console.value(at: target)
-		written = origin
-	}
-	
 	func commit() {
 		armed = nil
 		adjusting = nil
 	}
 	
 	func adjust(_ address: Int, by translation: CGSize, console: Console) {
-		guard armed == address, let target = DMXAddress(address) else { return }
-		let travel = abs(translation.width) > 60 ? 6.0 : 1.5
-		let value = UInt8(min(max(Double(origin) - translation.height / travel, 0), 255).rounded())
+		guard let target = DMXAddress(address) else { return }
+		
+		if armed != address {
+			armed = address
+			origin = console.value(at: target)
+			written = origin
+		}
+		
+		let travel = abs(translation.height) > 60 ? 6.0 : 1.5
+		let value = UInt8(min(max(Double(origin) + translation.width / travel, 0), 255).rounded())
 		guard value != written else { return }
 		written = value
 		adjusting = address
 		console.set(value, at: target)
-	}
-	
-	func border(_ address: Int, owned: Bool, value: UInt8) -> Color {
-		if adjusting == address { return .accentColor }
-		if owned { return .accentColor.opacity(0.4) }
-		return value == 0 ? .clear : .orange
 	}
 	
 }

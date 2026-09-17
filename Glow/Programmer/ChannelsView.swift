@@ -7,7 +7,7 @@ struct ChannelsView: View {
 		List {
 			Section {
 			} footer: {
-				Text("A slider stays inside the setting the channel is on, so nothing resets a head by accident. Pick another setting below it, or type the value.")
+				Text("A slider steps over a setting that has to be confirmed, so nothing resets a head by accident. Pick it below to send it, or type the value.")
 			}
 			
 			ForEach(programmer.parameters) { parameter in
@@ -32,7 +32,7 @@ struct ChannelsView: View {
 					}
 					.font(.subheadline)
 					
-					Slider(value: programmer.rawBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral, enabledBounds: programmer.enabledBounds(of: parameter)) {
+					Slider(value: programmer.guardedBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral, enabledBounds: programmer.enabledBounds(of: parameter)) {
 						Text(parameter.name)
 					}
 					.tint(parameter.role.color)

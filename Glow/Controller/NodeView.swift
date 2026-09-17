@@ -59,6 +59,10 @@ struct NodeView: View {
 						guard let found = discovery.endpoints.first(where: { $0.id == id }) else { return }
 						console.endpoint = found
 					}) {
+						if !discovery.endpoints.contains(where: { $0.id == console.endpoint.id }) {
+							Text(console.endpoint.name).tag(console.endpoint.id)
+						}
+						
 						ForEach(discovery.endpoints) { endpoint in
 							Text(endpoint.name).tag(endpoint.id)
 						}

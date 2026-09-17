@@ -78,24 +78,16 @@ private struct ChannelCell: View {
 					.fill(.fill.quaternary)
 				
 				Rectangle()
-					.fill(Color.accentColor.opacity(0.55))
+					.fill(owned ? Color.accentColor.opacity(0.55) : Color.orange.opacity(0.55))
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
 		}
 		.containerShape(.rect(cornerRadius: 6, style: .continuous))
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
-		.overlay {
-			RoundedRectangle(cornerRadius: 6, style: .continuous)
-				.strokeBorder(monitor.border(address, owned: owned, value: value), lineWidth: isArmed ? 2 : 1)
-		}
 		.scaleEffect(isArmed ? 1.12 : 1)
 		.animation(.snappy(duration: 0.15), value: isArmed)
-		.gesture(LongPressGesture(minimumDuration: 0.15).sequenced(before: DragGesture(minimumDistance: 0)).onChanged { phase in
-			monitor.arm(address, console: console)
-			
-			if case let .second(_, drag) = phase, let drag {
-				monitor.adjust(address, by: drag.translation, console: console)
-			}
+		.gesture(DragGesture(minimumDistance: 6).onChanged { drag in
+			monitor.adjust(address, by: drag.translation, console: console)
 		}.onEnded { _ in
 			monitor.commit()
 		})

@@ -17,6 +17,14 @@ struct BandPicker: View {
 				programmer.set(range.midpoint, of: channel)
 			}
 		}) {
+			if let active = programmer.band(of: channel), !bands.contains(active) {
+				Text(active.label).tag(active.id)
+			}
+			
+			if programmer.band(of: channel) == nil {
+				Text("\(programmer.value(of: channel))").tag("")
+			}
+			
 			ForEach(bands) { range in
 				Text(range.label).tag(range.id)
 			}
@@ -28,7 +36,7 @@ struct BandPicker: View {
 				programmer.set(range.midpoint, of: channel)
 			}
 		} message: { _ in
-			Text("The light stops responding for a few seconds.")
+			Text("The light stops answering the desk.")
 		}
 	}
 }

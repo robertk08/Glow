@@ -140,22 +140,26 @@
         {
           "from": 8,
           "to": 63,
-          "label": "Auto fast"
+          "label": "Auto fast",
+          "requiresConfirmation": true
         },
         {
           "from": 64,
           "to": 127,
-          "label": "Auto slow"
+          "label": "Auto slow",
+          "requiresConfirmation": true
         },
         {
           "from": 128,
           "to": 191,
-          "label": "Sound 1"
+          "label": "Sound 1",
+          "requiresConfirmation": true
         },
         {
           "from": 192,
           "to": 255,
-          "label": "Sound 2"
+          "label": "Sound 2",
+          "requiresConfirmation": true
         }
       ]
     },
