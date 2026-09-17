@@ -29,6 +29,12 @@ A scene stores where every patched light is and puts it back on one tap. It
 records lights rather than addresses, so re-addressing one later does not point
 its scenes at whatever now sits on those channels.
 
+A show is a store of its own on disk, holding one patch, its groups, the
+fixtures built here and its scenes. Switching show swaps the store underneath
+the app, so a house rig and a touring rig never see each other. The controller
+you send to belongs to the device, not the show, because it is about where you
+are standing. An existing patch becomes the first show on upgrade.
+
 ## Setting up a controller
 
 Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored

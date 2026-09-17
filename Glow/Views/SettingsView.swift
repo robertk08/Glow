@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
 	@Environment(Console.self) private var console
+	@Environment(ShowLibrary.self) private var shows
 	
 	var body: some View {
 		NavigationStack {
@@ -19,6 +20,19 @@ struct SettingsView: View {
 					}
 				} footer: {
 					Text("Glow sends to the controller over Wi-Fi. Your iPhone and the controller have to be on the same network.")
+				}
+				
+				Section {
+					NavigationLink {
+						ShowsView()
+					} label: {
+						LabeledContent {
+							Text(shows.active.name)
+								.foregroundStyle(.secondary)
+						} label: {
+							Label("Show", systemImage: "theatermasks.circle")
+						}
+					}
 				}
 				
 				Section {

@@ -6,6 +6,7 @@ struct LightsView: View {
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
+	@Environment(ShowLibrary.self) private var shows
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
 	
@@ -187,7 +188,7 @@ struct LightsView: View {
 		if sizeClass == .regular {
 			NavigationSplitView {
 				lights
-					.navigationTitle("Glow")
+					.navigationTitle(shows.active.name)
 					.navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 460)
 					.safeAreaInset(edge: .bottom) {
 						MasterBar()
