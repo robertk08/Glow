@@ -120,7 +120,9 @@ struct LightsView: View {
 						Button("Add Light", systemImage: "plus") {
 							isAdding = true
 						}
+						.font(.headline)
 						.buttonStyle(.glassProminent)
+						.controlSize(.large)
 					}
 				}
 			}

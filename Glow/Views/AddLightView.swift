@@ -53,7 +53,9 @@ struct AddLightView: View {
 						Button("Build a Fixture", systemImage: "slider.horizontal.3") {
 							isBuilding = true
 						}
+						.font(.headline)
 						.buttonStyle(.glassProminent)
+						.controlSize(.large)
 					}
 				}
 			}

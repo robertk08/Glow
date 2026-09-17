@@ -55,7 +55,9 @@ struct ScenesView: View {
 							newName = ""
 							isNaming = true
 						}
+						.font(.headline)
 						.buttonStyle(.glassProminent)
+						.controlSize(.large)
 					}
 				}
 			}
