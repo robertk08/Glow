@@ -30,6 +30,7 @@ struct MasterBar: View {
 				})
 				.accessibilityLabel("Hold for blackout")
 		}
+		.frame(maxWidth: 520)
 		.padding(.horizontal)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.blackout)
 	}

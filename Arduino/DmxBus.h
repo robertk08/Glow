@@ -19,7 +19,6 @@ int  refreshHz();
 void setBlackout(bool on);
 bool blackout();
 
-void identify();
 
 void pause();
 void resume();

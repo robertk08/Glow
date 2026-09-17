@@ -3,20 +3,27 @@ import SwiftUI
 
 struct RootView: View {
 	@Environment(FixtureLibrary.self) private var library
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Query private var customProfiles: [CustomProfile]
 	
 	var body: some View {
-		TabView {
-			Tab("Lights", systemImage: "lightbulb") {
+		Group {
+			if sizeClass == .regular {
 				LightsView()
+			} else {
+				TabView {
+					Tab("Lights", systemImage: "lightbulb") {
+						LightsView()
+					}
+					
+					Tab("Scenes", systemImage: "theatermasks") {
+						ScenesView()
+					}
+				}
+				.tabViewBottomAccessory {
+					MasterBar()
+				}
 			}
-			
-			Tab("Scenes", systemImage: "theatermasks") {
-				ScenesView()
-			}
-		}
-		.tabViewBottomAccessory {
-			MasterBar()
 		}
 		.onChange(of: customProfiles) {
 			library.setCustom(customProfiles.map(\.profile))

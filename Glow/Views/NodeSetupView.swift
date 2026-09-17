@@ -53,7 +53,17 @@ struct NodeSetupView: View {
 	
 	private var chooseNetwork: some View {
 		List {
-			if model.networks.isEmpty {
+			if let failure = model.failure {
+				Section {
+					Button("Try Again") {
+						Task {
+							await model.loadNetworks()
+						}
+					}
+				} footer: {
+					Text(failure)
+				}
+			} else if model.networks.isEmpty {
 				Section {
 					HStack {
 						Text("Looking for networks")

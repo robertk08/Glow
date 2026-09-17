@@ -65,14 +65,12 @@ struct LightsView: View {
 			
 			Section {
 				ForEach(fixtures) { fixture in
-					Button {
-						console.toggle(fixture)
-					} label: {
-						LightRow(fixture: fixture, clashes: clashing.contains(fixture.persistentModelID))
-							.contentShape(.rect)
-					}
-					.buttonStyle(.plain)
-					.listRowBackground(console.isSelected(fixture) ? Color.accentColor.opacity(0.15) : nil)
+					LightRow(fixture: fixture, clashes: clashing.contains(fixture.persistentModelID))
+						.contentShape(.rect)
+						.onTapGesture {
+							console.toggle(fixture)
+						}
+						.listRowBackground(console.isSelected(fixture) ? Color.accentColor.opacity(0.15) : nil)
 					.swipeActions {
 						Button("Delete", systemImage: "trash", role: .destructive) {
 							context.delete(fixture)
@@ -109,8 +107,11 @@ struct LightsView: View {
 					Text("\(used) of 512 channels used.")
 				}
 			}
+			
+			if sizeClass == .regular {
+				SceneSections()
+			}
 		}
-		.navigationTitle("Lights")
 		.overlay {
 			if fixtures.isEmpty {
 				ContentUnavailableView {
@@ -186,7 +187,13 @@ struct LightsView: View {
 		if sizeClass == .regular {
 			NavigationSplitView {
 				lights
+					.navigationTitle("Glow")
 					.navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 460)
+					.safeAreaInset(edge: .bottom) {
+						MasterBar()
+							.padding(.vertical, 10)
+							.background(.bar)
+					}
 			} detail: {
 				if console.selection.isEmpty {
 					ContentUnavailableView {
@@ -201,6 +208,7 @@ struct LightsView: View {
 		} else {
 			NavigationStack {
 				lights
+					.navigationTitle("Lights")
 			}
 			.sheet(isPresented: $showsProgrammer) {
 				ControlSheet(control: console.control(among: fixtures, library: library))
@@ -226,13 +234,15 @@ private struct LightRow: View {
 	private var control: FixtureControl? { FixtureControl(fixture: fixture, library: library, console: console) }
 	
 	private var iconColor: Color {
+		guard let control, control.isOn else { return Color(.tertiarySystemFill) }
 		if let tint = fixture.tint.color { return tint }
-		guard let control, control.mixesColor else { return .accentColor }
+		guard control.mixesColor else { return .accentColor }
 		return control.displayColor
 	}
 	
 	private var inkColor: Color {
-		guard fixture.tint.color == nil, let control, control.mixesColor else { return .white }
+		guard let control, control.isOn else { return .secondary }
+		guard fixture.tint.color == nil, control.mixesColor else { return .white }
 		return control.displayInk
 	}
 	
@@ -266,15 +276,20 @@ private struct LightRow: View {
 					}
 				}
 			} icon: {
-				Image(systemName: fixture.symbol(profile))
-					.font(.callout)
-					.foregroundStyle(inkColor)
-					.frame(width: 36, height: 36)
-					.background(iconColor, in: .rect(cornerRadius: 9))
-					.overlay {
-						RoundedRectangle(cornerRadius: 9)
-							.strokeBorder(.secondary.opacity(0.55))
-					}
+				Button {
+					control?.toggleOn()
+				} label: {
+					Image(systemName: fixture.symbol(profile))
+						.font(.callout)
+						.foregroundStyle(inkColor)
+						.frame(width: 36, height: 36)
+						.background(iconColor, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+						.overlay {
+							RoundedRectangle(cornerRadius: 11, style: .continuous)
+								.strokeBorder(.secondary.opacity(0.55))
+						}
+				}
+				.buttonStyle(.plain)
 			}
 		}
 		.padding(.vertical, 4)

@@ -23,6 +23,9 @@ struct Network {
   bool    enterprise;
 };
 
+static const int SCAN_RUNNING = -1;
+static const int SCAN_FAILED  = -2;
+
 int scan(Network *out, int max);
 
 bool provision(const char *ssid, const char *user, const char *password);

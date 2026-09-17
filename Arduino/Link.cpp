@@ -145,8 +145,6 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     }
     broadcastStatus();
 
-  } else if (!strcmp(t, "identify")) {
-    DmxBus::identify();
 
   } else {
     sendError(num, "unknown_type", strlen(t) < 32 ? t : "unknown message type");

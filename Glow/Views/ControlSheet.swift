@@ -20,11 +20,8 @@ struct ControlSheet: View {
 						
 						Slider(value: control.brightnessBinding, in: 0...1) {
 							Text("Brightness")
-						} minimumValueLabel: {
-							Image(systemName: "sun.min")
-						} maximumValueLabel: {
-							Image(systemName: "sun.max")
 						}
+						.controlSize(.large)
 					}
 				}
 				

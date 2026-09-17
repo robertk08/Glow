@@ -86,7 +86,7 @@ struct PatchFixtureView: View {
 	
 	private var width: Int { max(1, profile.channelCount) }
 	private var lastAddress: Int { address + width * count - 1 }
-	private var fits: Bool { lastAddress <= Universe.channelCount }
+	private var fits: Bool { DMXAddress.range.contains(address) && count >= 1 && lastAddress <= Universe.channelCount }
 	
 	var body: some View {
 		Form {
@@ -98,8 +98,10 @@ struct PatchFixtureView: View {
 			}
 			
 			Section {
-				Stepper(value: $count, in: 1...64) {
-					LabeledContent("How many", value: "\(count)")
+				LabeledContent("How many") {
+					TextField("1", value: $count, format: .number)
+						.keyboardType(.numberPad)
+						.multilineTextAlignment(.trailing)
 				}
 			} footer: {
 				if count > 1 {
@@ -108,8 +110,10 @@ struct PatchFixtureView: View {
 			}
 			
 			Section {
-				Stepper(value: $address, in: DMXAddress.range) {
-					LabeledContent("Start address", value: "\(address)")
+				LabeledContent("Start address") {
+					TextField("1", value: $address, format: .number)
+						.keyboardType(.numberPad)
+						.multilineTextAlignment(.trailing)
 				}
 				
 				LabeledContent("Uses", value: count == 1 ? "\(address)–\(lastAddress)" : "\(address)–\(lastAddress), \(width) each")
@@ -117,7 +121,7 @@ struct PatchFixtureView: View {
 				Text("Address")
 			} footer: {
 				if !fits {
-					Text("That runs past channel 512.")
+					Text("An address from 1 to 512, and the last light has to fit inside it.")
 						.foregroundStyle(.orange)
 				}
 			}

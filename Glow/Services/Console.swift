@@ -109,10 +109,6 @@ final class Console {
 		Task { await connection.connect(to: target) }
 	}
 	
-	func identify() {
-		Task { await connection.send(.identify) }
-	}
-	
 	func value(at address: DMXAddress) -> UInt8 {
 		universe[address]
 	}

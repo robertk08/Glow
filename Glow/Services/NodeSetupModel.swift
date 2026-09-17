@@ -33,11 +33,20 @@ final class NodeSetupModel {
 	}
 	
 	func loadNetworks() async {
-		do {
-			networks = try await setup.scan()
-		} catch {
-			failure = error.localizedDescription
+		failure = nil
+		
+		for attempt in 0..<15 {
+			if attempt > 0 {
+				try? await Task.sleep(for: .seconds(2))
+			}
+			
+			guard let found = try? await setup.scan(), !found.isEmpty else { continue }
+			
+			networks = found
+			return
 		}
+		
+		failure = "The controller never sent back a list of networks. Check that your iPhone is still on Glow Setup and try again."
 	}
 	
 	func choose(network: NodeSetup.Network) {

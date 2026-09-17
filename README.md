@@ -130,7 +130,7 @@ bytes 6..   values
 ```
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `identify`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds),
+`blackout`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds),
 `pong`, `error`. Types are strict, an integer is not a float and a boolean is not
 `1`. `status` is only sent in reply to `hello`, so say hello first.
 

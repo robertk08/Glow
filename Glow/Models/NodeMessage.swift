@@ -20,7 +20,6 @@ nonisolated enum Wire {
 		case hello
 		case ping(seq: Int)
 		case blackout(Bool)
-		case identify
 		
 		private enum CodingKeys: String, CodingKey { case t, client, version, seq, on }
 		
@@ -37,8 +36,6 @@ nonisolated enum Wire {
 			case let .blackout(on):
 				try container.encode("blackout", forKey: .t)
 				try container.encode(on, forKey: .on)
-			case .identify:
-				try container.encode("identify", forKey: .t)
 			}
 		}
 		

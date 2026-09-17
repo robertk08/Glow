@@ -21,11 +21,6 @@ struct NodeView: View {
 			}
 			
 			Section {
-				Button("Identify") {
-					console.identify()
-				}
-				.disabled(!console.link.isConnected)
-				
 				Button("Change Wi-Fi Network") {
 					isSettingUp = true
 				}
@@ -43,8 +38,6 @@ struct NodeView: View {
 				} message: {
 					Text("The controller restarts and makes its own Glow Setup network again.")
 				}
-			} footer: {
-				Text("Identify flashes the lights so you can tell which controller you are talking to.")
 			}
 			
 			if !discovery.endpoints.isEmpty {

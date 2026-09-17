@@ -29,6 +29,7 @@ char     g_tryUser[65] = "";
 char     g_tryPass[65] = "";
 
 bool g_bootCleared = false;
+bool g_scanning    = false;
 
 void readIdentity() {
   uint8_t mac[6] = {0};
@@ -238,13 +239,26 @@ bool fromSetupAp(const IPAddress &peer) {
 }
 
 int scan(Network *out, int max) {
-  if (!out || max <= 0) return -1;
+  if (!out || max <= 0) return SCAN_FAILED;
 
-  int found = WiFi.scanNetworks();
-  if (found < 0) {
-    Serial.println(F("scan: failed"));
-    return -1;
+  int found = WiFi.scanComplete();
+  if (found == WIFI_SCAN_RUNNING) return SCAN_RUNNING;
+
+  if (found == WIFI_SCAN_FAILED) {
+    if (g_scanning) {
+      g_scanning = false;
+      Serial.println(F("scan: failed"));
+      return SCAN_FAILED;
+    }
+    if (WiFi.scanNetworks(true, false, false, SCAN_CHANNEL_MS) == WIFI_SCAN_FAILED) {
+      Serial.println(F("scan: would not start"));
+      return SCAN_FAILED;
+    }
+    g_scanning = true;
+    return SCAN_RUNNING;
   }
+
+  g_scanning = false;
 
   int n = 0;
   for (int i = 0; i < found; i++) {

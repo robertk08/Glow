@@ -49,8 +49,13 @@ struct FixtureEditView: View {
 			}
 			
 			Section {
-				Stepper(value: $fixture.address, in: DMXAddress.range) {
-					LabeledContent("Address", value: "\(fixture.address)")
+				LabeledContent("Address") {
+					TextField("1", value: $fixture.address, format: .number)
+						.keyboardType(.numberPad)
+						.multilineTextAlignment(.trailing)
+						.onChange(of: fixture.address) {
+							fixture.address = DMXAddress(clamping: fixture.address).value
+						}
 				}
 				
 				if let profile {

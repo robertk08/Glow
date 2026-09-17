@@ -95,7 +95,7 @@ void scan(NetworkClient &c) {
   }
 
   int n = Net::scan(g_nets, SCAN_MAX);
-  if (n < 0) {
+  if (n == Net::SCAN_FAILED) {
     sendResult(c, 503, false, "scan_failed");
     return;
   }

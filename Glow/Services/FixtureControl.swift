@@ -196,6 +196,19 @@ struct FixtureControl {
 		}
 	}
 	
+	var isOn: Bool {
+		guard dims else { return true }
+		return brightness > 0
+	}
+	
+	func toggleOn() {
+		if brightness > 0 {
+			brightness = 0
+		} else {
+			brightness = 1
+		}
+	}
+	
 	var brightnessBinding: Binding<Double> {
 		Binding { brightness } set: { brightness = $0 }
 	}

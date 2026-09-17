@@ -15,7 +15,6 @@ SemaphoreHandle_t g_wireLock = nullptr;
 
 volatile int      g_hz            = DMX_REFRESH_HZ;
 volatile bool     g_blackout      = false;
-volatile uint32_t g_identifyUntil = 0;
 volatile bool     g_resync        = false;
 
 struct Hold {
@@ -30,18 +29,6 @@ TickType_t periodTicks(int hz) {
   return ticks ? ticks : 1;
 }
 
-bool identifying(uint32_t now, bool *dark) {
-  *dark = false;
-  uint32_t until = g_identifyUntil;
-  if (!until) return false;
-  if ((int32_t)(now - until) >= 0) {
-    g_identifyUntil = 0;
-    return false;
-  }
-  *dark = ((until - now) / IDENTIFY_BLINK_MS) & 1;
-  return true;
-}
-
 void refreshTask(void *) {
   TickType_t wake = xTaskGetTickCount();
 
@@ -51,11 +38,7 @@ void refreshTask(void *) {
       memcpy(g_wire, g_frame, DMX_PACKET_SIZE);
     }
 
-    bool dark = false;
-    bool flashing = identifying(millis(), &dark);
-    bool blank = g_blackout || (flashing && dark);
-    if (IDENTIFY_LED_PIN >= 0) digitalWrite(IDENTIFY_LED_PIN, dark);
-    if (blank) memset(g_wire + SLOT_MIN, 0, SLOT_MAX);
+    if (g_blackout) memset(g_wire + SLOT_MIN, 0, SLOT_MAX);
 
     if (xSemaphoreTake(g_wireLock, portMAX_DELAY) == pdTRUE) {
       dmx_write(DMX_PORT, g_wire, DMX_PACKET_SIZE);
@@ -83,11 +66,6 @@ bool begin() {
   if (!g_lock) return false;
   g_wireLock = xSemaphoreCreateMutex();
   if (!g_wireLock) return false;
-
-  if (IDENTIFY_LED_PIN >= 0) {
-    pinMode(IDENTIFY_LED_PIN, OUTPUT);
-    digitalWrite(IDENTIFY_LED_PIN, LOW);
-  }
 
   dmx_config_t config = DMX_CONFIG_DEFAULT;
   dmx_personality_t personalities[] = {};
@@ -138,8 +116,6 @@ int refreshHz() { return g_hz; }
 
 void setBlackout(bool on) { g_blackout = on; }
 bool blackout() { return g_blackout; }
-
-void identify() { g_identifyUntil = millis() + IDENTIFY_MS; }
 
 void pause() {
   if (!g_wireLock) return;

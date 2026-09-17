@@ -61,6 +61,7 @@ static const uint32_t WIFI_RETRY_MS = 10000;
 static const uint32_t JOIN_TIMEOUT_MS = 20000;
 static const uint32_t SETUP_AP_MS     = 5UL * 60 * 1000;
 static const int      SCAN_MAX        = 20;
+static const uint32_t SCAN_CHANNEL_MS = 120;
 
 static const int      SETUP_PIN        = 0;
 static const uint32_t SETUP_HOLD_MS    = 3000;
@@ -75,6 +76,3 @@ static const int DMX_TASK_CORE     = 1;
 static const int DMX_TASK_PRIORITY = 5;
 static const int DMX_TASK_STACK    = 3072;
 
-static const int      IDENTIFY_LED_PIN  = -1;
-static const uint32_t IDENTIFY_MS       = 1500;
-static const uint32_t IDENTIFY_BLINK_MS = 150;
