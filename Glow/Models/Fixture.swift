@@ -38,6 +38,12 @@ final class Fixture {
 		address...(address + max(1, profile?.channelCount ?? 1) - 1)
 	}
 	
+	func rangeLabel(_ profile: FixtureProfile?) -> String {
+		let span = range(profile)
+		guard span.lowerBound != span.upperBound else { return "\(span.lowerBound)" }
+		return "\(span.lowerBound)–\(span.upperBound)"
+	}
+	
 	@MainActor static func clashing(among fixtures: [Fixture], library: FixtureLibrary) -> Set<PersistentIdentifier> {
 		var found: Set<PersistentIdentifier> = []
 		

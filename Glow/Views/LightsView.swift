@@ -238,37 +238,46 @@ private struct LightRow: View {
 	
 	var body: some View {
 		LabeledContent {
-			if console.isSelected(fixture) {
-				Image(systemName: "checkmark.circle.fill")
-					.foregroundStyle(.tint)
-			} else if let control, control.dims {
-				Text(control.brightness, format: .percent.precision(.fractionLength(0)))
-					.monospacedDigit()
-					.foregroundStyle(.secondary)
+			HStack(spacing: 6) {
+				if let control, control.dims {
+					Text(control.brightness, format: .percent.precision(.fractionLength(0)))
+						.font(.subheadline.monospacedDigit())
+						.foregroundStyle(.secondary)
+				}
+				
+				if console.isSelected(fixture) {
+					Image(systemName: "checkmark.circle.fill")
+						.foregroundStyle(.tint)
+				}
 			}
 		} label: {
 			Label {
-				VStack(alignment: .leading) {
+				VStack(alignment: .leading, spacing: 2) {
 					Text(fixture.name)
 					
 					if clashes {
-						Text("Address \(fixture.address) · overlaps")
+						Text("Address \(fixture.rangeLabel(profile)) · overlaps")
 							.font(.caption)
 							.foregroundStyle(.orange)
 					} else {
-						Text("Address \(fixture.address)")
+						Text("Address \(fixture.rangeLabel(profile))")
 							.font(.caption)
 							.foregroundStyle(.secondary)
 					}
 				}
 			} icon: {
 				Image(systemName: fixture.symbol(profile))
-					.font(.footnote)
+					.font(.callout)
 					.foregroundStyle(inkColor)
-					.frame(width: 28, height: 28)
-					.background(iconColor, in: .circle)
+					.frame(width: 36, height: 36)
+					.background(iconColor, in: .rect(cornerRadius: 9))
+					.overlay {
+						RoundedRectangle(cornerRadius: 9)
+							.strokeBorder(.secondary.opacity(0.55))
+					}
 			}
 		}
+		.padding(.vertical, 4)
 	}
 }
 
@@ -282,21 +291,28 @@ private struct GroupRow: View {
 			if console.isSelected(group) {
 				Image(systemName: "checkmark.circle.fill")
 					.foregroundStyle(.tint)
-			} else {
-				Text("\(group.members.count)")
-					.monospacedDigit()
-					.foregroundStyle(.secondary)
 			}
 		} label: {
 			Label {
-				Text(group.name)
+				VStack(alignment: .leading, spacing: 2) {
+					Text(group.name)
+					
+					Text("^[\(group.members.count) light](inflect: true)")
+						.font(.caption)
+						.foregroundStyle(.secondary)
+				}
 			} icon: {
 				Image(systemName: group.symbol)
-					.font(.footnote)
+					.font(.callout)
 					.foregroundStyle(.white)
-					.frame(width: 28, height: 28)
+					.frame(width: 36, height: 36)
 					.background(group.tint.color ?? .accentColor, in: .circle)
+					.overlay {
+						Circle()
+							.strokeBorder(.secondary.opacity(0.55))
+					}
 			}
 		}
+		.padding(.vertical, 4)
 	}
 }
