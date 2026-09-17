@@ -190,3 +190,70 @@ extension Comparable {
         min(max(self, range.lowerBound), range.upperBound)
     }
 }
+
+struct FixtureParameter: Identifiable {
+    var coarse: ProfileChannel
+    var fine: ProfileChannel?
+
+    var id: Int { coarse.offset }
+    var name: String { coarse.name }
+    var role: ChannelRole { coarse.role }
+    var ranges: [ChannelRange] { coarse.ranges }
+    var isWide: Bool { fine != nil }
+    var maximum: Int { isWide ? 65535 : 255 }
+}
+
+extension FixtureControl {
+    var parameters: [FixtureParameter] {
+        var fineOffsets: Set<Int> = []
+        for channel in profile.channels where channel.isFine {
+            if let coarse = profile.channel(channel.role) {
+                fineOffsets.insert(channel.offset)
+                _ = coarse
+            }
+        }
+
+        return profile.channels
+            .filter { !fineOffsets.contains($0.offset) }
+            .map { channel in
+                FixtureParameter(
+                    coarse: channel,
+                    fine: channel.isFine ? nil : profile.channel(channel.role, fine: true)
+                )
+            }
+    }
+
+    func rawValue(of parameter: FixtureParameter) -> Int {
+        let high = Int(value(of: parameter.coarse))
+        guard let fine = parameter.fine else { return high }
+        return high * 256 + Int(value(of: fine))
+    }
+
+    func setRawValue(_ newValue: Int, of parameter: FixtureParameter) {
+        let clamped = newValue.clamped(to: 0...parameter.maximum)
+
+        guard let fine = parameter.fine else {
+            set(UInt8(clamped), of: parameter.coarse)
+            return
+        }
+
+        set(UInt8(clamped >> 8), of: parameter.coarse)
+        set(UInt8(clamped & 0xFF), of: fine)
+    }
+
+    func percent(of parameter: FixtureParameter) -> Double {
+        Double(rawValue(of: parameter)) / Double(parameter.maximum)
+    }
+
+    func band(of parameter: FixtureParameter) -> ChannelRange? {
+        parameter.coarse.range(containing: value(of: parameter.coarse))
+    }
+
+    func addressLabel(of parameter: FixtureParameter) -> String {
+        guard let first = address(of: parameter.coarse) else { return "" }
+        guard let fine = parameter.fine, let second = address(of: fine) else {
+            return "\(first.value)"
+        }
+        return "\(first.value)+\(second.value)"
+    }
+}

@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(Console.self) private var console
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -23,13 +22,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        LibraryView()
+                    } label: {
+                        Label("Fixtures", systemImage: "books.vertical")
+                    }
+                }
+
+                Section {
                     LabeledContent("Version", value: Bundle.main.version)
                 }
             }
             .navigationTitle("Settings")
-            .toolbar {
-                Button(role: .close) { dismiss() }
-            }
         }
     }
 

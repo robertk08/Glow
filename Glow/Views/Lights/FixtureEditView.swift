@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct FixtureEditView: View {
+    @Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
     @Environment(FixtureLibrary.self) private var library
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -50,6 +51,18 @@ struct FixtureEditView: View {
                     ForEach(FixtureTint.allCases) { tint in
                         Text(tint.rawValue.capitalized).tag(tint)
                     }
+                }
+            }
+
+            if !groups.isEmpty {
+                Section("Group") {
+                    Picker("Group", selection: $fixture.group) {
+                        Text("None").tag(FixtureGroup?.none)
+                        ForEach(groups) { group in
+                            Text(group.name).tag(FixtureGroup?.some(group))
+                        }
+                    }
+                    .labelsHidden()
                 }
             }
 

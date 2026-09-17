@@ -73,7 +73,7 @@ struct FixtureView: View {
 
                 Section {
                     NavigationLink("All Channels") {
-                        ChannelList(control: control)
+                        ChannelsView(control: control)
                     }
 
                     Button("Reset") {

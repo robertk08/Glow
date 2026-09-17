@@ -9,12 +9,12 @@ struct GlowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            LightsView()
+            RootView()
                 .environment(console)
                 .environment(library)
                 .environment(discovery)
                 .task { console.start() }
         }
-        .modelContainer(for: Fixture.self)
+        .modelContainer(for: [Fixture.self, FixtureGroup.self, CustomProfile.self])
     }
 }

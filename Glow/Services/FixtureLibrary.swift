@@ -3,7 +3,10 @@ import SwiftUI
 
 @Observable @MainActor
 final class FixtureLibrary {
-    private(set) var profiles: [FixtureProfile] = []
+    private(set) var bundled: [FixtureProfile] = []
+    private(set) var custom: [FixtureProfile] = []
+
+    var profiles: [FixtureProfile] { custom + bundled }
 
     init() {
         load()
@@ -16,7 +19,7 @@ final class FixtureLibrary {
             ? Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
             : inFolder
 
-        profiles = urls
+        bundled = urls
             .compactMap { url -> FixtureProfile? in
                 guard let data = try? Data(contentsOf: url),
                       let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -25,6 +28,11 @@ final class FixtureLibrary {
                 return try? decoder.decode(FixtureProfile.self, from: data)
             }
             .sorted { ($0.manufacturer, $0.model) < ($1.manufacturer, $1.model) }
+    }
+
+    func setCustom(_ profiles: [FixtureProfile]) {
+        guard profiles != custom else { return }
+        custom = profiles
     }
 
     func profile(_ id: String) -> FixtureProfile? {

@@ -50,6 +50,15 @@ nonisolated struct ProfileChannel: Decodable, Hashable, Sendable, Identifiable {
         case offset, role, name, isFine, defaultValue, ranges
     }
 
+    init(offset: Int, role: ChannelRole, name: String? = nil, isFine: Bool = false, defaultValue: UInt8 = 0, ranges: [ChannelRange] = []) {
+        self.offset = offset
+        self.role = role
+        self.name = name ?? role.name
+        self.isFine = isFine
+        self.defaultValue = defaultValue
+        self.ranges = ranges
+    }
+
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         offset = try container.decode(Int.self, forKey: .offset)
@@ -124,6 +133,26 @@ nonisolated struct FixtureProfile: Decodable, Hashable, Sendable, Identifiable {
         return proportional
             .filter { !$0.label.localizedCaseInsensitiveContains("strob") }
             .min { $0.from < $1.from }
+    }
+
+    init(
+        id: String,
+        manufacturer: String = "",
+        model: String,
+        mode: String = "",
+        channels: [ProfileChannel],
+        symbol: String = "lightbulb",
+        panDegrees: Double? = nil,
+        tiltDegrees: Double? = nil
+    ) {
+        self.id = id
+        self.manufacturer = manufacturer
+        self.model = model
+        self.mode = mode
+        self.channels = channels
+        self.symbol = symbol
+        self.panDegrees = panDegrees
+        self.tiltDegrees = tiltDegrees
     }
 
     init(from decoder: any Decoder) throws {
