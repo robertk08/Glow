@@ -14,7 +14,7 @@ Glow/        the iOS app
   Services/  console, socket, discovery, setup, library
   Views/     one file per screen
   Profiles/  bundled fixture profiles
-firmware/    the ESP32-S3 sketch
+Arduino/     the ESP32-S3 sketch
 ```
 
 Selecting lights is how you control them. Tap one or several in Lights and a
