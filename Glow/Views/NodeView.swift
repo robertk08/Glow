@@ -29,9 +29,19 @@ struct NodeView: View {
 				Button("Change Wi-Fi Network") {
 					isSettingUp = true
 				}
+				.sheet(isPresented: $isSettingUp) {
+					NodeSetupView()
+				}
 				
 				Button("Forget Wi-Fi Network", role: .destructive) {
 					isForgetting = true
+				}
+				.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
+					Button("Forget", role: .destructive) {
+						Task { try? await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).forget() }
+					}
+				} message: {
+					Text("The controller restarts and makes its own Glow Setup network again.")
 				}
 			} footer: {
 				Text("Identify flashes the lights so you can tell which controller you are talking to.")
@@ -73,16 +83,6 @@ struct NodeView: View {
 		}
 		.navigationTitle("Controller")
 		.navigationBarTitleDisplayMode(.inline)
-		.sheet(isPresented: $isSettingUp) {
-			NodeSetupView()
-		}
-		.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
-			Button("Forget", role: .destructive) {
-				Task { try? await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).forget() }
-			}
-		} message: {
-			Text("The controller restarts and makes its own Glow Setup network again.")
-		}
 		.task {
 			discovery.start()
 			manualHost = console.endpoint.host

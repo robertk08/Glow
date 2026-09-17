@@ -62,6 +62,8 @@ struct ScenesView: View {
 				}
 			}
 			.toolbar {
+				SettingsToolbarButton()
+				
 				ToolbarItem(placement: .topBarTrailing) {
 					EditButton()
 				}
@@ -71,18 +73,18 @@ struct ScenesView: View {
 						newName = ""
 						isNaming = true
 					}
+					.alert("Save This Look", isPresented: $isNaming) {
+						TextField("Name", text: $newName)
+						Button("Cancel", role: .cancel) {}
+						Button("Save") {
+							let name = newName.trimmingCharacters(in: .whitespaces)
+							guard !name.isEmpty else { return }
+							context.insert(Look(name: name, sortIndex: (looks.map(\.sortIndex).max() ?? 0) + 1, values: console.universe.values))
+						}
+					} message: {
+						Text("Keeps every channel exactly where it is right now.")
+					}
 				}
-			}
-			.alert("Save This Look", isPresented: $isNaming) {
-				TextField("Name", text: $newName)
-				Button("Cancel", role: .cancel) {}
-				Button("Save") {
-					let name = newName.trimmingCharacters(in: .whitespaces)
-					guard !name.isEmpty else { return }
-					context.insert(Look(name: name, sortIndex: (looks.map(\.sortIndex).max() ?? 0) + 1, values: console.universe.values))
-				}
-			} message: {
-				Text("Keeps every channel exactly where it is right now.")
 			}
 			.sensoryFeedback(.success, trigger: recalled)
 		}

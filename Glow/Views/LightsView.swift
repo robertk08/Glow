@@ -127,13 +127,7 @@ struct LightsView: View {
 				}
 			}
 			.toolbar {
-				ToolbarItem(placement: .topBarLeading) {
-					NavigationLink {
-						SettingsView()
-					} label: {
-						Image(systemName: "gearshape")
-					}
-				}
+				SettingsToolbarButton()
 				
 				ToolbarItem(placement: .topBarTrailing) {
 					EditButton()
@@ -150,6 +144,18 @@ struct LightsView: View {
 							isNamingGroup = true
 						}
 					}
+					.sheet(isPresented: $isAdding) {
+						AddLightView(isPresented: $isAdding)
+					}
+					.alert("New Group", isPresented: $isNamingGroup) {
+						TextField("Name", text: $newGroupName)
+						Button("Cancel", role: .cancel) {}
+						Button("Create") {
+							let name = newGroupName.trimmingCharacters(in: .whitespaces)
+							guard !name.isEmpty else { return }
+							context.insert(FixtureGroup(name: name, sortIndex: (groups.map(\.sortIndex).max() ?? 0) + 1))
+						}
+					}
 				}
 			}
 			.navigationDestination(item: $editingFixture) { fixture in
@@ -158,9 +164,6 @@ struct LightsView: View {
 			.navigationDestination(item: $editingGroup) { group in
 				GroupView(group: group)
 			}
-			.sheet(isPresented: $isAdding) {
-				AddLightView(isPresented: $isAdding)
-			}
 			.sheet(isPresented: Binding { !console.selection.isEmpty } set: { shown in
 				guard !shown else { return }
 				console.selection.removeAll()
@@ -168,15 +171,6 @@ struct LightsView: View {
 				ControlSheet(control: console.control(among: fixtures, library: library))
 					.presentationDetents([.medium, .large])
 					.presentationBackgroundInteraction(.enabled(upThrough: .medium))
-			}
-			.alert("New Group", isPresented: $isNamingGroup) {
-				TextField("Name", text: $newGroupName)
-				Button("Cancel", role: .cancel) {}
-				Button("Create") {
-					let name = newGroupName.trimmingCharacters(in: .whitespaces)
-					guard !name.isEmpty else { return }
-					context.insert(FixtureGroup(name: name, sortIndex: (groups.map(\.sortIndex).max() ?? 0) + 1))
-				}
 			}
 			.sensoryFeedback(.selection, trigger: console.selection)
 			.onChange(of: fixtures) {

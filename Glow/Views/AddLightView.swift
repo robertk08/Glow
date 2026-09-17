@@ -19,6 +19,9 @@ struct AddLightView: View {
 					Button("Build a Fixture", systemImage: "slider.horizontal.3") {
 						isBuilding = true
 					}
+					.sheet(isPresented: $isBuilding) {
+						CustomFixtureView()
+					}
 				}
 				
 				Section {
@@ -61,9 +64,6 @@ struct AddLightView: View {
 			}
 			.toolbar {
 				Button(role: .close) { dismiss() }
-			}
-			.sheet(isPresented: $isBuilding) {
-				CustomFixtureView()
 			}
 		}
 	}
