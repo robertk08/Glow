@@ -44,7 +44,7 @@ static const uint8_t DIMMER_OPEN = 255;
 static const uint8_t MODE_MANUAL = 0;
 static const uint8_t MACRO_RGBW  = 0;
 
-#define GLOW_FW_VERSION "1.2.0"
+#define GLOW_FW_VERSION "1.3.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_SERVICE    "glow"

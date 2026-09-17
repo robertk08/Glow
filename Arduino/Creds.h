@@ -7,9 +7,10 @@ bool begin();
 
 bool        have();
 const char *ssid();
+const char *user();
 const char *password();
 
-bool save(const char *ssid, const char *password);
+bool save(const char *ssid, const char *user, const char *password);
 bool forget();
 
 const char *sketchSsid();

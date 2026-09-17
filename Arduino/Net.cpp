@@ -4,6 +4,7 @@
 
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <esp_eap_client.h>
 #include <esp_mac.h>
 
 namespace Net {
@@ -24,7 +25,8 @@ bool     g_trying    = false;
 uint32_t g_joinStart = 0;
 bool     g_tryLetGo  = false;
 char     g_trySsid[33] = "";
-char     g_tryPass[64] = "";
+char     g_tryUser[65] = "";
+char     g_tryPass[65] = "";
 
 bool g_bootCleared = false;
 
@@ -59,14 +61,33 @@ void announce() {
                 GLOW_PORT);
 }
 
-void startStation(const char *ssid, const char *password) {
+bool isEnterprise(wifi_auth_mode_t mode) {
+  switch (mode) {
+    case WIFI_AUTH_ENTERPRISE:
+    case WIFI_AUTH_WPA_ENTERPRISE:
+    case WIFI_AUTH_WPA3_ENTERPRISE:
+    case WIFI_AUTH_WPA2_WPA3_ENTERPRISE:
+    case WIFI_AUTH_WPA3_ENT_192: return true;
+    default:                     return false;
+  }
+}
+
+void startStation(const char *ssid, const char *user, const char *password) {
   WiFi.mode(g_ap ? WIFI_AP_STA : WIFI_STA);
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
-  WiFi.begin(ssid, password);
+
+  if (user && user[0]) {
+    WiFi.begin(ssid, WPA2_AUTH_PEAP, user, user, password);
+  } else {
+    esp_wifi_sta_enterprise_disable();
+    WiFi.begin(ssid, password);
+  }
+
   g_lastTry = millis();
   g_sta     = true;
-  Serial.printf("WiFi: joining \"%s\"\n", ssid);
+  Serial.printf("WiFi: joining \"%s\"%s\n", ssid,
+                user && user[0] ? " as an enterprise network" : "");
 }
 
 void raiseAp(uint32_t ms) {
@@ -137,7 +158,7 @@ void begin() {
   }
 
   if (Creds::have()) {
-    startStation(Creds::ssid(), Creds::password());
+    startStation(Creds::ssid(), Creds::user(), Creds::password());
     if (asked) raiseAp(SETUP_AP_MS);
   } else {
     raiseAp(0);
@@ -170,7 +191,7 @@ void tick() {
 
     if (now && g_tryLetGo) {
       g_trying = false;
-      if (!Creds::save(g_trySsid, g_tryPass))
+      if (!Creds::save(g_trySsid, g_tryUser, g_tryPass))
         Serial.println(F("creds: NVS write failed"));
       else
         Serial.printf("creds: \"%s\" stored\n", g_trySsid);
@@ -180,7 +201,7 @@ void tick() {
       g_trying = false;
       Serial.printf("WiFi: could not join \"%s\"\n", g_trySsid);
       if (Creds::have()) {
-        startStation(Creds::ssid(), Creds::password());
+        startStation(Creds::ssid(), Creds::user(), Creds::password());
         raiseAp(SETUP_AP_MS);
       } else {
         WiFi.disconnect();
@@ -200,8 +221,7 @@ void tick() {
 
   if (!now && millis() - g_lastTry >= WIFI_RETRY_MS) {
     WiFi.disconnect();
-    WiFi.begin(Creds::ssid(), Creds::password());
-    g_lastTry = millis();
+    startStation(Creds::ssid(), Creds::user(), Creds::password());
   }
 }
 
@@ -242,18 +262,20 @@ int scan(Network *out, int max) {
     }
     if (dup >= 0) {
       if (rssi > out[dup].rssi) {
-        out[dup].rssi    = rssi;
-        out[dup].channel = WiFi.channel(i);
-        out[dup].secure  = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+        out[dup].rssi       = rssi;
+        out[dup].channel    = WiFi.channel(i);
+        out[dup].secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+        out[dup].enterprise = isEnterprise(WiFi.encryptionType(i));
       }
       continue;
     }
 
     Network entry;
     snprintf(entry.ssid, sizeof(entry.ssid), "%s", ssid.c_str());
-    entry.rssi    = rssi;
-    entry.channel = WiFi.channel(i);
-    entry.secure  = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+    entry.rssi       = rssi;
+    entry.channel    = WiFi.channel(i);
+    entry.secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+    entry.enterprise = isEnterprise(WiFi.encryptionType(i));
 
     if (n < max) {
       out[n++] = entry;
@@ -279,12 +301,16 @@ int scan(Network *out, int max) {
   return n;
 }
 
-bool provision(const char *ssid, const char *password) {
+bool provision(const char *ssid, const char *user, const char *password) {
   if (!ssid || !ssid[0]) return false;
   if (strlen(ssid) > 32) return false;
-  if (password && strlen(password) > 63) return false;
+  if (user && strlen(user) > 64) return false;
+
+  size_t passMax = user && user[0] ? 64 : 63;
+  if (password && strlen(password) > passMax) return false;
 
   snprintf(g_trySsid, sizeof(g_trySsid), "%s", ssid);
+  snprintf(g_tryUser, sizeof(g_tryUser), "%s", user ? user : "");
   snprintf(g_tryPass, sizeof(g_tryPass), "%s", password ? password : "");
 
   if (!g_ap) raiseAp(SETUP_AP_MS);
@@ -293,7 +319,7 @@ bool provision(const char *ssid, const char *password) {
   g_tryLetGo  = false;
   g_joinStart = millis();
   WiFi.disconnect();
-  startStation(g_trySsid, g_tryPass);
+  startStation(g_trySsid, g_tryUser, g_tryPass);
   return true;
 }
 

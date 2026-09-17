@@ -10,8 +10,14 @@ final class NodeSetupModel {
 	var step = Step.findController
 	var networks: [NodeSetup.Network] = []
 	var selected: NodeSetup.Network?
+	var user = ""
 	var password = ""
 	var failure: String?
+	
+	var canJoin: Bool {
+		guard !password.isEmpty else { return false }
+		return selected?.enterprise != true || !user.isEmpty
+	}
 	
 	private let setup = NodeSetup()
 	
@@ -36,6 +42,7 @@ final class NodeSetupModel {
 	
 	func choose(network: NodeSetup.Network) {
 		selected = network
+		user = ""
 		password = ""
 		step = network.secure ? .password : .joining
 	}
@@ -47,7 +54,8 @@ final class NodeSetupModel {
 		guard let ssid = selected?.ssid else { return }
 		
 		do {
-			try await setup.join(ssid: ssid, password: password)
+			try await setup.join(ssid: ssid, user: user, password: password)
+			user = ""
 			password = ""
 		} catch {
 			failure = error.localizedDescription

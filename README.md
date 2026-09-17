@@ -30,7 +30,8 @@ A scene stores all 512 channels as they are and puts them back on one tap.
 Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored
 credentials raises its own open network called **Glow Setup**. Join it from iOS
 Wi-Fi settings, then in Glow: Settings › Controller › Change Wi-Fi Network. The
-app lists what the controller can see, takes the password and hands it over.
+app lists what the controller can see, takes the password and hands it over. A
+network that signs you in by name takes a username too.
 
 The controller answers *before* it joins, because once it joins it is no longer
 on its own network. The app confirms by finding it again afterwards.

@@ -104,10 +104,11 @@ void scan(NetworkClient &c) {
   JsonArray    list = doc["networks"].to<JsonArray>();
   for (int i = 0; i < n; i++) {
     JsonObject o = list.add<JsonObject>();
-    o["ssid"]    = g_nets[i].ssid;
-    o["rssi"]    = g_nets[i].rssi;
-    o["secure"]  = g_nets[i].secure;
-    o["channel"] = g_nets[i].channel;
+    o["ssid"]       = g_nets[i].ssid;
+    o["rssi"]       = g_nets[i].rssi;
+    o["secure"]     = g_nets[i].secure;
+    o["enterprise"] = g_nets[i].enterprise;
+    o["channel"]    = g_nets[i].channel;
   }
   String out;
   serializeJson(doc, out);
@@ -132,6 +133,20 @@ void provision(NetworkClient &c, const char *body, size_t len) {
     return;
   }
 
+  const char *user    = "";
+  JsonVariant userVar = doc["user"];
+  if (!userVar.isNull()) {
+    if (!userVar.is<const char *>()) {
+      sendResult(c, 400, false, "bad_user");
+      return;
+    }
+    user = userVar.as<const char *>();
+    if (strlen(user) > 64) {
+      sendResult(c, 400, false, "bad_user");
+      return;
+    }
+  }
+
   const char *password = "";
   JsonVariant pwVar    = doc["password"];
   if (!pwVar.isNull()) {
@@ -140,7 +155,7 @@ void provision(NetworkClient &c, const char *body, size_t len) {
       return;
     }
     password = pwVar.as<const char *>();
-    if (strlen(password) > 63) {
+    if (strlen(password) > (user[0] ? 64u : 63u)) {
       sendResult(c, 400, false, "bad_password");
       return;
     }
@@ -149,7 +164,7 @@ void provision(NetworkClient &c, const char *body, size_t len) {
   sendResult(c, 200, true, nullptr);
   c.stop();
 
-  if (!Net::provision(ssid, password))
+  if (!Net::provision(ssid, user, password))
     Serial.println(F("provision: refused after being accepted"));
 }
 

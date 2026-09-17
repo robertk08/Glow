@@ -18,6 +18,17 @@ struct NodeSetup: Sendable {
 		var ssid: String
 		var rssi: Int
 		var secure: Bool
+		var enterprise: Bool
+		
+		private enum CodingKeys: String, CodingKey { case ssid, rssi, secure, enterprise }
+		
+		init(from decoder: any Decoder) throws {
+			let container = try decoder.container(keyedBy: CodingKeys.self)
+			ssid = try container.decode(String.self, forKey: .ssid)
+			rssi = try container.decode(Int.self, forKey: .rssi)
+			secure = try container.decode(Bool.self, forKey: .secure)
+			enterprise = try container.decodeIfPresent(Bool.self, forKey: .enterprise) ?? false
+		}
 		
 		var id: String { ssid }
 		var bars: Int {
@@ -63,8 +74,8 @@ struct NodeSetup: Sendable {
 		return response.networks.sorted { $0.rssi > $1.rssi }
 	}
 	
-	func join(ssid: String, password: String) async throws {
-		try await post("/api/provision", ["ssid": ssid, "password": password])
+	func join(ssid: String, user: String, password: String) async throws {
+		try await post("/api/provision", ["ssid": ssid, "user": user, "password": password])
 	}
 	
 	func forget() async throws {

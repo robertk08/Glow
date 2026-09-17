@@ -101,6 +101,13 @@ struct NodeSetupView: View {
 	private var passwordEntry: some View {
 		List {
 			Section {
+				if model.selected?.enterprise == true {
+					TextField("Username", text: $model.user)
+						.textContentType(.username)
+						.textInputAutocapitalization(.never)
+						.autocorrectionDisabled()
+				}
+				
 				SecureField("Password", text: $model.password)
 					.submitLabel(.join)
 					.onSubmit {
@@ -118,7 +125,7 @@ struct NodeSetupView: View {
 						await model.join(console: console)
 					}
 				}
-				.disabled(model.password.isEmpty)
+				.disabled(!model.canJoin)
 			}
 		}
 	}

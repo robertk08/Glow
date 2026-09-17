@@ -20,11 +20,12 @@ struct Network {
   int32_t rssi;
   int32_t channel;
   bool    secure;
+  bool    enterprise;
 };
 
 int scan(Network *out, int max);
 
-bool provision(const char *ssid, const char *password);
+bool provision(const char *ssid, const char *user, const char *password);
 
 void forget();       // erases, then reboots
 void enterSetup();
