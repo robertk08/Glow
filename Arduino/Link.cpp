@@ -93,6 +93,10 @@ void onBinary(uint8_t num, const uint8_t *p, size_t len) {
     sendError(num, "range", "start + length - 1 must be within 1..512");
     return;
   }
+
+  if (g_ws.connectedClients() > 1) {
+    g_ws.broadcastBIN(const_cast<uint8_t *>(p), len);
+  }
 }
 
 void onText(uint8_t num, const uint8_t *p, size_t len) {

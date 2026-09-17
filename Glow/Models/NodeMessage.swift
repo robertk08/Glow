@@ -16,6 +16,17 @@ nonisolated enum Wire {
 		return data
 	}
 	
+	static func decode(frame data: Data) -> (start: DMXAddress, values: [UInt8])? {
+		let bytes = [UInt8](data)
+		guard bytes.count > 6, bytes[0] == dmxOpcode, bytes[1] == 0 else { return nil }
+		
+		let start = Int(bytes[2]) | (Int(bytes[3]) << 8)
+		let length = Int(bytes[4]) | (Int(bytes[5]) << 8)
+		guard bytes.count == 6 + length, let address = DMXAddress(start) else { return nil }
+		
+		return (address, Array(bytes[6...]))
+	}
+	
 	nonisolated enum Command: Encodable, Sendable {
 		case hello
 		case ping(seq: Int)

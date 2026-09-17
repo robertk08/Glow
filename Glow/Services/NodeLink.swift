@@ -27,6 +27,7 @@ enum LinkEvent: Sendable {
 	case state(LinkState)
 	case status(Wire.NodeInfo)
 	case latency(TimeInterval)
+	case frame(start: DMXAddress, values: [UInt8])
 }
 
 actor NodeLink {
@@ -121,13 +122,14 @@ actor NodeLink {
 	}
 	
 	private func receive(_ message: URLSessionWebSocketTask.Message) {
-		let data: Data? = switch message {
-		case let .string(text): text.data(using: .utf8)
-		case let .data(data): data
-		@unknown default: nil
+		if case let .data(data) = message {
+			guard let frame = Wire.decode(frame: data) else { return }
+			continuation.yield(.frame(start: frame.start, values: frame.values))
+			return
 		}
 		
-		guard let data, let reply = Wire.Reply.decode(data) else { return }
+		guard case let .string(text) = message, let data = text.data(using: .utf8) else { return }
+		guard let reply = Wire.Reply.decode(data) else { return }
 		
 		switch reply {
 		case let .status(info):

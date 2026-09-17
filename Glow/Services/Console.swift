@@ -37,7 +37,6 @@ final class Console {
 	private var events: Task<Void, Never>?
 	private var lastFrame: [UInt8] = []
 	private var needsFullFrame = true
-	private var lastFullFrame = Date.distantPast
 	private var savedLook: [UInt8] = []
 	private var lastSave = Date.distantPast
 	
@@ -89,6 +88,9 @@ final class Console {
 					node = info
 				case let .latency(value):
 					latency = value
+				case let .frame(start, values):
+					universe.set(values, at: start)
+					lastFrame = output()
 				}
 			}
 		}
@@ -206,10 +208,8 @@ final class Console {
 		let frame = output()
 		defer { lastFrame = frame }
 		
-		let stale = Date().timeIntervalSince(lastFullFrame) > 1
-		if needsFullFrame || lastFrame.count != frame.count || stale {
+		if needsFullFrame || lastFrame.count != frame.count {
 			needsFullFrame = false
-			lastFullFrame = Date()
 			await connection.send(start: DMXAddress(1)!, values: frame)
 			return
 		}

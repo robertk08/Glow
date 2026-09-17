@@ -157,6 +157,12 @@ setup network, because scanning takes the radio off the air and must not be able
 to disturb a running show. It starts the scan and answers straight away, so the
 app polls until the list arrives.
 
+**A frame is relayed to every other client.** Two devices on the same node see
+each other's changes, so an iPad patching and an iPhone running scenes stay in
+step. The app sends a full universe only on connect, because WebSocket is TCP
+and a delta cannot be lost. Re-asserting the whole universe on a timer is what
+makes two clients fight over it.
+
 **On disconnect the controller holds its last look.** A light going dark because
 Wi-Fi hiccuped is worse than a light staying put, and drops are routine.
 
