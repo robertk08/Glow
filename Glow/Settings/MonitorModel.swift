@@ -58,8 +58,8 @@ final class MonitorModel {
 			written = origin
 		}
 		
-		let travel = abs(translation.height) > 60 ? 6.0 : 1.5
-		let value = UInt8(min(max(Double(origin) + translation.width / travel, 0), 255).rounded())
+		let travel = abs(translation.width) > 60 ? 6.0 : 1.5
+		let value = UInt8(min(max(Double(origin) - translation.height / travel, 0), 255).rounded())
 		guard value != written else { return }
 		written = value
 		adjusting = address

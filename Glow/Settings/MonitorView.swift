@@ -86,8 +86,10 @@ private struct ChannelCell: View {
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
 		.scaleEffect(isArmed ? 1.12 : 1)
 		.animation(.snappy(duration: 0.15), value: isArmed)
-		.gesture(DragGesture(minimumDistance: 6).onChanged { drag in
-			monitor.adjust(address, by: drag.translation, console: console)
+		.gesture(LongPressGesture(minimumDuration: 0.15).sequenced(before: DragGesture(minimumDistance: 0)).onChanged { phase in
+			if case let .second(_, drag) = phase, let drag {
+				monitor.adjust(address, by: drag.translation, console: console)
+			}
 		}.onEnded { _ in
 			monitor.commit()
 		})
