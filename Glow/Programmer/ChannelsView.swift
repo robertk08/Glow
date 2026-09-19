@@ -44,15 +44,5 @@ struct ChannelsView: View {
 		}
 		.navigationTitle("All Channels")
 		.navigationBarTitleDisplayMode(.inline)
-		.safeAreaInset(edge: .bottom) {
-			Text("A slider steps over a setting that has to be confirmed, so nothing resets a head by accident. Pick it below to send it, or type the value.")
-				.font(.footnote)
-				.foregroundStyle(.secondary)
-				.multilineTextAlignment(.center)
-				.padding(.horizontal)
-				.padding(.vertical, 10)
-				.frame(maxWidth: .infinity)
-				.background(.bar)
-		}
 	}
 }

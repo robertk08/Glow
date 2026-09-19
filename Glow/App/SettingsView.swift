@@ -24,8 +24,6 @@ struct SettingsView: View {
 				}
 			} header: {
 				Text("Connection")
-			} footer: {
-				Text("Glow sends to the controller over Wi-Fi. Your iPhone and the controller have to be on the same network.")
 			}
 			
 			Section {
@@ -41,8 +39,6 @@ struct SettingsView: View {
 				}
 			} header: {
 				Text("Show")
-			} footer: {
-				Text("A show holds its own patch, groups, built fixtures and scenes.")
 			}
 			
 			Section {
@@ -59,8 +55,6 @@ struct SettingsView: View {
 				}
 			} header: {
 				Text("Fixtures and Output")
-			} footer: {
-				Text("Fixtures is every definition Glow can patch, channel by channel. DMX Output is what is going down the line right now.")
 			}
 			
 			Section {

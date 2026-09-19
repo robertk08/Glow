@@ -25,18 +25,12 @@ struct PatchView: View {
 			Section {
 				TextField("Name", text: $name)
 					.autocorrectionDisabled()
-			} footer: {
-				Text("Leave empty to use the fixture's own name.")
 			}
 			
 			Section {
 				Stepper(value: $count, in: 1...64) {
 					LabeledContent("How many", value: "\(count)")
 						.monospacedDigit()
-				}
-			} footer: {
-				if count > 1 {
-					Text("Each one gets the next free block of \(width) channels.")
 				}
 			}
 			

@@ -24,8 +24,6 @@ struct LibraryView: View {
 				Button("Build a Fixture", systemImage: "slider.horizontal.3") {
 					isBuilding = true
 				}
-			} footer: {
-				Text("Anything with a DMX address can go here, whether or not Glow ships a definition for it.")
 			}
 			
 			if !made.isEmpty {

@@ -33,16 +33,12 @@ struct NodeView: View {
 					LabeledContent("Name", value: node.name)
 					LabeledContent("Firmware", value: node.firmware)
 				}
-			} footer: {
-				Text(console.link.explanation)
 			}
 			
 			Section {
 				Button("Change Wi-Fi Network", systemImage: "wifi.router") {
 					isSettingUp = true
 				}
-			} footer: {
-				Text("Nothing is ever typed on the controller, Wi-Fi included. Glow joins its setup network, reads the list of networks it can see, takes the password from you and hands it over.")
 			}
 			
 			Section {
@@ -67,8 +63,6 @@ struct NodeView: View {
 				}
 			} header: {
 				Text("On This Network")
-			} footer: {
-				Text("Glow finds controllers over Bonjour. If yours is missing, it is on another network or still coming up.")
 			}
 			
 			Section {
@@ -76,8 +70,6 @@ struct NodeView: View {
 					isForgetting = true
 				}
 				.disabled(!console.link.isConnected)
-			} footer: {
-				Text("The controller drops the network it stored and raises Glow Setup again. Reflashing does not erase it, this does.")
 			}
 		}
 		.navigationTitle("Controller")

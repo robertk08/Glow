@@ -67,8 +67,6 @@ struct ShowsView: View {
 						Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
 					}
 				}
-			} footer: {
-				Text("Switching show swaps the whole store, so a house rig and a touring rig never see each other. The controller you send to stays with this device.")
 			}
 			
 			Section {
@@ -80,8 +78,6 @@ struct ShowsView: View {
 					newName = ""
 					isNaming = true
 				}
-			} footer: {
-				Text("Hold a show for Rename, Duplicate, Share, Save to Files and Delete.")
 			}
 		}
 		.sensoryFeedback(.selection, trigger: shows.activeID)

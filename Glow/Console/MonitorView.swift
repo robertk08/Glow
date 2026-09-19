@@ -18,7 +18,7 @@ struct MonitorView: View {
 				ForEach(monitor.blocks(owned: owned), id: \.first) { block in
 					Section {
 						ForEach(block, id: \.self) { address in
-							ChannelCell(address: address, owned: owned.contains(address), monitor: monitor)
+							ChannelCell(address: address, monitor: monitor)
 						}
 					} header: {
 						Text("\(block.first ?? 1)–\(block.last ?? 1)")
@@ -34,18 +34,11 @@ struct MonitorView: View {
 			.padding(.bottom)
 		}
 		.safeAreaInset(edge: .top, spacing: 0) {
-			VStack(spacing: 6) {
-				Picker("Values", selection: $monitor.showsSource) {
-					Text("Output").tag(false)
-					Text("Source").tag(true)
-				}
-				.pickerStyle(.segmented)
-				
-				Text(monitor.showsSource ? "Before master and blackout. Drag sideways across a channel to change it, further from the row for bigger steps." : "After master and blackout, exactly as it goes to the controller.")
-					.font(.footnote)
-					.foregroundStyle(.secondary)
-					.frame(maxWidth: .infinity, alignment: .leading)
+			Picker("Values", selection: $monitor.showsSource) {
+				Text("Output").tag(false)
+				Text("Source").tag(true)
 			}
+			.pickerStyle(.segmented)
 			.padding(.horizontal)
 			.padding(.bottom, 8)
 			.background(.bar)
@@ -71,7 +64,6 @@ private struct ChannelCell: View {
 	@Environment(Console.self) private var console
 	
 	let address: Int
-	let owned: Bool
 	let monitor: MonitorModel
 	
 	var body: some View {
@@ -94,7 +86,7 @@ private struct ChannelCell: View {
 					.fill(.fill.quaternary)
 				
 				Rectangle()
-					.fill(Color.accentColor.opacity(owned ? 0.55 : 0.2))
+					.fill(.fill.secondary)
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
 		}

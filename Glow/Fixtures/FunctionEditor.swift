@@ -28,8 +28,6 @@ struct FunctionEditor: View {
 				}
 			} header: {
 				Text("Range")
-			} footer: {
-				Text("The DMX values this covers, straight off the manual's table.")
 			}
 			
 			Section {
@@ -53,8 +51,6 @@ struct FunctionEditor: View {
 				}
 			} header: {
 				Text("Behavior")
-			} footer: {
-				Text("Marking the dimmer band is what tells Glow this channel carries intensity, so a fixture that dims through its shutter still answers the brightness control. Variable ranges get a slider, and a timed command goes back to the channel default after its hold.")
 			}
 			
 			Section {
@@ -77,8 +73,6 @@ struct FunctionEditor: View {
 				}
 			} header: {
 				Text("Real units")
-			} footer: {
-				Text("What the manual says this means in the world, so Glow shows 3.2 Hz or 37° instead of a DMX number.")
 			}
 			
 			Section {
@@ -91,8 +85,6 @@ struct FunctionEditor: View {
 				}
 			} header: {
 				Text("Color")
-			} footer: {
-				Text("For a range that is one colour on a wheel. A range holding several slots puts the colours on the slots instead.")
 			}
 			
 			Section {
@@ -124,8 +116,6 @@ struct FunctionEditor: View {
 				}
 			} header: {
 				Text("Slots")
-			} footer: {
-				Text("A gobo wheel or a colour wheel splits one range into named slots. Glow shows them as a grid you pick from instead of a slider.")
 			}
 		}
 		.navigationTitle(function.label.isEmpty ? "Range" : function.label)
@@ -177,8 +167,6 @@ private struct ChannelSetEditor: View {
 						set.colors = []
 					}
 				}
-			} footer: {
-				Text("Two colours make a split swatch, the way a colour wheel shows the boundary between one filter and the next.")
 			}
 		}
 		.navigationTitle(set.label.isEmpty ? "Slot" : set.label)

@@ -8,7 +8,7 @@ struct BuiltInFixtureTests {
 	private let library = FixtureLibrary()
 	
 	@Test func everyBundledDefinitionLoads() {
-		#expect(library.builtIn.count == 9)
+		#expect(library.builtIn.count == 4)
 		#expect(Set(library.builtIn.map(\.id)).count == library.builtIn.count)
 		#expect(Set(library.types.map(\.id)).count == library.types.count)
 	}

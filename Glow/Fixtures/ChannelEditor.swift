@@ -21,14 +21,10 @@ struct ChannelEditor: View {
 				TextField(channel.attribute.name, text: Binding { channel.label ?? "" } set: { channel.label = $0.isEmpty ? nil : $0 })
 			} header: {
 				Text("Channel \(channel.addressLabel)")
-			} footer: {
-				Text("The attribute is what Glow drives, so the same control reaches it on every fixture that has one. The name is only what you read.")
 			}
 			
 			Section {
 				Toggle("16-bit", isOn: Binding { channel.isWide } set: { channel.fineOffset = $0 ? channel.offset + 1 : nil })
-			} footer: {
-				Text("On when the next address is the fine half of this one, giving the attribute 65,536 steps instead of 256.")
 			}
 			
 			Section {
@@ -49,8 +45,6 @@ struct ChannelEditor: View {
 				}
 			} header: {
 				Text("Default")
-			} footer: {
-				Text("Where the channel sits before anyone touches it. It goes out on the wire but counts as unset, so raising the dimmer does not turn a default into something you chose.")
 			}
 			
 			Section {
@@ -68,8 +62,6 @@ struct ChannelEditor: View {
 				}
 			} header: {
 				Text("Highlight")
-			} footer: {
-				Text("Where Highlight puts this channel when you are finding a light on stage. Automatic opens the shutter and takes the dimmer to full.")
 			}
 			
 			Section {
@@ -108,8 +100,6 @@ struct ChannelEditor: View {
 				}
 			} header: {
 				Text("Ranges")
-			} footer: {
-				Text("A channel with ranges gets a named picker. One without gets a plain slider on the raw value.")
 			}
 			
 			Section {
@@ -141,8 +131,6 @@ struct ChannelEditor: View {
 				}
 			} header: {
 				Text("Depends on")
-			} footer: {
-				Text("For a fixture whose colour channels go dead while a built-in pattern runs. Glow greys this channel out and says which one switched it off.")
 			}
 		}
 		.navigationTitle(channel.name)

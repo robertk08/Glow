@@ -32,10 +32,6 @@ struct LightTile: View {
 					.background(clashes || programmer == nil ? Color.orange : isOn ? glow : Color(.tertiarySystemFill), in: .circle)
 				
 				Spacer()
-				
-				Image(systemName: "checkmark.circle.fill")
-					.font(.title3)
-					.foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear))
 			}
 			
 			VStack(alignment: .leading, spacing: 1) {

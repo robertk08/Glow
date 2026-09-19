@@ -80,7 +80,7 @@ version at all is taken as it comes.
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.
 
-Bundled fixture channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
+Glow ships the four fixtures here, and their channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
 [Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
 [Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf),
 and, for the unbranded head, the [Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),

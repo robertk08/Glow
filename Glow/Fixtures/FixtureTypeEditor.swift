@@ -31,8 +31,6 @@ struct FixtureTypeEditor: View {
 					
 					TextField("Mode", text: $draft.mode)
 						.autocorrectionDisabled()
-				} footer: {
-					Text(forks ? "Glow keeps the built-in fixture and saves yours beside it. Lights already patched to it move over to your version." : "Read the channel list off the fixture's manual and copy it in order. A fixture built here behaves exactly like one Glow ships.")
 				}
 				
 				Section("Icon") {
@@ -71,15 +69,11 @@ struct FixtureTypeEditor: View {
 					}
 				} header: {
 					Text("Channels")
-				} footer: {
-					Text("This fixture uses ^[\(draft.channelCount) address](inflect: true).")
 				}
 				
 				if draft.mixesWithFlags {
 					Section {
 						Toggle("Subtractive CMY", isOn: Binding { draft.mixing == .subtractive } set: { draft.mixing = $0 ? .subtractive : .additive })
-					} footer: {
-						Text("On for a head that puts cyan, magenta and yellow flags in front of a white lamp, where zero means the flag is out of the beam. Off for a fixture whose cyan, magenta and yellow are their own LEDs.")
 					}
 				}
 				

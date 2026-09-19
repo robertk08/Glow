@@ -59,8 +59,6 @@ struct FixtureEditView: View {
 					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
 				} header: {
 					Text("Orientation")
-				} footer: {
-					Text("For a head hung upside down or facing the other way, so the pad matches the stage.")
 				}
 			}
 			
@@ -81,12 +79,6 @@ struct FixtureEditView: View {
 				}
 			} header: {
 				Text("Patch")
-			} footer: {
-				let overlapping = Fixture.overlapping(fixture, among: fixtures, library: library)
-				
-				if !overlapping.isEmpty {
-					Text("Shares channels with \(overlapping.map(\.name).formatted(.list(type: .and))). They will move together.")
-				}
 			}
 			
 			Section {

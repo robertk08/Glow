@@ -53,8 +53,6 @@ struct ProgrammerView: View {
 					Button("Reset to Defaults") {
 						programmer.applyDefaults()
 					}
-				} footer: {
-					Text(programmer.type == nil ? "Channels are shown when every selected light is the same fixture." : "Every channel the fixture has, on its raw DMX value.")
 				}
 			}
 			.safeAreaInset(edge: .top, spacing: 0) {
@@ -226,10 +224,6 @@ private struct ColorRows: View {
 						.tint(channel.attribute.color)
 					}
 				}
-			}
-		} footer: {
-			if programmer.isSubtractive {
-				Text("This head makes color by putting filters in front of a white lamp, so the dimmer sets how bright it is.")
 			}
 		}
 	}

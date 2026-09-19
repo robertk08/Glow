@@ -192,7 +192,7 @@ struct LightsView: View {
 		.navigationDestination(item: $editingFixture) { fixture in
 			FixtureEditView(fixture: fixture)
 		}
-		.navigationDestination(item: $editingGroup) { group in
+		.sheet(item: $editingGroup) { group in
 			GroupView(group: group)
 		}
 		.sensoryFeedback(.selection, trigger: console.selection.identifiers)
