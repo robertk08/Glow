@@ -28,10 +28,32 @@ exists is removed on the next launch, unless the fixture library failed to load.
 A moving head can be told to invert pan, tilt or both. The fixture profile
 carries what is usual for that model and each patched light can differ.
 
+A fixture type is one file, whether Glow ships it or you build it here, and the
+app reads both through the same decoder. A type carries one or more DMX modes,
+and patching picks the mode the fixture is switched to. A channel names the
+attribute it drives rather than an index, so the same control reaches pan on
+any head and the dimmer on any lamp. A channel can claim a second address as
+its fine half, carry a default and a highlight value, and split into named
+functions with named sets inside them, which is how a gobo wheel offers its
+gobos and a colour wheel its slots. A function can say what it stands for, the
+dimmer band, fully open, blacked out, or handing colour back to the mixer, and
+what it means in the world, so a strobe reads in hertz and a zoom in degrees.
+A channel can also name the channel and range it depends on, for a fixture
+whose colour channels go dead while a built-in pattern runs.
+
+Editing a fixture Glow ships keeps the original and saves yours beside it, and
+any light already patched to it moves over.
+
+Every channel has a default, and defaults are not settings. A light patched
+and brought up reads plain white, centred, no gobo and no strobe, because that
+is where its channels sit, and none of it counts as chosen. Raising the dimmer
+marks the dimmer and nothing else, so colour and position stay available to
+whatever you do next, and releasing puts every channel back to its default.
+
 Color is one control for two kinds of fixture. An LED fixture adds emitters
 together, and a discharge head subtracts cyan, magenta and yellow flags from a
-white lamp. A profile says which it is with `colorMixing`, and a fixture built
-in the app can declare itself subtractive too.
+white lamp. A type says which it is with `mixing`, and a fixture built in the
+app can declare itself subtractive too.
 
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
@@ -48,7 +70,9 @@ inspect or adjust the programmer values before those controls.
 
 Bundled fixture channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
 [Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
-and [Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf).
+[Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf),
+and, for the unbranded head, the [Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),
+which is the same 7 by 10 W RGBW platform channel for channel.
 
 ## Setting up a controller
 

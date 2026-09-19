@@ -1,0 +1,372 @@
+{
+  "id": "generic-led-par",
+  "model": "LED Par",
+  "symbol": "lightbulb.max",
+  "modes": [
+    {
+      "id": "generic-par-rgb-3ch",
+      "name": "3 channel, RGB",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic-par-rgbw-4ch",
+      "name": "4 channel, RGBW",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "white",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic-par-rgbwauv-6ch",
+      "name": "6 channel, RGBWA and UV",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "white",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "amber",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "uv",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic-par-rgbw-8ch",
+      "name": "8 channel, dimmer and RGBW",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "red",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "green",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "blue",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "white",
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "shutter",
+          "label": "Strobe",
+          "highlightValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 15,
+              "label": "Open",
+              "purpose": "open"
+            },
+            {
+              "from": 16,
+              "to": 255,
+              "label": "Strobe, slow to fast",
+              "kind": "proportional",
+              "unit": "hertz",
+              "physicalFrom": 1,
+              "physicalTo": 20
+            }
+          ]
+        },
+        {
+          "offset": 7,
+          "attribute": "program",
+          "functions": [
+            {
+              "from": 0,
+              "to": 7,
+              "label": "Off, the desk runs the light",
+              "purpose": "release"
+            },
+            {
+              "from": 8,
+              "to": 127,
+              "label": "Color fade",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 128,
+              "to": 255,
+              "label": "Color jump",
+              "requiresConfirmation": true
+            }
+          ]
+        },
+        {
+          "offset": 8,
+          "attribute": "programSpeed",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "Slow to fast",
+              "kind": "proportional"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

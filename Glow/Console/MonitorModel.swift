@@ -35,7 +35,7 @@ final class MonitorModel {
 		var found: Set<Int> = []
 		
 		for fixture in fixtures {
-			found.formUnion(fixture.range(library.profile(fixture.profileID)))
+			found.formUnion(fixture.range(library.mode(fixture.typeID)))
 		}
 		
 		return found

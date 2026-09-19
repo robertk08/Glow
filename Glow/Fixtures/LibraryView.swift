@@ -5,66 +5,52 @@ struct LibraryView: View {
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	@Query(sort: \CustomProfile.createdAt) private var customProfiles: [CustomProfile]
+	@Query private var stored: [StoredFixtureType]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	var patching: Binding<Bool>?
 	
 	@State private var query = ""
 	@State private var isBuilding = false
-	@State private var deleting: CustomProfile?
-	
-	private var results: [FixtureProfile] { library.search(query) }
-	
-	private var built: [CustomProfile] {
-		customProfiles.filter { profile in results.contains { $0.id == profile.identifier } }
-	}
-	
-	private var bundled: [FixtureProfile] {
-		results.filter { profile in !customProfiles.contains { $0.identifier == profile.id } }
-	}
+	@State private var deleting: StoredFixtureType?
 	
 	var body: some View {
-		List {
+		let results = library.search(query)
+		let made = results.filter { type in library.made.contains { $0.id == type.id } }
+		let builtIn = results.filter { type in library.builtIn.contains { $0.id == type.id } }
+		
+		return List {
 			Section {
 				Button("Build a Fixture", systemImage: "slider.horizontal.3") {
 					isBuilding = true
 				}
 			} footer: {
-				Text("Anything with a DMX address can go here, whether or not Glow ships a profile for it.")
+				Text("Anything with a DMX address can go here, whether or not Glow ships a definition for it.")
 			}
 			
-			if !built.isEmpty {
-				Section("Built Here") {
-					ForEach(built) { custom in
+			if !made.isEmpty {
+				Section("Made Here") {
+					ForEach(made) { type in
 						NavigationLink {
-							if let patching {
-								PatchView(profile: custom.profile, isPresented: patching)
-							} else {
-								ProfileView(profile: custom.profile)
-							}
+							FixtureTypeView(type: type, patching: patching)
 						} label: {
-							ProfileRow(profile: custom.profile)
+							FixtureTypeRow(type: type)
 						}
 						.swipeActions {
 							Button("Delete", systemImage: "trash", role: .destructive) {
-								deleting = custom
+								deleting = stored.first { $0.identifier == type.id }
 							}
 						}
 					}
 				}
 			}
 			
-			Section(built.isEmpty ? "" : "Built In") {
-				ForEach(bundled) { profile in
+			Section(made.isEmpty ? "" : "Built In") {
+				ForEach(builtIn) { type in
 					NavigationLink {
-						if let patching {
-							PatchView(profile: profile, isPresented: patching)
-						} else {
-							ProfileView(profile: profile)
-						}
+						FixtureTypeView(type: type, patching: patching)
 					} label: {
-						ProfileRow(profile: profile)
+						FixtureTypeRow(type: type)
 					}
 				}
 			}
@@ -95,9 +81,9 @@ struct LibraryView: View {
 			}
 		}
 		.sheet(isPresented: $isBuilding) {
-			CustomFixtureView()
+			FixtureTypeEditor()
 		}
-		.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible) {
+		.confirmationDialog("Delete \(deleting?.definition.model ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible) {
 			Button("Delete Fixture", role: .destructive) {
 				if let deleting {
 					context.delete(deleting)

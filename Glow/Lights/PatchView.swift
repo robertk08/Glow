@@ -7,7 +7,7 @@ struct PatchView: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
-	let profile: FixtureProfile
+	let mode: FixtureMode
 	
 	@Binding var isPresented: Bool
 	
@@ -16,7 +16,7 @@ struct PatchView: View {
 	@State private var address = 1
 	@State private var hasChosenAddress = false
 	
-	private var width: Int { max(1, profile.channelCount) }
+	private var width: Int { max(1, mode.channelCount) }
 	private var lastAddress: Int { address + width * count - 1 }
 	private var fits: Bool { lastAddress <= Universe.channelCount }
 	
@@ -59,7 +59,7 @@ struct PatchView: View {
 			
 			Section {
 				Button("Add to the Patch") {
-					console.patch(profile, count: count, at: address, named: name, among: fixtures, context: context)
+					console.patch(mode, count: count, at: address, named: name, among: fixtures, context: context)
 					isPresented = false
 				}
 				.font(.headline)
@@ -70,7 +70,7 @@ struct PatchView: View {
 			}
 			.listRowBackground(Color.clear)
 		}
-		.navigationTitle(profile.model)
+		.navigationTitle(mode.model)
 		.navigationBarTitleDisplayMode(.inline)
 		.task {
 			guard !hasChosenAddress else { return }

@@ -4,7 +4,7 @@ import SwiftUI
 @Model
 final class Fixture {
 	var identifier: String = UUID().uuidString
-	var profileID: String = ""
+	@Attribute(originalName: "typeID") var typeID: String = ""
 	var name: String = ""
 	var address: Int = 1
 	var sortIndex: Int = 0
@@ -13,9 +13,9 @@ final class Fixture {
 	var invertsTilt: Bool = false
 	var group: FixtureGroup?
 	
-	init(profileID: String, name: String, address: DMXAddress, sortIndex: Int) {
+	init(typeID: String, name: String, address: DMXAddress, sortIndex: Int) {
 		identifier = UUID().uuidString
-		self.profileID = profileID
+		self.typeID = typeID
 		self.name = name
 		self.address = address.value
 		self.sortIndex = sortIndex
@@ -26,21 +26,21 @@ final class Fixture {
 		set { address = newValue.value }
 	}
 	
-	func symbol(_ profile: FixtureProfile?) -> String {
-		symbolOverride ?? profile?.symbol ?? "lightbulb"
+	func symbol(_ mode: FixtureMode?) -> String {
+		symbolOverride ?? mode?.symbol ?? "lightbulb"
 	}
 	
-	func range(_ profile: FixtureProfile?) -> ClosedRange<Int> {
-		address...(address + max(1, profile?.channelCount ?? 1) - 1)
+	func range(_ mode: FixtureMode?) -> ClosedRange<Int> {
+		address...(address + max(1, mode?.channelCount ?? 1) - 1)
 	}
 	
 	@MainActor static func clashing(among fixtures: [Fixture], library: FixtureLibrary) -> Set<PersistentIdentifier> {
 		var found: Set<PersistentIdentifier> = []
 		
 		for (index, fixture) in fixtures.enumerated() {
-			let range = fixture.range(library.profile(fixture.profileID))
+			let range = fixture.range(library.mode(fixture.typeID))
 			
-			for other in fixtures.dropFirst(index + 1) where other.range(library.profile(other.profileID)).overlaps(range) {
+			for other in fixtures.dropFirst(index + 1) where other.range(library.mode(other.typeID)).overlaps(range) {
 				found.insert(fixture.persistentModelID)
 				found.insert(other.persistentModelID)
 			}
@@ -50,14 +50,14 @@ final class Fixture {
 	}
 	
 	@MainActor static func overlapping(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary) -> [Fixture] {
-		let span = fixture.range(library.profile(fixture.profileID))
-		return fixtures.filter { $0.persistentModelID != fixture.persistentModelID && $0.range(library.profile($0.profileID)).overlaps(span) }
+		let span = fixture.range(library.mode(fixture.typeID))
+		return fixtures.filter { $0.persistentModelID != fixture.persistentModelID && $0.range(library.mode($0.typeID)).overlaps(span) }
 	}
 	
 	@MainActor static func firstFreeAddress(width: Int, among fixtures: [Fixture], library: FixtureLibrary) -> Int {
 		var candidate = 1
 		
-		for range in fixtures.map({ $0.range(library.profile($0.profileID)) }).sorted(by: { $0.lowerBound < $1.lowerBound }) {
+		for range in fixtures.map({ $0.range(library.mode($0.typeID)) }).sorted(by: { $0.lowerBound < $1.lowerBound }) {
 			if candidate + width - 1 < range.lowerBound { break }
 			candidate = max(candidate, range.upperBound + 1)
 		}

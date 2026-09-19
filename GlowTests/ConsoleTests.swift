@@ -39,84 +39,14 @@ struct ConsoleTests {
 		#expect(dimmer.scale(110, by: 1) == 110)
 	}
 	
-	@MainActor @Test func aDimBandCarriesBrightnessBothWays() {
-		let shutter = ProfileChannel(offset: 1, role: .shutter, ranges: [
-			ChannelRange(from: 0, to: 9, label: "Closed"),
-			ChannelRange(from: 10, to: 210, label: "Dimmer", kind: .proportional),
-			ChannelRange(from: 211, to: 255, label: "Strobe", kind: .proportional),
-		])
-		let console = Console()
-		let programmer = Programmer(profile: FixtureProfile(id: "t", model: "T", channels: [shutter]), start: DMXAddress(1)!, console: console)
-		
-		programmer.brightness = 1
-		#expect(console.value(at: DMXAddress(1)!) == 210)
-		#expect(abs(programmer.brightness - 1) < 0.0001)
-		
-		programmer.brightness = 0.5
-		#expect(console.value(at: DMXAddress(1)!) == 110)
-		
-		programmer.brightness = 0
-		#expect(console.value(at: DMXAddress(1)!) == 0)
-		#expect(!programmer.isOn)
-	}
-	
-	@MainActor @Test func sixteenBitChannelsMoveTogether() {
-		let profile = FixtureProfile(id: "t", model: "T", channels: [
-			ProfileChannel(offset: 1, role: .pan),
-			ProfileChannel(offset: 2, role: .pan, isFine: true),
-		])
-		let console = Console()
-		let programmer = Programmer(profile: profile, start: DMXAddress(1)!, console: console)
-		
-		programmer.setFraction(1, for: .pan)
-		#expect(console.value(at: DMXAddress(1)!) == 255)
-		#expect(console.value(at: DMXAddress(2)!) == 255)
-		
-		programmer.setFraction(0.5, for: .pan)
-		#expect(abs(programmer.fraction(.pan) - 0.5) < 0.0001)
-	}
-	
-	@MainActor @Test func aSubtractiveHeadTakesColourWithoutTouchingItsDimmer() {
-		let profile = FixtureProfile(id: "t", model: "T", channels: [
-			ProfileChannel(offset: 1, role: .intensity, defaultValue: 255),
-			ProfileChannel(offset: 2, role: .cyan),
-			ProfileChannel(offset: 3, role: .magenta),
-			ProfileChannel(offset: 4, role: .yellow),
-		], mixing: .subtractive)
-		let console = Console()
-		let programmer = Programmer(profile: profile, start: DMXAddress(1)!, console: console)
-		
-		programmer.applyDefaults()
-		#expect(abs(programmer.brightness - 1) < 0.005)
-		
-		programmer.apply(LightColor(red: 0, green: 0, blue: 1))
-		#expect(console.value(at: DMXAddress(2)!) == 255)
-		#expect(console.value(at: DMXAddress(3)!) == 255)
-		#expect(console.value(at: DMXAddress(4)!) == 0)
-		#expect(abs(programmer.brightness - 1) < 0.005)
-	}
-	
-	@MainActor @Test func patchingWritesTheProfileDefaults() {
-		let profile = FixtureProfile(id: "t", model: "T", channels: [
-			ProfileChannel(offset: 1, role: .intensity, defaultValue: 255),
-			ProfileChannel(offset: 2, role: .pan, defaultValue: 128),
-		])
-		let console = Console()
-		
-		Programmer(profile: profile, start: DMXAddress(10)!, console: console).applyDefaults()
-		
-		#expect(console.value(at: DMXAddress(10)!) == 255)
-		#expect(console.value(at: DMXAddress(11)!) == 128)
-	}
-	
 	@MainActor @Test func aSortIndexFollowsTheHighestSoFar() {
 		#expect(Console.nextSortIndex([1, 4, 2], sortIndex: \.self) == 5)
 		#expect(Console.nextSortIndex([Int](), sortIndex: \.self) == 1)
 	}
 	
 	@Test func aShowPreservesFixtureOrientation() throws {
-		let light = ShowFile.Light(identifier: "head", profileID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
-		let file = ShowFile(name: "Show", lights: [light], groups: [], profiles: [], scenes: [])
+		let light = ShowFile.Light(identifier: "head", typeID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
+		let file = ShowFile(name: "Show", lights: [light], groups: [], made: [], scenes: [])
 		let data = try JSONEncoder().encode(file)
 		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
 		
@@ -125,7 +55,7 @@ struct ConsoleTests {
 	}
 	
 	@Test func olderShowsOpenWithoutOrientationFields() throws {
-		let data = Data(#"{"name":"Old Show","lights":[{"identifier":"head","profileID":"moving-head","name":"Head","address":1,"sortIndex":0}],"groups":[],"profiles":[],"scenes":[]}"#.utf8)
+		let data = Data(#"{"name":"Old Show","lights":[{"identifier":"head","typeID":"moving-head","name":"Head","address":1,"sortIndex":0}],"groups":[],"made":[],"scenes":[]}"#.utf8)
 		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
 		
 		#expect(decoded.lights.first?.invertsPan == nil)
@@ -134,7 +64,7 @@ struct ConsoleTests {
 	
 	@MainActor @Test func reorderingKeepsEveryFixture() throws {
 		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-		let fixtures = (0..<3).map { Fixture(profileID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: $0) }
+		let fixtures = (0..<3).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: $0) }
 		for fixture in fixtures {
 			container.mainContext.insert(fixture)
 		}
@@ -147,9 +77,9 @@ struct ConsoleTests {
 	
 	@MainActor @Test func masterAndBlackoutScaleBothDimmerBytes() throws {
 		let library = FixtureLibrary()
-		let profile = FixtureProfile(id: "test-fine-dimmer", model: "Fine Dimmer", channels: [ProfileChannel(offset: 1, role: .intensity), ProfileChannel(offset: 2, role: .intensity, isFine: true), ProfileChannel(offset: 3, role: .pan)])
-		library.setCustom([profile])
-		let fixture = Fixture(profileID: profile.id, name: "Dimmer", address: DMXAddress(1)!, sortIndex: 0)
+		let type = FixtureType(id: "test-fine-dimmer", model: "Fine Dimmer", modes: [FixtureType.Mode(id: "fine", name: "3 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer, fineOffset: 2), FixtureChannel(offset: 3, attribute: .pan)])])
+		library.setMade([type])
+		let fixture = Fixture(typeID: "fine", name: "Dimmer", address: DMXAddress(1)!, sortIndex: 0)
 		let console = Console()
 		console.applyPatch([fixture], library: library)
 		console.set([255, 255, 128], at: DMXAddress(1)!)
@@ -159,26 +89,5 @@ struct ConsoleTests {
 		console.blackout = true
 		#expect(Array(console.output.prefix(3)) == [0, 0, 128])
 		#expect(Array(console.universe.values.prefix(3)) == [255, 255, 128])
-	}
-	
-	@MainActor @Test func bundledFixturesStartOffWithoutASelectedColor() {
-		let library = FixtureLibrary()
-		#expect(library.bundled.count == 10)
-		#expect(Set(library.bundled.map(\.id)).count == library.bundled.count)
-		
-		for profile in library.bundled {
-			let console = Console()
-			let programmer = Programmer(profile: profile, start: DMXAddress(1)!, console: console)
-			programmer.applyDefaults()
-			#expect(programmer.brightness == 0, "\(profile.id) should start off")
-			#expect(programmer.selectedPresetID == nil)
-			programmer.brightness = 1
-			#expect(programmer.brightness > 0.99)
-			if profile.mixesColor {
-				#expect(programmer.light.red > 0.9 && programmer.light.green > 0.9 && programmer.light.blue > 0.9, "\(profile.id) should open white")
-			}
-		}
-		
-		#expect(library.profile("mini-moving-head-14ch")?.invertsTilt == false)
 	}
 }

@@ -128,21 +128,21 @@ final class ShowLibrary {
 		
 		let fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
 		let groups = (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
-		let profiles = (try? context.fetch(FetchDescriptor<CustomProfile>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []
+		let made = (try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []
 		let looks = (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
 		
-		var file = ShowFile(name: show.name, lights: [], groups: [], profiles: [], scenes: [])
+		var file = ShowFile(name: show.name, lights: [], groups: [], made: [], scenes: [])
 		
 		for group in groups {
 			file.groups.append(ShowFile.Group(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
 		}
 		
 		for fixture in fixtures {
-			file.lights.append(ShowFile.Light(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+			file.lights.append(ShowFile.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
 		}
 		
-		for profile in profiles {
-			file.profiles.append(ShowFile.Profile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList, isSubtractive: profile.isSubtractive))
+		for stored in made {
+			file.made.append(stored.definition)
 		}
 		
 		for look in looks {
@@ -180,7 +180,7 @@ final class ShowLibrary {
 		
 		for entry in file.lights {
 			guard let address = DMXAddress(entry.address) else { continue }
-			let fixture = Fixture(profileID: entry.profileID, name: entry.name, address: address, sortIndex: entry.sortIndex)
+			let fixture = Fixture(typeID: entry.typeID, name: entry.name, address: address, sortIndex: entry.sortIndex)
 			fixture.identifier = entry.identifier
 			fixture.symbolOverride = entry.symbol
 			fixture.invertsPan = entry.invertsPan ?? false
@@ -192,10 +192,8 @@ final class ShowLibrary {
 			}
 		}
 		
-		for entry in file.profiles {
-			let profile = CustomProfile(name: entry.name, symbol: entry.symbol, channels: entry.channels, isSubtractive: entry.isSubtractive ?? false)
-			profile.identifier = entry.identifier
-			context.insert(profile)
+		for entry in file.made {
+			context.insert(StoredFixtureType(entry))
 		}
 		
 		for entry in file.scenes {
@@ -210,14 +208,14 @@ final class ShowLibrary {
 	
 	private static func open(_ id: String) -> ModelContainer {
 		let configuration = ModelConfiguration(url: store(id))
-		let container = (try? ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)) ?? scratch()
+		let container = (try? ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: configuration)) ?? scratch()
 		container.mainContext.undoManager = UndoManager()
 		return container
 	}
 	
 	private static func scratch() -> ModelContainer {
 		let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-		return try! ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)
+		return try! ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: configuration)
 	}
 	
 	private static func load() -> [Show] {

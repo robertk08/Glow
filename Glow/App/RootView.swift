@@ -6,7 +6,7 @@ struct RootView: View {
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(\.modelContext) private var context
-	@Query private var customProfiles: [CustomProfile]
+	@Query private var stored: [StoredFixtureType]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var section = "lights"
@@ -63,12 +63,12 @@ struct RootView: View {
 		.onChange(of: console.selection) {
 			if sizeClass == .regular { console.isProgrammerOpen = console.hasSelection }
 		}
-		.onChange(of: customProfiles) {
-			library.setCustom(customProfiles.map(\.profile))
+		.onChange(of: stored) {
+			library.setMade(stored.map(\.definition))
 			console.prune(fixtures, library: library, context: context)
 		}
 		.task {
-			library.setCustom(customProfiles.map(\.profile))
+			library.setMade(stored.map(\.definition))
 			console.prune(fixtures, library: library, context: context)
 		}
 	}

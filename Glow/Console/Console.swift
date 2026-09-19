@@ -46,6 +46,8 @@ final class Console {
 		}
 	}
 	
+	private(set) var active: Set<Int> = []
+	
 	private let connection = NodeLink()
 	private var dimmers: [Dimmer] = []
 	private var loop: Task<Void, Never>?
@@ -136,10 +138,24 @@ final class Console {
 	
 	func set(_ value: UInt8, at address: DMXAddress) {
 		universe[address] = value
+		active.insert(address.value)
 	}
 	
 	func set(_ values: [UInt8], at address: DMXAddress) {
 		universe.set(values, at: address)
+	}
+	
+	func isActive(_ address: DMXAddress) -> Bool {
+		active.contains(address.value)
+	}
+	
+	func release(_ span: ClosedRange<Int>, only offset: Int? = nil) {
+		guard let offset else {
+			active.subtract(span)
+			return
+		}
+		
+		active.remove(span.lowerBound + offset - 1)
 	}
 	
 	var hasSelection: Bool { !selection.isEmpty }
@@ -181,6 +197,7 @@ final class Console {
 	
 	func closeShow() {
 		universe = Universe()
+		active = []
 		dimmers = []
 		sourceFrames.startOver()
 		outputFrames.startOver()
@@ -197,8 +214,9 @@ final class Console {
 	}
 	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
-		let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
+		let width = max(1, library.mode(fixture.typeID)?.channelCount ?? 1)
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
+		release(fixture.range(library.mode(fixture.typeID)))
 		outputFrames.startOver()
 		selection.remove(fixture.persistentModelID)
 		isProgrammerOpen = isProgrammerOpen && hasSelection
@@ -206,8 +224,8 @@ final class Console {
 	}
 	
 	func duplicate(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
-		let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
-		let copy = Fixture(profileID: fixture.profileID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
+		let width = max(1, library.mode(fixture.typeID)?.channelCount ?? 1)
+		let copy = Fixture(typeID: fixture.typeID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
 		copy.invertsPan = fixture.invertsPan
 		copy.invertsTilt = fixture.invertsTilt
@@ -215,20 +233,20 @@ final class Console {
 		context.insert(copy)
 	}
 	
-	func patch(_ profile: FixtureProfile, count: Int, at address: Int, named name: String, among fixtures: [Fixture], context: ModelContext) {
-		let width = max(1, profile.channelCount)
-		let base = name.trimmingCharacters(in: .whitespaces).isEmpty ? profile.model : name
+	func patch(_ mode: FixtureMode, count: Int, at address: Int, named name: String, among fixtures: [Fixture], context: ModelContext) {
+		let width = max(1, mode.channelCount)
+		let base = name.trimmingCharacters(in: .whitespaces).isEmpty ? mode.model : name
 		var next = address
 		var index = Self.nextSortIndex(fixtures, sortIndex: \.sortIndex)
 		
 		for number in 0..<count {
 			guard let start = DMXAddress(next) else { break }
 			let title = count == 1 ? Fixture.unusedName(base, among: fixtures) : "\(base) \(number + 1)"
-			let fixture = Fixture(profileID: profile.id, name: title, address: start, sortIndex: index)
-			fixture.invertsPan = profile.invertsPan
-			fixture.invertsTilt = profile.invertsTilt
+			let fixture = Fixture(typeID: mode.id, name: title, address: start, sortIndex: index)
+			fixture.invertsPan = mode.invertsPan
+			fixture.invertsTilt = mode.invertsTilt
 			context.insert(fixture)
-			Programmer(profile: profile, start: start, console: self).applyDefaults()
+			Programmer(mode: mode, start: start, console: self).applyDefaults()
 			next += width
 			index += 1
 		}
@@ -266,7 +284,7 @@ final class Console {
 		var levels: [String: [UInt8]] = [:]
 		
 		for fixture in fixtures {
-			guard let profile = library.profile(fixture.profileID) else { continue }
+			guard let profile = library.mode(fixture.typeID) else { continue }
 			var values: [UInt8] = []
 			
 			for offset in 0..<profile.channelCount {
@@ -292,9 +310,9 @@ final class Console {
 	}
 	
 	func prune(_ fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
-		guard !library.profiles.isEmpty else { return }
+		guard !library.modes.isEmpty else { return }
 		
-		for fixture in fixtures where library.profile(fixture.profileID) == nil {
+		for fixture in fixtures where library.mode(fixture.typeID) == nil {
 			remove(fixture, context: context, library: library)
 		}
 	}

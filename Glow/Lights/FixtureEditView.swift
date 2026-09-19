@@ -13,7 +13,7 @@ struct FixtureEditView: View {
 	
 	@State private var isRemoving = false
 	
-	private var profile: FixtureProfile? { library.profile(fixture.profileID) }
+	private var mode: FixtureMode? { library.mode(fixture.typeID) }
 	
 	var body: some View {
 		Form {
@@ -22,7 +22,7 @@ struct FixtureEditView: View {
 			}
 			
 			Section("Icon") {
-				AppearancePicker(symbol: Binding { fixture.symbol(profile) } set: { fixture.symbolOverride = $0 })
+				AppearancePicker(symbol: Binding { fixture.symbol(mode) } set: { fixture.symbolOverride = $0 })
 			}
 			
 			if !groups.isEmpty {
@@ -36,7 +36,7 @@ struct FixtureEditView: View {
 				}
 			}
 			
-			if profile?.movesHead == true {
+			if mode?.movesHead == true {
 				Section {
 					Toggle("Invert Pan", isOn: $fixture.invertsPan)
 					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
@@ -53,13 +53,13 @@ struct FixtureEditView: View {
 						.monospacedDigit()
 				}
 				
-				if let profile {
-					LabeledContent("Channels", value: "\(profile.channelCount)")
+				if let mode {
+					LabeledContent("Channels", value: "\(mode.channelCount)")
 					
 					NavigationLink {
-						ProfileView(profile: profile)
+						FixtureTypeView(type: library.type(holding: fixture.typeID) ?? FixtureType.blank)
 					} label: {
-						LabeledContent("Fixture", value: profile.name)
+						LabeledContent("Fixture", value: mode.name)
 					}
 				}
 			} header: {

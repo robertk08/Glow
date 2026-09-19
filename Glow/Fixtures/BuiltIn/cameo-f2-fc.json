@@ -1,0 +1,3011 @@
+{
+  "id": "cameo-f2-fc",
+  "manufacturer": "Cameo",
+  "model": "F2 FC",
+  "symbol": "light.panel",
+  "modes": [
+    {
+      "id": "cameo-f2-fc-1ch",
+      "name": "1 channel, dimmer",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-2ch-dim",
+      "name": "2 channel, dimmer 16-bit",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-2ch-cct",
+      "name": "2 channel, white",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "colorTemperature",
+          "defaultValue": 129,
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-3ch",
+      "name": "3 channel, RGB",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-4ch-cct",
+      "name": "4 channel, white 16-bit",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "colorTemperature",
+          "defaultValue": 129,
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "tint",
+          "defaultValue": 128,
+          "functions": [
+            {
+              "from": 0,
+              "to": 0,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 1,
+              "to": 127,
+              "label": "Magenta to neutral",
+              "kind": "proportional"
+            },
+            {
+              "from": 128,
+              "to": 128,
+              "label": "Neutral"
+            },
+            {
+              "from": 129,
+              "to": 255,
+              "label": "Neutral to green",
+              "kind": "proportional"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-4ch",
+      "name": "4 channel, RGBW",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "fineOffset": null,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "fineOffset": null,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "fineOffset": null,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "white",
+          "fineOffset": null,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-6ch",
+      "name": "6 channel, HSI",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "hue",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "Red through the wheel",
+              "kind": "proportional",
+              "unit": "degrees",
+              "physicalFrom": 0,
+              "physicalTo": 360
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "saturation",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "colorTemperature",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "tint",
+          "defaultValue": 128,
+          "functions": [
+            {
+              "from": 0,
+              "to": 0,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 1,
+              "to": 127,
+              "label": "Magenta to neutral",
+              "kind": "proportional"
+            },
+            {
+              "from": 128,
+              "to": 128,
+              "label": "Neutral"
+            },
+            {
+              "from": 129,
+              "to": 255,
+              "label": "Neutral to green",
+              "kind": "proportional"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-7ch",
+      "name": "7 channel, RGB and white",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "red",
+          "fineOffset": null,
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "green",
+          "fineOffset": null,
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "blue",
+          "fineOffset": null,
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "colorTemperature",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        },
+        {
+          "offset": 7,
+          "attribute": "tint",
+          "defaultValue": 128,
+          "functions": [
+            {
+              "from": 0,
+              "to": 0,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 1,
+              "to": 127,
+              "label": "Magenta to neutral",
+              "kind": "proportional"
+            },
+            {
+              "from": 128,
+              "to": 128,
+              "label": "Neutral"
+            },
+            {
+              "from": 129,
+              "to": 255,
+              "label": "Neutral to green",
+              "kind": "proportional"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-8ch",
+      "name": "8 channel, RGBW 16-bit",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "fineOffset": 2,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "green",
+          "fineOffset": 4,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "blue",
+          "fineOffset": 6,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 7,
+          "attribute": "white",
+          "fineOffset": 8,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-10ch",
+      "name": "10 channel, HSI",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "shutter",
+          "label": "Shutter and strobe",
+          "highlightValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Open",
+              "purpose": "open"
+            },
+            {
+              "from": 6,
+              "to": 10,
+              "label": "Closed",
+              "purpose": "closed"
+            },
+            {
+              "from": 11,
+              "to": 33,
+              "label": "Random pulse, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 34,
+              "to": 56,
+              "label": "Random ramp up, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 57,
+              "to": 79,
+              "label": "Random ramp down, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 80,
+              "to": 102,
+              "label": "Random strobe, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 103,
+              "to": 127,
+              "label": "Burst with break, 5 s to 1 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 5,
+              "physicalTo": 1
+            },
+            {
+              "from": 128,
+              "to": 250,
+              "label": "Strobe, slow to fast",
+              "kind": "proportional",
+              "unit": "hertz",
+              "physicalFrom": 1,
+              "physicalTo": 20
+            },
+            {
+              "from": 251,
+              "to": 255,
+              "label": "Open"
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "hue",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "Red through the wheel",
+              "kind": "proportional",
+              "unit": "degrees",
+              "physicalFrom": 0,
+              "physicalTo": 360
+            }
+          ]
+        },
+        {
+          "offset": 5,
+          "attribute": "saturation",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "colorTemperature",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        },
+        {
+          "offset": 7,
+          "attribute": "tint",
+          "defaultValue": 128,
+          "functions": [
+            {
+              "from": 0,
+              "to": 0,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 1,
+              "to": 127,
+              "label": "Magenta to neutral",
+              "kind": "proportional"
+            },
+            {
+              "from": 128,
+              "to": 128,
+              "label": "Neutral"
+            },
+            {
+              "from": 129,
+              "to": 255,
+              "label": "Neutral to green",
+              "kind": "proportional"
+            }
+          ]
+        },
+        {
+          "offset": 8,
+          "attribute": "colorMacro",
+          "label": "Color preset",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off, the mixer runs the light",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 201,
+              "label": "Filter color",
+              "sets": [
+                {
+                  "from": 6,
+                  "to": 9,
+                  "label": "Dark Magenta",
+                  "colors": [
+                    "8d2f6b"
+                  ]
+                },
+                {
+                  "from": 10,
+                  "to": 13,
+                  "label": "Plasa Red",
+                  "colors": [
+                    "c8102e"
+                  ]
+                },
+                {
+                  "from": 14,
+                  "to": 17,
+                  "label": "Bright Red",
+                  "colors": [
+                    "e01b24"
+                  ]
+                },
+                {
+                  "from": 18,
+                  "to": 21,
+                  "label": "Smokey Pink",
+                  "colors": [
+                    "d98f9a"
+                  ]
+                },
+                {
+                  "from": 22,
+                  "to": 25,
+                  "label": "Medium Pink",
+                  "colors": [
+                    "e86f9e"
+                  ]
+                },
+                {
+                  "from": 26,
+                  "to": 29,
+                  "label": "Fire",
+                  "colors": [
+                    "e8541f"
+                  ]
+                },
+                {
+                  "from": 30,
+                  "to": 33,
+                  "label": "Deep Golden Amber",
+                  "colors": [
+                    "c26a12"
+                  ]
+                },
+                {
+                  "from": 34,
+                  "to": 37,
+                  "label": "Millennium Gold",
+                  "colors": [
+                    "d8912b"
+                  ]
+                },
+                {
+                  "from": 38,
+                  "to": 41,
+                  "label": "Gold Amber",
+                  "colors": [
+                    "e8a13a"
+                  ]
+                },
+                {
+                  "from": 42,
+                  "to": 45,
+                  "label": "Pink",
+                  "colors": [
+                    "f0879f"
+                  ]
+                },
+                {
+                  "from": 46,
+                  "to": 49,
+                  "label": "Middle Rose",
+                  "colors": [
+                    "f2a5b0"
+                  ]
+                },
+                {
+                  "from": 50,
+                  "to": 53,
+                  "label": "Light Salmon",
+                  "colors": [
+                    "f7b79c"
+                  ]
+                },
+                {
+                  "from": 54,
+                  "to": 57,
+                  "label": "Light Pink",
+                  "colors": [
+                    "f6c0cb"
+                  ]
+                },
+                {
+                  "from": 58,
+                  "to": 61,
+                  "label": "Golden Amber",
+                  "colors": [
+                    "e9a63c"
+                  ]
+                },
+                {
+                  "from": 62,
+                  "to": 65,
+                  "label": "Surprise Peach",
+                  "colors": [
+                    "f7cfb4"
+                  ]
+                },
+                {
+                  "from": 66,
+                  "to": 69,
+                  "label": "Brown",
+                  "colors": [
+                    "7a4a20"
+                  ]
+                },
+                {
+                  "from": 70,
+                  "to": 73,
+                  "label": "Orange",
+                  "colors": [
+                    "f07818"
+                  ]
+                },
+                {
+                  "from": 74,
+                  "to": 77,
+                  "label": "Medium Amber",
+                  "colors": [
+                    "f6a623"
+                  ]
+                },
+                {
+                  "from": 78,
+                  "to": 81,
+                  "label": "Egg Yolk Yellow",
+                  "colors": [
+                    "f2c11a"
+                  ]
+                },
+                {
+                  "from": 82,
+                  "to": 85,
+                  "label": "Deep Straw",
+                  "colors": [
+                    "f5c344"
+                  ]
+                },
+                {
+                  "from": 86,
+                  "to": 89,
+                  "label": "Oklahoma Yellow",
+                  "colors": [
+                    "f3cf2a"
+                  ]
+                },
+                {
+                  "from": 90,
+                  "to": 93,
+                  "label": "Yellow",
+                  "colors": [
+                    "f5e03a"
+                  ]
+                },
+                {
+                  "from": 94,
+                  "to": 97,
+                  "label": "Spring Yellow",
+                  "colors": [
+                    "eef06a"
+                  ]
+                },
+                {
+                  "from": 98,
+                  "to": 101,
+                  "label": "Lime Green",
+                  "colors": [
+                    "b6d738"
+                  ]
+                },
+                {
+                  "from": 102,
+                  "to": 105,
+                  "label": "LEE Green",
+                  "colors": [
+                    "56b846"
+                  ]
+                },
+                {
+                  "from": 106,
+                  "to": 109,
+                  "label": "Jas Green",
+                  "colors": [
+                    "3fae5a"
+                  ]
+                },
+                {
+                  "from": 110,
+                  "to": 113,
+                  "label": "Moss Green",
+                  "colors": [
+                    "2f9e57"
+                  ]
+                },
+                {
+                  "from": 114,
+                  "to": 117,
+                  "label": "Primary Green",
+                  "colors": [
+                    "12924a"
+                  ]
+                },
+                {
+                  "from": 118,
+                  "to": 121,
+                  "label": "Dark Green",
+                  "colors": [
+                    "0b6b35"
+                  ]
+                },
+                {
+                  "from": 122,
+                  "to": 125,
+                  "label": "Jade",
+                  "colors": [
+                    "2fb59a"
+                  ]
+                },
+                {
+                  "from": 126,
+                  "to": 129,
+                  "label": "Special Steel Blue",
+                  "colors": [
+                    "7ba7c7"
+                  ]
+                },
+                {
+                  "from": 130,
+                  "to": 133,
+                  "label": "Medium Blue-Green",
+                  "colors": [
+                    "2fa3b5"
+                  ]
+                },
+                {
+                  "from": 134,
+                  "to": 137,
+                  "label": "Moonlight Blue",
+                  "colors": [
+                    "5f86c4"
+                  ]
+                },
+                {
+                  "from": 138,
+                  "to": 141,
+                  "label": "Medium Blue",
+                  "colors": [
+                    "2a5fc4"
+                  ]
+                },
+                {
+                  "from": 142,
+                  "to": 145,
+                  "label": "Dark Blue",
+                  "colors": [
+                    "1a3fae"
+                  ]
+                },
+                {
+                  "from": 146,
+                  "to": 149,
+                  "label": "Mikkel Blue",
+                  "colors": [
+                    "2440a8"
+                  ]
+                },
+                {
+                  "from": 150,
+                  "to": 153,
+                  "label": "Tokyo Blue",
+                  "colors": [
+                    "172c8f"
+                  ]
+                },
+                {
+                  "from": 154,
+                  "to": 157,
+                  "label": "Congo Blue",
+                  "colors": [
+                    "2a1a7a"
+                  ]
+                },
+                {
+                  "from": 158,
+                  "to": 161,
+                  "label": "Special KH Lavender",
+                  "colors": [
+                    "8a7bc8"
+                  ]
+                },
+                {
+                  "from": 162,
+                  "to": 165,
+                  "label": "Ultimate Violet",
+                  "colors": [
+                    "6a3fb5"
+                  ]
+                },
+                {
+                  "from": 166,
+                  "to": 169,
+                  "label": "Special Medium Lavender",
+                  "colors": [
+                    "a98ed0"
+                  ]
+                },
+                {
+                  "from": 170,
+                  "to": 173,
+                  "label": "Chrysalis Pink",
+                  "colors": [
+                    "d99ec8"
+                  ]
+                },
+                {
+                  "from": 174,
+                  "to": 177,
+                  "label": "Provence",
+                  "colors": [
+                    "b98fd0"
+                  ]
+                },
+                {
+                  "from": 178,
+                  "to": 181,
+                  "label": "Deep Purple",
+                  "colors": [
+                    "5f2a8f"
+                  ]
+                },
+                {
+                  "from": 182,
+                  "to": 185,
+                  "label": "Rose Purple",
+                  "colors": [
+                    "9b4fb5"
+                  ]
+                },
+                {
+                  "from": 186,
+                  "to": 189,
+                  "label": "Fuchsia Pink",
+                  "colors": [
+                    "d3479e"
+                  ]
+                },
+                {
+                  "from": 190,
+                  "to": 193,
+                  "label": "Magical Magenta",
+                  "colors": [
+                    "c72a8f"
+                  ]
+                },
+                {
+                  "from": 194,
+                  "to": 197,
+                  "label": "Bright Pink",
+                  "colors": [
+                    "ee4fa0"
+                  ]
+                },
+                {
+                  "from": 198,
+                  "to": 201,
+                  "label": "Rose Pink",
+                  "colors": [
+                    "f28ab0"
+                  ]
+                }
+              ]
+            },
+            {
+              "from": 202,
+              "to": 249,
+              "label": "User color",
+              "sets": [
+                {
+                  "from": 202,
+                  "to": 207,
+                  "label": "User color 1"
+                },
+                {
+                  "from": 208,
+                  "to": 213,
+                  "label": "User color 2"
+                },
+                {
+                  "from": 214,
+                  "to": 219,
+                  "label": "User color 3"
+                },
+                {
+                  "from": 220,
+                  "to": 225,
+                  "label": "User color 4"
+                },
+                {
+                  "from": 226,
+                  "to": 231,
+                  "label": "User color 5"
+                },
+                {
+                  "from": 232,
+                  "to": 237,
+                  "label": "User color 6"
+                },
+                {
+                  "from": 238,
+                  "to": 243,
+                  "label": "User color 7"
+                },
+                {
+                  "from": 244,
+                  "to": 249,
+                  "label": "User color 8"
+                }
+              ]
+            },
+            {
+              "from": 250,
+              "to": 255,
+              "label": "No function"
+            }
+          ]
+        },
+        {
+          "offset": 9,
+          "attribute": "colorFade",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Snap"
+            },
+            {
+              "from": 6,
+              "to": 105,
+              "label": "0.1 s to 10 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 0.1,
+              "physicalTo": 10
+            },
+            {
+              "from": 106,
+              "to": 214,
+              "label": "11 s to 119 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 11,
+              "physicalTo": 119
+            },
+            {
+              "from": 215,
+              "to": 244,
+              "label": "2 min to 4 min 50 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 120,
+              "physicalTo": 290
+            },
+            {
+              "from": 245,
+              "to": 255,
+              "label": "5 min to 15 min",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 300,
+              "physicalTo": 900
+            }
+          ]
+        },
+        {
+          "offset": 10,
+          "attribute": "control",
+          "label": "Device settings",
+          "functions": [
+            {
+              "from": 0,
+              "to": 73,
+              "label": "No function"
+            },
+            {
+              "from": 74,
+              "to": 75,
+              "label": "Dimmer response LED",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 76,
+              "to": 77,
+              "label": "Dimmer response halogen",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 78,
+              "to": 81,
+              "label": "No function"
+            },
+            {
+              "from": 82,
+              "to": 83,
+              "label": "Redshift on",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 84,
+              "to": 85,
+              "label": "Redshift off",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 86,
+              "to": 97,
+              "label": "No function"
+            },
+            {
+              "from": 98,
+              "to": 99,
+              "label": "Auto fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 100,
+              "to": 101,
+              "label": "Fan off",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 102,
+              "to": 103,
+              "label": "Constant low fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 104,
+              "to": 105,
+              "label": "Constant mid fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 106,
+              "to": 107,
+              "label": "Constant high fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 108,
+              "to": 119,
+              "label": "No function"
+            },
+            {
+              "from": 120,
+              "to": 121,
+              "label": "LED frequency 600 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 122,
+              "to": 123,
+              "label": "LED frequency 1200 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 124,
+              "to": 125,
+              "label": "LED frequency 2000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 126,
+              "to": 127,
+              "label": "LED frequency 4000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 128,
+              "to": 129,
+              "label": "LED frequency 6000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 130,
+              "to": 131,
+              "label": "LED frequency 25 kHz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 132,
+              "to": 133,
+              "label": "Raw color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 134,
+              "to": 135,
+              "label": "Calibrated color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 136,
+              "to": 137,
+              "label": "User calibrated color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 138,
+              "to": 139,
+              "label": "Smart calibration",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 140,
+              "to": 141,
+              "label": "Display on",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 142,
+              "to": 143,
+              "label": "Display off",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 144,
+              "to": 163,
+              "label": "No function"
+            },
+            {
+              "from": 164,
+              "to": 165,
+              "label": "Dimmer curve linear",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 166,
+              "to": 167,
+              "label": "Dimmer curve exponential",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 168,
+              "to": 169,
+              "label": "Dimmer curve logarithmic",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 170,
+              "to": 171,
+              "label": "Dimmer curve S-curve",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 172,
+              "to": 239,
+              "label": "No function"
+            },
+            {
+              "from": 240,
+              "to": 241,
+              "label": "Reset to defaults",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 242,
+              "to": 243,
+              "label": "Reset to defaults, keeping user colors",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 244,
+              "to": 255,
+              "label": "No function"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cameo-f2-fc-16ch",
+      "name": "16 channel, RGBW 16-bit",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "dimmer",
+          "fineOffset": 2,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "shutter",
+          "label": "Shutter and strobe",
+          "highlightValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Open",
+              "purpose": "open"
+            },
+            {
+              "from": 6,
+              "to": 10,
+              "label": "Closed",
+              "purpose": "closed"
+            },
+            {
+              "from": 11,
+              "to": 33,
+              "label": "Random pulse, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 34,
+              "to": 56,
+              "label": "Random ramp up, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 57,
+              "to": 79,
+              "label": "Random ramp down, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 80,
+              "to": 102,
+              "label": "Random strobe, slow to fast",
+              "kind": "proportional"
+            },
+            {
+              "from": 103,
+              "to": 127,
+              "label": "Burst with break, 5 s to 1 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 5,
+              "physicalTo": 1
+            },
+            {
+              "from": 128,
+              "to": 250,
+              "label": "Strobe, slow to fast",
+              "kind": "proportional",
+              "unit": "hertz",
+              "physicalFrom": 1,
+              "physicalTo": 20
+            },
+            {
+              "from": 251,
+              "to": 255,
+              "label": "Open"
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "red",
+          "fineOffset": 5,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "green",
+          "fineOffset": 7,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 8,
+          "attribute": "blue",
+          "fineOffset": 9,
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 10,
+          "attribute": "white",
+          "fineOffset": 11,
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 12,
+          "attribute": "colorTemperature",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 6,
+              "label": "Warm white"
+            },
+            {
+              "from": 7,
+              "to": 46,
+              "label": "Warm white to 2700 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2000,
+              "physicalTo": 2700
+            },
+            {
+              "from": 47,
+              "to": 47,
+              "label": "Bulb white, 2700 K",
+              "unit": "kelvin",
+              "physicalFrom": 2700
+            },
+            {
+              "from": 48,
+              "to": 87,
+              "label": "2700 K to 3200 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 2700,
+              "physicalTo": 3200
+            },
+            {
+              "from": 88,
+              "to": 88,
+              "label": "Halogen white, 3200 K",
+              "unit": "kelvin",
+              "physicalFrom": 3200
+            },
+            {
+              "from": 89,
+              "to": 128,
+              "label": "3200 K to 4000 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 3200,
+              "physicalTo": 4000
+            },
+            {
+              "from": 129,
+              "to": 129,
+              "label": "Neutral white, 4000 K",
+              "unit": "kelvin",
+              "physicalFrom": 4000
+            },
+            {
+              "from": 130,
+              "to": 169,
+              "label": "4000 K to 5600 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 4000,
+              "physicalTo": 5600
+            },
+            {
+              "from": 170,
+              "to": 170,
+              "label": "Studio white, 5600 K",
+              "unit": "kelvin",
+              "physicalFrom": 5600
+            },
+            {
+              "from": 171,
+              "to": 210,
+              "label": "5600 K to 6500 K",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 5600,
+              "physicalTo": 6500
+            },
+            {
+              "from": 211,
+              "to": 211,
+              "label": "Daylight white, 6500 K",
+              "unit": "kelvin",
+              "physicalFrom": 6500
+            },
+            {
+              "from": 212,
+              "to": 251,
+              "label": "6500 K to cold daylight",
+              "kind": "proportional",
+              "unit": "kelvin",
+              "physicalFrom": 6500,
+              "physicalTo": 10000
+            },
+            {
+              "from": 252,
+              "to": 255,
+              "label": "Cold daylight",
+              "unit": "kelvin",
+              "physicalFrom": 10000
+            }
+          ]
+        },
+        {
+          "offset": 13,
+          "attribute": "tint",
+          "defaultValue": 128,
+          "functions": [
+            {
+              "from": 0,
+              "to": 0,
+              "label": "Off",
+              "purpose": "release"
+            },
+            {
+              "from": 1,
+              "to": 127,
+              "label": "Magenta to neutral",
+              "kind": "proportional"
+            },
+            {
+              "from": 128,
+              "to": 128,
+              "label": "Neutral"
+            },
+            {
+              "from": 129,
+              "to": 255,
+              "label": "Neutral to green",
+              "kind": "proportional"
+            }
+          ]
+        },
+        {
+          "offset": 14,
+          "attribute": "colorMacro",
+          "label": "Color preset",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Off, the mixer runs the light",
+              "purpose": "release"
+            },
+            {
+              "from": 6,
+              "to": 201,
+              "label": "Filter color",
+              "sets": [
+                {
+                  "from": 6,
+                  "to": 9,
+                  "label": "Dark Magenta",
+                  "colors": [
+                    "8d2f6b"
+                  ]
+                },
+                {
+                  "from": 10,
+                  "to": 13,
+                  "label": "Plasa Red",
+                  "colors": [
+                    "c8102e"
+                  ]
+                },
+                {
+                  "from": 14,
+                  "to": 17,
+                  "label": "Bright Red",
+                  "colors": [
+                    "e01b24"
+                  ]
+                },
+                {
+                  "from": 18,
+                  "to": 21,
+                  "label": "Smokey Pink",
+                  "colors": [
+                    "d98f9a"
+                  ]
+                },
+                {
+                  "from": 22,
+                  "to": 25,
+                  "label": "Medium Pink",
+                  "colors": [
+                    "e86f9e"
+                  ]
+                },
+                {
+                  "from": 26,
+                  "to": 29,
+                  "label": "Fire",
+                  "colors": [
+                    "e8541f"
+                  ]
+                },
+                {
+                  "from": 30,
+                  "to": 33,
+                  "label": "Deep Golden Amber",
+                  "colors": [
+                    "c26a12"
+                  ]
+                },
+                {
+                  "from": 34,
+                  "to": 37,
+                  "label": "Millennium Gold",
+                  "colors": [
+                    "d8912b"
+                  ]
+                },
+                {
+                  "from": 38,
+                  "to": 41,
+                  "label": "Gold Amber",
+                  "colors": [
+                    "e8a13a"
+                  ]
+                },
+                {
+                  "from": 42,
+                  "to": 45,
+                  "label": "Pink",
+                  "colors": [
+                    "f0879f"
+                  ]
+                },
+                {
+                  "from": 46,
+                  "to": 49,
+                  "label": "Middle Rose",
+                  "colors": [
+                    "f2a5b0"
+                  ]
+                },
+                {
+                  "from": 50,
+                  "to": 53,
+                  "label": "Light Salmon",
+                  "colors": [
+                    "f7b79c"
+                  ]
+                },
+                {
+                  "from": 54,
+                  "to": 57,
+                  "label": "Light Pink",
+                  "colors": [
+                    "f6c0cb"
+                  ]
+                },
+                {
+                  "from": 58,
+                  "to": 61,
+                  "label": "Golden Amber",
+                  "colors": [
+                    "e9a63c"
+                  ]
+                },
+                {
+                  "from": 62,
+                  "to": 65,
+                  "label": "Surprise Peach",
+                  "colors": [
+                    "f7cfb4"
+                  ]
+                },
+                {
+                  "from": 66,
+                  "to": 69,
+                  "label": "Brown",
+                  "colors": [
+                    "7a4a20"
+                  ]
+                },
+                {
+                  "from": 70,
+                  "to": 73,
+                  "label": "Orange",
+                  "colors": [
+                    "f07818"
+                  ]
+                },
+                {
+                  "from": 74,
+                  "to": 77,
+                  "label": "Medium Amber",
+                  "colors": [
+                    "f6a623"
+                  ]
+                },
+                {
+                  "from": 78,
+                  "to": 81,
+                  "label": "Egg Yolk Yellow",
+                  "colors": [
+                    "f2c11a"
+                  ]
+                },
+                {
+                  "from": 82,
+                  "to": 85,
+                  "label": "Deep Straw",
+                  "colors": [
+                    "f5c344"
+                  ]
+                },
+                {
+                  "from": 86,
+                  "to": 89,
+                  "label": "Oklahoma Yellow",
+                  "colors": [
+                    "f3cf2a"
+                  ]
+                },
+                {
+                  "from": 90,
+                  "to": 93,
+                  "label": "Yellow",
+                  "colors": [
+                    "f5e03a"
+                  ]
+                },
+                {
+                  "from": 94,
+                  "to": 97,
+                  "label": "Spring Yellow",
+                  "colors": [
+                    "eef06a"
+                  ]
+                },
+                {
+                  "from": 98,
+                  "to": 101,
+                  "label": "Lime Green",
+                  "colors": [
+                    "b6d738"
+                  ]
+                },
+                {
+                  "from": 102,
+                  "to": 105,
+                  "label": "LEE Green",
+                  "colors": [
+                    "56b846"
+                  ]
+                },
+                {
+                  "from": 106,
+                  "to": 109,
+                  "label": "Jas Green",
+                  "colors": [
+                    "3fae5a"
+                  ]
+                },
+                {
+                  "from": 110,
+                  "to": 113,
+                  "label": "Moss Green",
+                  "colors": [
+                    "2f9e57"
+                  ]
+                },
+                {
+                  "from": 114,
+                  "to": 117,
+                  "label": "Primary Green",
+                  "colors": [
+                    "12924a"
+                  ]
+                },
+                {
+                  "from": 118,
+                  "to": 121,
+                  "label": "Dark Green",
+                  "colors": [
+                    "0b6b35"
+                  ]
+                },
+                {
+                  "from": 122,
+                  "to": 125,
+                  "label": "Jade",
+                  "colors": [
+                    "2fb59a"
+                  ]
+                },
+                {
+                  "from": 126,
+                  "to": 129,
+                  "label": "Special Steel Blue",
+                  "colors": [
+                    "7ba7c7"
+                  ]
+                },
+                {
+                  "from": 130,
+                  "to": 133,
+                  "label": "Medium Blue-Green",
+                  "colors": [
+                    "2fa3b5"
+                  ]
+                },
+                {
+                  "from": 134,
+                  "to": 137,
+                  "label": "Moonlight Blue",
+                  "colors": [
+                    "5f86c4"
+                  ]
+                },
+                {
+                  "from": 138,
+                  "to": 141,
+                  "label": "Medium Blue",
+                  "colors": [
+                    "2a5fc4"
+                  ]
+                },
+                {
+                  "from": 142,
+                  "to": 145,
+                  "label": "Dark Blue",
+                  "colors": [
+                    "1a3fae"
+                  ]
+                },
+                {
+                  "from": 146,
+                  "to": 149,
+                  "label": "Mikkel Blue",
+                  "colors": [
+                    "2440a8"
+                  ]
+                },
+                {
+                  "from": 150,
+                  "to": 153,
+                  "label": "Tokyo Blue",
+                  "colors": [
+                    "172c8f"
+                  ]
+                },
+                {
+                  "from": 154,
+                  "to": 157,
+                  "label": "Congo Blue",
+                  "colors": [
+                    "2a1a7a"
+                  ]
+                },
+                {
+                  "from": 158,
+                  "to": 161,
+                  "label": "Special KH Lavender",
+                  "colors": [
+                    "8a7bc8"
+                  ]
+                },
+                {
+                  "from": 162,
+                  "to": 165,
+                  "label": "Ultimate Violet",
+                  "colors": [
+                    "6a3fb5"
+                  ]
+                },
+                {
+                  "from": 166,
+                  "to": 169,
+                  "label": "Special Medium Lavender",
+                  "colors": [
+                    "a98ed0"
+                  ]
+                },
+                {
+                  "from": 170,
+                  "to": 173,
+                  "label": "Chrysalis Pink",
+                  "colors": [
+                    "d99ec8"
+                  ]
+                },
+                {
+                  "from": 174,
+                  "to": 177,
+                  "label": "Provence",
+                  "colors": [
+                    "b98fd0"
+                  ]
+                },
+                {
+                  "from": 178,
+                  "to": 181,
+                  "label": "Deep Purple",
+                  "colors": [
+                    "5f2a8f"
+                  ]
+                },
+                {
+                  "from": 182,
+                  "to": 185,
+                  "label": "Rose Purple",
+                  "colors": [
+                    "9b4fb5"
+                  ]
+                },
+                {
+                  "from": 186,
+                  "to": 189,
+                  "label": "Fuchsia Pink",
+                  "colors": [
+                    "d3479e"
+                  ]
+                },
+                {
+                  "from": 190,
+                  "to": 193,
+                  "label": "Magical Magenta",
+                  "colors": [
+                    "c72a8f"
+                  ]
+                },
+                {
+                  "from": 194,
+                  "to": 197,
+                  "label": "Bright Pink",
+                  "colors": [
+                    "ee4fa0"
+                  ]
+                },
+                {
+                  "from": 198,
+                  "to": 201,
+                  "label": "Rose Pink",
+                  "colors": [
+                    "f28ab0"
+                  ]
+                }
+              ]
+            },
+            {
+              "from": 202,
+              "to": 249,
+              "label": "User color",
+              "sets": [
+                {
+                  "from": 202,
+                  "to": 207,
+                  "label": "User color 1"
+                },
+                {
+                  "from": 208,
+                  "to": 213,
+                  "label": "User color 2"
+                },
+                {
+                  "from": 214,
+                  "to": 219,
+                  "label": "User color 3"
+                },
+                {
+                  "from": 220,
+                  "to": 225,
+                  "label": "User color 4"
+                },
+                {
+                  "from": 226,
+                  "to": 231,
+                  "label": "User color 5"
+                },
+                {
+                  "from": 232,
+                  "to": 237,
+                  "label": "User color 6"
+                },
+                {
+                  "from": 238,
+                  "to": 243,
+                  "label": "User color 7"
+                },
+                {
+                  "from": 244,
+                  "to": 249,
+                  "label": "User color 8"
+                }
+              ]
+            },
+            {
+              "from": 250,
+              "to": 255,
+              "label": "No function"
+            }
+          ]
+        },
+        {
+          "offset": 15,
+          "attribute": "colorFade",
+          "functions": [
+            {
+              "from": 0,
+              "to": 5,
+              "label": "Snap"
+            },
+            {
+              "from": 6,
+              "to": 105,
+              "label": "0.1 s to 10 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 0.1,
+              "physicalTo": 10
+            },
+            {
+              "from": 106,
+              "to": 214,
+              "label": "11 s to 119 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 11,
+              "physicalTo": 119
+            },
+            {
+              "from": 215,
+              "to": 244,
+              "label": "2 min to 4 min 50 s",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 120,
+              "physicalTo": 290
+            },
+            {
+              "from": 245,
+              "to": 255,
+              "label": "5 min to 15 min",
+              "kind": "proportional",
+              "unit": "seconds",
+              "physicalFrom": 300,
+              "physicalTo": 900
+            }
+          ]
+        },
+        {
+          "offset": 16,
+          "attribute": "control",
+          "label": "Device settings",
+          "functions": [
+            {
+              "from": 0,
+              "to": 73,
+              "label": "No function"
+            },
+            {
+              "from": 74,
+              "to": 75,
+              "label": "Dimmer response LED",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 76,
+              "to": 77,
+              "label": "Dimmer response halogen",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 78,
+              "to": 81,
+              "label": "No function"
+            },
+            {
+              "from": 82,
+              "to": 83,
+              "label": "Redshift on",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 84,
+              "to": 85,
+              "label": "Redshift off",
+              "requiresConfirmation": true,
+              "holdSeconds": 1.5
+            },
+            {
+              "from": 86,
+              "to": 97,
+              "label": "No function"
+            },
+            {
+              "from": 98,
+              "to": 99,
+              "label": "Auto fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 100,
+              "to": 101,
+              "label": "Fan off",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 102,
+              "to": 103,
+              "label": "Constant low fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 104,
+              "to": 105,
+              "label": "Constant mid fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 106,
+              "to": 107,
+              "label": "Constant high fan",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 108,
+              "to": 119,
+              "label": "No function"
+            },
+            {
+              "from": 120,
+              "to": 121,
+              "label": "LED frequency 600 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 122,
+              "to": 123,
+              "label": "LED frequency 1200 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 124,
+              "to": 125,
+              "label": "LED frequency 2000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 126,
+              "to": 127,
+              "label": "LED frequency 4000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 128,
+              "to": 129,
+              "label": "LED frequency 6000 Hz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 130,
+              "to": 131,
+              "label": "LED frequency 25 kHz",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 132,
+              "to": 133,
+              "label": "Raw color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 134,
+              "to": 135,
+              "label": "Calibrated color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 136,
+              "to": 137,
+              "label": "User calibrated color",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 138,
+              "to": 139,
+              "label": "Smart calibration",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 140,
+              "to": 141,
+              "label": "Display on",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 142,
+              "to": 143,
+              "label": "Display off",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 144,
+              "to": 163,
+              "label": "No function"
+            },
+            {
+              "from": 164,
+              "to": 165,
+              "label": "Dimmer curve linear",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 166,
+              "to": 167,
+              "label": "Dimmer curve exponential",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 168,
+              "to": 169,
+              "label": "Dimmer curve logarithmic",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 170,
+              "to": 171,
+              "label": "Dimmer curve S-curve",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 172,
+              "to": 239,
+              "label": "No function"
+            },
+            {
+              "from": 240,
+              "to": 241,
+              "label": "Reset to defaults",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 242,
+              "to": 243,
+              "label": "Reset to defaults, keeping user colors",
+              "requiresConfirmation": true,
+              "holdSeconds": 3
+            },
+            {
+              "from": 244,
+              "to": 255,
+              "label": "No function"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

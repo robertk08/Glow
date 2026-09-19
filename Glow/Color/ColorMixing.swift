@@ -1,5 +1,5 @@
 import Foundation
 
-nonisolated enum ColorMixing: String, Decodable, Sendable {
+nonisolated enum ColorMixing: String, Codable, Sendable {
 	case additive, subtractive
 }

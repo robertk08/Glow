@@ -44,7 +44,7 @@ struct ProgrammerView: View {
 							}
 						}
 						
-						if let speed = programmer.profile?.channel(.movementSpeed) {
+						if let speed = programmer.mode?.channel(.panTiltSpeed) {
 							VStack(alignment: .leading) {
 								Text(speed.name)
 								Slider(value: programmer.binding(speed), in: 0...255, neutralValue: Double(speed.defaultValue)) {
@@ -68,7 +68,7 @@ struct ProgrammerView: View {
 						
 						if let active = programmer.adjustableBand(of: channel) {
 							Slider(value: programmer.binding(channel), in: Double(active.from)...Double(active.to))
-						} else if channel.ranges.isEmpty {
+						} else if channel.functions.isEmpty {
 							Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
 								Text(channel.name)
 							}
@@ -77,7 +77,7 @@ struct ProgrammerView: View {
 				}
 				
 				Section {
-					if programmer.profile == nil {
+					if programmer.mode == nil {
 						LabeledContent("Fixtures", value: "Mixed")
 					} else {
 						NavigationLink("All Channels") {
@@ -85,7 +85,7 @@ struct ProgrammerView: View {
 						}
 					}
 				} footer: {
-					Text(programmer.profile == nil ? "Channels are shown when every selected light is the same fixture." : "Every channel the fixture has, on its raw DMX value.")
+					Text(programmer.mode == nil ? "Channels are shown when every selected light is the same fixture." : "Every channel the fixture has, on its raw DMX value.")
 				}
 				
 				Section {

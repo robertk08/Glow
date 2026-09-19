@@ -10,38 +10,38 @@ struct ChannelsView: View {
 				Text("A slider steps over a setting that has to be confirmed, so nothing resets a head by accident. Pick it below to send it, or type the value.")
 			}
 			
-			ForEach(programmer.parameters) { parameter in
+			ForEach(programmer.channels) { channel in
 				Section {
 					LabeledContent {
-						TextField("Value", value: programmer.rawBinding(parameter), format: .number.precision(.fractionLength(0)).grouping(.never))
+						TextField("Value", value: programmer.rawBinding(channel), format: .number.precision(.fractionLength(0)).grouping(.never))
 							.keyboardType(.numberPad)
 							.multilineTextAlignment(.trailing)
 							.monospacedDigit()
 							.frame(maxWidth: 80)
 					} label: {
 						HStack {
-							Text(programmer.bandLabel(of: parameter))
+							Text(programmer.bandLabel(of: channel))
 								.lineLimit(1)
 							
 							Spacer()
 							
-							Text(programmer.percent(of: parameter), format: .percent.precision(.fractionLength(0)))
+							Text(programmer.percent(of: channel), format: .percent.precision(.fractionLength(0)))
 								.monospacedDigit()
 								.foregroundStyle(.secondary)
 						}
 					}
 					.font(.subheadline)
 					
-					Slider(value: programmer.guardedBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral) {
-						Text(parameter.name)
+					Slider(value: programmer.guardedBinding(channel), in: 0...Double(channel.maximum), neutralValue: Double(channel.neutral)) {
+						Text(channel.name)
 					}
-					.tint(parameter.role.color)
+					.tint(channel.attribute.color)
 					
-					if parameter.isBanded {
-						BandPicker(programmer: programmer, channel: parameter.coarse, bands: parameter.ranges)
+					if channel.isBanded {
+						BandPicker(programmer: programmer, channel: channel, bands: channel.functions)
 					}
 				} header: {
-					LabeledContent(parameter.name, value: programmer.channelLabel(of: parameter))
+					LabeledContent(channel.name, value: programmer.channelLabel(of: channel))
 						.monospacedDigit()
 				}
 			}

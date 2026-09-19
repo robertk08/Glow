@@ -1,15 +1,15 @@
 import Foundation
 
 nonisolated struct EmitterMix: Equatable, Sendable {
-	private var levels: [ChannelRole: Double]
+	private var levels: [Attribute: Double]
 	
-	init(_ levels: [ChannelRole: Double] = [:]) {
+	init(_ levels: [Attribute: Double] = [:]) {
 		self.levels = levels
 	}
 	
-	subscript(role: ChannelRole) -> Double {
-		get { levels[role] ?? 0 }
-		set { levels[role] = newValue }
+	subscript(attribute: Attribute) -> Double {
+		get { levels[attribute] ?? 0 }
+		set { levels[attribute] = newValue }
 	}
 	
 	var peak: Double { levels.values.max() ?? 0 }
@@ -31,7 +31,7 @@ nonisolated struct EmitterMix: Equatable, Sendable {
 		}
 	}
 	
-	static func mixing(_ target: LightColor, emitters available: [ChannelRole], mixing: ColorMixing) -> EmitterMix {
+	static func mixing(_ target: LightColor, emitters available: [Attribute], mixing: ColorMixing) -> EmitterMix {
 		guard mixing == .additive else {
 			let wanted = target.normalised.clamped
 			return EmitterMix([.cyan: 1 - wanted.red, .magenta: 1 - wanted.green, .yellow: 1 - wanted.blue])
@@ -43,8 +43,8 @@ nonisolated struct EmitterMix: Equatable, Sendable {
 		var residual = target.normalised.clamped
 		var mix = EmitterMix()
 		
-		for role in Emitter.mixingOrder where emitters.contains(role) {
-			guard let emitter = Emitter.light(of: role) else { continue }
+		for attribute in Emitter.mixingOrder where emitters.contains(attribute) {
+			guard let emitter = Emitter.light(of: attribute) else { continue }
 			
 			var amount = Double.infinity
 			for (component, share) in [
@@ -55,7 +55,7 @@ nonisolated struct EmitterMix: Equatable, Sendable {
 			
 			guard amount.isFinite, amount > 0 else { continue }
 			amount = min(amount, 1)
-			mix[role] = amount
+			mix[attribute] = amount
 			residual = (residual - emitter * amount).clamped
 		}
 		
@@ -63,19 +63,19 @@ nonisolated struct EmitterMix: Equatable, Sendable {
 		return mix.normalised
 	}
 	
-	static func white(kelvin: Double, emitters available: [ChannelRole], mixing: ColorMixing) -> EmitterMix {
+	static func white(kelvin: Double, emitters available: [Attribute], mixing: ColorMixing) -> EmitterMix {
 		self.mixing(ColorTemperature.light(kelvin: kelvin), emitters: available, mixing: mixing)
 	}
 	
-	private static func closestDirection(to target: LightColor, emitters: [ChannelRole]) -> EmitterMix {
+	private static func closestDirection(to target: LightColor, emitters: [Attribute]) -> EmitterMix {
 		var mix = EmitterMix()
 		let direction = target.normalised
 		
-		for role in emitters {
-			guard let emitter = Emitter.light(of: role) else { continue }
+		for attribute in emitters {
+			guard let emitter = Emitter.light(of: attribute) else { continue }
 			let magnitude = emitter.dot(emitter)
 			guard magnitude > 0 else { continue }
-			mix[role] = min(max(direction.dot(emitter) / magnitude, 0), 1)
+			mix[attribute] = min(max(direction.dot(emitter) / magnitude, 0), 1)
 		}
 		
 		return mix.normalised

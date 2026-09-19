@@ -2,16 +2,16 @@ import SwiftUI
 
 struct BandPicker: View {
 	let programmer: Programmer
-	let channel: ProfileChannel
-	let bands: [ChannelRange]
+	let channel: FixtureChannel
+	let bands: [ChannelFunction]
 	
-	@State private var pending: ChannelRange?
+	@State private var pending: ChannelFunction?
 	
 	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
 	
-	private var swatches: [ChannelRange] { bands.filter { !$0.swatch.isEmpty } }
+	private var swatches: [ChannelFunction] { bands.filter { !$0.swatch.isEmpty } }
 	
-	private func choose(_ range: ChannelRange) {
+	private func choose(_ range: ChannelFunction) {
 		guard !range.requiresConfirmation else {
 			pending = range
 			return

@@ -20,7 +20,7 @@ nonisolated struct ColorPreset: Identifiable, Equatable, Sendable {
 		}
 	}
 	
-	func mix(emitters: [ChannelRole], mixing: ColorMixing) -> EmitterMix {
+	func mix(emitters: [Attribute], mixing: ColorMixing) -> EmitterMix {
 		switch recipe {
 		case let .white(kelvin): .white(kelvin: kelvin, emitters: emitters, mixing: mixing)
 		case let .colour(light): .mixing(light, emitters: emitters, mixing: mixing)
@@ -28,7 +28,7 @@ nonisolated struct ColorPreset: Identifiable, Equatable, Sendable {
 		}
 	}
 	
-	static func all(emitters: [ChannelRole]) -> [ColorPreset] {
+	static func all(emitters: [Attribute]) -> [ColorPreset] {
 		var presets: [ColorPreset] = [
 			ColorPreset(name: "Warm white", recipe: .white(kelvin: ColorTemperature.warm)),
 			ColorPreset(name: "Neutral white", recipe: .white(kelvin: ColorTemperature.neutral)),

@@ -147,7 +147,7 @@ struct LightsView: View {
 				List {
 					Section("Lights") {
 						ForEach(fixtures) { fixture in
-							Label(fixture.name, systemImage: fixture.symbol(library.profile(fixture.profileID)))
+							Label(fixture.name, systemImage: fixture.symbol(library.mode(fixture.typeID)))
 						}
 						.onMove { console.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
 					}

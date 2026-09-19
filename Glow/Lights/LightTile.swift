@@ -17,7 +17,7 @@ struct LightTile: View {
 	@State private var origin = 0.0
 	
 	var body: some View {
-		let profile = library.profile(fixture.profileID)
+		let profile = library.mode(fixture.typeID)
 		let programmer = Programmer(fixture: fixture, library: library, console: console)
 		let isOn = programmer?.isOn ?? false
 		let glow = programmer?.glow ?? .accentColor

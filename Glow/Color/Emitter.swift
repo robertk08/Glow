@@ -1,14 +1,14 @@
 import Foundation
 
 nonisolated enum Emitter {
-	static let mixingOrder: [ChannelRole] = [
+	static let mixingOrder: [Attribute] = [
 		.white, .amber, .lime, .cyan, .magenta, .yellow, .red, .green, .blue,
 	]
 	
-	static let flags: [ChannelRole] = [.cyan, .magenta, .yellow]
+	static let flags: [Attribute] = [.cyan, .magenta, .yellow]
 	
-	static func light(of role: ChannelRole) -> LightColor? {
-		switch role {
+	static func light(of attribute: Attribute) -> LightColor? {
+		switch attribute {
 		case .red: LightColor(red: 1, green: 0, blue: 0)
 		case .green: LightColor(red: 0, green: 1, blue: 0)
 		case .blue: LightColor(red: 0, green: 0, blue: 1)

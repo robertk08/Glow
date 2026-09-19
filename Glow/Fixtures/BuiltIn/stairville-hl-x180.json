@@ -1,0 +1,426 @@
+{
+  "id": "stairville-hl-x180",
+  "manufacturer": "Stairville",
+  "model": "HL-x180 RGBW",
+  "symbol": "light.panel",
+  "modes": [
+    {
+      "id": "stairville-hl-x180-4ch",
+      "name": "4 channel",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        },
+        {
+          "offset": 4,
+          "attribute": "white",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stairville-hl-x180-6ch",
+      "name": "6 channel",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "program",
+          "label": "Operating mode",
+          "functions": [
+            {
+              "from": 0,
+              "to": 63,
+              "label": "Constant color from the desk",
+              "purpose": "release"
+            },
+            {
+              "from": 64,
+              "to": 127,
+              "label": "Auto color change, 7 colors",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 128,
+              "to": 191,
+              "label": "Auto color change, 12 colors",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 192,
+              "to": 255,
+              "label": "Auto color change, 4 colors",
+              "requiresConfirmation": true
+            }
+          ]
+        },
+        {
+          "offset": 2,
+          "attribute": "red",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 1,
+            "from": 0,
+            "to": 63
+          }
+        },
+        {
+          "offset": 3,
+          "attribute": "green",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 1,
+            "from": 0,
+            "to": 63
+          }
+        },
+        {
+          "offset": 4,
+          "attribute": "blue",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 1,
+            "from": 0,
+            "to": 63
+          }
+        },
+        {
+          "offset": 5,
+          "attribute": "white",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 1,
+            "from": 0,
+            "to": 63
+          }
+        },
+        {
+          "offset": 6,
+          "attribute": "programSpeed",
+          "label": "Effect speed",
+          "functions": [
+            {
+              "from": 0,
+              "to": 10,
+              "label": "No color change"
+            },
+            {
+              "from": 11,
+              "to": 100,
+              "label": "Color change, fast to slow",
+              "kind": "proportional"
+            },
+            {
+              "from": 101,
+              "to": 150,
+              "label": "No color change"
+            },
+            {
+              "from": 151,
+              "to": 255,
+              "label": "Color change, random speed",
+              "kind": "proportional"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stairville-hl-x180-8ch",
+      "name": "8 channel",
+      "channels": [
+        {
+          "offset": 1,
+          "attribute": "red",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 5,
+            "from": 0,
+            "to": 15
+          }
+        },
+        {
+          "offset": 2,
+          "attribute": "green",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 5,
+            "from": 0,
+            "to": 15
+          }
+        },
+        {
+          "offset": 3,
+          "attribute": "blue",
+          "defaultValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 5,
+            "from": 0,
+            "to": 15
+          }
+        },
+        {
+          "offset": 4,
+          "attribute": "white",
+          "defaultValue": 255,
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ],
+          "enabledBy": {
+            "offset": 5,
+            "from": 0,
+            "to": 15
+          }
+        },
+        {
+          "offset": 5,
+          "attribute": "colorMacro",
+          "label": "Fixed color pattern",
+          "functions": [
+            {
+              "from": 0,
+              "to": 15,
+              "label": "Off, the mixer runs the light",
+              "purpose": "release"
+            },
+            {
+              "from": 16,
+              "to": 255,
+              "label": "One of 31 built-in colors",
+              "kind": "proportional"
+            }
+          ]
+        },
+        {
+          "offset": 6,
+          "attribute": "shutter",
+          "label": "Strobe",
+          "highlightValue": 0,
+          "functions": [
+            {
+              "from": 0,
+              "to": 15,
+              "label": "Open, full brightness",
+              "purpose": "open"
+            },
+            {
+              "from": 16,
+              "to": 255,
+              "label": "Strobe, slow to fast",
+              "kind": "proportional",
+              "unit": "hertz",
+              "physicalFrom": 1,
+              "physicalTo": 20
+            }
+          ]
+        },
+        {
+          "offset": 7,
+          "attribute": "program",
+          "label": "Operating mode",
+          "functions": [
+            {
+              "from": 0,
+              "to": 31,
+              "label": "Constant color from the desk",
+              "purpose": "release"
+            },
+            {
+              "from": 32,
+              "to": 63,
+              "label": "Fade out, color from the desk",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 64,
+              "to": 95,
+              "label": "Fade in, color from the desk",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 96,
+              "to": 127,
+              "label": "Fade in and out, color from the desk",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 128,
+              "to": 159,
+              "label": "Auto mix",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 160,
+              "to": 191,
+              "label": "Chase, 4 colors",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 192,
+              "to": 223,
+              "label": "Chase, 12 colors",
+              "requiresConfirmation": true
+            },
+            {
+              "from": 224,
+              "to": 255,
+              "label": "Sound control, rising sensitivity",
+              "kind": "proportional",
+              "requiresConfirmation": true
+            }
+          ]
+        },
+        {
+          "offset": 8,
+          "attribute": "dimmer",
+          "functions": [
+            {
+              "from": 0,
+              "to": 255,
+              "label": "0% to 100%",
+              "kind": "proportional",
+              "unit": "percent",
+              "physicalFrom": 0,
+              "physicalTo": 100
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

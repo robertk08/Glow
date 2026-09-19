@@ -10,7 +10,7 @@ struct ColorControl: View {
 	var body: some View {
 		Section {
 			if let channel = programmer.macroChannel {
-				BandPicker(programmer: programmer, channel: channel, bands: channel.ranges)
+				BandPicker(programmer: programmer, channel: channel, bands: channel.functions)
 				
 				if let active = programmer.adjustableBand(of: channel) {
 					Slider(value: programmer.binding(channel), in: Double(active.from)...Double(active.to)) {
@@ -68,7 +68,7 @@ struct ColorControl: View {
 						Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
 							Text(channel.name)
 						}
-						.tint(channel.role.color)
+						.tint(channel.attribute.color)
 					}
 				}
 			}
