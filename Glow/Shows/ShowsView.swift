@@ -64,15 +64,6 @@ struct ShowsView: View {
 							}
 						}
 					}
-					.confirmationDialog("Delete \(show.name)?", isPresented: Binding { deleting == show } set: { _ in deleting = nil }, titleVisibility: .visible) {
-						Button("Delete Show", role: .destructive) {
-							console.closeShow()
-							shows.delete(show)
-							deleting = nil
-						}
-					} message: {
-						Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
-					}
 				}
 			}
 			
@@ -86,6 +77,14 @@ struct ShowsView: View {
 					isNaming = true
 				}
 			}
+		}
+		.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible, presenting: deleting) { show in
+			Button("Delete Show", role: .destructive) {
+				console.closeShow()
+				shows.delete(show)
+			}
+		} message: { _ in
+			Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
 		}
 		.sensoryFeedback(.selection, trigger: shows.activeID)
 		.navigationTitle("Shows")

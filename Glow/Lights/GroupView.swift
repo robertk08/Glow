@@ -9,12 +9,16 @@ struct GroupView: View {
 	@Bindable var group: FixtureGroup
 	
 	@State private var isDeleting = false
+	@FocusState private var isNaming: Bool
 	
 	var body: some View {
 		NavigationStack {
 			Form {
 				Section {
 					TextField("Name", text: $group.name)
+						.focused($isNaming)
+						.autocorrectionDisabled()
+						.submitLabel(.done)
 				}
 				
 				Section("Icon") {
@@ -35,12 +39,23 @@ struct GroupView: View {
 					}
 				}
 			}
-			.navigationTitle(group.name)
+			.navigationTitle(group.name.isEmpty ? "New Group" : group.name)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .confirmationAction) {
-					Button("Done") { dismiss() }
+					Button("Done") {
+						group.name = group.name.trimmingCharacters(in: .whitespaces)
+						dismiss()
+					}
 				}
+			}
+			.task {
+				isNaming = group.name.isEmpty
+			}
+			.onDisappear {
+				group.name = group.name.trimmingCharacters(in: .whitespaces)
+				guard group.name.isEmpty, group.members.isEmpty else { return }
+				context.delete(group)
 			}
 			.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
 				Button("Delete Group", role: .destructive) {

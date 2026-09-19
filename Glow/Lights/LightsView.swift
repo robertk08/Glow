@@ -148,7 +148,7 @@ struct LightsView: View {
 					}
 					
 					Button("New Group", systemImage: "square.stack.3d.up") {
-						let group = FixtureGroup(name: "Group", sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
+						let group = FixtureGroup(name: "", sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
 						context.insert(group)
 						editingGroup = group
 					}

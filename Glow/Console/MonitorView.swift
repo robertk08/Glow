@@ -13,26 +13,19 @@ struct MonitorView: View {
 	var body: some View {
 		let owned = monitor.owners(among: fixtures, library: library)
 		
-		ScrollView {
-			LazyVGrid(columns: columns, spacing: 4, pinnedViews: [.sectionHeaders]) {
-				ForEach(monitor.blocks(owned: owned), id: \.first) { block in
-					Section {
+		List {
+			ForEach(monitor.blocks(owned: owned), id: \.first) { block in
+				Section("\(block.first ?? 1)–\(block.last ?? 1)") {
+					LazyVGrid(columns: columns, spacing: 4) {
 						ForEach(block, id: \.self) { address in
 							ChannelCell(address: address, monitor: monitor)
 						}
-					} header: {
-						Text("\(block.first ?? 1)–\(block.last ?? 1)")
-							.font(.caption.weight(.semibold))
-							.foregroundStyle(.secondary)
-							.frame(maxWidth: .infinity, alignment: .leading)
-							.padding(.top, 8)
-							.background(.background)
 					}
+					.listRowInsets(.init(top: 12, leading: 12, bottom: 12, trailing: 12))
 				}
 			}
-			.padding(.horizontal)
-			.padding(.bottom)
 		}
+		.listStyle(.insetGrouped)
 		.navigationTitle("DMX Output")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
@@ -69,6 +62,7 @@ private struct ChannelCell: View {
 	var body: some View {
 		let value = monitor.values[address - 1]
 		let isArmed = monitor.adjusting == address
+		
 		VStack(spacing: 1) {
 			Text("\(address)")
 				.font(.system(size: 9).monospacedDigit())
@@ -90,8 +84,8 @@ private struct ChannelCell: View {
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
 		}
-		.containerShape(.rect(cornerRadius: 6, style: .continuous))
-		.clipShape(.rect(cornerRadius: 6, style: .continuous))
+		.containerShape(.rect(cornerRadius: 10, style: .continuous))
+		.clipShape(.rect(cornerRadius: 10, style: .continuous))
 		.scaleEffect(isArmed ? 1.12 : 1)
 		.animation(.snappy(duration: 0.15), value: isArmed)
 		.simultaneousGesture(DragGesture(minimumDistance: 30).onChanged { drag in

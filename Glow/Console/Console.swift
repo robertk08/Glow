@@ -161,7 +161,8 @@ final class Console {
 	}
 	
 	func releaseValues(among fixtures: [Fixture], library: FixtureLibrary) {
-		programmer(among: fixtures, library: library).applyDefaults()
+		let chosen = fixtures.filter(selection.contains)
+		Programmer(fixtures: chosen.isEmpty ? fixtures : chosen, library: library, console: self).applyDefaults()
 		selection.clear()
 	}
 	
