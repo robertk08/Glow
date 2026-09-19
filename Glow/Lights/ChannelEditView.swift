@@ -86,6 +86,11 @@ private struct RangeSheet: View {
 	@Binding var to: Double
 	@Binding var label: String
 	
+	@State private var kind = ChannelRange.Kind.discrete
+	@State private var requiresConfirmation = false
+	@State private var releasesMix = false
+	@State private var holdSeconds = 0.0
+	
 	let save: (ChannelRange) -> Void
 	
 	var body: some View {
@@ -116,6 +121,23 @@ private struct RangeSheet: View {
 							.foregroundStyle(.orange)
 					}
 				}
+				
+				Section {
+					Picker("Control", selection: $kind) {
+						Text("Setting").tag(ChannelRange.Kind.discrete)
+						Text("Variable").tag(ChannelRange.Kind.proportional)
+					}
+					
+					Toggle("Confirm Before Sending", isOn: $requiresConfirmation)
+					Toggle("Release Color Mixer", isOn: $releasesMix)
+					Stepper(value: $holdSeconds, in: 0...60, step: 0.5) {
+						LabeledContent("Hold", value: holdSeconds == 0 ? "Until Changed" : "\(holdSeconds.formatted()) s")
+					}
+				} header: {
+					Text("Behavior")
+				} footer: {
+					Text("Variable ranges expose a slider. A timed command returns to the channel default after its hold time.")
+				}
 			}
 			.navigationTitle("Add Range")
 			.navigationBarTitleDisplayMode(.inline)
@@ -126,13 +148,17 @@ private struct RangeSheet: View {
 				
 				ToolbarItem(placement: .confirmationAction) {
 					Button(role: .confirm) {
-						save(ChannelRange(from: UInt8(from), to: UInt8(to), label: label.trimmingCharacters(in: .whitespaces)))
+						var range = ChannelRange(from: UInt8(from), to: UInt8(to), label: label.trimmingCharacters(in: .whitespaces), kind: kind)
+						range.requiresConfirmation = requiresConfirmation
+						range.releasesMix = releasesMix
+						if holdSeconds > 0 { range.holdSeconds = holdSeconds }
+						save(range)
 						dismiss()
 					}
 					.disabled(to < from || label.trimmingCharacters(in: .whitespaces).isEmpty)
 				}
 			}
 		}
-		.presentationDetents([.medium])
+		.presentationDetents([.large])
 	}
 }

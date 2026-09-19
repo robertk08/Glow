@@ -10,13 +10,11 @@ struct ClearButton: View {
 		Button("Clear", role: .cancel) {
 			console.clearSelection()
 		}
+		.accessibilityHint("Tap to clear the selection. Touch and hold to release values.")
 		.keyboardShortcut(.escape, modifiers: [])
-		.disabled(!console.hasSelection)
-		.contextMenu {
-			Button("Release Values", systemImage: "arrow.uturn.backward", role: .destructive) {
-				console.releaseValues(among: fixtures, library: library)
-			}
-		}
+		.simultaneousGesture(LongPressGesture().onEnded { _ in
+			console.releaseValues(among: fixtures, library: library)
+		})
 		.sensoryFeedback(.impact(weight: .light), trigger: console.hasSelection)
 	}
 }

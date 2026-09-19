@@ -17,7 +17,7 @@ struct GroupView: View {
 			}
 			
 			Section("Icon") {
-				AppearancePicker(symbols: FixtureSymbol.groups, symbol: Binding { group.symbol } set: { group.symbolOverride = $0 }, tint: $group.tint)
+				AppearancePicker(symbol: Binding { group.symbol } set: { group.symbolOverride = $0 }, tint: $group.tint)
 			}
 			
 			Section {

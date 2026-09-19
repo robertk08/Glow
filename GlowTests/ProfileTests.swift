@@ -110,4 +110,19 @@ struct ProfileTests {
 		#expect(file.version == nil)
 		#expect(file.name == "Old")
 	}
+	
+	@Test func repeatedRolesPairWithTheirOwnFineChannels() {
+		let profile = FixtureProfile(id: "t", model: "T", channels: [ProfileChannel(offset: 1, role: .custom), ProfileChannel(offset: 2, role: .custom, isFine: true, defaultValue: 7), ProfileChannel(offset: 3, role: .custom), ProfileChannel(offset: 4, role: .custom, isFine: true, defaultValue: 11)])
+		#expect(profile.parameters.map { $0.fine?.offset } == [2, 4])
+		#expect(profile.parameters.map(\.neutral) == [7, 11])
+	}
+	
+	@Test func anEmptyProfileHasNoDefaults() {
+		#expect(FixtureProfile(id: "t", model: "T", channels: []).defaults.isEmpty)
+	}
+	
+	@Test func aShutterEffectIsNotMistakenForADimmer() {
+		let shutter = ProfileChannel(offset: 1, role: .shutter, ranges: [ChannelRange(from: 0, to: 255, label: "Random pulse", kind: .proportional)])
+		#expect(FixtureProfile(id: "t", model: "T", channels: [shutter]).dimming == .none)
+	}
 }

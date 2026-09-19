@@ -48,7 +48,7 @@ final class FixtureLibrary {
 	
 	func patched(_ identifier: String?, among fixtures: [Fixture]) -> [String] {
 		guard let identifier else { return [] }
-		return fixtures.filter { $0.profileID == identifier }.map(\.name)
+		return fixtures.filter { profile($0.profileID)?.id == identifier }.map(\.name)
 	}
 	
 	func channelsUsed(by fixtures: [Fixture]) -> Int {

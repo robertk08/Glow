@@ -8,7 +8,7 @@
       "offset": 1,
       "role": "intensity",
       "name": "Intensity",
-      "defaultValue": 255,
+      "defaultValue": 0,
       "ranges": [
         {
           "from": 0,

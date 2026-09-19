@@ -33,8 +33,8 @@ stays until you clear it. Tapping Clear drops the selection, and holding it
 offers Release Values, which puts every selected light back where its profile
 says it starts. A group is a saved selection, not a container, so a light can be
 reached on its own or through any group it belongs to. The master fader and
-blackout hold the accessory whenever nothing is selected, and the iPad keeps them
-in the bottom bar.
+blackout hold the accessory whenever nothing is selected. Lights and groups can
+be reordered from Reorder, or by dragging on iOS 27.
 
 Blackout latches and pulls only the dimmers down, the same channels and the same
 way the master fader does. A head keeps its position and its colour through a
@@ -58,13 +58,11 @@ that one is rigged.
 
 A light tile is a pane of glass carrying the fixture's own colour in its chip
 and its level bar, and the bar fills to the intensity the light is actually at.
-A fixture putting out white shows its lamp's colour temperature rather than
-paper white, warm for an LED and cool for a discharge head, because white on
-white reads as nothing. Removing a light writes zeros across its channels on the
+Removing a light writes zeros across its channels on the
 way out, because a patch entry disappearing is not a reason for the lamp to stay
 lit.
 
-Colour is one control for two kinds of fixture. An LED fixture adds emitters
+Color is one control for two kinds of fixture. An LED fixture adds emitters
 together, and a discharge head subtracts cyan, magenta and yellow flags from a
 white lamp. A profile says which it is with `colorMixing`, the same swatches and
 the same colour picker drive both, and a fixture built in the app can declare
@@ -90,16 +88,25 @@ The file carries the date its format was settled and the date it was written.
 A file from a format newer than the app knows is refused rather than half read,
 and one with no version at all is from before this and is taken as it comes.
 
+The DMX monitor shows output after master and blackout. Switch to Source to
+inspect or adjust the programmer values before those controls.
+
+Bundled fixture channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
+[Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
+and [Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf).
+
 ## Setting up a controller
 
 Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored
-credentials raises its own open network called **Glow Setup**. Join it from iOS
-Wi-Fi settings, then in Glow: Settings › Controller › Change Wi-Fi Network. The
-app lists what the controller can see, takes the password and hands it over. A
-network that signs you in by name takes a username too.
+credentials raises its own open network called **Glow Setup**. In Glow, open
+Settings › Controller › Change Wi-Fi Network and allow the Wi-Fi connection.
+The app lists what the controller can see, takes the password and hands it over.
+A network that signs you in by name takes a username too. The app requires the
+Hotspot Configuration capability when signing for a device.
 
-The controller answers *before* it joins, because once it joins it is no longer
-on its own network. The app confirms by finding it again afterwards.
+The controller answers before it joins and keeps its setup network available
+until the app confirms. Glow reconnects to the chosen personal Wi-Fi network
+and checks the controller identity before reporting Ready.
 
 Credentials are written only after the join succeeds, so a wrong password cannot
 displace a working network.
@@ -107,7 +114,8 @@ displace a working network.
 **Getting back to setup:** the controller raises **Glow Setup** by itself after
 a minute of not finding its stored network, and keeps it up until it joins, so
 one carried somewhere new is reachable without being touched. To ask for it
-while the stored network is fine, power the controller off and on three times,
+while the stored network is fine, use Change Wi-Fi Network in Glow. Alternatively,
+power the controller off and on three times,
 leaving it on for less than five seconds each time, which raises the setup
 network for five minutes. Neither erases anything. Serial `forget`, or the app's
 forget button, is what erases. Reflashing does not, because credentials live in
@@ -179,9 +187,6 @@ driver stays in flash even after the patch.
 `dmx_driver_install()`, because esp_dmx drops the third UART's context entry
 ([#228](https://github.com/someweisguy/esp_dmx/issues/228)).
 
-Current build is 990,541 bytes, 31% of the partition. With HomeSpan 2.1.8 and
-one service on top it is 46%, so the HomeKit stage fits.
-
 ## Wire protocol
 
 WebSocket at `ws://<host>/ws`, advertised over mDNS as `_glow._tcp` on port 80,
@@ -220,7 +225,7 @@ another client. Types are strict, an integer is not a float and a boolean is not
 `1`. `status` is only sent in reply to `hello`, so say hello first.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
-`POST /api/provision`, `POST /api/forget`. `/api/scan` is served only on the
+`POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is served only on the
 setup network, because scanning takes the radio off the air and must not be able
 to disturb a running show. It starts the scan and answers straight away, so the
 app polls until the list arrives.
@@ -245,14 +250,3 @@ saved.
 
 **On disconnect the controller holds its last look.** A light going dark because
 Wi-Fi hiccuped is worse than a light staying put, and drops are routine.
-
-## Next
-
-HomeKit, via HomeSpan on the controller, exposing on/off and brightness only.
-`Fixture` in the firmware is the seam it attaches to. Note that HomeSpan writes
-NVS when pairing, which disables the flash cache and can corrupt DMX output, so
-those writes need the same `DmxBus::pause()`/`resume()` bracket the credential
-writes use.
-
-Then remote access over a Cloudflare Worker, which is a second socket rather
-than a second protocol.

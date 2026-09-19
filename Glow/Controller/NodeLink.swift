@@ -1,37 +1,5 @@
 import Foundation
 
-enum LinkState: Sendable, Equatable {
-	case offline
-	case connecting
-	case connected
-	case retrying(seconds: Int)
-	
-	var isConnected: Bool { self == .connected }
-	
-	var name: String {
-		switch self {
-		case .offline: "Not connected"
-		case .connecting: "Connecting"
-		case .connected: "Connected"
-		case let .retrying(seconds): "Reconnecting in \(seconds)s"
-		}
-	}
-	
-	func summary(latency: TimeInterval?) -> String {
-		guard self == .connected, let latency else { return name }
-		return "Connected · \(Int(latency * 1000)) ms"
-	}
-}
-
-enum LinkEvent: Sendable {
-	case state(LinkState)
-	case status(Wire.NodeInfo)
-	case latency(TimeInterval)
-	case frame(start: DMXAddress, values: [UInt8])
-	case master(Double)
-	case blackout(Bool)
-}
-
 actor NodeLink {
 	nonisolated let events: AsyncStream<LinkEvent>
 	
@@ -57,6 +25,7 @@ actor NodeLink {
 	
 	func connect(to endpoint: NodeEndpoint) {
 		supervisor?.cancel()
+		close()
 		supervisor = Task { [weak self] in
 			await self?.supervise(endpoint)
 		}
@@ -65,21 +34,13 @@ actor NodeLink {
 	func send(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) async {
 		guard let socket else { return }
 		
-		await withCheckedContinuation { continuation in
-			socket.send(.data(Wire.frame(opcode, start: start, values: values))) { _ in
-				continuation.resume()
-			}
-		}
+		try? await socket.send(.data(Wire.frame(opcode, start: start, values: values)))
 	}
 	
 	func send(_ command: Wire.Command) async {
 		guard let socket, let json = command.json else { return }
 		
-		await withCheckedContinuation { continuation in
-			socket.send(.string(json)) { _ in
-				continuation.resume()
-			}
-		}
+		try? await socket.send(.string(json))
 	}
 	
 	private func supervise(_ endpoint: NodeEndpoint) async {
@@ -91,7 +52,11 @@ actor NodeLink {
 			let reachedNode = await run(url)
 			if Task.isCancelled { return }
 			
-			attempt = reachedNode ? 1 : attempt + 1
+			if reachedNode {
+				attempt = 1
+			} else {
+				attempt = min(attempt + 1, 5)
+			}
 			for remaining in stride(from: min(15, 1 << (attempt - 1)), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
@@ -112,6 +77,7 @@ actor NodeLink {
 		while !Task.isCancelled {
 			do {
 				let message = try await task.receive()
+				guard !Task.isCancelled else { break }
 				if !reached {
 					reached = true
 					continuation.yield(.state(.connected))
@@ -122,7 +88,7 @@ actor NodeLink {
 			}
 		}
 		
-		close()
+		if socket === task { close() }
 		return reached
 	}
 	

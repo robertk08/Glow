@@ -5,14 +5,15 @@ struct LightTile: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
-	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	let fixture: Fixture
+	let fixtures: [Fixture]
 	let clashes: Bool
 	
 	@Binding var editing: Fixture?
 	
 	@State private var isRemoving = false
+	@State private var start: CGPoint?
 	@State private var origin: Double?
 	
 	var body: some View {
@@ -29,10 +30,6 @@ struct LightTile: View {
 					.foregroundStyle(isOn || clashes ? programmer?.displayInk ?? .white : .secondary)
 					.frame(width: 38, height: 38)
 					.background(clashes ? Color.orange : isOn ? glow : Color(.tertiarySystemFill), in: .circle)
-					.overlay {
-						Circle()
-							.strokeBorder(.separator)
-					}
 				
 				Spacer()
 				
@@ -57,25 +54,26 @@ struct LightTile: View {
 		.foregroundStyle(.primary)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.padding(14)
-		.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24, style: .continuous))
-		.overlay {
-			RoundedRectangle(cornerRadius: 24, style: .continuous)
-				.strokeBorder(.tint, lineWidth: isSelected ? 3 : 0)
-		}
-		.containerShape(.rect(cornerRadius: 24, style: .continuous))
+		.glassEffect(.regular.tint(isSelected ? .accentColor : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.onTapGesture {
 			console.toggle(fixture)
 		}
-		.gesture(DragGesture(minimumDistance: 12).onChanged { drag in
+		.simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { drag in
 			guard let programmer, programmer.dims else { return }
-			guard origin != nil || abs(drag.translation.width) > abs(drag.translation.height) else { return }
-			let start = origin ?? programmer.brightness
-			origin = start
-			programmer.brightness = start + drag.translation.width / 180
-		}.onEnded { _ in
-			origin = nil
+			
+			if start != drag.startLocation {
+				start = drag.startLocation
+				origin = abs(drag.translation.width) > abs(drag.translation.height) ? programmer.brightness : nil
+			}
+			
+			guard let origin else { return }
+			programmer.brightness = origin + drag.translation.width / 180
 		})
+		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.accessibilityElement(children: .combine)
+		.accessibilityAddTraits(.isButton)
+		.accessibilityAddTraits(isSelected ? .isSelected : [])
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contextMenu {
 			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "lightbulb.slash" : "lightbulb.max") {

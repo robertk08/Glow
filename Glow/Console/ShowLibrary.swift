@@ -29,9 +29,7 @@ final class ShowLibrary {
 		var loaded = Self.load()
 		
 		if loaded.isEmpty {
-			let first = Show(name: "Show 1")
-			Self.adoptExistingStore(into: first.id)
-			loaded = [first]
+			loaded = [Show(name: "Show 1")]
 			Self.save(loaded)
 		}
 		
@@ -55,6 +53,7 @@ final class ShowLibrary {
 	
 	func activate(_ show: Show) {
 		guard show.id != activeID else { return }
+		try? container.mainContext.save()
 		activeID = show.id
 		UserDefaults.standard.set(show.id, forKey: Self.activeKey)
 		container = Self.open(show.id)
@@ -116,13 +115,16 @@ final class ShowLibrary {
 		}
 		
 		guard show.id == activeID, let next = shows.first else { return }
-		activeID = next.id
-		UserDefaults.standard.set(next.id, forKey: Self.activeKey)
-		container = Self.open(next.id)
+		activate(next)
 	}
 	
 	func contents(of show: Show) -> ShowFile {
-		let context = ModelContext(show.id == activeID ? container : Self.open(show.id))
+		let context: ModelContext
+		if show.id == activeID {
+			context = container.mainContext
+		} else {
+			context = ModelContext(Self.open(show.id))
+		}
 		
 		let fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
 		let groups = (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
@@ -132,19 +134,19 @@ final class ShowLibrary {
 		var file = ShowFile(name: show.name, lights: [], groups: [], profiles: [], scenes: [])
 		
 		for group in groups {
-			file.groups.append(ShowFile.Group(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
+			file.groups.append(ShowGroup(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
 		}
 		
 		for fixture in fixtures {
-			file.lights.append(ShowFile.Light(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, tint: fixture.tintName, group: fixture.group?.name))
+			file.lights.append(ShowLight(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
 		}
 		
 		for profile in profiles {
-			file.profiles.append(ShowFile.Profile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList, isSubtractive: profile.isSubtractive))
+			file.profiles.append(ShowProfile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList, isSubtractive: profile.isSubtractive))
 		}
 		
 		for look in looks {
-			file.scenes.append(ShowFile.Scene(name: look.name, sortIndex: look.sortIndex, levels: look.levels))
+			file.scenes.append(ShowScene(name: look.name, sortIndex: look.sortIndex, levels: look.levels))
 		}
 		
 		return file
@@ -181,7 +183,8 @@ final class ShowLibrary {
 			let fixture = Fixture(profileID: entry.profileID, name: entry.name, address: address, sortIndex: entry.sortIndex)
 			fixture.identifier = entry.identifier
 			fixture.symbolOverride = entry.symbol
-			fixture.tintName = entry.tint
+			fixture.invertsPan = entry.invertsPan ?? false
+			fixture.invertsTilt = entry.invertsTilt ?? false
 			context.insert(fixture)
 			
 			if let name = entry.group {
@@ -217,17 +220,6 @@ final class ShowLibrary {
 		return try! ModelContainer(for: Fixture.self, FixtureGroup.self, CustomProfile.self, Look.self, configurations: configuration)
 	}
 	
-	private static func adoptExistingStore(into id: String) {
-		let manager = FileManager.default
-		let existing = URL.applicationSupportDirectory.appending(path: "default.store")
-		guard manager.fileExists(atPath: existing.path(percentEncoded: false)) else { return }
-		
-		for suffix in suffixes {
-			let from = URL.applicationSupportDirectory.appending(path: "default.store" + suffix)
-			try? manager.moveItem(at: from, to: store(id, suffix))
-		}
-	}
-	
 	private static func load() -> [Show] {
 		guard let data = try? Data(contentsOf: manifest) else { return [] }
 		return (try? JSONDecoder().decode([Show].self, from: data)) ?? []
@@ -235,6 +227,6 @@ final class ShowLibrary {
 	
 	private static func save(_ shows: [Show]) {
 		guard let data = try? JSONEncoder().encode(shows) else { return }
-		try? data.write(to: manifest)
+		try? data.write(to: manifest, options: .atomic)
 	}
 }

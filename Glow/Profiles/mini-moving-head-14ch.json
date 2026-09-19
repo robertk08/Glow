@@ -6,7 +6,6 @@
   "panDegrees": 540,
   "tiltDegrees": 270,
   "invertsPan": true,
-  "invertsTilt": true,
   "channels": [
     {
       "offset": 1,
@@ -50,7 +49,7 @@
       "offset": 6,
       "role": "shutter",
       "name": "Dimmer/strobe",
-      "defaultValue": 255,
+      "defaultValue": 0,
       "ranges": [
         {
           "from": 0,
@@ -79,17 +78,17 @@
     {
       "offset": 7,
       "role": "red",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 8,
       "role": "green",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 9,
       "role": "blue",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 10,
@@ -99,7 +98,7 @@
     {
       "offset": 11,
       "role": "colorMacro",
-      "name": "Colour macro",
+      "name": "Color macro",
       "defaultValue": 0,
       "ranges": [
         {
@@ -111,12 +110,13 @@
         {
           "from": 8,
           "to": 231,
-          "label": "Colour macro"
+          "label": "Color macro",
+          "kind": "proportional"
         },
         {
           "from": 232,
           "to": 255,
-          "label": "Colour jumping"
+          "label": "Color jumping"
         }
       ]
     },

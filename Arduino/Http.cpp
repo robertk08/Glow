@@ -85,6 +85,7 @@ void info(NetworkClient &c) {
   doc["state"] = Net::provisioned() ? "provisioned" : "unprovisioned";
   doc["join"]  = Net::joinState();
   doc["ip"]    = Net::ip().toString();
+  doc["ssid"]  = WiFi.SSID();
   String out;
   serializeJson(doc, out);
   sendJson(c, 200, out);
@@ -191,6 +192,12 @@ void route(NetworkClient &c, const char *method, const char *path,
   } else if (!strcmp(path, "/api/provision")) {
     if (post) provision(c, body, bodyLen);
     else sendResult(c, 405, false, "method");
+  } else if (!strcmp(path, "/api/setup")) {
+    if (post) {
+      sendResult(c, 200, true, nullptr);
+      c.stop();
+      Net::enterSetup();
+    } else sendResult(c, 405, false, "method");
   } else if (!strcmp(path, "/api/forget")) {
     if (post) forget(c);
     else sendResult(c, 405, false, "method");

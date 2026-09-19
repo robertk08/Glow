@@ -32,6 +32,8 @@ struct MasterBar: View {
 					.contentShape(.rect)
 			}
 			.buttonStyle(.plain)
+			.accessibilityLabel("Blackout")
+			.accessibilityValue(console.blackout ? "On" : "Off")
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, 12)

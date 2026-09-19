@@ -8,15 +8,20 @@ final class NodeDiscovery {
 	private(set) var endpoints: [NodeEndpoint] = []
 	
 	private var browser: NWBrowser?
+	private var resolving: Task<Void, Never>?
 	
 	func start() {
 		guard browser == nil else { return }
 		
 		let browser = NWBrowser(for: .bonjour(type: "_glow._tcp", domain: nil), using: NWParameters())
 		
-		browser.browseResultsChangedHandler = { [weak self] results, _ in
+		browser.browseResultsChangedHandler = { [weak self, weak browser] results, _ in
 			Task { @MainActor in
-				await self?.update(results)
+				guard let self, let browser, self.browser === browser else { return }
+				self.resolving?.cancel()
+				self.resolving = Task {
+					await self.update(results)
+				}
 			}
 		}
 		
@@ -25,9 +30,18 @@ final class NodeDiscovery {
 	}
 	
 	func stop() {
+		resolving?.cancel()
+		resolving = nil
 		browser?.cancel()
 		browser = nil
 		endpoints = []
+	}
+	
+	func controllers(endpoint: NodeEndpoint, nodeID: String?) -> [NodeEndpoint] {
+		var selected = endpoint
+		selected.nodeID = nodeID ?? endpoint.nodeID
+		if endpoints.contains(where: { $0.id == selected.id || ($0.host == selected.host && $0.port == selected.port) }) { return endpoints }
+		return [selected] + endpoints
 	}
 	
 	private func update(_ results: Set<NWBrowser.Result>) async {
@@ -38,9 +52,16 @@ final class NodeDiscovery {
 				  let resolved = await Self.resolve(result.endpoint)
 			else { continue }
 			
-			found.append(NodeEndpoint(host: resolved.host, port: resolved.port, name: name, nodeID: Self.nodeID(result.metadata)))
+			guard !Task.isCancelled else { return }
+			let endpoint = NodeEndpoint(host: resolved.host, port: resolved.port, name: name, nodeID: Self.nodeID(result.metadata))
+			if let index = found.firstIndex(where: { $0.id == endpoint.id || ($0.host == endpoint.host && $0.port == endpoint.port) }) {
+				if endpoint.host < found[index].host { found[index] = endpoint }
+			} else {
+				found.append(endpoint)
+			}
 		}
 		
+		guard !Task.isCancelled else { return }
 		endpoints = found.sorted { $0.name < $1.name }
 	}
 	

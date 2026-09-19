@@ -9,7 +9,6 @@ final class Fixture {
 	var address: Int = 1
 	var sortIndex: Int = 0
 	var symbolOverride: String?
-	var tintName: String?
 	var invertsPan: Bool = false
 	var invertsTilt: Bool = false
 	var group: FixtureGroup?
@@ -25,11 +24,6 @@ final class Fixture {
 	var start: DMXAddress {
 		get { DMXAddress(clamping: address) }
 		set { address = newValue.value }
-	}
-	
-	var tint: FixtureTint {
-		get { tintName.flatMap(FixtureTint.init(rawValue:)) ?? .none }
-		set { tintName = newValue == .none ? nil : newValue.rawValue }
 	}
 	
 	func symbol(_ profile: FixtureProfile?) -> String {
@@ -87,40 +81,5 @@ final class Fixture {
 		}
 		
 		return "\(base) \(index)"
-	}
-}
-
-nonisolated enum FixtureSymbol {
-	static let all = [
-		"light.beacon.max", "light.panel", "lightbulb", "lightbulb.max", "light.strip.2",
-		"light.max", "sun.max", "laser.burst", "sparkles", "star", "rays",
-		"camera.aperture", "circle.hexagongrid", "smoke", "cloud.fog", "flame",
-		"lamp.desk", "lamp.floor", "lamp.ceiling", "chandelier", "bolt", "waveform",
-	]
-	
-	static let groups = ["square.stack.3d.up"] + all
-}
-
-nonisolated enum FixtureTint: String, CaseIterable, Identifiable, Sendable {
-	case none, red, orange, yellow, green, mint, teal, blue, indigo, purple, pink
-	
-	var id: String { rawValue }
-	
-	var name: String { rawValue.capitalized }
-	
-	var color: Color? {
-		switch self {
-		case .none: nil
-		case .red: .red
-		case .orange: .orange
-		case .yellow: .yellow
-		case .green: .green
-		case .mint: .mint
-		case .teal: .teal
-		case .blue: .blue
-		case .indigo: .indigo
-		case .purple: .purple
-		case .pink: .pink
-		}
 	}
 }

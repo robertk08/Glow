@@ -30,9 +30,9 @@ nonisolated enum ChannelRole: String, Codable, Sendable, CaseIterable, Identifia
 		case .cyan: "Cyan"
 		case .magenta: "Magenta"
 		case .yellow: "Yellow"
-		case .colorTemperature: "Colour temperature"
-		case .colorWheel: "Colour wheel"
-		case .colorMacro: "Colour macro"
+		case .colorTemperature: "Color temperature"
+		case .colorWheel: "Color wheel"
+		case .colorMacro: "Color macro"
 		case .pan: "Pan"
 		case .tilt: "Tilt"
 		case .movementSpeed: "Movement speed"
@@ -54,19 +54,5 @@ nonisolated enum ChannelRole: String, Codable, Sendable, CaseIterable, Identifia
 		}
 	}
 	
-	var color: Color? {
-		switch self {
-		case .red: .red
-		case .green: .green
-		case .blue: .blue
-		case .white: Color(white: 0.9)
-		case .amber: .orange
-		case .uv: .purple
-		case .lime: Color(red: 0.75, green: 1, blue: 0.2)
-		case .cyan: .cyan
-		case .magenta: Color(red: 1, green: 0, blue: 1)
-		case .yellow: .yellow
-		default: nil
-		}
-	}
+	var color: Color? { Emitter.light(of: self)?.color }
 }

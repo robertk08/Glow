@@ -4,7 +4,6 @@ struct NodeSetupView: View {
 	@Environment(Console.self) private var console
 	@Environment(NodeDiscovery.self) private var discovery
 	@Environment(\.dismiss) private var dismiss
-	@Environment(\.openURL) private var openURL
 	
 	@State private var model = NodeSetupModel()
 	
@@ -30,19 +29,25 @@ struct NodeSetupView: View {
 	private var findController: some View {
 		List {
 			Section {
-				Text("Open Wi-Fi settings and join the network called **Glow Setup**, then come back. Your iPhone will say it has no internet, which is expected.")
-				
-				Button("Open Wi-Fi Settings") {
-					if let url = URL(string: UIApplication.openSettingsURLString) {
-						openURL(url)
+				if model.failure != nil {
+					Button("Try Again") {
+						Task {
+							await model.waitForController(console: console)
+						}
+					}
+				} else {
+					HStack {
+						Text("Connecting to Glow Setup")
+						Spacer()
+						ProgressView()
 					}
 				}
 			} footer: {
-				Text("Waiting for the controller…")
+				Text(model.failure ?? "Keep the controller powered on. Allow Glow to join its setup network when asked. No credentials need to be entered on the controller.")
 			}
 		}
 		.task {
-			await model.waitForController()
+			await model.waitForController(console: console)
 		}
 	}
 	
@@ -71,12 +76,6 @@ struct NodeSetupView: View {
 					ForEach(model.networks) { network in
 						Button {
 							model.choose(network: network)
-							
-							if !network.secure {
-								Task {
-									await model.join(console: console, discovery: discovery)
-								}
-							}
 						} label: {
 							LabeledContent {
 								HStack(spacing: 6) {
@@ -114,11 +113,11 @@ struct NodeSetupView: View {
 				}
 				
 				SecureField("Password", text: $model.password)
+					.textContentType(.password)
 					.submitLabel(.join)
 					.onSubmit {
-						Task {
-							await model.join(console: console, discovery: discovery)
-						}
+						guard model.canJoin else { return }
+						model.step = .joining
 					}
 			} header: {
 				Text(model.selected?.ssid ?? "")
@@ -130,11 +129,14 @@ struct NodeSetupView: View {
 			
 			Section {
 				Button("Join") {
-					Task {
-						await model.join(console: console, discovery: discovery)
-					}
+					model.step = .joining
 				}
 				.disabled(!model.canJoin)
+				
+				Button("Pick Another Network") {
+					model.failure = nil
+					model.step = .chooseNetwork
+				}
 			}
 		}
 	}
@@ -157,16 +159,13 @@ struct NodeSetupView: View {
 						Spacer()
 						ProgressView()
 					}
-					
-					Button("Open Wi-Fi Settings") {
-						if let url = URL(string: UIApplication.openSettingsURLString) {
-							openURL(url)
-						}
-					}
 				} footer: {
-					Text("The controller has left Glow Setup, so your iPhone needs to be back on your usual Wi-Fi for Glow to find it again.")
+					Text("Glow is waiting for the controller to join your network. Keep the app open and allow the Wi-Fi connection when asked.")
 				}
 			}
+		}
+		.task {
+			await model.join(console: console, discovery: discovery)
 		}
 	}
 	
@@ -174,7 +173,7 @@ struct NodeSetupView: View {
 		ContentUnavailableView {
 			Label("Ready", systemImage: "checkmark.circle")
 		} description: {
-			Text("The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host). Put your iPhone back on that network to control it.")
+			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host).")
 		} actions: {
 			Button("Done", systemImage: "checkmark") {
 				dismiss()

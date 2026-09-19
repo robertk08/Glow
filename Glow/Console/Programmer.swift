@@ -20,7 +20,6 @@ struct Programmer {
 	let targets: [Target]
 	let title: String
 	let console: Console
-	var tint: Color?
 	
 	init(profile: FixtureProfile, start: DMXAddress, console: Console) {
 		targets = [Target(profile: profile, start: start, invertsPan: profile.invertsPan, invertsTilt: profile.invertsTilt)]
@@ -32,7 +31,6 @@ struct Programmer {
 		guard let profile = library.profile(fixture.profileID) else { return nil }
 		targets = [Target(profile: profile, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)]
 		title = fixture.name
-		tint = fixture.tint.color
 		self.console = console
 	}
 	
@@ -44,8 +42,6 @@ struct Programmer {
 		title = fixtures.count == 1 ? fixtures[0].name : "\(fixtures.count) Lights"
 		self.console = console
 	}
-	
-	var isSingle: Bool { targets.count == 1 }
 	
 	var profile: FixtureProfile? {
 		guard let first = targets.first, targets.allSatisfy({ $0.profile.id == first.profile.id }) else { return nil }
@@ -72,6 +68,15 @@ struct Programmer {
 	func set(_ value: UInt8, of channel: ProfileChannel) {
 		for target in targets {
 			set(value, of: channel, in: target)
+		}
+	}
+	
+	func send(_ range: ChannelRange, channel: ProfileChannel) async {
+		set(range.midpoint, of: channel)
+		guard let seconds = range.holdSeconds, seconds > 0 else { return }
+		try? await Task.sleep(for: .seconds(seconds))
+		for target in targets where value(of: channel, in: target) == range.midpoint {
+			set(channel.defaultValue, of: channel, in: target)
 		}
 	}
 	
@@ -179,8 +184,9 @@ struct Programmer {
 			let goal = level * 255
 			
 			if peak == 0 {
+				let white = EmitterMix.mixing(LightColor(red: 1, green: 1, blue: 1), emitters: target.profile.emitters, mixing: .additive)
 				for channel in channels {
-					set(UInt8(goal.rounded()), of: channel, in: target)
+					setFraction(white[channel.role] * level, for: channel.role, in: target)
 				}
 			} else {
 				for (channel, existing) in zip(channels, current) {
@@ -231,23 +237,25 @@ struct Programmer {
 		Binding { brightness } set: { brightness = $0 }
 	}
 	
-	var dimmers: [Console.Dimmer] {
-		var found: [Console.Dimmer] = []
+	var dimmers: [Dimmer] {
+		var found: [Dimmer] = []
 		
 		for target in targets {
 			switch target.profile.dimming {
 			case let .channel(channel):
 				if let address = target.start.offset(by: channel.offset - 1) {
-					found.append(Console.Dimmer(address: address, kind: .linear))
+					let fine = target.profile.parameters.first { $0.coarse.offset == channel.offset }?.fine
+					found.append(Dimmer(address: address, kind: .linear, fineAddress: fine.flatMap { target.start.offset(by: $0.offset - 1) }))
 				}
 			case let .band(channel, from, to, open):
 				if let address = target.start.offset(by: channel.offset - 1) {
-					found.append(Console.Dimmer(address: address, kind: .band(from: from, to: to, open: open)))
+					found.append(Dimmer(address: address, kind: .band(from: from, to: to, open: open)))
 				}
 			case let .emitters(channels):
 				for channel in channels {
 					if let address = target.start.offset(by: channel.offset - 1) {
-						found.append(Console.Dimmer(address: address, kind: .linear))
+						let fine = target.profile.parameters.first { $0.coarse.offset == channel.offset }?.fine
+							found.append(Dimmer(address: address, kind: .linear, fineAddress: fine.flatMap { target.start.offset(by: $0.offset - 1) }))
 					}
 				}
 			case .none:
@@ -262,7 +270,7 @@ struct Programmer {
 		var mix = EmitterMix()
 		
 		for channel in target.profile.emitterChannels {
-			mix[channel.role] = Double(value(of: channel, in: target)) / 255
+			mix[channel.role] = fraction(channel.role, in: target)
 		}
 		
 		return mix
@@ -271,7 +279,7 @@ struct Programmer {
 	private func apply(_ recipe: EmitterMix, to target: Target) {
 		guard target.profile.mixing == .additive else {
 			for channel in target.profile.emitterChannels {
-				set(UInt8(min(max((recipe[channel.role] * 255).rounded(), 0), 255)), of: channel, in: target)
+				setFraction(recipe[channel.role], for: channel.role, in: target)
 			}
 			return
 		}
@@ -283,7 +291,7 @@ struct Programmer {
 		let normalised = recipe.normalised
 		
 		for channel in target.profile.emitterChannels {
-			set(UInt8(min(max((normalised[channel.role] * level * 255).rounded(), 0), 255)), of: channel, in: target)
+			setFraction(normalised[channel.role] * level, for: channel.role, in: target)
 		}
 	}
 	
@@ -293,20 +301,13 @@ struct Programmer {
 	}
 	
 	var displayInk: Color {
-		guard let first = targets.first else { return .white }
-		return mix(of: first).light(first.profile.mixing).contrastingInk
+		guard mixesColor else { return .black }
+		return light.contrastingInk
 	}
 	
 	var glow: Color {
-		if let tint { return tint }
-		guard mixesColor else { return .accentColor }
-		let emitted = light
-		
-		guard emitted.peak - min(emitted.red, min(emitted.green, emitted.blue)) > 0.12 else {
-			return ColorTemperature.light(kelvin: isSubtractive ? ColorTemperature.arc : ColorTemperature.lamp).color
-		}
-		
-		return emitted.color
+		guard mixesColor else { return .white }
+		return light.color
 	}
 	
 	func apply(_ light: LightColor) {
@@ -335,6 +336,23 @@ struct Programmer {
 		ColorTemperature.nearest(to: light) ?? ColorTemperature.neutral
 	}
 	
+	var selectedPresetID: String? {
+		guard !macroOverridesMix, let target = targets.first(where: { $0.profile.mixesColor }) else { return nil }
+		guard target.profile.emitterChannels.contains(where: { value(of: $0, in: target) != $0.defaultValue }) else { return nil }
+		var selected: String?
+		var closest = 0.025
+		
+		for preset in presets {
+			let distance = preset.mix(emitters: target.profile.emitters, mixing: target.profile.mixing).light(target.profile.mixing).normalised.distance(to: light)
+			if distance < closest {
+				closest = distance
+				selected = preset.id
+			}
+		}
+		
+		return selected
+	}
+	
 	var emitters: [ChannelRole] {
 		var roles: [ChannelRole] = []
 		
@@ -351,13 +369,13 @@ struct Programmer {
 	
 	var isSubtractive: Bool { targets.contains { $0.profile.mixing == .subtractive } }
 	
-	func enabledBounds(of parameter: FixtureParameter) -> ClosedRange<Double>? {
-		guard parameter.fine == nil, parameter.isBanded, let active = band(of: parameter), active.kind == .proportional else { return nil }
-		return Double(active.from)...Double(active.to)
+	func guardedBinding(_ parameter: FixtureParameter) -> Binding<Double> {
+		Binding { Double(rawValue(of: parameter)) } set: { setRawValue(stepping(whole($0, of: parameter), of: parameter), of: parameter) }
 	}
 	
-	func guardedBinding(_ parameter: FixtureParameter) -> Binding<Double> {
-		Binding { Double(rawValue(of: parameter)) } set: { setRawValue(stepping(Int($0.rounded()), of: parameter), of: parameter) }
+	private func whole(_ value: Double, of parameter: FixtureParameter) -> Int {
+		guard value > 0 else { return 0 }
+		return value < Double(parameter.maximum) ? Int(value.rounded()) : parameter.maximum
 	}
 	
 	private func stepping(_ value: Int, of parameter: FixtureParameter) -> Int {
@@ -381,6 +399,10 @@ struct Programmer {
 		return channel.ranges.min { $0.from < $1.from }
 	}
 	
+	var macroChannel: ProfileChannel? {
+		profile?.channel(.colorMacro) ?? profile?.channel(.colorWheel)
+	}
+	
 	var macroOverridesMix: Bool {
 		for target in targets where target.profile.mixesColor {
 			guard let macro = macro(of: target), let release = releaseBand(of: macro) else { continue }
@@ -398,14 +420,14 @@ struct Programmer {
 	}
 	
 	var settings: [ProfileChannel] {
-		guard let profile, let first = targets.first else { return [] }
+		guard let profile else { return [] }
 		var shown: Set<Int> = []
 		
 		for channel in profile.emitterChannels where profile.mixesColor {
 			shown.insert(channel.offset)
 		}
 		
-		if profile.mixesColor, let macro = macro(of: first) {
+		if profile.mixesColor, let macro = macroChannel {
 			shown.insert(macro.offset)
 		}
 		
@@ -438,29 +460,7 @@ struct Programmer {
 		setFraction(0.5, for: .tilt)
 	}
 	
-	func home() {
-		applyDefaults()
-		centre()
-		
-		for target in targets where target.profile.mixesColor {
-			apply(.white(kelvin: ColorTemperature.neutral, emitters: target.profile.emitters, mixing: target.profile.mixing), to: target)
-		}
-		
-		for target in targets where target.profile.dims {
-			setBrightness(1, of: target)
-		}
-	}
-	
-	var parameters: [FixtureParameter] {
-		guard let profile else { return [] }
-		var parameters: [FixtureParameter] = []
-		
-		for channel in profile.channels where !channel.isFine {
-			parameters.append(FixtureParameter(coarse: channel, fine: profile.channel(channel.role, fine: true)))
-		}
-		
-		return parameters
-	}
+	var parameters: [FixtureParameter] { profile?.parameters ?? [] }
 	
 	func rawValue(of parameter: FixtureParameter) -> Int {
 		let high = Int(value(of: parameter.coarse))
@@ -481,7 +481,7 @@ struct Programmer {
 	}
 	
 	func rawBinding(_ parameter: FixtureParameter) -> Binding<Double> {
-		Binding { Double(rawValue(of: parameter)) } set: { setRawValue(Int($0.rounded()), of: parameter) }
+		Binding { Double(rawValue(of: parameter)) } set: { setRawValue(whole($0, of: parameter), of: parameter) }
 	}
 	
 	func percent(of parameter: FixtureParameter) -> Double {
@@ -497,7 +497,7 @@ struct Programmer {
 	}
 	
 	func channelLabel(of parameter: FixtureParameter) -> String {
-		guard isSingle, let first = targets.first, let coarse = first.start.offset(by: parameter.coarse.offset - 1) else {
+		guard targets.count == 1, let first = targets.first, let coarse = first.start.offset(by: parameter.coarse.offset - 1) else {
 			return "CH \(parameter.coarse.offset)"
 		}
 		guard let fine = parameter.fine, let second = first.start.offset(by: fine.offset - 1) else {

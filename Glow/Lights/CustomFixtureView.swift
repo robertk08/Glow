@@ -5,35 +5,48 @@ struct CustomFixtureView: View {
 	@Environment(\.modelContext) private var context
 	@Environment(\.dismiss) private var dismiss
 	
-	@State private var name = ""
-	@State private var symbol = "lightbulb"
-	@State private var isSubtractive = false
-	@State private var channels: [CustomChannel] = [CustomChannel(role: .intensity)]
-	@State private var editing: CustomChannel.ID?
+	@Query private var customProfiles: [CustomProfile]
+	@State private var draft: CustomProfile
+	let profile: FixtureProfile?
 	
-	private var mixesWithFlags: Bool {
-		Set(Emitter.flags).isSubset(of: Set(channels.filter { !$0.isFine }.map(\.role)))
+	init(profile: FixtureProfile? = nil) {
+		self.profile = profile
+		_draft = State(initialValue: CustomProfile(profile: profile))
 	}
-	
+
 	var body: some View {
 		NavigationStack {
 			Form {
 				Section {
-					TextField("Name", text: $name)
+					TextField("Name", text: $draft.name)
 						.autocorrectionDisabled()
 				} footer: {
 					Text("Read the channel list off the fixture's manual and copy it in order. A fixture built here behaves exactly like one Glow ships.")
 				}
 				
+				Section("Details") {
+					TextField("Manufacturer", text: $draft.manufacturer)
+					TextField("Mode", text: $draft.mode)
+				}
+				
+				Section("Movement") {
+					TextField("Pan range in degrees", value: $draft.panDegrees, format: .number)
+						.keyboardType(.decimalPad)
+					TextField("Tilt range in degrees", value: $draft.tiltDegrees, format: .number)
+						.keyboardType(.decimalPad)
+					Toggle("Invert Pan", isOn: $draft.invertsPan)
+					Toggle("Invert Tilt", isOn: $draft.invertsTilt)
+				}
+				
 				Section("Icon") {
-					AppearancePicker(symbols: FixtureSymbol.all, symbol: $symbol)
+					AppearancePicker(symbol: $draft.symbol)
 				}
 				
 				Section {
-					ForEach($channels) { $channel in
+					ForEach($draft.channelList) { $channel in
 						NavigationLink(value: channel.id) {
 							LabeledContent {
-								Text("\((channels.firstIndex { $0.id == channel.id } ?? 0) + 1)")
+								Text("\((draft.channelList.firstIndex { $0.id == channel.id } ?? 0) + 1)")
 									.monospacedDigit()
 									.foregroundStyle(.secondary)
 							} label: {
@@ -46,31 +59,31 @@ struct CustomFixtureView: View {
 							}
 						}
 					}
-					.onDelete { channels.remove(atOffsets: $0) }
-					.onMove { channels.move(fromOffsets: $0, toOffset: $1) }
+					.onDelete { draft.channelList.remove(atOffsets: $0) }
+					.onMove { draft.channelList.move(fromOffsets: $0, toOffset: $1) }
 					
 					Button("Add Channel", systemImage: "plus") {
-						channels.append(CustomChannel(role: .custom))
+						draft.channelList.append(CustomChannel(role: .custom))
 					}
 				} header: {
 					Text("Channels")
 				} footer: {
-					Text("This fixture uses ^[\(channels.count) address](inflect: true).")
+					Text("This fixture uses ^[\(draft.channelList.count) address](inflect: true).")
 				}
 				
-				if mixesWithFlags {
+				if draft.mixesWithFlags {
 					Section {
-						Toggle("Subtractive CMY", isOn: $isSubtractive)
+						Toggle("Subtractive CMY", isOn: $draft.isSubtractive)
 					} footer: {
 						Text("On for a head that puts cyan, magenta and yellow flags in front of a white lamp, where zero means the flag is out of the beam. Off for a fixture whose cyan, magenta and yellow are their own LEDs.")
 					}
 				}
 			}
-			.navigationTitle("Build a Fixture")
+			.navigationTitle(profile == nil ? "Build a Fixture" : "Edit Fixture")
 			.navigationBarTitleDisplayMode(.inline)
 			.navigationDestination(for: CustomChannel.ID.self) { id in
-				if let index = channels.firstIndex(where: { $0.id == id }) {
-					ChannelEditView(channel: $channels[index], number: index + 1)
+				if let index = draft.channelList.firstIndex(where: { $0.id == id }) {
+					ChannelEditView(channel: $draft.channelList[index], number: index + 1)
 				}
 			}
 			.toolbar {
@@ -84,10 +97,16 @@ struct CustomFixtureView: View {
 				
 				ToolbarItem(placement: .confirmationAction) {
 					Button("Save") {
-						context.insert(CustomProfile(name: name.trimmingCharacters(in: .whitespaces), symbol: symbol, channels: channels, isSubtractive: isSubtractive && mixesWithFlags))
+						draft.name = draft.name.trimmingCharacters(in: .whitespaces)
+						if let existing = customProfiles.first(where: { $0.identifier == draft.identifier }) {
+							existing.adopt(draft)
+						} else {
+							draft.identifier = "custom-\(UUID().uuidString)"
+							context.insert(draft)
+						}
 						dismiss()
 					}
-					.disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || channels.isEmpty)
+					.disabled(!draft.canSave)
 				}
 			}
 		}

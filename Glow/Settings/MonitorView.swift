@@ -14,6 +14,18 @@ struct MonitorView: View {
 		let owned = monitor.owners(among: fixtures, library: library)
 		
 		return ScrollView {
+			Picker("Values", selection: $monitor.showsSource) {
+				Text("Output").tag(false)
+				Text("Source").tag(true)
+			}
+			.pickerStyle(.segmented)
+			.padding(.horizontal)
+			
+			Text(monitor.showsSource ? "Before master and blackout. Drag sideways across a channel to change it, further from the row for bigger steps." : "After master and blackout, as sent to the controller.")
+				.font(.footnote)
+				.foregroundStyle(.secondary)
+				.padding(.horizontal)
+			
 			LazyVGrid(columns: columns, spacing: 4, pinnedViews: [.sectionHeaders]) {
 				ForEach(monitor.blocks(owned: owned), id: \.first) { block in
 					Section {
@@ -86,13 +98,10 @@ private struct ChannelCell: View {
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
 		.scaleEffect(isArmed ? 1.12 : 1)
 		.animation(.snappy(duration: 0.15), value: isArmed)
-		.gesture(LongPressGesture(minimumDuration: 0.15).sequenced(before: DragGesture(minimumDistance: 0)).onChanged { phase in
-			if case let .second(_, drag) = phase, let drag {
-				monitor.adjust(address, by: drag.translation, console: console)
-			}
+		.simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { drag in
+			monitor.adjust(address, by: drag, console: console)
 		}.onEnded { _ in
 			monitor.commit()
-		})
+		}, including: monitor.showsSource ? .all : .subviews)
 	}
-	
 }

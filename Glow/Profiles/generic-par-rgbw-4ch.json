@@ -7,22 +7,22 @@
     {
       "offset": 1,
       "role": "red",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 2,
       "role": "green",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 3,
       "role": "blue",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 4,
       "role": "white",
-      "defaultValue": 255
+      "defaultValue": 0
     }
   ]
 }

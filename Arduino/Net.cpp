@@ -392,9 +392,6 @@ void enterSetup() {
 void forget() {
   Creds::forget();
   Serial.println(F("creds: erased"));
-  if (Creds::sketchSsid())
-    Serial.printf("creds: secrets.h will rejoin \"%s\" after the reboot\n",
-                  Creds::sketchSsid());
   Serial.flush();
   delay(200);   // let the reply's FIN leave before the radio stops
   ESP.restart();

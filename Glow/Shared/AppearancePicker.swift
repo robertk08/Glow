@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct AppearancePicker: View {
-	let symbols: [String]
-	
 	@Binding var symbol: String
 	
 	var tint: Binding<FixtureTint>?
@@ -12,7 +10,7 @@ struct AppearancePicker: View {
 	
 	var body: some View {
 		LazyVGrid(columns: symbolColumns, spacing: 12) {
-			ForEach(symbols, id: \.self) { option in
+			ForEach(FixtureSymbol.all, id: \.self) { option in
 				Button {
 					symbol = option
 				} label: {
@@ -23,6 +21,7 @@ struct AppearancePicker: View {
 						.background(symbol == option ? Color.accentColor.opacity(0.18) : .clear, in: .circle)
 				}
 				.buttonStyle(.plain)
+				.accessibilityAddTraits(symbol == option ? .isSelected : [])
 			}
 		}
 		.padding(.vertical, 4)
@@ -49,6 +48,8 @@ struct AppearancePicker: View {
 							}
 					}
 					.buttonStyle(.plain)
+					.accessibilityLabel(option.rawValue.capitalized)
+					.accessibilityAddTraits(tint.wrappedValue == option ? .isSelected : [])
 				}
 			}
 			.padding(.vertical, 4)

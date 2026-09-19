@@ -3,19 +3,6 @@
 
 #include <Preferences.h>
 
-#if __has_include("secrets.h")
-#include "secrets.h"
-#else
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
-#endif
-
-#ifndef WIFI_USER
-#define WIFI_USER ""
-#endif
-
-#define EXAMPLE_SSID "your-network"
-
 namespace Creds {
 namespace {
 
@@ -31,12 +18,6 @@ bool        g_open = false;
 char g_ssid[33] = "";   // 32 + NUL, the 802.11 maximum
 char g_user[65] = "";   // 64 + NUL, the EAP maximum
 char g_pass[65] = "";   // 64 + NUL, the EAP maximum, one above WPA2-PSK's
-
-const char *sketch() {
-  if (!WIFI_SSID[0]) return nullptr;
-  if (!strcmp(WIFI_SSID, EXAMPLE_SSID)) return nullptr;
-  return WIFI_SSID;
-}
 
 template <typename Fn>
 bool guarded(Fn write) {
@@ -66,11 +47,6 @@ bool begin() {
 
   if (g_ssid[0]) {
     Serial.printf("creds: \"%s\" from NVS\n", g_ssid);
-  } else if (sketch()) {
-    copyInto(g_ssid, sizeof(g_ssid), sketch());
-    copyInto(g_user, sizeof(g_user), WIFI_USER);
-    copyInto(g_pass, sizeof(g_pass), WIFI_PASSWORD);
-    Serial.printf("creds: \"%s\" from secrets.h\n", g_ssid);
   } else {
     Serial.println(F("creds: none"));
   }
@@ -81,7 +57,6 @@ bool        have()       { return g_ssid[0] != '\0'; }
 const char *ssid()       { return g_ssid; }
 const char *user()       { return g_user; }
 const char *password()   { return g_pass; }
-const char *sketchSsid() { return sketch(); }
 
 bool save(const char *ssid, const char *user, const char *password) {
   if (!g_open || !ssid || !ssid[0]) return false;

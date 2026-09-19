@@ -16,7 +16,9 @@ struct GlowApp: App {
 				.environment(library)
 				.environment(discovery)
 				.environment(shows)
-				.task { console.start() }
+				.task {
+					console.start()
+				}
 		}
 		.modelContainer(shows.container)
 	}

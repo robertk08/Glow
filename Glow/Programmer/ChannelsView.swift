@@ -32,7 +32,7 @@ struct ChannelsView: View {
 					}
 					.font(.subheadline)
 					
-					Slider(value: programmer.guardedBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral, enabledBounds: programmer.enabledBounds(of: parameter)) {
+					Slider(value: programmer.guardedBinding(parameter), in: 0...Double(parameter.maximum), neutralValue: parameter.neutral) {
 						Text(parameter.name)
 					}
 					.tint(parameter.role.color)

@@ -45,6 +45,9 @@ struct ConsoleBar: View {
 							Text("Brightness")
 						}
 						.frame(minWidth: 70)
+						.simultaneousGesture(TapGesture().onEnded {
+							console.isProgrammerOpen = true
+						})
 					} else if programmer.dims {
 						Spacer(minLength: 8)
 						

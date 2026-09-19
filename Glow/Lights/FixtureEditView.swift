@@ -22,7 +22,7 @@ struct FixtureEditView: View {
 			}
 			
 			Section("Icon") {
-				AppearancePicker(symbols: FixtureSymbol.all, symbol: Binding { fixture.symbol(profile) } set: { fixture.symbolOverride = $0 }, tint: $fixture.tint)
+				AppearancePicker(symbol: Binding { fixture.symbol(profile) } set: { fixture.symbolOverride = $0 })
 			}
 			
 			if !groups.isEmpty {
@@ -55,7 +55,12 @@ struct FixtureEditView: View {
 				
 				if let profile {
 					LabeledContent("Channels", value: "\(profile.channelCount)")
-					LabeledContent("Fixture", value: profile.name)
+					
+					NavigationLink {
+						ProfileView(profile: profile)
+					} label: {
+						LabeledContent("Fixture", value: profile.name)
+					}
 				}
 			} header: {
 				Text("Patch")

@@ -14,7 +14,9 @@ struct BandPicker: View {
 			if range.requiresConfirmation {
 				pending = range
 			} else {
-				programmer.set(range.midpoint, of: channel)
+				Task {
+					await programmer.send(range, channel: channel)
+				}
 			}
 		}) {
 			if let active = programmer.band(of: channel), !bands.contains(active) {
@@ -33,10 +35,12 @@ struct BandPicker: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Send", role: .destructive) {
-				programmer.set(range.midpoint, of: channel)
+				Task {
+					await programmer.send(range, channel: channel)
+				}
 			}
 		} message: { _ in
-			Text("The light stops answering the desk.")
+			Text("This command can interrupt light output or movement. Glow holds timed commands for the fixture’s required duration.")
 		}
 	}
 }

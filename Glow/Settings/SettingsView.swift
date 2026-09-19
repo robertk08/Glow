@@ -11,7 +11,7 @@ struct SettingsView: View {
 					NodeView()
 				} label: {
 					LabeledContent {
-						Text(console.node?.name ?? console.link.name)
+						Text(console.link.name)
 							.foregroundStyle(.secondary)
 					} label: {
 						Label {
@@ -22,6 +22,8 @@ struct SettingsView: View {
 						}
 					}
 				}
+			} header: {
+				Text("Connection")
 			} footer: {
 				Text("Glow sends to the controller over Wi-Fi. Your iPhone and the controller have to be on the same network.")
 			}
@@ -37,6 +39,8 @@ struct SettingsView: View {
 						Label("Show", systemImage: "theatermasks.circle")
 					}
 				}
+			} header: {
+				Text("Show")
 			} footer: {
 				Text("A show holds its own patch, groups, built fixtures and scenes.")
 			}
@@ -53,6 +57,8 @@ struct SettingsView: View {
 				} label: {
 					Label("DMX Output", systemImage: "waveform")
 				}
+			} header: {
+				Text("Fixtures and Output")
 			} footer: {
 				Text("Fixtures is every profile Glow can patch, channel by channel. DMX Output is what is going down the line right now.")
 			}

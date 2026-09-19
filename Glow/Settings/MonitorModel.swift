@@ -4,11 +4,12 @@ import SwiftUI
 @Observable @MainActor
 final class MonitorModel {
 	var patchedOnly = false
+	var showsSource = false
 	private(set) var adjusting: Int?
 	private(set) var values = [UInt8](repeating: 0, count: Universe.channelCount)
 	
 	private var poll: Task<Void, Never>?
-	private var armed: Int?
+	private var start: CGPoint?
 	private var origin: UInt8 = 0
 	private var written: UInt8 = 0
 	
@@ -17,7 +18,7 @@ final class MonitorModel {
 		
 		poll = Task { [weak self] in
 			while !Task.isCancelled {
-				let snapshot = console.universe.values
+				let snapshot = self?.showsSource == true ? console.universe.values : console.output
 				if snapshot != self?.values { self?.values = snapshot }
 				try? await Task.sleep(for: .seconds(0.1))
 			}
@@ -45,25 +46,25 @@ final class MonitorModel {
 	}
 	
 	func commit() {
-		armed = nil
 		adjusting = nil
 	}
 	
-	func adjust(_ address: Int, by translation: CGSize, console: Console) {
+	func adjust(_ address: Int, by drag: DragGesture.Value, console: Console) {
 		guard let target = DMXAddress(address) else { return }
 		
-		if armed != address {
-			armed = address
+		if start != drag.startLocation {
+			start = drag.startLocation
+			adjusting = abs(drag.translation.width) > abs(drag.translation.height) ? address : nil
 			origin = console.value(at: target)
 			written = origin
 		}
 		
-		let travel = abs(translation.width) > 60 ? 6.0 : 1.5
-		let value = UInt8(min(max(Double(origin) - translation.height / travel, 0), 255).rounded())
+		guard adjusting == address else { return }
+		
+		let travel = abs(drag.translation.height) > 60 ? 6.0 : 1.5
+		let value = UInt8(min(max(Double(origin) + drag.translation.width / travel, 0), 255).rounded())
 		guard value != written else { return }
 		written = value
-		adjusting = address
 		console.set(value, at: target)
 	}
-	
 }

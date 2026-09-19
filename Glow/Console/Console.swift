@@ -2,8 +2,6 @@ import Observation
 import SwiftData
 import SwiftUI
 
-typealias Reorder = ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>
-
 @Observable @MainActor
 final class Console {
 	private(set) var universe = Universe()
@@ -41,7 +39,9 @@ final class Console {
 	
 	var endpoint: NodeEndpoint {
 		didSet {
-			Self.store(endpoint)
+			if let data = try? JSONEncoder().encode(endpoint) {
+				UserDefaults.standard.set(data, forKey: Self.endpointKey)
+			}
 			connect()
 		}
 	}
@@ -65,33 +65,12 @@ final class Console {
 		URL.applicationSupportDirectory.appending(path: "look.dmx")
 	}
 	
-	struct Dimmer: Equatable {
-		enum Kind: Equatable {
-			case linear
-			case band(from: UInt8, to: UInt8, open: UInt8?)
-		}
-		
-		var address: DMXAddress
-		var kind: Kind
-		
-		func scale(_ value: UInt8, by master: Double) -> UInt8 {
-			guard master < 1 else { return value }
-			guard master > 0 else { return 0 }
-			
-			switch kind {
-			case .linear:
-				return UInt8((Double(value) * master).rounded())
-			case let .band(from, to, open):
-				if value < from { return value }
-				if value <= to { return from + UInt8((Double(value - from) * master).rounded()) }
-				if let open, value >= open { return from + UInt8((Double(to - from) * master).rounded()) }
-				return value
-			}
-		}
-	}
-	
 	init() {
-		endpoint = Self.storedEndpoint() ?? .fallback
+		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
+			endpoint = stored
+		} else {
+			endpoint = .fallback
+		}
 	}
 	
 	func start() {
@@ -165,13 +144,7 @@ final class Console {
 		universe.set(values, at: address)
 	}
 	
-	
 	var hasSelection: Bool { !selection.isEmpty }
-	
-	var isInspectingSelection: Bool {
-		get { hasSelection }
-		set { if !newValue { clearSelection() } }
-	}
 	
 	func isSelected(_ fixture: Fixture) -> Bool {
 		selection.contains(fixture.persistentModelID)
@@ -208,6 +181,14 @@ final class Console {
 		isProgrammerOpen = false
 	}
 	
+	func closeShow() {
+		universe = Universe()
+		dimmers = []
+		needsFullSource = true
+		needsFullOutput = true
+		clearSelection()
+	}
+	
 	func releaseValues(among fixtures: [Fixture], library: FixtureLibrary) {
 		programmer(among: fixtures, library: library).applyDefaults()
 		clearSelection()
@@ -230,7 +211,6 @@ final class Console {
 		let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
 		let copy = Fixture(profileID: fixture.profileID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
-		copy.tintName = fixture.tintName
 		copy.invertsPan = fixture.invertsPan
 		copy.invertsTilt = fixture.invertsTilt
 		copy.group = fixture.group
@@ -260,7 +240,8 @@ final class Console {
 		(items.map { $0[keyPath: sortIndex] }.max() ?? 0) + 1
 	}
 	
-	func move<Item: PersistentModel>(_ difference: Reorder, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Int>) {
+	@available(iOS 27.0, *)
+	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Int>) {
 		var ordered = items.filter { !difference.sources.contains($0.persistentModelID) }
 		let lifted = items.filter { difference.sources.contains($0.persistentModelID) }
 		
@@ -268,6 +249,15 @@ final class Console {
 		case let .before(id): ordered.insert(contentsOf: lifted, at: ordered.firstIndex { $0.persistentModelID == id } ?? ordered.endIndex)
 		case .end: ordered.append(contentsOf: lifted)
 		}
+		
+		for (index, item) in ordered.enumerated() {
+			item[keyPath: sortIndex] = index
+		}
+	}
+	
+	func move<Item: PersistentModel>(_ offsets: IndexSet, to destination: Int, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Int>) {
+		var ordered = items
+		ordered.move(fromOffsets: offsets, toOffset: destination)
 		
 		for (index, item) in ordered.enumerated() {
 			item[keyPath: sortIndex] = index
@@ -318,7 +308,7 @@ final class Console {
 		needsFullOutput = true
 	}
 	
-	private func output() -> [UInt8] {
+	var output: [UInt8] {
 		let level = blackout ? 0 : master
 		guard level < 1 else { return universe.values }
 		
@@ -326,7 +316,15 @@ final class Console {
 		
 		for dimmer in dimmers {
 			let index = dimmer.address.value - 1
-			values[index] = dimmer.scale(values[index], by: level)
+			if let fine = dimmer.fineAddress {
+				let fineIndex = fine.value - 1
+				let combined = Double(Int(values[index]) * 256 + Int(values[fineIndex]))
+				let scaled = UInt16((combined * level).rounded())
+				values[index] = UInt8(scaled >> 8)
+				values[fineIndex] = UInt8(scaled & 0xFF)
+			} else {
+				values[index] = dimmer.scale(values[index], by: level)
+			}
 		}
 		
 		return values
@@ -354,7 +352,7 @@ final class Console {
 	}
 	
 	private func sendOutput() async {
-		let frame = output()
+		let frame = output
 		defer { lastOutput = frame }
 		
 		guard !needsFullOutput, lastOutput.count == frame.count else {
@@ -394,15 +392,5 @@ final class Console {
 		savedLook = universe.values
 		lastSave = Date()
 		try? Data(universe.values).write(to: Self.lookFile)
-	}
-	
-	private static func storedEndpoint() -> NodeEndpoint? {
-		guard let data = UserDefaults.standard.data(forKey: endpointKey) else { return nil }
-		return try? JSONDecoder().decode(NodeEndpoint.self, from: data)
-	}
-	
-	private static func store(_ endpoint: NodeEndpoint) {
-		guard let data = try? JSONEncoder().encode(endpoint) else { return }
-		UserDefaults.standard.set(data, forKey: endpointKey)
 	}
 }

@@ -9,7 +9,15 @@
       "offset": 1,
       "role": "intensity",
       "name": "Dimmer",
-      "defaultValue": 255
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Off to full",
+          "kind": "proportional"
+        }
+      ]
     },
     {
       "offset": 2,
@@ -21,7 +29,7 @@
     {
       "offset": 3,
       "role": "shutter",
-      "name": "Shutter/strobe",
+      "name": "Shutter and strobe",
       "defaultValue": 0,
       "ranges": [
         {
@@ -37,45 +45,50 @@
         {
           "from": 11,
           "to": 33,
-          "label": "Random pulse",
+          "label": "Random pulse, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 34,
           "to": 56,
-          "label": "Ramp up",
+          "label": "Random ramp up, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 57,
           "to": 79,
-          "label": "Ramp down",
+          "label": "Random ramp down, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 80,
           "to": 102,
-          "label": "Random strobe",
+          "label": "Random strobe, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 103,
           "to": 127,
-          "label": "Strobe bursts",
+          "label": "Strobe bursts, 5 s to 1 s",
           "kind": "proportional"
         },
         {
           "from": 128,
           "to": 250,
-          "label": "Strobe 1 to 20 Hz",
+          "label": "Strobe, 1 to 20 Hz",
           "kind": "proportional"
+        },
+        {
+          "from": 251,
+          "to": 255,
+          "label": "Open"
         }
       ]
     },
     {
       "offset": 4,
       "role": "red",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 5,
@@ -87,7 +100,7 @@
     {
       "offset": 6,
       "role": "green",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 7,
@@ -99,7 +112,7 @@
     {
       "offset": 8,
       "role": "blue",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 9,
@@ -123,7 +136,7 @@
     {
       "offset": 12,
       "role": "colorTemperature",
-      "name": "Colour temperature",
+      "name": "Color temperature",
       "defaultValue": 0,
       "ranges": [
         {
@@ -133,52 +146,92 @@
         },
         {
           "from": 6,
-          "to": 8,
-          "label": "2700 K"
+          "to": 6,
+          "label": "Warm white"
         },
         {
-          "from": 9,
-          "to": 11,
-          "label": "3200 K"
-        },
-        {
-          "from": 12,
-          "to": 14,
-          "label": "4000 K"
-        },
-        {
-          "from": 15,
-          "to": 17,
-          "label": "5600 K"
-        },
-        {
-          "from": 18,
-          "to": 20,
-          "label": "6500 K"
-        },
-        {
-          "from": 21,
-          "to": 255,
-          "label": "Variable 2700 to 6500 K",
+          "from": 7,
+          "to": 46,
+          "label": "Warm white to 2700 K",
           "kind": "proportional"
+        },
+        {
+          "from": 47,
+          "to": 47,
+          "label": "Bulb white, 2700 K"
+        },
+        {
+          "from": 48,
+          "to": 87,
+          "label": "2700 to 3200 K",
+          "kind": "proportional"
+        },
+        {
+          "from": 88,
+          "to": 88,
+          "label": "Halogen white, 3200 K"
+        },
+        {
+          "from": 89,
+          "to": 128,
+          "label": "3200 to 4000 K",
+          "kind": "proportional"
+        },
+        {
+          "from": 129,
+          "to": 129,
+          "label": "Neutral white, 4000 K"
+        },
+        {
+          "from": 130,
+          "to": 169,
+          "label": "4000 to 5600 K",
+          "kind": "proportional"
+        },
+        {
+          "from": 170,
+          "to": 170,
+          "label": "Studio white, 5600 K"
+        },
+        {
+          "from": 171,
+          "to": 210,
+          "label": "5600 to 6500 K",
+          "kind": "proportional"
+        },
+        {
+          "from": 211,
+          "to": 211,
+          "label": "Daylight white, 6500 K"
+        },
+        {
+          "from": 212,
+          "to": 251,
+          "label": "6500 K to cold daylight",
+          "kind": "proportional"
+        },
+        {
+          "from": 252,
+          "to": 255,
+          "label": "Cold daylight"
         }
       ]
     },
     {
       "offset": 13,
       "role": "custom",
-      "name": "Green shift",
-      "defaultValue": 128,
+      "name": "Tint",
+      "defaultValue": 0,
       "ranges": [
         {
           "from": 0,
           "to": 0,
-          "label": "No function"
+          "label": "Off"
         },
         {
           "from": 1,
           "to": 127,
-          "label": "Minus green",
+          "label": "Magenta to neutral",
           "kind": "proportional"
         },
         {
@@ -189,7 +242,7 @@
         {
           "from": 129,
           "to": 255,
-          "label": "Plus green",
+          "label": "Neutral to green",
           "kind": "proportional"
         }
       ]
@@ -197,76 +250,311 @@
     {
       "offset": 14,
       "role": "colorMacro",
-      "name": "Colour macro",
+      "name": "Color preset",
       "defaultValue": 0,
       "ranges": [
         {
           "from": 0,
-          "to": 25,
-          "label": "Off",
+          "to": 5,
+          "label": "No preset",
           "releasesMix": true
         },
         {
+          "from": 6,
+          "to": 9,
+          "label": "Dark magenta"
+        },
+        {
+          "from": 10,
+          "to": 13,
+          "label": "Plasa red"
+        },
+        {
+          "from": 14,
+          "to": 17,
+          "label": "Bright red"
+        },
+        {
+          "from": 18,
+          "to": 21,
+          "label": "Smokey pink"
+        },
+        {
+          "from": 22,
+          "to": 25,
+          "label": "Medium pink"
+        },
+        {
           "from": 26,
-          "to": 26,
-          "label": "Red"
+          "to": 29,
+          "label": "Fire"
         },
         {
-          "from": 97,
-          "to": 97,
-          "label": "Orange"
+          "from": 30,
+          "to": 33,
+          "label": "Deep golden amber"
         },
         {
-          "from": 105,
-          "to": 105,
-          "label": "Yellow"
+          "from": 34,
+          "to": 37,
+          "label": "Millennium gold"
         },
         {
-          "from": 130,
-          "to": 130,
-          "label": "Cyan"
+          "from": 38,
+          "to": 41,
+          "label": "Gold amber"
         },
         {
-          "from": 140,
-          "to": 140,
-          "label": "Blue"
-        },
-        {
-          "from": 149,
-          "to": 149,
-          "label": "Dark blue"
-        },
-        {
-          "from": 166,
-          "to": 166,
-          "label": "Purple"
-        },
-        {
-          "from": 178,
-          "to": 178,
-          "label": "Magenta"
-        },
-        {
-          "from": 183,
-          "to": 183,
+          "from": 42,
+          "to": 45,
           "label": "Pink"
         },
         {
-          "from": 209,
-          "to": 209,
-          "label": "Green"
+          "from": 46,
+          "to": 49,
+          "label": "Middle rose"
         },
         {
-          "from": 245,
-          "to": 245,
-          "label": "White"
+          "from": 50,
+          "to": 53,
+          "label": "Light salmon"
+        },
+        {
+          "from": 54,
+          "to": 57,
+          "label": "Light pink"
+        },
+        {
+          "from": 58,
+          "to": 61,
+          "label": "Golden amber"
+        },
+        {
+          "from": 62,
+          "to": 65,
+          "label": "Surprise peach"
+        },
+        {
+          "from": 66,
+          "to": 69,
+          "label": "Brown"
+        },
+        {
+          "from": 70,
+          "to": 73,
+          "label": "Orange"
+        },
+        {
+          "from": 74,
+          "to": 77,
+          "label": "Medium amber"
+        },
+        {
+          "from": 78,
+          "to": 81,
+          "label": "Egg yolk yellow"
+        },
+        {
+          "from": 82,
+          "to": 85,
+          "label": "Deep straw"
+        },
+        {
+          "from": 86,
+          "to": 89,
+          "label": "Oklahoma yellow"
+        },
+        {
+          "from": 90,
+          "to": 93,
+          "label": "Yellow"
+        },
+        {
+          "from": 94,
+          "to": 97,
+          "label": "Spring yellow"
+        },
+        {
+          "from": 98,
+          "to": 101,
+          "label": "Lime green"
+        },
+        {
+          "from": 102,
+          "to": 105,
+          "label": "Lee green"
+        },
+        {
+          "from": 106,
+          "to": 109,
+          "label": "Jas green"
+        },
+        {
+          "from": 110,
+          "to": 113,
+          "label": "Moss green"
+        },
+        {
+          "from": 114,
+          "to": 117,
+          "label": "Primary green"
+        },
+        {
+          "from": 118,
+          "to": 121,
+          "label": "Dark green"
+        },
+        {
+          "from": 122,
+          "to": 125,
+          "label": "Jade"
+        },
+        {
+          "from": 126,
+          "to": 129,
+          "label": "Special steel blue"
+        },
+        {
+          "from": 130,
+          "to": 133,
+          "label": "Medium blue green"
+        },
+        {
+          "from": 134,
+          "to": 137,
+          "label": "Moonlight blue"
+        },
+        {
+          "from": 138,
+          "to": 141,
+          "label": "Medium blue"
+        },
+        {
+          "from": 142,
+          "to": 145,
+          "label": "Dark blue"
+        },
+        {
+          "from": 146,
+          "to": 149,
+          "label": "Mikkel blue"
+        },
+        {
+          "from": 150,
+          "to": 153,
+          "label": "Tokyo blue"
+        },
+        {
+          "from": 154,
+          "to": 157,
+          "label": "Congo blue"
+        },
+        {
+          "from": 158,
+          "to": 161,
+          "label": "Special KH lavender"
+        },
+        {
+          "from": 162,
+          "to": 165,
+          "label": "Ultimate violet"
+        },
+        {
+          "from": 166,
+          "to": 169,
+          "label": "Special medium lavender"
+        },
+        {
+          "from": 170,
+          "to": 173,
+          "label": "Chrysalis pink"
+        },
+        {
+          "from": 174,
+          "to": 177,
+          "label": "Provence"
+        },
+        {
+          "from": 178,
+          "to": 181,
+          "label": "Deep purple"
+        },
+        {
+          "from": 182,
+          "to": 185,
+          "label": "Rose purple"
+        },
+        {
+          "from": 186,
+          "to": 189,
+          "label": "Fuchsia pink"
+        },
+        {
+          "from": 190,
+          "to": 193,
+          "label": "Magical magenta"
+        },
+        {
+          "from": 194,
+          "to": 197,
+          "label": "Bright pink"
+        },
+        {
+          "from": 198,
+          "to": 201,
+          "label": "Rose pink"
+        },
+        {
+          "from": 202,
+          "to": 207,
+          "label": "User color 1"
+        },
+        {
+          "from": 208,
+          "to": 213,
+          "label": "User color 2"
+        },
+        {
+          "from": 214,
+          "to": 219,
+          "label": "User color 3"
+        },
+        {
+          "from": 220,
+          "to": 225,
+          "label": "User color 4"
+        },
+        {
+          "from": 226,
+          "to": 231,
+          "label": "User color 5"
+        },
+        {
+          "from": 232,
+          "to": 237,
+          "label": "User color 6"
+        },
+        {
+          "from": 238,
+          "to": 243,
+          "label": "User color 7"
+        },
+        {
+          "from": 244,
+          "to": 249,
+          "label": "User color 8"
+        },
+        {
+          "from": 250,
+          "to": 255,
+          "label": "No function"
         }
       ]
     },
     {
       "offset": 15,
       "role": "speed",
-      "name": "Fade time",
+      "name": "Preset crossfade",
       "defaultValue": 0,
       "ranges": [
         {
@@ -289,22 +577,248 @@
         {
           "from": 215,
           "to": 244,
-          "label": "120 to 290 s",
+          "label": "2 to 4 min 50 s",
           "kind": "proportional"
         },
         {
           "from": 245,
           "to": 255,
-          "label": "300 to 900 s",
+          "label": "5 to 15 min",
           "kind": "proportional"
         }
       ]
     },
     {
       "offset": 16,
-      "role": "custom",
-      "name": "Control",
-      "defaultValue": 0
+      "role": "function",
+      "name": "Device settings",
+      "defaultValue": 0,
+      "ranges": [
+        {
+          "from": 0,
+          "to": 73,
+          "label": "No function"
+        },
+        {
+          "from": 74,
+          "to": 75,
+          "label": "Dimmer response LED, hold 1.5 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 1.5
+        },
+        {
+          "from": 76,
+          "to": 77,
+          "label": "Dimmer response halogen, hold 1.5 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 1.5
+        },
+        {
+          "from": 78,
+          "to": 81,
+          "label": "No function"
+        },
+        {
+          "from": 82,
+          "to": 83,
+          "label": "Red shift on, hold 1.5 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 1.5
+        },
+        {
+          "from": 84,
+          "to": 85,
+          "label": "Red shift off, hold 1.5 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 1.5
+        },
+        {
+          "from": 86,
+          "to": 97,
+          "label": "No function"
+        },
+        {
+          "from": 98,
+          "to": 99,
+          "label": "Automatic fan, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 100,
+          "to": 101,
+          "label": "Fan off, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 102,
+          "to": 103,
+          "label": "Fan low, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 104,
+          "to": 105,
+          "label": "Fan medium, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 106,
+          "to": 107,
+          "label": "Fan high, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 108,
+          "to": 119,
+          "label": "No function"
+        },
+        {
+          "from": 120,
+          "to": 121,
+          "label": "LED frequency 600 Hz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 122,
+          "to": 123,
+          "label": "LED frequency 1200 Hz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 124,
+          "to": 125,
+          "label": "LED frequency 2000 Hz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 126,
+          "to": 127,
+          "label": "LED frequency 4000 Hz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 128,
+          "to": 129,
+          "label": "LED frequency 6000 Hz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 130,
+          "to": 131,
+          "label": "LED frequency 25 kHz, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 132,
+          "to": 133,
+          "label": "Raw color, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 134,
+          "to": 135,
+          "label": "Calibrated color, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 136,
+          "to": 137,
+          "label": "User calibrated color, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 138,
+          "to": 139,
+          "label": "Smart calibration, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 140,
+          "to": 141,
+          "label": "Display on, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 142,
+          "to": 143,
+          "label": "Display off, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 144,
+          "to": 163,
+          "label": "No function"
+        },
+        {
+          "from": 164,
+          "to": 165,
+          "label": "Dimmer curve linear, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 166,
+          "to": 167,
+          "label": "Dimmer curve exponential, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 168,
+          "to": 169,
+          "label": "Dimmer curve logarithmic, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 170,
+          "to": 171,
+          "label": "Dimmer curve S, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 172,
+          "to": 239,
+          "label": "No function"
+        },
+        {
+          "from": 240,
+          "to": 241,
+          "label": "Factory settings, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 242,
+          "to": 243,
+          "label": "Factory settings, keep user colors, hold 3 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 3.0
+        },
+        {
+          "from": 244,
+          "to": 255,
+          "label": "No function"
+        }
+      ]
     }
   ]
 }

@@ -1,53 +1,6 @@
 import SwiftData
 import SwiftUI
 
-nonisolated struct CustomChannel: Codable, Hashable, Identifiable, Sendable {
-	var id = UUID()
-	var role = ChannelRole.custom
-	var name = ""
-	var defaultValue: UInt8 = 0
-	var isFine = false
-	var ranges: [ChannelRange] = []
-	
-	private enum CodingKeys: String, CodingKey {
-		case id, role, name, defaultValue, isFine, ranges
-	}
-	
-	init(role: ChannelRole, name: String = "") {
-		self.role = role
-		self.name = name
-	}
-	
-	init(from decoder: any Decoder) throws {
-		let container = try decoder.container(keyedBy: CodingKeys.self)
-		id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
-		role = try container.decodeIfPresent(ChannelRole.self, forKey: .role) ?? .custom
-		name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-		defaultValue = try container.decodeIfPresent(UInt8.self, forKey: .defaultValue) ?? 0
-		isFine = try container.decodeIfPresent(Bool.self, forKey: .isFine) ?? false
-		ranges = try container.decodeIfPresent([ChannelRange].self, forKey: .ranges) ?? []
-	}
-	
-	var title: String { name.isEmpty ? role.name : name }
-	
-	var summary: String {
-		var parts: [String] = []
-		if !name.isEmpty { parts.append(role.name) }
-		if isFine { parts.append("16-bit fine") }
-		if defaultValue != 0 { parts.append("starts at \(defaultValue)") }
-		
-		if ranges.isEmpty {
-			parts.append("no ranges")
-		} else if ranges.count == 1 {
-			parts.append("1 range")
-		} else {
-			parts.append("\(ranges.count) ranges")
-		}
-		
-		return parts.joined(separator: " · ")
-	}
-}
-
 @Model
 final class CustomProfile {
 	var identifier: String = UUID().uuidString
@@ -56,6 +9,12 @@ final class CustomProfile {
 	var channelList: [CustomChannel] = []
 	var createdAt: Date = Date.now
 	var isSubtractive: Bool = false
+	var manufacturer: String = ""
+	var mode: String = ""
+	var panDegrees: Double?
+	var tiltDegrees: Double?
+	var invertsPan: Bool = false
+	var invertsTilt: Bool = false
 	
 	init(name: String, symbol: String, channels: [CustomChannel], isSubtractive: Bool) {
 		identifier = "custom-\(UUID().uuidString)"
@@ -66,6 +25,46 @@ final class CustomProfile {
 		createdAt = .now
 	}
 	
+	convenience init(profile: FixtureProfile?) {
+		self.init(name: profile?.model ?? "", symbol: profile?.symbol ?? "lightbulb", channels: [], isSubtractive: profile?.mixing == .subtractive)
+		guard let profile else {
+			channelList = [CustomChannel(role: .intensity)]
+			return
+		}
+		identifier = profile.id
+		manufacturer = profile.manufacturer
+		mode = profile.mode
+		panDegrees = profile.panDegrees
+		tiltDegrees = profile.tiltDegrees
+		invertsPan = profile.invertsPan
+		invertsTilt = profile.invertsTilt
+		for offset in 0..<profile.channelCount {
+			let source = profile.channels.first { $0.offset == offset + 1 }
+			var channel = CustomChannel(role: source?.role ?? .custom, name: source?.name ?? "")
+			channel.defaultValue = source?.defaultValue ?? 0
+			channel.isFine = source?.isFine ?? false
+			channel.ranges = source?.ranges ?? []
+			channelList.append(channel)
+		}
+	}
+	
+	func adopt(_ draft: CustomProfile) {
+		name = draft.name
+		symbol = draft.symbol
+		channelList = draft.channelList
+		isSubtractive = draft.isSubtractive
+		manufacturer = draft.manufacturer
+		mode = draft.mode
+		panDegrees = draft.panDegrees
+		tiltDegrees = draft.tiltDegrees
+		invertsPan = draft.invertsPan
+		invertsTilt = draft.invertsTilt
+	}
+	
+	var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && !channelList.isEmpty }
+	
+	var mixesWithFlags: Bool { CustomChannel.mixesWithFlags(channelList) }
+
 	var channels: [ProfileChannel] {
 		var channels: [ProfileChannel] = []
 		
@@ -77,6 +76,6 @@ final class CustomProfile {
 	}
 	
 	var profile: FixtureProfile {
-		FixtureProfile(id: identifier, model: name, mode: "\(channelList.count) channel", channels: channels, symbol: symbol, mixing: isSubtractive ? .subtractive : .additive)
+		FixtureProfile(id: identifier, manufacturer: manufacturer, model: name, mode: mode.isEmpty ? "\(channelList.count) channel" : mode, channels: channels, symbol: symbol, mixing: isSubtractive ? .subtractive : .additive, invertsPan: invertsPan, invertsTilt: invertsTilt, panDegrees: panDegrees, tiltDegrees: tiltDegrees)
 	}
 }

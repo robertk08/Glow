@@ -37,10 +37,9 @@ struct ScenesView: View {
 						}
 					}
 				}
-				.reorderable()
-			}
-			.reorderContainer(for: Look.self) { difference in
-				console.move(difference, among: looks, sortIndex: \.sortIndex)
+				.onMove {
+					console.move($0, to: $1, among: looks, sortIndex: \.sortIndex)
+				}
 			}
 		}
 		.navigationTitle("Scenes")
@@ -55,6 +54,11 @@ struct ScenesView: View {
 		}
 		.toolbar {
 			LinkStatusButton()
+			
+			ToolbarItem(placement: .topBarTrailing) {
+				EditButton()
+					.disabled(looks.isEmpty)
+			}
 			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("Save This Look", systemImage: "plus") {

@@ -23,7 +23,7 @@
       "offset": 4,
       "role": "intensity",
       "name": "Dimmer",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 5,

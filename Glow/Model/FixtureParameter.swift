@@ -10,5 +10,5 @@ nonisolated struct FixtureParameter: Identifiable, Hashable, Sendable {
 	var ranges: [ChannelRange] { coarse.ranges }
 	var maximum: Int { fine != nil ? 65535 : 255 }
 	var isBanded: Bool { ranges.count > 1 }
-	var neutral: Double { Double(coarse.defaultValue) * (fine == nil ? 1 : 256) }
+	var neutral: Double { Double(Int(coarse.defaultValue) * (fine == nil ? 1 : 256) + Int(fine?.defaultValue ?? 0)) }
 }

@@ -3,20 +3,29 @@ import SwiftUI
 struct ColorControl: View {
 	let programmer: Programmer
 	
-	@State private var kelvin: Double = ColorTemperature.neutral
 	@State private var showsEmitters = false
 	
 	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
 	
 	var body: some View {
 		Section {
+			if let channel = programmer.macroChannel {
+				BandPicker(programmer: programmer, channel: channel, bands: channel.ranges)
+				
+				if let active = programmer.adjustableBand(of: channel) {
+					Slider(value: programmer.binding(channel), in: Double(active.from)...Double(active.to)) {
+						Text(channel.name)
+					}
+				}
+			}
+			
 			if programmer.macroOverridesMix {
-				Button("Use the colour mixer") {
+				Button("Use the color mixer") {
 					programmer.releaseMix()
 				}
 			}
 			
-			ColorPicker("Any colour", selection: programmer.colorBinding, supportsOpacity: false)
+			ColorPicker("Any color", selection: programmer.colorBinding, supportsOpacity: false)
 			
 			LazyVGrid(columns: columns, spacing: 12) {
 				ForEach(programmer.presets) { preset in
@@ -25,29 +34,31 @@ struct ColorControl: View {
 					} label: {
 						Circle()
 							.fill(preset.swatch.color)
-							.frame(height: 44)
+							.frame(width: 44, height: 44)
 							.overlay {
-								Circle().strokeBorder(.separator)
+								Image(systemName: "checkmark")
+									.font(.headline)
+									.foregroundStyle(preset.swatch.contrastingInk)
+									.opacity(programmer.selectedPresetID == preset.id ? 1 : 0)
 							}
 					}
 					.buttonStyle(.plain)
+					.accessibilityLabel(preset.name)
+					.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
 				}
 			}
 			.padding(.vertical, 4)
 			
 			if programmer.balancesWhite {
 				VStack(alignment: .leading) {
-					LabeledContent("White balance", value: "\(Int(kelvin)) K")
+					LabeledContent("White balance", value: "\(Int(programmer.kelvin)) K")
 					
-					Slider(value: $kelvin, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
+					Slider(value: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) }, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
 						Text("White balance")
 					} minimumValueLabel: {
 						Image(systemName: "thermometer.sun")
 					} maximumValueLabel: {
 						Image(systemName: "thermometer.snowflake")
-					}
-					.onChange(of: kelvin) {
-						programmer.apply(kelvin: kelvin)
 					}
 				}
 			}
@@ -70,16 +81,13 @@ struct ColorControl: View {
 				}
 			}
 		} header: {
-			Text("Colour")
+			Text("Color")
 		} footer: {
 			if programmer.macroOverridesMix {
-				Text("This light is showing a built-in colour, so the mixer is doing nothing.")
+				Text("This light is showing a built-in color, so the mixer is doing nothing.")
 			} else if programmer.isSubtractive {
-				Text("This head makes colour by putting filters in front of a white lamp, so the dimmer sets how bright it is.")
+				Text("This head makes color by putting filters in front of a white lamp, so the dimmer sets how bright it is.")
 			}
-		}
-		.task(id: programmer.title) {
-			kelvin = programmer.kelvin
 		}
 	}
 }

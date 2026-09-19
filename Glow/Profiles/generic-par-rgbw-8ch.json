@@ -8,22 +8,22 @@
       "offset": 1,
       "role": "intensity",
       "name": "Master dimmer",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 2,
       "role": "red",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 3,
       "role": "green",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 4,
       "role": "blue",
-      "defaultValue": 255
+      "defaultValue": 0
     },
     {
       "offset": 5,
@@ -63,7 +63,7 @@
         {
           "from": 8,
           "to": 127,
-          "label": "Colour change and fade programs"
+          "label": "Color change and fade programs"
         },
         {
           "from": 128,

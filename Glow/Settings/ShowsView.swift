@@ -18,7 +18,7 @@ struct ShowsView: View {
 			Section {
 				ForEach(shows.shows) { show in
 					Button {
-						console.clearSelection()
+						console.closeShow()
 						shows.activate(show)
 					} label: {
 						LabeledContent {
@@ -31,12 +31,6 @@ struct ShowsView: View {
 						.contentShape(.rect)
 					}
 					.buttonStyle(.plain)
-					.swipeActions {
-						Button("Delete", systemImage: "trash", role: .destructive) {
-							deleting = show
-						}
-						.disabled(shows.shows.count < 2)
-					}
 					.contextMenu {
 						Button("Rename", systemImage: "pencil") {
 							renaming = show
@@ -44,6 +38,7 @@ struct ShowsView: View {
 						}
 						
 						Button("Duplicate", systemImage: "plus.square.on.square") {
+							console.closeShow()
 							shows.duplicate(show)
 						}
 						
@@ -62,6 +57,15 @@ struct ShowsView: View {
 						}
 						.disabled(shows.shows.count < 2)
 					}
+					.confirmationDialog("Delete \(show.name)?", isPresented: Binding { deleting == show } set: { _ in deleting = nil }, titleVisibility: .visible) {
+						Button("Delete Show", role: .destructive) {
+							console.closeShow()
+							shows.delete(show)
+							deleting = nil
+						}
+					} message: {
+						Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
+					}
 				}
 			} footer: {
 				Text("Switching show swaps the whole store, so a house rig and a touring rig never see each other. The controller you send to stays with this device.")
@@ -77,7 +81,7 @@ struct ShowsView: View {
 					isNaming = true
 				}
 			} footer: {
-				Text("Hold a show for Share, Duplicate and Save to Files.")
+				Text("Hold a show for Rename, Duplicate, Share, Save to Files and Delete.")
 			}
 		}
 		.sensoryFeedback(.selection, trigger: shows.activeID)
@@ -85,13 +89,13 @@ struct ShowsView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
 			guard let url = try? result.get() else { return }
-			console.clearSelection()
+			console.closeShow()
 			shows.adopt(contentsOf: url)
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
 		.sheet(isPresented: $isNaming) {
 			NameSheet(title: "New Show", prompt: "Show", hint: "Starts empty, and switches to it.", name: $newName) { name in
-				console.clearSelection()
+				console.closeShow()
 				shows.create(name: name)
 			}
 		}
@@ -99,16 +103,6 @@ struct ShowsView: View {
 			NameSheet(title: "Rename Show", prompt: "Show", name: $renamed) { name in
 				shows.rename(show, to: name)
 			}
-		}
-		.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible) {
-			Button("Delete Show", role: .destructive) {
-				if let deleting {
-					shows.delete(deleting)
-				}
-				deleting = nil
-			}
-		} message: {
-			Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
 		}
 	}
 }
