@@ -4,7 +4,7 @@ import SwiftUI
 
 @Observable @MainActor
 final class NodeSetupModel {
-	enum Step {
+	enum Step: Equatable {
 		case findController, chooseNetwork, password, joining, done
 	}
 	

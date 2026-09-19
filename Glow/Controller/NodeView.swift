@@ -12,27 +12,22 @@ struct NodeView: View {
 		let endpoints = discovery.controllers(endpoint: console.endpoint, nodeID: console.node?.id)
 		let selection = console.node?.id ?? console.endpoint.id
 		
-		return List {
+		List {
 			Section {
-				LabeledContent {
-					Text(console.link.summary(latency: console.latency))
-						.foregroundStyle(console.link.isConnected ? Color.green : Color.orange)
-				} label: {
-					Label {
-						Text("Status")
-					} icon: {
-						Image(systemName: console.link.isConnected ? "wifi" : "wifi.exclamationmark")
-							.foregroundStyle(console.link.isConnected ? Color.green : Color.orange)
-					}
-				}
+				LinkCard()
+					.accessibilityHidden(true)
 				
 				LabeledContent("Address", value: console.endpoint.host)
 					.textSelection(.enabled)
 				
 				if let node = console.node {
-					LabeledContent("Name", value: node.name)
 					LabeledContent("Firmware", value: node.firmware)
+					LabeledContent("Identifier", value: node.id)
+						.textSelection(.enabled)
+						.font(.callout.monospaced())
 				}
+			} footer: {
+				Text(console.link.explanation)
 			}
 			
 			Section {
@@ -40,20 +35,10 @@ struct NodeView: View {
 					isSettingUp = true
 				}
 			} footer: {
-				Text("Nothing is entered on the controller itself. Glow hands it the network.")
+				Text("Nothing is ever typed on the controller, Wi-Fi included. Glow joins its setup network, reads the list of networks it can see, takes the password from you and hands it over.")
 			}
 			
 			Section {
-				Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
-					isForgetting = true
-				}
-				.foregroundStyle(.red)
-				.disabled(!console.link.isConnected)
-			} footer: {
-				Text("The controller drops its stored network and raises Glow Setup again.")
-			}
-			
-			Section("On This Network") {
 				if discovery.endpoints.isEmpty {
 					HStack {
 						Text("Looking for controllers")
@@ -73,6 +58,19 @@ struct NodeView: View {
 					.pickerStyle(.inline)
 					.labelsHidden()
 				}
+			} header: {
+				Text("On This Network")
+			} footer: {
+				Text("Glow finds controllers over Bonjour. If yours is missing, it is on another network or still coming up.")
+			}
+			
+			Section {
+				Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
+					isForgetting = true
+				}
+				.disabled(!console.link.isConnected)
+			} footer: {
+				Text("The controller drops the network it stored and raises Glow Setup again. Reflashing does not erase it, this does.")
 			}
 		}
 		.navigationTitle("Controller")

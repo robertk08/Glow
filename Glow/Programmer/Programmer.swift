@@ -508,6 +508,16 @@ struct Programmer {
 		}
 	}
 	
+	var activeGroups: [FeatureGroup] {
+		groups.filter(isActive)
+	}
+	
+	var address: String {
+		guard let first = targets.first else { return "" }
+		let span = first.span
+		return targets.count == 1 ? "\(span.lowerBound)–\(span.upperBound)" : "^[\(targets.count) light](inflect: true)"
+	}
+	
 	var groups: [FeatureGroup] {
 		FeatureGroup.allCases.filter { group in targets.contains { !$0.mode.channels(in: group).isEmpty } }
 	}

@@ -4,6 +4,7 @@ struct NodeSetupView: View {
 	@Environment(Console.self) private var console
 	@Environment(NodeDiscovery.self) private var discovery
 	@Environment(\.dismiss) private var dismiss
+	@Environment(\.openURL) private var openURL
 	
 	@State private var model = NodeSetupModel()
 	
@@ -11,89 +12,140 @@ struct NodeSetupView: View {
 		NavigationStack {
 			Group {
 				switch model.step {
-				case .findController: findController
-				case .chooseNetwork: chooseNetwork
-				case .password: passwordEntry
-				case .joining: joining
-				case .done: done
+				case .findController: FindingController(model: model)
+				case .chooseNetwork: ChoosingNetwork(model: model)
+				case .password: EnteringPassword(model: model)
+				case .joining: Joining(model: model)
+				case .done: Finished(model: model)
 				}
 			}
-			.navigationTitle("Wi-Fi Setup")
+			.navigationTitle("Controller Setup")
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
-				Button(role: .close) { dismiss() }
+				ToolbarItem(placement: .cancellationAction) {
+					Button(role: .close) { dismiss() }
+				}
+				
+				if model.step != .done, model.failure != nil {
+					ToolbarItem(placement: .topBarTrailing) {
+						Button("Open Wi-Fi Settings") {
+							guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+							openURL(url)
+						}
+						.font(.footnote)
+					}
+				}
 			}
 		}
+		.presentationDetents([.large])
+		.interactiveDismissDisabled(model.step == .joining && model.failure == nil)
 	}
+}
+
+private struct FindingController: View {
+	@Environment(Console.self) private var console
 	
-	private var findController: some View {
-		List {
-			Section {
-				if model.failure != nil {
+	let model: NodeSetupModel
+	
+	var body: some View {
+		Group {
+			if let failure = model.failure {
+				ContentUnavailableView {
+					Label("Can't Reach Glow Setup", systemImage: "wifi.exclamationmark")
+				} description: {
+					Text(failure)
+				} actions: {
 					Button("Try Again") {
 						Task {
 							await model.waitForController(console: console)
 						}
 					}
-				} else {
-					HStack {
-						Text("Connecting to Glow Setup")
-						Spacer()
-						ProgressView()
-					}
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
 				}
-			} footer: {
-				Text(model.failure ?? "Keep the controller powered on. Allow Glow to join its setup network when asked. No credentials need to be entered on the controller.")
+			} else {
+				ContentUnavailableView {
+					Label("Joining Glow Setup", systemImage: "wifi.router")
+				} description: {
+					Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller.")
+				} actions: {
+					ProgressView()
+						.controlSize(.large)
+				}
 			}
 		}
 		.task {
 			await model.waitForController(console: console)
 		}
 	}
+}
+
+private struct ChoosingNetwork: View {
+	let model: NodeSetupModel
 	
-	private var chooseNetwork: some View {
-		List {
+	var body: some View {
+		Group {
 			if let failure = model.failure {
-				Section {
-					Button("Try Again") {
+				ContentUnavailableView {
+					Label("No Networks Came Back", systemImage: "antenna.radiowaves.left.and.right.slash")
+				} description: {
+					Text(failure)
+				} actions: {
+					Button("Scan Again") {
 						Task {
 							await model.loadNetworks()
 						}
 					}
-				} footer: {
-					Text(failure)
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
 				}
 			} else if model.networks.isEmpty {
-				Section {
-					HStack {
-						Text("Looking for networks")
-						Spacer()
-						ProgressView()
-					}
+				ContentUnavailableView {
+					Label("Looking for Networks", systemImage: "antenna.radiowaves.left.and.right")
+				} description: {
+					Text("The controller is scanning the air around it. This takes a few seconds.")
+				} actions: {
+					ProgressView()
+						.controlSize(.large)
 				}
 			} else {
-				Section {
-					ForEach(model.networks) { network in
-						Button {
-							model.choose(network: network)
-						} label: {
-							LabeledContent {
-								HStack(spacing: 6) {
-									if network.secure {
-										Image(systemName: "lock.fill")
-									}
-									Image(systemName: "wifi", variableValue: Double(network.bars) / 3)
-								}
-								.foregroundStyle(.secondary)
+				List {
+					Section {
+						ForEach(model.networks) { network in
+							Button {
+								model.choose(network: network)
 							} label: {
-								Text(network.ssid)
+								LabeledContent {
+									HStack(spacing: 6) {
+										if network.secure {
+											Image(systemName: "lock.fill")
+												.font(.footnote)
+										}
+										
+										Image(systemName: "wifi", variableValue: Double(network.bars) / 3)
+									}
+									.foregroundStyle(.secondary)
+								} label: {
+									Text(network.ssid)
+										.foregroundStyle(.primary)
+								}
+								.contentShape(.rect)
 							}
-							.contentShape(.rect)
+							.buttonStyle(.plain)
 						}
-						.buttonStyle(.plain)
+					} header: {
+						Text("Networks the controller can see")
+					} footer: {
+						Text("Only 2.4 GHz. The controller has no 5 GHz radio, so a 5 GHz-only network never appears here.")
 					}
-				} footer: {
-					Text("These are the networks the controller can see. It only works on 2.4 GHz.")
+					
+					Section {
+						Button("Scan Again", systemImage: "arrow.clockwise") {
+							Task {
+								await model.loadNetworks()
+							}
+						}
+					}
 				}
 			}
 		}
@@ -101,8 +153,16 @@ struct NodeSetupView: View {
 			await model.loadNetworks()
 		}
 	}
+}
+
+private struct EnteringPassword: View {
+	let model: NodeSetupModel
 	
-	private var passwordEntry: some View {
+	@FocusState private var isFocused: Bool
+	
+	var body: some View {
+		@Bindable var model = model
+		
 		List {
 			Section {
 				if model.selected?.enterprise == true {
@@ -115,6 +175,7 @@ struct NodeSetupView: View {
 				SecureField("Password", text: $model.password)
 					.textContentType(.password)
 					.submitLabel(.join)
+					.focused($isFocused)
 					.onSubmit {
 						guard model.canJoin else { return }
 						model.step = .joining
@@ -124,6 +185,9 @@ struct NodeSetupView: View {
 			} footer: {
 				if let failure = model.failure {
 					Text(failure)
+						.foregroundStyle(.orange)
+				} else {
+					Text("Glow hands this to the controller and never stores it. The controller writes it only once the join succeeds, so a wrong password cannot displace a network that works.")
 				}
 			}
 			
@@ -139,41 +203,68 @@ struct NodeSetupView: View {
 				}
 			}
 		}
+		.task {
+			isFocused = true
+		}
 	}
+}
+
+private struct Joining: View {
+	@Environment(Console.self) private var console
+	@Environment(NodeDiscovery.self) private var discovery
 	
-	private var joining: some View {
-		List {
+	let model: NodeSetupModel
+	
+	var body: some View {
+		Group {
 			if let failure = model.failure {
-				Section {
+				ContentUnavailableView {
+					Label("The Join Did Not Finish", systemImage: "exclamationmark.triangle")
+				} description: {
+					Text(failure)
+				} actions: {
 					Button("Pick Another Network") {
 						model.failure = nil
 						model.step = .chooseNetwork
 					}
-				} footer: {
-					Text(failure)
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
+					
+					Button("Try the Same Network Again") {
+						model.failure = nil
+						model.step = .joining
+					}
 				}
 			} else {
-				Section {
-					HStack {
-						Text("Joining \(model.selected?.ssid ?? "")")
-						Spacer()
-						ProgressView()
-					}
-				} footer: {
-					Text("Glow is waiting for the controller to join your network. Keep the app open and allow the Wi-Fi connection when asked.")
+				ContentUnavailableView {
+					Label("Joining \(model.selected?.ssid ?? "")", systemImage: "wifi.router")
+				} description: {
+					Text("The controller is joining your network and Glow is moving over with it. Keep the app open and allow the Wi-Fi connection when asked.")
+				} actions: {
+					ProgressView()
+						.controlSize(.large)
 				}
 			}
 		}
-		.task {
+		.task(id: model.failure == nil) {
+			guard model.failure == nil else { return }
 			await model.join(console: console, discovery: discovery)
 		}
 	}
+}
+
+private struct Finished: View {
+	@Environment(Console.self) private var console
+	@Environment(\.dismiss) private var dismiss
 	
-	private var done: some View {
+	let model: NodeSetupModel
+	
+	var body: some View {
 		ContentUnavailableView {
-			Label("Ready", systemImage: "checkmark.circle")
+			Label("Ready", systemImage: "checkmark.circle.fill")
+				.foregroundStyle(.green)
 		} description: {
-			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host).")
+			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host). Nothing was typed on it.")
 		} actions: {
 			Button("Done", systemImage: "checkmark") {
 				dismiss()
@@ -182,5 +273,6 @@ struct NodeSetupView: View {
 			.buttonStyle(.glassProminent)
 			.controlSize(.large)
 		}
+		.sensoryFeedback(.success, trigger: model.step)
 	}
 }
