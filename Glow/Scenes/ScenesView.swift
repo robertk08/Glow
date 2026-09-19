@@ -95,10 +95,9 @@ struct ScenesView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Save") {
-				let name = newName.trimmingCharacters(in: .whitespaces)
-				guard !name.isEmpty else { return }
-				context.insert(Look(name: name, sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex), levels: console.levels(among: fixtures, library: library)))
+				context.insert(Look(name: newName.trimmingCharacters(in: .whitespaces), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex), levels: console.levels(among: fixtures, library: library)))
 			}
+			.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
 		}
 		.alert("Rename Scene", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }, presenting: renaming) { look in
 			TextField("Name", text: $renamed)
@@ -107,10 +106,9 @@ struct ScenesView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Rename") {
-				let name = renamed.trimmingCharacters(in: .whitespaces)
-				guard !name.isEmpty else { return }
-				look.name = name
+				look.name = renamed.trimmingCharacters(in: .whitespaces)
 			}
+			.disabled(renamed.trimmingCharacters(in: .whitespaces).isEmpty)
 		}
 		.sensoryFeedback(.success, trigger: recalled)
 	}

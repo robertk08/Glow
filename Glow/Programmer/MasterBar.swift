@@ -6,6 +6,12 @@ struct MasterBar: View {
 	@Environment(FixtureLibrary.self) private var library
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
+	private var power: some Gesture {
+		LongPressGesture()
+			.onEnded { _ in console.releaseValues(among: fixtures, library: library) }
+			.exclusively(before: TapGesture().onEnded { console.blackout.toggle() })
+	}
+	
 	var body: some View {
 		@Bindable var console = console
 		
@@ -23,24 +29,19 @@ struct MasterBar: View {
 				.foregroundStyle(.secondary)
 				.frame(width: 40, alignment: .trailing)
 			
-			Button {
-				console.blackout.toggle()
-			} label: {
-				Image(systemName: "power")
-					.font(.title3)
-					.foregroundStyle(console.blackout ? Color.white : Color.primary)
-					.frame(width: 32, height: 32)
-					.background(console.blackout ? Color.accentColor : Color.clear, in: .circle)
-					.frame(width: 44, height: 40)
-					.contentShape(.rect)
-			}
-			.buttonStyle(.plain)
-			.accessibilityLabel("Blackout")
-			.accessibilityValue(console.blackout ? "On" : "Off")
-			.accessibilityHint("Tap to black out. Touch and hold to release values.")
-			.simultaneousGesture(LongPressGesture().onEnded { _ in
-				console.releaseValues(among: fixtures, library: library)
-			})
+			Image(systemName: "power")
+				.font(.title3)
+				.foregroundStyle(console.blackout ? Color.white : Color.primary)
+				.frame(width: 32, height: 32)
+				.background(console.blackout ? Color.accentColor : Color.clear, in: .circle)
+				.frame(width: 44, height: 40)
+				.contentShape(.rect)
+				.gesture(power)
+				.accessibilityElement()
+				.accessibilityAddTraits(.isButton)
+				.accessibilityLabel("Blackout")
+				.accessibilityValue(console.blackout ? "On" : "Off")
+				.accessibilityHint("Tap to black out. Touch and hold to release values.")
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, 12)

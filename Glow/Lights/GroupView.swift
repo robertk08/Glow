@@ -55,6 +55,7 @@ struct GroupView: View {
 						group.name = group.name.trimmingCharacters(in: .whitespaces)
 						dismiss()
 					}
+					.disabled(group.name.trimmingCharacters(in: .whitespaces).isEmpty)
 				}
 			}
 			.task {

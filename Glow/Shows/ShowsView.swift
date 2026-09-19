@@ -99,11 +99,10 @@ struct ShowsView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Create") {
-				let name = newName.trimmingCharacters(in: .whitespaces)
-				guard !name.isEmpty else { return }
 				console.closeShow()
-				shows.create(name: name)
+				shows.create(name: newName.trimmingCharacters(in: .whitespaces))
 			}
+			.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
 		}
 		.alert("Rename Show", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }, presenting: renaming) { show in
 			TextField("Name", text: $renamed)
@@ -112,10 +111,9 @@ struct ShowsView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Rename") {
-				let name = renamed.trimmingCharacters(in: .whitespaces)
-				guard !name.isEmpty else { return }
-				shows.rename(show, to: name)
+				shows.rename(show, to: renamed.trimmingCharacters(in: .whitespaces))
 			}
+			.disabled(renamed.trimmingCharacters(in: .whitespaces).isEmpty)
 		}
 	}
 }
