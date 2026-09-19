@@ -96,12 +96,15 @@ private struct MadeFixtureRow: View {
 			FixtureTypeRow(type: type)
 		}
 		.swipeActions(edge: .trailing, allowsFullSwipe: false) {
-			Button("Delete", systemImage: "trash", role: .destructive) {
+			Button("Delete", systemImage: "trash") {
 				isDeleting = true
 			}
+			.tint(.red)
 		}
-		.confirmationDialog("Delete \(type.model)?", isPresented: $isDeleting, titleVisibility: .visible) {
-			Button("Delete Fixture", role: .destructive) {
+		.alert("Delete \(type.model)?", isPresented: $isDeleting) {
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Delete", role: .destructive) {
 				guard let found = stored.first(where: { $0.identifier == type.id }) else { return }
 				context.delete(found)
 			}
