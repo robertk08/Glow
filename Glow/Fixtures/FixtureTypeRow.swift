@@ -16,6 +16,6 @@ struct FixtureTypeRow: View {
 		} icon: {
 			Image(systemName: type.symbol)
 		}
-		.badge(type.modes.count > 1 ? "^[\(type.modes.count) mode](inflect: true)" : type.channelSpan)
+		.badge(type.modes.count > 1 ? Text("^[\(type.modes.count) mode](inflect: true)") : Text(type.channelSpan))
 	}
 }

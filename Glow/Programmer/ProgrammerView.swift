@@ -14,6 +14,15 @@ struct ProgrammerView: View {
 		
 		return NavigationStack {
 			List {
+				if programmer.groups.isEmpty {
+					ContentUnavailableView {
+						Label(programmer.targets.isEmpty ? "Nothing Selected" : "Nothing to Drive", systemImage: "lightbulb")
+					} description: {
+						Text(programmer.targets.isEmpty ? "Tap a light in the grid to take control of it." : "These lights have no channels Glow recognises.")
+					}
+					.listRowBackground(Color.clear)
+				}
+				
 				switch group {
 				case .dimmer:
 					ForEach(programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }) { channel in
@@ -59,11 +68,11 @@ struct ProgrammerView: View {
 					
 					Group {
 						switch group {
-						case .dimmer: IntensityPane(programmer: programmer)
-						case .color: ColorPane(programmer: programmer)
-						case .position: PositionPane(programmer: programmer)
-						case .beam: BeamPane(programmer: programmer)
-						case .gobo, .control: EmptyView()
+						case .dimmer where programmer.dims: IntensityPane(programmer: programmer)
+						case .color where programmer.mixesColor: ColorPane(programmer: programmer)
+						case .position where programmer.movesHead: PositionPane(programmer: programmer)
+						case .beam where programmer.hasBeamShape: BeamPane(programmer: programmer)
+						default: EmptyView()
 						}
 					}
 					.padding(.horizontal)

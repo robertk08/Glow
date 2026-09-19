@@ -508,6 +508,11 @@ struct Programmer {
 		}
 	}
 	
+	var hasBeamShape: Bool {
+		guard channel(.zoom) == nil else { return true }
+		return shutterChannel?.functions.contains { $0.unit == .hertz } ?? false
+	}
+	
 	var activeGroups: [FeatureGroup] {
 		groups.filter(isActive)
 	}
@@ -515,7 +520,7 @@ struct Programmer {
 	var address: String {
 		guard let first = targets.first else { return "" }
 		let span = first.span
-		return targets.count == 1 ? "\(span.lowerBound)–\(span.upperBound)" : "^[\(targets.count) light](inflect: true)"
+		return targets.count == 1 ? "\(span.lowerBound)–\(span.upperBound)" : "\(targets.count) lights"
 	}
 	
 	var groups: [FeatureGroup] {

@@ -45,7 +45,7 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		if isWide { parts.append("16-bit") }
 		if defaultValue != 0 { parts.append("starts at \(defaultValue)") }
 		if let highlightValue { parts.append("highlight \(highlightValue)") }
-		parts.append(functions.isEmpty ? "no ranges" : "^[\(functions.count) range](inflect: true)")
+		parts.append(functions.count == 1 ? "1 range" : "\(functions.count) ranges")
 		return parts.joined(separator: " · ")
 	}
 	

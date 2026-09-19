@@ -54,14 +54,14 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: $selection.isProgrammerOpen) {
+					.inspector(isPresented: Binding { !console.selection.isEmpty } set: { shown in
+						guard !shown else { return }
+						console.selection.clear()
+					}) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
 							.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
 			}
-		}
-		.onChange(of: console.selection.identifiers) {
-			if sizeClass == .regular { console.selection.isProgrammerOpen = !console.selection.isEmpty }
 		}
 		.onChange(of: stored) {
 			library.setMade(stored.map(\.definition))
