@@ -14,7 +14,7 @@ struct LightTile: View {
 	
 	@State private var isRemoving = false
 	@State private var start: CGPoint?
-	@State private var origin: Double?
+	@State private var origin = 0.0
 	
 	var body: some View {
 		let profile = library.profile(fixture.profileID)
@@ -49,6 +49,16 @@ struct LightTile: View {
 				.gaugeStyle(.accessoryLinearCapacity)
 				.tint(isOn ? glow : Color(.tertiarySystemFill))
 				.labelsHidden()
+				.padding(.vertical, 8)
+				.contentShape(.rect)
+				.gesture(DragGesture(minimumDistance: 4).onChanged { drag in
+					if start != drag.startLocation {
+						start = drag.startLocation
+						origin = programmer.brightness - drag.translation.width / 180
+					}
+					
+					programmer.brightness = origin + drag.translation.width / 180
+				})
 			}
 		}
 		.foregroundStyle(.primary)
@@ -59,17 +69,6 @@ struct LightTile: View {
 		.onTapGesture {
 			console.toggle(fixture)
 		}
-		.simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { drag in
-			guard let programmer, programmer.dims else { return }
-			
-			if start != drag.startLocation {
-				start = drag.startLocation
-				origin = abs(drag.translation.width) > abs(drag.translation.height) ? programmer.brightness : nil
-			}
-			
-			guard let origin else { return }
-			programmer.brightness = origin + drag.translation.width / 180
-		})
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.accessibilityElement(children: .combine)
 		.accessibilityAddTraits(.isButton)

@@ -10,6 +10,7 @@ final class MonitorModel {
 	
 	private var poll: Task<Void, Never>?
 	private var start: CGPoint?
+	private var anchor: CGFloat = 0
 	private var origin: UInt8 = 0
 	private var written: UInt8 = 0
 	
@@ -55,6 +56,7 @@ final class MonitorModel {
 		if start != drag.startLocation {
 			start = drag.startLocation
 			adjusting = abs(drag.translation.width) > abs(drag.translation.height) ? address : nil
+			anchor = drag.translation.width
 			origin = console.value(at: target)
 			written = origin
 		}
@@ -62,7 +64,7 @@ final class MonitorModel {
 		guard adjusting == address else { return }
 		
 		let travel = abs(drag.translation.height) > 60 ? 6.0 : 1.5
-		let value = UInt8(min(max(Double(origin) + drag.translation.width / travel, 0), 255).rounded())
+		let value = UInt8(min(max(Double(origin) + (drag.translation.width - anchor) / travel, 0), 255).rounded())
 		guard value != written else { return }
 		written = value
 		console.set(value, at: target)

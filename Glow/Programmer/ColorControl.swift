@@ -32,15 +32,7 @@ struct ColorControl: View {
 					Button {
 						programmer.apply(preset)
 					} label: {
-						Circle()
-							.fill(preset.swatch.color)
-							.frame(width: 44, height: 44)
-							.overlay {
-								Image(systemName: "checkmark")
-									.font(.headline)
-									.foregroundStyle(preset.swatch.contrastingInk)
-									.opacity(programmer.selectedPresetID == preset.id ? 1 : 0)
-							}
+						Swatch(colors: [preset.swatch], isSelected: programmer.selectedPresetID == preset.id)
 					}
 					.buttonStyle(.plain)
 					.accessibilityLabel(preset.name)

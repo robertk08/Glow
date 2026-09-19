@@ -41,9 +41,15 @@ struct ProfileView: View {
 							Text(range.label)
 								.multilineTextAlignment(.trailing)
 						} label: {
-							Text("\(range.from)–\(range.to)")
-								.monospacedDigit()
-								.foregroundStyle(.secondary)
+							HStack(spacing: 6) {
+								if !range.swatch.isEmpty {
+									Swatch(colors: range.swatch, size: 14)
+								}
+								
+								Text("\(range.from)–\(range.to)")
+									.monospacedDigit()
+									.foregroundStyle(.secondary)
+							}
 						}
 						.font(.caption)
 					}

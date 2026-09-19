@@ -179,83 +179,138 @@
           "to": 5,
           "label": "Open",
           "from": 0,
-          "releasesMix": true
+          "releasesMix": true,
+          "colors": [
+            "#FFFFFF"
+          ]
         },
         {
           "to": 15,
           "label": "Open / dark red",
-          "from": 6
+          "from": 6,
+          "colors": [
+            "#FFFFFF",
+            "#B00018"
+          ]
         },
         {
           "to": 25,
           "label": "Dark red",
-          "from": 16
+          "from": 16,
+          "colors": [
+            "#B00018"
+          ]
         },
         {
           "to": 35,
           "label": "Dark red / dark orange",
-          "from": 26
+          "from": 26,
+          "colors": [
+            "#B00018",
+            "#E2560E"
+          ]
         },
         {
           "to": 45,
           "label": "Dark orange",
-          "from": 36
+          "from": 36,
+          "colors": [
+            "#E2560E"
+          ]
         },
         {
           "to": 55,
           "label": "Dark orange / dark blue",
-          "from": 46
+          "from": 46,
+          "colors": [
+            "#E2560E",
+            "#0B2FA0"
+          ]
         },
         {
           "to": 65,
           "label": "Dark blue",
-          "from": 56
+          "from": 56,
+          "colors": [
+            "#0B2FA0"
+          ]
         },
         {
           "to": 75,
           "label": "Dark blue / yellow",
-          "from": 66
+          "from": 66,
+          "colors": [
+            "#0B2FA0",
+            "#F5D400"
+          ]
         },
         {
           "to": 85,
           "label": "Yellow",
-          "from": 76
+          "from": 76,
+          "colors": [
+            "#F5D400"
+          ]
         },
         {
           "to": 95,
           "label": "Yellow / dark green",
-          "from": 86
+          "from": 86,
+          "colors": [
+            "#F5D400",
+            "#007A3D"
+          ]
         },
         {
           "to": 105,
           "label": "Dark green",
-          "from": 96
+          "from": 96,
+          "colors": [
+            "#007A3D"
+          ]
         },
         {
           "to": 115,
           "label": "Dark green / lavender",
-          "from": 106
+          "from": 106,
+          "colors": [
+            "#007A3D",
+            "#B9A6DC"
+          ]
         },
         {
           "to": 125,
           "label": "Lavender",
-          "from": 116
+          "from": 116,
+          "colors": [
+            "#B9A6DC"
+          ]
         },
         {
           "to": 135,
           "label": "Lavender / cyan",
-          "from": 126
+          "from": 126,
+          "colors": [
+            "#B9A6DC",
+            "#00B3C8"
+          ]
         },
         {
           "to": 145,
           "label": "Cyan",
-          "from": 136
+          "from": 136,
+          "colors": [
+            "#00B3C8"
+          ]
         },
         {
           "to": 185,
           "label": "Open",
           "from": 146,
-          "releasesMix": true
+          "releasesMix": true,
+          "colors": [
+            "#FFFFFF"
+          ]
         },
         {
           "to": 218,

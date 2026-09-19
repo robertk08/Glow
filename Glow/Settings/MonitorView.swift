@@ -98,7 +98,7 @@ private struct ChannelCell: View {
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
 		.scaleEffect(isArmed ? 1.12 : 1)
 		.animation(.snappy(duration: 0.15), value: isArmed)
-		.simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { drag in
+		.simultaneousGesture(DragGesture(minimumDistance: 30).onChanged { drag in
 			monitor.adjust(address, by: drag, console: console)
 		}.onEnded { _ in
 			monitor.commit()

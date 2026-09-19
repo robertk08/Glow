@@ -12,6 +12,9 @@ nonisolated struct ChannelRange: Codable, Hashable, Sendable, Identifiable {
 	var requiresConfirmation = false
 	var releasesMix = false
 	var holdSeconds: Double?
+	var colors: [String] = []
+	
+	var swatch: [LightColor] { colors.compactMap(LightColor.init(hex:)) }
 	
 	var id: String { "\(from)-\(to)" }
 	var midpoint: UInt8 { UInt8((Int(from) + Int(to)) / 2) }
@@ -19,7 +22,7 @@ nonisolated struct ChannelRange: Codable, Hashable, Sendable, Identifiable {
 	func contains(_ value: UInt8) -> Bool { (from...to).contains(value) }
 	
 	private enum CodingKeys: String, CodingKey {
-		case from, to, label, kind, requiresConfirmation, releasesMix, holdSeconds
+		case from, to, label, kind, requiresConfirmation, releasesMix, holdSeconds, colors
 	}
 	
 	init(from: UInt8, to: UInt8, label: String, kind: Kind = .discrete) {
@@ -40,5 +43,6 @@ nonisolated struct ChannelRange: Codable, Hashable, Sendable, Identifiable {
 		requiresConfirmation = try container.decodeIfPresent(Bool.self, forKey: .requiresConfirmation) ?? false
 		releasesMix = try container.decodeIfPresent(Bool.self, forKey: .releasesMix) ?? false
 		holdSeconds = try container.decodeIfPresent(Double.self, forKey: .holdSeconds)
+		colors = try container.decodeIfPresent([String].self, forKey: .colors) ?? []
 	}
 }

@@ -13,6 +13,13 @@ nonisolated struct LightColor: Equatable, Sendable {
 		self.blue = blue
 	}
 	
+	init?(hex: String) {
+		let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+		var value: UInt64 = 0
+		guard digits.count == 6, Scanner(string: digits).scanHexInt64(&value) else { return nil }
+		self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
+	}
+	
 	init(hue: Double, saturation: Double) {
 		let h = (hue - hue.rounded(.down)) * 6
 		let sector = Int(h)
