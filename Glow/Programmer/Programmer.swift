@@ -129,6 +129,10 @@ struct Programmer {
 		self.set(set.midpoint, of: channel)
 	}
 	
+	func fractionBinding(of channel: FixtureChannel) -> Binding<Double> {
+		Binding { Double(rawValue(of: channel)) / Double(channel.maximum) } set: { setRawValue(Int(($0 * Double(channel.maximum)).rounded()), of: channel) }
+	}
+	
 	func binding(_ channel: FixtureChannel) -> Binding<Double> {
 		Binding { Double(value(of: channel)) } set: { set(UInt8(min(max($0.rounded(), 0), 255)), of: channel) }
 	}
@@ -366,8 +370,8 @@ struct Programmer {
 		}
 	}
 	
-	var colorBinding: Binding<Color> {
-		Binding { light.color } set: { apply(LightColor($0)) }
+	var lightBinding: Binding<LightColor> {
+		Binding { light } set: { apply($0) }
 	}
 	
 	var kelvin: Double {
@@ -489,6 +493,75 @@ struct Programmer {
 	
 	var settings: [FixtureChannel] {
 		FeatureGroup.allCases.flatMap { settings(in: $0) }
+	}
+	
+	func release(_ group: FeatureGroup) {
+		for target in targets {
+			for channel in target.mode.channels(in: group) {
+				setRaw(channel.neutral, of: channel, in: target)
+				console.release(target.span, only: channel.offset)
+				
+				if let fine = channel.fineOffset {
+					console.release(target.span, only: fine)
+				}
+			}
+		}
+	}
+	
+	var groups: [FeatureGroup] {
+		FeatureGroup.allCases.filter { group in targets.contains { !$0.mode.channels(in: group).isEmpty } }
+	}
+	
+	func channels(in group: FeatureGroup) -> [FixtureChannel] {
+		mode?.channels(in: group) ?? []
+	}
+	
+	func channel(_ attribute: Attribute) -> FixtureChannel? {
+		mode?.channel(attribute)
+	}
+	
+	func isEnabled(_ channel: FixtureChannel) -> Bool {
+		guard let dependency = channel.enabledBy else { return true }
+		
+		for target in targets {
+			guard let address = address(dependency.offset, in: target) else { continue }
+			if !dependency.contains(console.value(at: address)) { return false }
+		}
+		
+		return true
+	}
+	
+	func blocker(of channel: FixtureChannel) -> FixtureChannel? {
+		guard let dependency = channel.enabledBy, !isEnabled(channel) else { return nil }
+		return mode?.channels.first { $0.offset == dependency.offset }
+	}
+	
+	var shutterChannel: FixtureChannel? {
+		guard case let .band(channel, _, _, _) = mode?.dimming else { return mode?.channel(.shutter) }
+		return channel
+	}
+	
+	var strobeFunction: ChannelFunction? {
+		guard let channel = shutterChannel else { return nil }
+		guard let active = band(of: channel), active.purpose == nil, active.kind == .proportional else { return nil }
+		return active
+	}
+	
+	var strobeHertz: Double? {
+		guard let channel = shutterChannel, let function = strobeFunction, function.unit == .hertz else { return nil }
+		guard let from = function.physicalFrom, let to = function.physicalTo, function.to > function.from else { return nil }
+		let share = Double(value(of: channel) - function.from) / Double(function.to - function.from)
+		return from + (to - from) * share
+	}
+	
+	func physical(of channel: FixtureChannel) -> String? {
+		band(of: channel)?.physical(at: value(of: channel))
+	}
+	
+	func degrees(_ attribute: Attribute) -> Double? {
+		guard let channel = mode?.channel(attribute), let function = channel.functions.first, function.unit == .degrees else { return nil }
+		guard let from = function.physicalFrom, let to = function.physicalTo else { return nil }
+		return from + (to - from) * fraction(attribute)
 	}
 	
 	func applyDefaults() {

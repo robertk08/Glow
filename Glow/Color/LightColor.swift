@@ -49,6 +49,24 @@ nonisolated struct LightColor: Equatable, Sendable {
 	
 	var peak: Double { max(red, max(green, blue)) }
 	
+	var trough: Double { min(red, min(green, blue)) }
+	
+	var saturation: Double { peak > 0 ? (peak - trough) / peak : 0 }
+	
+	var hue: Double {
+		let span = peak - trough
+		guard span > 0 else { return 0 }
+		let turn: Double
+		
+		switch peak {
+		case red: turn = (green - blue) / span / 6
+		case green: turn = (2 + (blue - red) / span) / 6
+		default: turn = (4 + (red - green) / span) / 6
+		}
+		
+		return turn - turn.rounded(.down)
+	}
+	
 	var normalised: LightColor { peak > 0 ? self * (1 / peak) : self }
 	
 	var clamped: LightColor {

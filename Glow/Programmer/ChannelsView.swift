@@ -5,11 +5,6 @@ struct ChannelsView: View {
 	
 	var body: some View {
 		List {
-			Section {
-			} footer: {
-				Text("A slider steps over a setting that has to be confirmed, so nothing resets a head by accident. Pick it below to send it, or type the value.")
-			}
-			
 			ForEach(programmer.channels) { channel in
 				Section {
 					LabeledContent {
@@ -17,17 +12,18 @@ struct ChannelsView: View {
 							.keyboardType(.numberPad)
 							.multilineTextAlignment(.trailing)
 							.monospacedDigit()
-							.frame(maxWidth: 80)
+							.frame(maxWidth: 88)
 					} label: {
-						HStack {
+						VStack(alignment: .leading, spacing: 2) {
 							Text(programmer.bandLabel(of: channel))
 								.lineLimit(1)
 							
-							Spacer()
-							
-							Text(programmer.percent(of: channel), format: .percent.precision(.fractionLength(0)))
-								.monospacedDigit()
-								.foregroundStyle(.secondary)
+							if let physical = programmer.physical(of: channel) {
+								Text(physical)
+									.font(.caption)
+									.foregroundStyle(.secondary)
+									.monospacedDigit()
+							}
 						}
 					}
 					.font(.subheadline)
@@ -38,15 +34,38 @@ struct ChannelsView: View {
 					.tint(channel.attribute.color)
 					
 					if channel.isBanded {
-						BandPicker(programmer: programmer, channel: channel, bands: channel.functions)
+						SlotPicker(programmer: programmer, channel: channel)
 					}
 				} header: {
-					LabeledContent(channel.name, value: programmer.channelLabel(of: channel))
-						.monospacedDigit()
+					HStack {
+						Label(channel.name, systemImage: channel.attribute.symbol)
+						
+						if programmer.isActive(channel) {
+							Image(systemName: "circle.fill")
+								.font(.system(size: 6))
+								.foregroundStyle(.tint)
+								.accessibilityLabel("Set")
+						}
+						
+						Spacer()
+						
+						Text(programmer.channelLabel(of: channel))
+							.monospacedDigit()
+					}
 				}
 			}
 		}
 		.navigationTitle("All Channels")
 		.navigationBarTitleDisplayMode(.inline)
+		.safeAreaInset(edge: .bottom) {
+			Text("A slider steps over a setting that has to be confirmed, so nothing resets a head by accident. Pick it below to send it, or type the value.")
+				.font(.footnote)
+				.foregroundStyle(.secondary)
+				.multilineTextAlignment(.center)
+				.padding(.horizontal)
+				.padding(.vertical, 10)
+				.frame(maxWidth: .infinity)
+				.background(.bar)
+		}
 	}
 }
