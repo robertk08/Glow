@@ -33,22 +33,22 @@ struct MonitorView: View {
 			.padding(.horizontal)
 			.padding(.bottom)
 		}
-		.safeAreaInset(edge: .top, spacing: 0) {
-			Picker("Values", selection: $monitor.showsSource) {
-				Text("Output").tag(false)
-				Text("Source").tag(true)
-			}
-			.pickerStyle(.segmented)
-			.padding(.horizontal)
-			.padding(.bottom, 8)
-			.background(.bar)
-		}
-		.scrollEdgeEffectStyle(.hard, for: .top)
 		.navigationTitle("DMX Output")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
-			Toggle("Patched only", systemImage: "line.3.horizontal.decrease", isOn: $monitor.patchedOnly)
-				.toggleStyle(.button)
+			ToolbarItem(placement: .principal) {
+				Picker("Values", selection: $monitor.showsSource) {
+					Text("Output").tag(false)
+					Text("Source").tag(true)
+				}
+				.pickerStyle(.segmented)
+				.frame(width: 200)
+			}
+			
+			ToolbarItem(placement: .topBarTrailing) {
+				Toggle("Patched only", systemImage: "line.3.horizontal.decrease", isOn: $monitor.patchedOnly)
+					.toggleStyle(.button)
+			}
 		}
 		.sensoryFeedback(.impact(flexibility: .rigid), trigger: monitor.adjusting)
 		.task {
@@ -86,7 +86,7 @@ private struct ChannelCell: View {
 					.fill(.fill.quaternary)
 				
 				Rectangle()
-					.fill(.fill.secondary)
+					.fill(Color.accentColor.opacity(0.55))
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
 		}

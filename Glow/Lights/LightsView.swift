@@ -158,13 +158,6 @@ struct LightsView: View {
 		.sheet(isPresented: $isOrdering) {
 			NavigationStack {
 				List {
-					Section("Lights") {
-						ForEach(fixtures) { fixture in
-							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
-						}
-						.onMove { console.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
-					}
-					
 					if !groups.isEmpty {
 						Section("Groups") {
 							ForEach(groups) { group in
@@ -172,6 +165,13 @@ struct LightsView: View {
 							}
 							.onMove { console.move($0, to: $1, among: groups, sortIndex: \.sortIndex) }
 						}
+					}
+					
+					Section("Lights") {
+						ForEach(fixtures) { fixture in
+							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
+						}
+						.onMove { console.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
 					}
 				}
 				.environment(\.editMode, .constant(.active))

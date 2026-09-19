@@ -8,7 +8,7 @@ struct FixtureTypeRow: View {
 			VStack(alignment: .leading, spacing: 2) {
 				Text(type.name)
 				
-				Text(type.abilities.isEmpty ? type.mode : "\(type.mode) · \(type.abilities.formatted(.list(type: .and)))")
+				Text("^[\(type.channelCount) channel](inflect: true)")
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.lineLimit(2)

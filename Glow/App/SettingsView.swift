@@ -34,7 +34,7 @@ struct SettingsView: View {
 						Text(shows.active.name)
 							.foregroundStyle(.secondary)
 					} label: {
-						Label("Show", systemImage: "theatermasks")
+						Label("Show", systemImage: "rectangle.stack")
 					}
 				}
 			} header: {

@@ -21,7 +21,7 @@ struct LibraryView: View {
 		
 		return List {
 			Section {
-				Button("Build a Fixture", systemImage: "slider.horizontal.3") {
+				Button("Create Fixture", systemImage: "slider.horizontal.3") {
 					isBuilding = true
 				}
 			}
@@ -43,13 +43,17 @@ struct LibraryView: View {
 				}
 			}
 			
-			Section(made.isEmpty ? "" : "Built In") {
+			Section {
 				ForEach(builtIn) { type in
 					NavigationLink {
 						FixtureTypeView(type: type, patching: patching)
 					} label: {
 						FixtureTypeRow(type: type)
 					}
+				}
+			} header: {
+				if !made.isEmpty {
+					Text("Built In")
 				}
 			}
 		}
@@ -60,9 +64,9 @@ struct LibraryView: View {
 				ContentUnavailableView {
 					Label("Nothing Found", systemImage: "magnifyingglass")
 				} description: {
-					Text("Try a different name, or build the fixture yourself.")
+					Text("Try a different name, or create the fixture yourself.")
 				} actions: {
-					Button("Build a Fixture", systemImage: "slider.horizontal.3") {
+					Button("Create Fixture", systemImage: "slider.horizontal.3") {
 						isBuilding = true
 					}
 					.font(.headline)

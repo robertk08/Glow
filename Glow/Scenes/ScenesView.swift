@@ -57,7 +57,7 @@ struct ScenesView: View {
 				} description: {
 					Text(fixtures.isEmpty ? "Patch a light first, set it how you want it, then save the look here." : "Set the rig how you want it, then save the look here. A scene records lights rather than addresses, so re-addressing one later does not break it.")
 				} actions: {
-					Button("Save This Look", systemImage: "plus") {
+					Button("New Scene", systemImage: "plus") {
 						newName = ""
 						isNaming = true
 					}
@@ -81,7 +81,7 @@ struct ScenesView: View {
 			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			ToolbarItem(placement: .topBarTrailing) {
-				Button("Save This Look", systemImage: "plus") {
+				Button("New Scene", systemImage: "plus") {
 					newName = ""
 					isNaming = true
 				}
@@ -89,7 +89,7 @@ struct ScenesView: View {
 			}
 		}
 		.sheet(isPresented: $isNaming) {
-			NameSheet(title: "Save This Look", prompt: "Scene", hint: "Keeps every light exactly where it is right now.", name: $newName) { name in
+			NameSheet(title: "New Scene", prompt: "Scene", name: $newName) { name in
 				context.insert(Look(name: name, sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex), levels: console.levels(among: fixtures, library: library)))
 			}
 		}

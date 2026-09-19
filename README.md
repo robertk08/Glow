@@ -72,7 +72,8 @@ not point its scenes at whatever now sits on those channels.
 
 A show is a store of its own on disk, holding one patch, its groups, the
 fixtures built here and its scenes. Switching show swaps the store underneath
-the app. The controller you send to belongs to the device, not the show. A show
+the app without moving you off the screen you are on. A show stores no DMX
+values, so every light comes back on its defaults. The controller you send to belongs to the device, not the show. A show
 exports and imports as one JSON file carrying the date its format was settled
 and the date it was written. A file from a newer format is refused, one with no
 version at all is taken as it comes.

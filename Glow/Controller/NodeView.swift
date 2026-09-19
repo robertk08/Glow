@@ -9,28 +9,16 @@ struct NodeView: View {
 	@State private var failure: String?
 	
 	var body: some View {
-		let endpoints = discovery.controllers(endpoint: console.endpoint, nodeID: console.node?.id)
-		let selection = console.node?.id ?? console.endpoint.id
-		
 		List {
 			Section {
 				LabeledContent {
 					Text(console.link.summary(latency: console.latency))
 						.foregroundStyle(console.link.tint)
 				} label: {
-					Label {
-						Text("Status")
-					} icon: {
-						Image(systemName: console.link.symbol)
-							.foregroundStyle(console.link.tint)
-					}
+					Text("Status")
 				}
 				
-				LabeledContent("Address", value: console.endpoint.host)
-					.textSelection(.enabled)
-				
 				if let node = console.node {
-					LabeledContent("Name", value: node.name)
 					LabeledContent("Firmware", value: node.firmware)
 				}
 			}
@@ -39,36 +27,11 @@ struct NodeView: View {
 				Button("Change Wi-Fi Network", systemImage: "wifi.router") {
 					isSettingUp = true
 				}
-			}
-			
-			Section {
-				if discovery.endpoints.isEmpty {
-					HStack {
-						Text("Looking for controllers")
-						Spacer()
-						ProgressView()
-					}
-					.foregroundStyle(.secondary)
-				} else {
-					Picker("Controller", selection: Binding { selection } set: { id in
-						guard let found = endpoints.first(where: { $0.id == id }) else { return }
-						console.endpoint = found
-					}) {
-						ForEach(endpoints) { endpoint in
-							Text(endpoint.name).tag(endpoint.id)
-						}
-					}
-					.pickerStyle(.inline)
-					.labelsHidden()
-				}
-			} header: {
-				Text("On This Network")
-			}
-			
-			Section {
+				
 				Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
 					isForgetting = true
 				}
+				.foregroundStyle(.red)
 				.disabled(!console.link.isConnected)
 			}
 		}
@@ -97,6 +60,10 @@ struct NodeView: View {
 		}
 		.task {
 			discovery.start()
+		}
+		.onChange(of: discovery.endpoints) {
+			guard !console.link.isConnected, let found = discovery.endpoints.first else { return }
+			console.endpoint = found
 		}
 		.onDisappear {
 			discovery.stop()

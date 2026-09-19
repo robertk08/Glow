@@ -26,7 +26,7 @@ struct ShowsView: View {
 								.foregroundStyle(.tint)
 								.opacity(show.id == shows.activeID ? 1 : 0)
 						} label: {
-							Label(show.name, systemImage: "theatermasks.circle")
+							Label(show.name, systemImage: "rectangle.stack")
 						}
 						.contentShape(.rect)
 					}
@@ -56,6 +56,13 @@ struct ShowsView: View {
 							deleting = show
 						}
 						.disabled(shows.shows.count < 2)
+					}
+					.swipeActions(edge: .trailing, allowsFullSwipe: false) {
+						if shows.shows.count > 1 {
+							Button("Delete", systemImage: "trash", role: .destructive) {
+								deleting = show
+							}
+						}
 					}
 					.confirmationDialog("Delete \(show.name)?", isPresented: Binding { deleting == show } set: { _ in deleting = nil }, titleVisibility: .visible) {
 						Button("Delete Show", role: .destructive) {
@@ -90,7 +97,7 @@ struct ShowsView: View {
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
 		.sheet(isPresented: $isNaming) {
-			NameSheet(title: "New Show", prompt: "Show", hint: "Starts empty, and switches to it.", name: $newName) { name in
+			NameSheet(title: "New Show", prompt: "Show", name: $newName) { name in
 				console.closeShow()
 				shows.create(name: name)
 			}

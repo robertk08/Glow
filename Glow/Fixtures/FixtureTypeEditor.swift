@@ -18,8 +18,6 @@ struct FixtureTypeEditor: View {
 	}
 	
 	var body: some View {
-		let forks = original.map { first in library.builtIn.contains { $0.id == first.id } } ?? false
-		
 		NavigationStack {
 			Form {
 				Section {
@@ -90,7 +88,7 @@ struct FixtureTypeEditor: View {
 					}
 				}
 			}
-			.navigationTitle(original == nil ? "Build a Fixture" : "Edit Fixture")
+			.navigationTitle(original == nil ? "Create Fixture" : "Edit Fixture")
 			.navigationBarTitleDisplayMode(.inline)
 			.navigationDestination(for: Int.self) { offset in
 				if let position = draft.channels.firstIndex(where: { $0.offset == offset }) {

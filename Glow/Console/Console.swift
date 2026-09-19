@@ -55,14 +55,9 @@ final class Console {
 	private var outputFrames = FrameStream()
 	private var isSynced = false
 	private var isAdopting = false
-	private var savedLook: [UInt8] = []
-	private var lastSave = Date.distantPast
+	private var hasLoadedPatch = false
 	
 	private static let endpointKey = "node.endpoint"
-	
-	private static var lookFile: URL {
-		URL.applicationSupportDirectory.appending(path: "look.dmx")
-	}
 	
 	init() {
 		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
@@ -74,8 +69,6 @@ final class Console {
 	
 	func start() {
 		guard events == nil else { return }
-		
-		restoreLook()
 		
 		events = Task { [weak self] in
 			guard let self else { return }
@@ -161,6 +154,7 @@ final class Console {
 		universe = Universe()
 		active = []
 		dimmers = []
+		hasLoadedPatch = false
 		selection.clear()
 		sourceFrames.startOver()
 		outputFrames.startOver()
@@ -271,6 +265,19 @@ final class Console {
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
+		if !hasLoadedPatch, !library.types.isEmpty {
+			hasLoadedPatch = true
+			universe = Universe()
+			active = []
+			
+			for fixture in fixtures {
+				guard let type = library.type(fixture.typeID) else { continue }
+				universe.set(type.defaults, at: fixture.start)
+			}
+			
+			sourceFrames.startOver()
+		}
+		
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }
 		dimmers = rebuilt
@@ -300,7 +307,6 @@ final class Console {
 	}
 	
 	private func tick() async {
-		saveLook()
 		guard link.isConnected, isSynced else { return }
 		
 		if let frame = sourceFrames.next(universe.values) {
@@ -312,19 +318,4 @@ final class Console {
 		}
 	}
 	
-	private func restoreLook() {
-		try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
-		guard let data = try? Data(contentsOf: Self.lookFile), data.count == Universe.channelCount else { return }
-		universe.set([UInt8](data), at: DMXAddress(1)!)
-		savedLook = [UInt8](data)
-		sourceFrames.startOver()
-		outputFrames.startOver()
-	}
-	
-	private func saveLook() {
-		guard universe.values != savedLook, Date().timeIntervalSince(lastSave) > 2 else { return }
-		savedLook = universe.values
-		lastSave = Date()
-		try? Data(universe.values).write(to: Self.lookFile)
-	}
 }

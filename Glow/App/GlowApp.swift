@@ -11,7 +11,6 @@ struct GlowApp: App {
 	var body: some Scene {
 		WindowGroup {
 			RootView()
-				.id(shows.activeID)
 				.environment(console)
 				.environment(library)
 				.environment(discovery)
