@@ -7,9 +7,9 @@ import Testing
 @MainActor
 struct ProgrammerTests {
 	private func rig(_ channels: [FixtureChannel], mixing: ColorMixing = .additive) -> (Console, Programmer) {
-		let mode = FixtureType(id: "t", model: "T", mixing: mixing, modes: [FixtureType.Mode(name: "m", channels: channels)]).fixtureModes[0]
+		let type = FixtureType(id: "t", model: "T", mixing: mixing, channels: channels)
 		let console = Console()
-		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		let programmer = Programmer(type: type, start: DMXAddress(1)!, console: console)
 		programmer.applyDefaults()
 		return (console, programmer)
 	}

@@ -14,13 +14,6 @@ struct FeatureGroupPicker: View {
 					} label: {
 						Label(option.name, systemImage: option.symbol)
 							.font(.subheadline.weight(.medium))
-							.overlay(alignment: .topTrailing) {
-								Circle()
-									.fill(.tint)
-									.frame(width: 6)
-									.offset(x: 7, y: -3)
-									.opacity(programmer.isActive(option) ? 1 : 0)
-							}
 					}
 					.buttonStyle(.glass)
 					.buttonBorderShape(.capsule)

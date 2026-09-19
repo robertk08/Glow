@@ -9,26 +9,27 @@ struct FixtureTypeEditor: View {
 	@Query private var stored: [StoredFixtureType]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@State private var draft: FixtureType
-	@State private var index = 0
 	
 	let original: FixtureType?
 	
 	init(type: FixtureType? = nil) {
 		original = type
-		_draft = State(initialValue: type ?? FixtureType(id: "", model: "", modes: [FixtureType.Mode(name: "1 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)])]))
+		_draft = State(initialValue: type ?? FixtureType(id: "", model: "", channels: [FixtureChannel(offset: 1, attribute: .dimmer)]))
 	}
 	
 	var body: some View {
-		let mode = draft.modes[min(index, draft.modes.count - 1)]
 		let forks = original.map { first in library.builtIn.contains { $0.id == first.id } } ?? false
 		
-		return NavigationStack {
+		NavigationStack {
 			Form {
 				Section {
 					TextField("Model", text: $draft.model)
 						.autocorrectionDisabled()
 					
 					TextField("Manufacturer", text: $draft.manufacturer)
+						.autocorrectionDisabled()
+					
+					TextField("Mode", text: $draft.mode)
 						.autocorrectionDisabled()
 				} footer: {
 					Text(forks ? "Glow keeps the built-in fixture and saves yours beside it. Lights already patched to it move over to your version." : "Read the channel list off the fixture's manual and copy it in order. A fixture built here behaves exactly like one Glow ships.")
@@ -39,44 +40,7 @@ struct FixtureTypeEditor: View {
 				}
 				
 				Section {
-					if draft.modes.count > 1 {
-						Picker("Mode", selection: $index) {
-							ForEach(draft.modes.indices, id: \.self) { position in
-								Text(draft.modes[position].name).tag(position)
-							}
-						}
-					}
-					
-					TextField("Mode name", text: $draft.modes[min(index, draft.modes.count - 1)].name)
-						.autocorrectionDisabled()
-					
-					Button("Add a Mode", systemImage: "plus") {
-						draft.modes.append(FixtureType.Mode(name: "\(draft.modes.count + 1) channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)]))
-						index = draft.modes.count - 1
-					}
-					
-					Button("Duplicate This Mode", systemImage: "plus.square.on.square") {
-						var copy = draft.modes[index]
-						copy.id = nil
-						copy.name = "\(copy.name) copy"
-						draft.modes.insert(copy, at: index + 1)
-						index += 1
-					}
-					
-					if draft.modes.count > 1 {
-						Button("Delete This Mode", systemImage: "trash", role: .destructive) {
-							draft.modes.remove(at: index)
-							index = min(index, draft.modes.count - 1)
-						}
-					}
-				} header: {
-					Text("Mode")
-				} footer: {
-					Text("Each mode is a different channel layout the same fixture can be switched to, and patching picks one. Read them off the fixture's own menu.")
-				}
-				
-				Section {
-					ForEach($draft.modes[min(index, draft.modes.count - 1)].channels) { $channel in
+					ForEach($draft.channels) { $channel in
 						NavigationLink(value: channel.offset) {
 							LabeledContent {
 								Text(channel.addressLabel)
@@ -94,24 +58,24 @@ struct FixtureTypeEditor: View {
 						}
 					}
 					.onDelete { offsets in
-						draft.modes[index].channels.remove(atOffsets: offsets)
-						draft.modes[index].renumber()
+						draft.channels.remove(atOffsets: offsets)
+						draft.renumber()
 					}
 					.onMove { source, destination in
-						draft.modes[index].channels.move(fromOffsets: source, toOffset: destination)
-						draft.modes[index].renumber()
+						draft.channels.move(fromOffsets: source, toOffset: destination)
+						draft.renumber()
 					}
 					
 					Button("Add Channel", systemImage: "plus") {
-						draft.modes[index].channels.append(FixtureChannel(offset: mode.width + 1, attribute: .custom))
+						draft.channels.append(FixtureChannel(offset: draft.channelCount + 1, attribute: .custom))
 					}
 				} header: {
 					Text("Channels")
 				} footer: {
-					Text("This mode uses ^[\(mode.width) address](inflect: true).")
+					Text("This fixture uses ^[\(draft.channelCount) address](inflect: true).")
 				}
 				
-				if mode.mixesWithFlags {
+				if draft.mixesWithFlags {
 					Section {
 						Toggle("Subtractive CMY", isOn: Binding { draft.mixing == .subtractive } set: { draft.mixing = $0 ? .subtractive : .additive })
 					} footer: {
@@ -119,7 +83,7 @@ struct FixtureTypeEditor: View {
 					}
 				}
 				
-				if mode.movesHead {
+				if draft.movesHead {
 					Section("Movement") {
 						TextField("Pan range in degrees", value: $draft.panDegrees, format: .number)
 							.keyboardType(.decimalPad)
@@ -135,8 +99,8 @@ struct FixtureTypeEditor: View {
 			.navigationTitle(original == nil ? "Build a Fixture" : "Edit Fixture")
 			.navigationBarTitleDisplayMode(.inline)
 			.navigationDestination(for: Int.self) { offset in
-				if let position = draft.modes[index].channels.firstIndex(where: { $0.offset == offset }) {
-					ChannelEditor(channel: $draft.modes[index].channels[position], others: draft.modes[index].channels)
+				if let position = draft.channels.firstIndex(where: { $0.offset == offset }) {
+					ChannelEditor(channel: $draft.channels[position], others: draft.channels)
 				}
 			}
 			.toolbar {
@@ -155,7 +119,7 @@ struct FixtureTypeEditor: View {
 						library.adopt(draft, replacing: original, among: fixtures, stored: stored, context: context)
 						dismiss()
 					}
-					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || mode.channels.isEmpty)
+					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || draft.channels.isEmpty)
 				}
 			}
 		}

@@ -176,16 +176,16 @@ final class Console {
 	}
 	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
-		let width = max(1, library.mode(fixture.typeID)?.channelCount ?? 1)
+		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
-		release(fixture.range(library.mode(fixture.typeID)))
+		release(fixture.range(library.type(fixture.typeID)))
 		outputFrames.startOver()
 		selection.forget(fixture)
 		context.delete(fixture)
 	}
 	
 	func duplicate(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
-		let width = max(1, library.mode(fixture.typeID)?.channelCount ?? 1)
+		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
 		let copy = Fixture(typeID: fixture.typeID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
 		copy.invertsPan = fixture.invertsPan
@@ -194,7 +194,7 @@ final class Console {
 		context.insert(copy)
 	}
 	
-	func patch(_ mode: FixtureMode, count: Int, at address: Int, named name: String, among fixtures: [Fixture], context: ModelContext) {
+	func patch(_ mode: FixtureType, count: Int, at address: Int, named name: String, among fixtures: [Fixture], context: ModelContext) {
 		let width = max(1, mode.channelCount)
 		let base = name.trimmingCharacters(in: .whitespaces).isEmpty ? mode.model : name
 		var next = address
@@ -207,7 +207,7 @@ final class Console {
 			fixture.invertsPan = mode.invertsPan
 			fixture.invertsTilt = mode.invertsTilt
 			context.insert(fixture)
-			Programmer(mode: mode, start: start, console: self).applyDefaults()
+			Programmer(type: mode, start: start, console: self).applyDefaults()
 			next += width
 			index += 1
 		}
@@ -245,7 +245,7 @@ final class Console {
 		var levels: [String: [UInt8]] = [:]
 		
 		for fixture in fixtures {
-			guard let profile = library.mode(fixture.typeID) else { continue }
+			guard let profile = library.type(fixture.typeID) else { continue }
 			var values: [UInt8] = []
 			
 			for offset in 0..<profile.channelCount {

@@ -87,7 +87,7 @@ struct ConsoleTests {
 	
 	@MainActor @Test func masterAndBlackoutScaleBothDimmerBytes() throws {
 		let library = FixtureLibrary()
-		let type = FixtureType(id: "test-fine-dimmer", model: "Fine Dimmer", modes: [FixtureType.Mode(id: "fine", name: "3 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer, fineOffset: 2), FixtureChannel(offset: 3, attribute: .pan)])])
+		let type = FixtureType(id: "fine", model: "Fine Dimmer", channels: [FixtureChannel(offset: 1, attribute: .dimmer, fineOffset: 2), FixtureChannel(offset: 3, attribute: .pan)])
 		library.setMade([type])
 		let fixture = Fixture(typeID: "fine", name: "Dimmer", address: DMXAddress(1)!, sortIndex: 0)
 		let console = Console()

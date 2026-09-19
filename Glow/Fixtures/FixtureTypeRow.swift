@@ -8,7 +8,7 @@ struct FixtureTypeRow: View {
 			VStack(alignment: .leading, spacing: 2) {
 				Text(type.name)
 				
-				Text(type.abilities.formatted(.list(type: .and)))
+				Text(type.abilities.isEmpty ? type.mode : "\(type.mode) · \(type.abilities.formatted(.list(type: .and)))")
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.lineLimit(2)
@@ -16,6 +16,5 @@ struct FixtureTypeRow: View {
 		} icon: {
 			Image(systemName: type.symbol)
 		}
-		.badge(type.modes.count > 1 ? Text("^[\(type.modes.count) mode](inflect: true)") : Text(type.channelSpan))
 	}
 }

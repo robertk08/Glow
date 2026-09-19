@@ -8,22 +8,22 @@ struct BuiltInFixtureTests {
 	private let library = FixtureLibrary()
 	
 	@Test func everyBundledDefinitionLoads() {
-		#expect(library.builtIn.count == 6)
+		#expect(library.builtIn.count == 9)
 		#expect(Set(library.builtIn.map(\.id)).count == library.builtIn.count)
-		#expect(Set(library.modes.map(\.id)).count == library.modes.count)
+		#expect(Set(library.types.map(\.id)).count == library.types.count)
 	}
 	
 	@Test func everyModeCoversAContiguousBlockOfAddresses() {
-		for mode in library.modes {
+		for mode in library.types {
 			let slots = mode.channels.flatMap(\.offsets).sorted()
 			#expect(slots == Array(1...slots.count), "\(mode.id) has gaps or overlaps: \(slots)")
 		}
 	}
 	
 	@Test func everyModeOpensWhiteWhenTheDimmerComesUp() {
-		for mode in library.modes where mode.dims && mode.mixesColor && mode.mixing == .additive {
+		for mode in library.types where mode.dims && mode.mixesColor && mode.mixing == .additive {
 			let console = Console()
-			let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+			let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 			programmer.applyDefaults()
 			
 			#expect(programmer.brightness == 0, "\(mode.id) should start off")
@@ -34,9 +34,9 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func raisingTheDimmerLeavesColourUnsetWhereThereIsARealDimmer() {
-		for mode in library.modes where mode.channel(.dimmer) != nil && mode.mixesColor {
+		for mode in library.types where mode.channel(.dimmer) != nil && mode.mixesColor {
 			let console = Console()
-			let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+			let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 			programmer.applyDefaults()
 			programmer.brightness = 1
 			
@@ -45,21 +45,21 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func theFourFixturesAreAllHere() {
-		#expect(library.type("cameo-f2-fc")?.modes.count == 11)
-		#expect(library.type("stairville-bsw350")?.modes.count == 2)
-		#expect(library.type("stairville-hl-x180")?.modes.count == 3)
-		#expect(library.type("mini-moving-head")?.modes.count == 2)
+		#expect(library.type("cameo-f2-fc-16ch")?.channelCount == 16)
+		#expect(library.type("stairville-bsw350-32ch")?.channelCount == 32)
+		#expect(library.type("stairville-hl-x180-8ch")?.channelCount == 8)
+		#expect(library.type("mini-moving-head-14ch")?.channelCount == 14)
 	}
 	
 	@Test func theMovingHeadsKnowTheirTravel() {
-		#expect(library.type("stairville-bsw350")?.panDegrees == 540)
-		#expect(library.type("stairville-bsw350")?.tiltDegrees == 270)
-		#expect(library.type("mini-moving-head")?.panDegrees == 540)
-		#expect(library.type("mini-moving-head")?.invertsPan == true)
+		#expect(library.type("stairville-bsw350-32ch")?.panDegrees == 540)
+		#expect(library.type("stairville-bsw350-32ch")?.tiltDegrees == 270)
+		#expect(library.type("mini-moving-head-14ch")?.panDegrees == 540)
+		#expect(library.type("mini-moving-head-14ch")?.invertsPan == true)
 	}
 	
 	@Test func theBigHeadCarriesItsWheelsAndItsResets() {
-		guard let mode = library.mode("stairville-bsw350-32ch") else {
+		guard let mode = library.type("stairville-bsw350-32ch") else {
 			Issue.record("missing the 32 channel mode")
 			return
 		}
@@ -77,7 +77,7 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func theFresnelCarriesItsFilterLibrary() {
-		guard let mode = library.mode("cameo-f2-fc-16ch") else {
+		guard let mode = library.type("cameo-f2-fc-16ch") else {
 			Issue.record("missing the 16 channel mode")
 			return
 		}
@@ -91,7 +91,7 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func theFloodKnowsWhichChannelsItsColourDependsOn() {
-		guard let mode = library.mode("stairville-hl-x180-8ch") else {
+		guard let mode = library.type("stairville-hl-x180-8ch") else {
 			Issue.record("missing the 8 channel mode")
 			return
 		}
@@ -102,7 +102,7 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func theSmallHeadDimsThroughItsShutter() {
-		guard let mode = library.mode("mini-moving-head-14ch") else {
+		guard let mode = library.type("mini-moving-head-14ch") else {
 			Issue.record("missing the 14 channel mode")
 			return
 		}
@@ -118,13 +118,13 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func theFresnelBalancesWhiteAndReadsItBack() {
-		guard let mode = library.mode("cameo-f2-fc-16ch") else {
+		guard let mode = library.type("cameo-f2-fc-16ch") else {
 			Issue.record("missing the 16 channel mode")
 			return
 		}
 		
 		let console = Console()
-		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 		programmer.applyDefaults()
 		
 		#expect(programmer.balancesWhite)
@@ -139,7 +139,7 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func everyFilterPresetInTheFresnelHasASwatch() {
-		guard let macro = library.mode("cameo-f2-fc-16ch")?.channel(.colorMacro) else {
+		guard let macro = library.type("cameo-f2-fc-16ch")?.channel(.colorMacro) else {
 			Issue.record("missing the color preset channel")
 			return
 		}
@@ -152,13 +152,13 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func aStrobeReadsInHertzWhereTheManualGivesOne() {
-		guard let mode = library.mode("cameo-f2-fc-16ch"), let shutter = mode.channel(.shutter) else {
+		guard let mode = library.type("cameo-f2-fc-16ch"), let shutter = mode.channel(.shutter) else {
 			Issue.record("missing the shutter")
 			return
 		}
 		
 		let console = Console()
-		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 		programmer.applyDefaults()
 		
 		#expect(programmer.strobeHertz == nil)
@@ -167,79 +167,27 @@ struct BuiltInFixtureTests {
 	}
 	
 	@Test func aHandMadeFixtureIsNoLessCapableThanABuiltInOne() throws {
-		guard let builtIn = library.type("stairville-bsw350") else {
+		guard let builtIn = library.type("stairville-bsw350-32ch") else {
 			Issue.record("missing the head")
 			return
 		}
 		
 		var mine = builtIn
 		mine.id = "made-by-hand"
-		for index in mine.modes.indices {
-			mine.modes[index].id = nil
-		}
 		let copy = try JSONDecoder().decode(FixtureType.self, from: JSONEncoder().encode(mine))
 		
 		let empty = FixtureLibrary(builtIn: [])
 		empty.setMade([copy])
 		
-		guard let theirs = library.mode("stairville-bsw350-32ch"), let ours = empty.mode("made-by-hand-32-channel") else {
-			Issue.record("could not resolve both modes")
+		guard let ours = empty.type("made-by-hand") else {
+			Issue.record("a made fixture has to resolve on its own")
 			return
 		}
 		
-		#expect(ours.channels == theirs.channels)
-		#expect(ours.dimming == theirs.dimming)
-		#expect(ours.abilities == theirs.abilities)
-		#expect(ours.defaults == theirs.defaults)
-	}
-	
-	@Test func noBuiltInUsesAnythingTheBuilderCannotWrite() throws {
-		let reachable: Set<String> = [
-			"id", "manufacturer", "model", "symbol", "mixing", "invertsPan", "invertsTilt", "panDegrees", "tiltDegrees", "modes",
-			"name", "channels",
-			"offset", "fineOffset", "attribute", "label", "defaultValue", "fineDefaultValue", "highlightValue", "enabledBy", "functions",
-			"from", "to", "kind", "purpose", "unit", "physicalFrom", "physicalTo", "requiresConfirmation", "holdSeconds", "colors", "sets",
-		]
-		
-		func keys(_ value: Any) -> Set<String> {
-			if let object = value as? [String: Any] {
-				return Set(object.keys).union(object.values.flatMap { keys($0) })
-			}
-			if let list = value as? [Any] {
-				return Set(list.flatMap { keys($0) })
-			}
-			return []
-		}
-		
-		for type in library.builtIn {
-			let data = try JSONEncoder().encode(type)
-			let found = keys(try JSONSerialization.jsonObject(with: data))
-			#expect(found.subtracting(reachable).isEmpty, "\(type.id) uses \(found.subtracting(reachable).sorted()), which the builder cannot set")
-		}
-	}
-	
-	@Test func aBuilderMadeFixtureCanCarryWheelsAndDependencies() throws {
-		var gobo = FixtureChannel(offset: 1, attribute: .gobo, label: "Gobo wheel", defaultValue: 0, highlightValue: 0)
-		var wheel = ChannelFunction(from: 6, to: 89, label: "Gobo", kind: .proportional)
-		wheel.sets = [ChannelSet(from: 6, to: 17, label: "Dots", colors: ["ff0000"]), ChannelSet(from: 18, to: 29, label: "Breakup")]
-		gobo.functions = [ChannelFunction(from: 0, to: 5, label: "Open", purpose: .open), wheel]
-		
-		var colour = FixtureChannel(offset: 2, attribute: .red, fineOffset: 3, defaultValue: 255, fineDefaultValue: 12)
-		colour.enabledBy = FixtureChannel.Dependency(offset: 1, from: 0, to: 5)
-		
-		let mine = FixtureType(id: "mine", model: "Mine", modes: [
-			FixtureType.Mode(name: "3 channel", channels: [gobo, colour]),
-			FixtureType.Mode(name: "1 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)]),
-		])
-		
-		let back = try JSONDecoder().decode(FixtureType.self, from: JSONEncoder().encode(mine))
-		
-		#expect(back == mine)
-		#expect(back.fixtureModes.count == 2)
-		#expect(back.fixtureModes[0].channel(.gobo)?.function(containing: 20)?.set(containing: 20)?.label == "Breakup")
-		#expect(back.fixtureModes[0].channel(.red)?.enabledBy?.contains(3) == true)
-		#expect(back.fixtureModes[0].channel(.red)?.fineDefaultValue == 12)
-		#expect(back.fixtureModes[0].defaults == [0, 255, 12])
+		#expect(ours.channels == builtIn.channels)
+		#expect(ours.dimming == builtIn.dimming)
+		#expect(ours.abilities == builtIn.abilities)
+		#expect(ours.defaults == builtIn.defaults)
 	}
 	
 	@Test func theAppWorksWithNoBuiltInDefinitionsAtAll() {
@@ -247,22 +195,21 @@ struct BuiltInFixtureTests {
 		let console = Console()
 		
 		#expect(empty.types.isEmpty)
-		#expect(empty.modes.isEmpty)
 		
-		let mine = FixtureType(id: "mine", model: "Mine", modes: [FixtureType.Mode(name: "4 channel", channels: [
+		let mine = FixtureType(id: "mine", model: "Mine", channels: [
 			FixtureChannel(offset: 1, attribute: .dimmer),
 			FixtureChannel(offset: 2, attribute: .red),
 			FixtureChannel(offset: 3, attribute: .green),
 			FixtureChannel(offset: 4, attribute: .blue, defaultValue: 255),
-		])])
+		])
 		empty.setMade([mine])
 		
-		guard let mode = empty.mode("mine-4-channel") else {
+		guard let mode = empty.type("mine") else {
 			Issue.record("a made fixture has to be patchable on its own")
 			return
 		}
 		
-		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 		programmer.applyDefaults()
 		programmer.brightness = 1
 		

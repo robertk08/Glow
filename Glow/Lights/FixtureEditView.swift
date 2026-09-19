@@ -13,17 +13,17 @@ struct FixtureEditView: View {
 	
 	@State private var isRemoving = false
 	
-	private var mode: FixtureMode? { library.mode(fixture.typeID) }
+	private var type: FixtureType? { library.type(fixture.typeID) }
 	
 	var body: some View {
 		Form {
-			if mode == nil {
+			if type == nil {
 				Section {
 					Picker("Fixture", selection: $fixture.typeID) {
 						Text("Not set").tag(fixture.typeID)
 						
-						ForEach(library.modes) { option in
-							Text("\(option.name), \(option.mode)").tag(option.id)
+						ForEach(library.types) { option in
+							Text(option.mode.isEmpty ? option.name : "\(option.name), \(option.mode)").tag(option.id)
 						}
 					}
 				} header: {
@@ -39,7 +39,7 @@ struct FixtureEditView: View {
 			}
 			
 			Section("Icon") {
-				AppearancePicker(symbol: Binding { fixture.symbol(mode) } set: { fixture.symbolOverride = $0 })
+				AppearancePicker(symbol: Binding { fixture.symbol(type) } set: { fixture.symbolOverride = $0 })
 			}
 			
 			if !groups.isEmpty {
@@ -53,7 +53,7 @@ struct FixtureEditView: View {
 				}
 			}
 			
-			if mode?.movesHead == true {
+			if type?.movesHead == true {
 				Section {
 					Toggle("Invert Pan", isOn: $fixture.invertsPan)
 					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
@@ -70,13 +70,13 @@ struct FixtureEditView: View {
 						.monospacedDigit()
 				}
 				
-				if let mode {
-					LabeledContent("Channels", value: "\(mode.channelCount)")
+				if let type {
+					LabeledContent("Channels", value: "\(type.channelCount)")
 					
 					NavigationLink {
-						FixtureTypeView(type: library.type(holding: fixture.typeID) ?? FixtureType.blank)
+						FixtureTypeView(type: type)
 					} label: {
-						LabeledContent("Fixture", value: mode.name)
+						LabeledContent("Fixture", value: type.name)
 					}
 				}
 			} header: {

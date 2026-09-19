@@ -1,0 +1,1023 @@
+{
+  "id": "stairville-bsw350-32ch",
+  "manufacturer": "Stairville",
+  "model": "BSW-350 LED",
+  "symbol": "light.beacon.max",
+  "mixing": "subtractive",
+  "panDegrees": 540,
+  "tiltDegrees": 270,
+  "mode": "32 channel",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "pan",
+      "fineOffset": 2,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 540\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 540
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "tilt",
+      "fineOffset": 4,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 270\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 270
+        }
+      ]
+    },
+    {
+      "offset": 5,
+      "attribute": "dimmer",
+      "fineOffset": 6,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 7,
+      "attribute": "shutter",
+      "label": "Shutter and strobe",
+      "highlightValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Open",
+          "purpose": "open"
+        },
+        {
+          "from": 6,
+          "to": 10,
+          "label": "Open"
+        },
+        {
+          "from": 11,
+          "to": 33,
+          "label": "Closed",
+          "purpose": "closed"
+        },
+        {
+          "from": 34,
+          "to": 56,
+          "label": "Random pulse, slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 57,
+          "to": 79,
+          "label": "Random ramp up, slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 80,
+          "to": 102,
+          "label": "Random ramp down, slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 103,
+          "to": 127,
+          "label": "Random strobe, slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 128,
+          "to": 250,
+          "label": "Burst with break, 5 s to 1 s",
+          "kind": "proportional",
+          "unit": "seconds",
+          "physicalFrom": 5,
+          "physicalTo": 1
+        },
+        {
+          "from": 251,
+          "to": 255,
+          "label": "Strobe, slow to fast",
+          "kind": "proportional",
+          "unit": "hertz",
+          "physicalFrom": 1,
+          "physicalTo": 20
+        }
+      ]
+    },
+    {
+      "offset": 8,
+      "attribute": "cyan",
+      "fineOffset": 9,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 10,
+      "attribute": "magenta",
+      "fineOffset": 11,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 12,
+      "attribute": "yellow",
+      "fineOffset": 13,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 14,
+      "attribute": "colorTemperature",
+      "label": "CTO",
+      "fineOffset": 15,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 16,
+      "attribute": "colorWheel",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Open",
+          "purpose": "release",
+          "colors": [
+            "ffffff"
+          ]
+        },
+        {
+          "from": 6,
+          "to": 145,
+          "label": "Color",
+          "sets": [
+            {
+              "from": 6,
+              "to": 15,
+              "label": "Open to dark red",
+              "colors": [
+                "ffffff",
+                "8b0000"
+              ]
+            },
+            {
+              "from": 16,
+              "to": 25,
+              "label": "Dark red",
+              "colors": [
+                "8b0000"
+              ]
+            },
+            {
+              "from": 26,
+              "to": 35,
+              "label": "Dark red to dark orange",
+              "colors": [
+                "8b0000",
+                "b34700"
+              ]
+            },
+            {
+              "from": 36,
+              "to": 45,
+              "label": "Dark orange",
+              "colors": [
+                "b34700"
+              ]
+            },
+            {
+              "from": 46,
+              "to": 55,
+              "label": "Dark orange to dark blue",
+              "colors": [
+                "b34700",
+                "10218b"
+              ]
+            },
+            {
+              "from": 56,
+              "to": 65,
+              "label": "Dark blue",
+              "colors": [
+                "10218b"
+              ]
+            },
+            {
+              "from": 66,
+              "to": 75,
+              "label": "Dark blue to yellow",
+              "colors": [
+                "10218b",
+                "f2e21c"
+              ]
+            },
+            {
+              "from": 76,
+              "to": 85,
+              "label": "Yellow",
+              "colors": [
+                "f2e21c"
+              ]
+            },
+            {
+              "from": 86,
+              "to": 95,
+              "label": "Yellow to dark green",
+              "colors": [
+                "f2e21c",
+                "0b6b35"
+              ]
+            },
+            {
+              "from": 96,
+              "to": 105,
+              "label": "Dark green",
+              "colors": [
+                "0b6b35"
+              ]
+            },
+            {
+              "from": 106,
+              "to": 115,
+              "label": "Dark green to lavender",
+              "colors": [
+                "0b6b35",
+                "b09bd8"
+              ]
+            },
+            {
+              "from": 116,
+              "to": 125,
+              "label": "Lavender",
+              "colors": [
+                "b09bd8"
+              ]
+            },
+            {
+              "from": 126,
+              "to": 135,
+              "label": "Lavender to cyan",
+              "colors": [
+                "b09bd8",
+                "00c8d7"
+              ]
+            },
+            {
+              "from": 136,
+              "to": 145,
+              "label": "Cyan",
+              "colors": [
+                "00c8d7"
+              ]
+            }
+          ]
+        },
+        {
+          "from": 146,
+          "to": 185,
+          "label": "Open",
+          "colors": [
+            "ffffff"
+          ]
+        },
+        {
+          "from": 186,
+          "to": 218,
+          "label": "Clockwise scroll, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 219,
+          "to": 222,
+          "label": "Stop"
+        },
+        {
+          "from": 223,
+          "to": 255,
+          "label": "Anticlockwise scroll, slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 17,
+      "attribute": "cri",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "High output"
+        },
+        {
+          "from": 6,
+          "to": 255,
+          "label": "High color rendering"
+        }
+      ]
+    },
+    {
+      "offset": 18,
+      "attribute": "gobo",
+      "label": "Gobo wheel 1",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Open",
+          "purpose": "open"
+        },
+        {
+          "from": 6,
+          "to": 89,
+          "label": "Gobo",
+          "sets": [
+            {
+              "from": 6,
+              "to": 17,
+              "label": "Gobo 1"
+            },
+            {
+              "from": 18,
+              "to": 29,
+              "label": "Gobo 2"
+            },
+            {
+              "from": 30,
+              "to": 41,
+              "label": "Gobo 3"
+            },
+            {
+              "from": 42,
+              "to": 53,
+              "label": "Gobo 4"
+            },
+            {
+              "from": 54,
+              "to": 65,
+              "label": "Gobo 5"
+            },
+            {
+              "from": 66,
+              "to": 77,
+              "label": "Gobo 6"
+            },
+            {
+              "from": 78,
+              "to": 89,
+              "label": "Gobo 7"
+            }
+          ]
+        },
+        {
+          "from": 90,
+          "to": 173,
+          "label": "Gobo shake, slow to fast",
+          "kind": "proportional",
+          "sets": [
+            {
+              "from": 90,
+              "to": 101,
+              "label": "Gobo 1 shake"
+            },
+            {
+              "from": 102,
+              "to": 113,
+              "label": "Gobo 2 shake"
+            },
+            {
+              "from": 114,
+              "to": 125,
+              "label": "Gobo 3 shake"
+            },
+            {
+              "from": 126,
+              "to": 137,
+              "label": "Gobo 4 shake"
+            },
+            {
+              "from": 138,
+              "to": 149,
+              "label": "Gobo 5 shake"
+            },
+            {
+              "from": 150,
+              "to": 161,
+              "label": "Gobo 6 shake"
+            },
+            {
+              "from": 162,
+              "to": 173,
+              "label": "Gobo 7 shake"
+            }
+          ]
+        },
+        {
+          "from": 174,
+          "to": 185,
+          "label": "Open"
+        },
+        {
+          "from": 186,
+          "to": 218,
+          "label": "Clockwise scroll, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 219,
+          "to": 222,
+          "label": "Stop"
+        },
+        {
+          "from": 223,
+          "to": 255,
+          "label": "Anticlockwise scroll, slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 19,
+      "attribute": "goboRotation",
+      "fineOffset": 20,
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Off"
+        },
+        {
+          "from": 6,
+          "to": 128,
+          "label": "Index 0\u00b0 to 540\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 540
+        },
+        {
+          "from": 129,
+          "to": 191,
+          "label": "Clockwise spin, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 192,
+          "to": 192,
+          "label": "Stop"
+        },
+        {
+          "from": 193,
+          "to": 255,
+          "label": "Anticlockwise spin, slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 21,
+      "attribute": "gobo2",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Open",
+          "purpose": "open"
+        },
+        {
+          "from": 6,
+          "to": 93,
+          "label": "Gobo",
+          "sets": [
+            {
+              "from": 6,
+              "to": 13,
+              "label": "Gobo 1"
+            },
+            {
+              "from": 14,
+              "to": 21,
+              "label": "Gobo 2"
+            },
+            {
+              "from": 22,
+              "to": 29,
+              "label": "Gobo 3"
+            },
+            {
+              "from": 30,
+              "to": 37,
+              "label": "Gobo 4"
+            },
+            {
+              "from": 38,
+              "to": 45,
+              "label": "Gobo 5"
+            },
+            {
+              "from": 46,
+              "to": 53,
+              "label": "Gobo 6"
+            },
+            {
+              "from": 54,
+              "to": 61,
+              "label": "Gobo 7"
+            },
+            {
+              "from": 62,
+              "to": 69,
+              "label": "Gobo 8"
+            },
+            {
+              "from": 70,
+              "to": 77,
+              "label": "Gobo 9"
+            },
+            {
+              "from": 78,
+              "to": 85,
+              "label": "Gobo 10"
+            },
+            {
+              "from": 86,
+              "to": 93,
+              "label": "Gobo 11"
+            }
+          ]
+        },
+        {
+          "from": 94,
+          "to": 189,
+          "label": "Gobo shake, slow to fast",
+          "kind": "proportional",
+          "sets": [
+            {
+              "from": 94,
+              "to": 101,
+              "label": "Open shake"
+            },
+            {
+              "from": 102,
+              "to": 109,
+              "label": "Gobo 1 shake"
+            },
+            {
+              "from": 110,
+              "to": 117,
+              "label": "Gobo 2 shake"
+            },
+            {
+              "from": 118,
+              "to": 125,
+              "label": "Gobo 3 shake"
+            },
+            {
+              "from": 126,
+              "to": 133,
+              "label": "Gobo 4 shake"
+            },
+            {
+              "from": 134,
+              "to": 141,
+              "label": "Gobo 5 shake"
+            },
+            {
+              "from": 142,
+              "to": 149,
+              "label": "Gobo 6 shake"
+            },
+            {
+              "from": 150,
+              "to": 157,
+              "label": "Gobo 7 shake"
+            },
+            {
+              "from": 158,
+              "to": 165,
+              "label": "Gobo 8 shake"
+            },
+            {
+              "from": 166,
+              "to": 173,
+              "label": "Gobo 9 shake"
+            },
+            {
+              "from": 174,
+              "to": 181,
+              "label": "Gobo 10 shake"
+            },
+            {
+              "from": 182,
+              "to": 189,
+              "label": "Gobo 11 shake"
+            }
+          ]
+        },
+        {
+          "from": 190,
+          "to": 197,
+          "label": "Open"
+        },
+        {
+          "from": 198,
+          "to": 225,
+          "label": "Clockwise scroll, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 226,
+          "to": 227,
+          "label": "Stop"
+        },
+        {
+          "from": 228,
+          "to": 255,
+          "label": "Anticlockwise scroll, slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 22,
+      "attribute": "zoom",
+      "fineOffset": 23,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Narrow to wide",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 5,
+          "physicalTo": 35
+        }
+      ]
+    },
+    {
+      "offset": 24,
+      "attribute": "focus",
+      "fineOffset": 25,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 26,
+      "attribute": "prism",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Out",
+          "purpose": "open"
+        },
+        {
+          "from": 6,
+          "to": 255,
+          "label": "Five-facet prism in"
+        }
+      ]
+    },
+    {
+      "offset": 27,
+      "attribute": "prismRotation",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Off"
+        },
+        {
+          "from": 6,
+          "to": 128,
+          "label": "Index 0\u00b0 to 540\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 540
+        },
+        {
+          "from": 129,
+          "to": 191,
+          "label": "Clockwise spin, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 192,
+          "to": 192,
+          "label": "Stop"
+        },
+        {
+          "from": 193,
+          "to": 255,
+          "label": "Anticlockwise spin, slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 28,
+      "attribute": "frost",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 29,
+      "attribute": "positionMacro",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "Off",
+          "purpose": "release"
+        },
+        {
+          "from": 6,
+          "to": 40,
+          "label": "Pan sweep, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 41,
+          "to": 75,
+          "label": "Tilt sweep, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 76,
+          "to": 110,
+          "label": "Pan and tilt, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 111,
+          "to": 145,
+          "label": "Pan and tilt inverted, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 146,
+          "to": 180,
+          "label": "Circle, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 181,
+          "to": 215,
+          "label": "Circle inverted, small to large",
+          "kind": "proportional"
+        },
+        {
+          "from": 216,
+          "to": 255,
+          "label": "Random, small to large",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 30,
+      "attribute": "panTiltSpeed",
+      "label": "Pan and tilt speed",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Fast to slow",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 31,
+      "attribute": "dimmerCurve",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "No function"
+        },
+        {
+          "from": 6,
+          "to": 63,
+          "label": "Linear"
+        },
+        {
+          "from": 64,
+          "to": 127,
+          "label": "Exponential"
+        },
+        {
+          "from": 128,
+          "to": 191,
+          "label": "Logarithmic"
+        },
+        {
+          "from": 192,
+          "to": 255,
+          "label": "S-curve"
+        }
+      ]
+    },
+    {
+      "offset": 32,
+      "attribute": "control",
+      "label": "Special functions",
+      "functions": [
+        {
+          "from": 0,
+          "to": 5,
+          "label": "No function"
+        },
+        {
+          "from": 6,
+          "to": 20,
+          "label": "Blackout while moving on",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 21,
+          "to": 35,
+          "label": "Blackout while moving off",
+          "requiresConfirmation": true,
+          "holdSeconds": 5
+        },
+        {
+          "from": 36,
+          "to": 50,
+          "label": "Invert pan on",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 51,
+          "to": 65,
+          "label": "Invert pan off",
+          "requiresConfirmation": true,
+          "holdSeconds": 5
+        },
+        {
+          "from": 66,
+          "to": 80,
+          "label": "Invert tilt on",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 81,
+          "to": 95,
+          "label": "Invert tilt off",
+          "requiresConfirmation": true,
+          "holdSeconds": 5
+        },
+        {
+          "from": 96,
+          "to": 110,
+          "label": "Automatic fan",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 111,
+          "to": 125,
+          "label": "Silent fan",
+          "requiresConfirmation": true,
+          "holdSeconds": 5
+        },
+        {
+          "from": 126,
+          "to": 140,
+          "label": "LED PWM 800 Hz",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 141,
+          "to": 155,
+          "label": "LED PWM 1200 Hz",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 156,
+          "to": 170,
+          "label": "LED PWM 2000 Hz",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 171,
+          "to": 185,
+          "label": "LED PWM 3600 Hz",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 186,
+          "to": 200,
+          "label": "LED PWM 25 kHz",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 201,
+          "to": 215,
+          "label": "Pan and tilt reset",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 216,
+          "to": 230,
+          "label": "Head reset",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 231,
+          "to": 255,
+          "label": "Full reset",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        }
+      ]
+    }
+  ]
+}

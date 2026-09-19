@@ -1,0 +1,257 @@
+{
+  "id": "mini-moving-head-14ch",
+  "model": "Mini LED Moving Head",
+  "symbol": "light.beacon.max",
+  "invertsPan": true,
+  "panDegrees": 540,
+  "tiltDegrees": 270,
+  "mode": "14 channel",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "pan",
+      "fineOffset": 2,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 540\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 540
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "tilt",
+      "fineOffset": 4,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 270\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 270
+        }
+      ]
+    },
+    {
+      "offset": 5,
+      "attribute": "panTiltSpeed",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Fast to slow",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 6,
+      "attribute": "shutter",
+      "label": "Dimmer and strobe",
+      "highlightValue": 240,
+      "functions": [
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Closed",
+          "purpose": "closed"
+        },
+        {
+          "from": 8,
+          "to": 134,
+          "label": "Dimmer",
+          "kind": "proportional",
+          "purpose": "dim",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        },
+        {
+          "from": 135,
+          "to": 239,
+          "label": "Strobe, slow to fast",
+          "kind": "proportional",
+          "unit": "hertz",
+          "physicalFrom": 1,
+          "physicalTo": 20
+        },
+        {
+          "from": 240,
+          "to": 255,
+          "label": "Open",
+          "purpose": "open"
+        }
+      ]
+    },
+    {
+      "offset": 7,
+      "attribute": "red",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 8,
+      "attribute": "green",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 9,
+      "attribute": "blue",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 10,
+      "attribute": "white",
+      "defaultValue": 255,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 11,
+      "attribute": "colorMacro",
+      "functions": [
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Off, the mixer runs the light",
+          "purpose": "release"
+        },
+        {
+          "from": 8,
+          "to": 231,
+          "label": "Built-in color",
+          "kind": "proportional"
+        },
+        {
+          "from": 232,
+          "to": 255,
+          "label": "Color jumping",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 12,
+      "attribute": "programSpeed",
+      "label": "Color speed",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Slow to fast",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 13,
+      "attribute": "program",
+      "label": "Mode",
+      "functions": [
+        {
+          "from": 0,
+          "to": 7,
+          "label": "Manual, answers DMX",
+          "purpose": "release"
+        },
+        {
+          "from": 8,
+          "to": 63,
+          "label": "Auto, fast",
+          "requiresConfirmation": true
+        },
+        {
+          "from": 64,
+          "to": 127,
+          "label": "Auto, slow",
+          "requiresConfirmation": true
+        },
+        {
+          "from": 128,
+          "to": 191,
+          "label": "Sound 1",
+          "requiresConfirmation": true
+        },
+        {
+          "from": 192,
+          "to": 255,
+          "label": "Sound 2",
+          "requiresConfirmation": true
+        }
+      ]
+    },
+    {
+      "offset": 14,
+      "attribute": "reset",
+      "functions": [
+        {
+          "from": 0,
+          "to": 149,
+          "label": "No function"
+        },
+        {
+          "from": 150,
+          "to": 200,
+          "label": "Reset head",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 201,
+          "to": 255,
+          "label": "No function"
+        }
+      ]
+    }
+  ]
+}

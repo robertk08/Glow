@@ -77,15 +77,13 @@ private struct ChannelCell: View {
 	var body: some View {
 		let value = monitor.values[address - 1]
 		let isArmed = monitor.adjusting == address
-		let isSet = console.isActive(DMXAddress(clamping: address))
-		
 		VStack(spacing: 1) {
 			Text("\(address)")
 				.font(.system(size: 9).monospacedDigit())
-				.foregroundStyle(isSet ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+				.foregroundStyle(.secondary)
 			
 			Text("\(value)")
-				.font(.system(size: 13, weight: isSet ? .semibold : .medium).monospacedDigit())
+				.font(.system(size: 13, weight: .medium).monospacedDigit())
 				.contentTransition(.numericText(value: Double(value)))
 		}
 		.frame(maxWidth: .infinity)
@@ -96,13 +94,9 @@ private struct ChannelCell: View {
 					.fill(.fill.quaternary)
 				
 				Rectangle()
-					.fill(owned ? Color.accentColor.opacity(0.55) : Color.orange.opacity(0.55))
+					.fill(Color.accentColor.opacity(owned ? 0.55 : 0.2))
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
-		}
-		.overlay {
-			RoundedRectangle(cornerRadius: 6, style: .continuous)
-				.strokeBorder(.tint, lineWidth: isSet ? 1.5 : 0)
 		}
 		.containerShape(.rect(cornerRadius: 6, style: .continuous))
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
@@ -114,6 +108,6 @@ private struct ChannelCell: View {
 			monitor.commit()
 		}, including: monitor.showsSource ? .all : .subviews)
 		.accessibilityElement(children: .combine)
-		.accessibilityValue(isSet ? "\(value), set" : "\(value)")
+		.accessibilityValue("\(value)")
 	}
 }

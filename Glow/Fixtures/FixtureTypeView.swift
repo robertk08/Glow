@@ -7,14 +7,12 @@ struct FixtureTypeView: View {
 	
 	var patching: Binding<Bool>?
 	
-	@State private var index = 0
 	@State private var isEditing = false
 	
 	var body: some View {
 		let type = library.type(self.type.id) ?? self.type
-		let mode = type.fixtureModes[min(index, type.fixtureModes.count - 1)]
 		
-		return List {
+		List {
 			Section {
 				if !type.manufacturer.isEmpty {
 					LabeledContent("Make", value: type.manufacturer)
@@ -22,20 +20,14 @@ struct FixtureTypeView: View {
 				
 				LabeledContent("Model", value: type.model)
 				
-				if type.modes.count > 1 {
-					Picker("Mode", selection: $index) {
-						ForEach(type.modes.indices, id: \.self) { position in
-							Text(type.modes[position].name).tag(position)
-						}
-					}
-				} else {
-					LabeledContent("Mode", value: mode.mode)
+				if !type.mode.isEmpty {
+					LabeledContent("Mode", value: type.mode)
 				}
 				
-				LabeledContent("Channels", value: "\(mode.channelCount)")
+				LabeledContent("Channels", value: "\(type.channelCount)")
 				
-				if mode.mixesColor {
-					LabeledContent("Color", value: mode.mixing == .subtractive ? "CMY filters" : "Emitters")
+				if type.mixesColor {
+					LabeledContent("Color", value: type.mixing == .subtractive ? "CMY filters" : "Emitters")
 				}
 				
 				if let pan = type.panDegrees {
@@ -49,14 +41,13 @@ struct FixtureTypeView: View {
 			
 			if let patching {
 				Section {
-					NavigationLink("Patch This Mode") {
-						PatchView(mode: mode, isPresented: patching)
+					NavigationLink("Add to the Patch") {
+						PatchView(mode: type, isPresented: patching)
 					}
-					.font(.headline)
 				}
 			}
 			
-			ForEach(mode.channels) { channel in
+			ForEach(type.channels) { channel in
 				Section {
 					ForEach(channel.functions) { function in
 						LabeledContent {

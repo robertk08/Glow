@@ -1,0 +1,53 @@
+{
+  "id": "generic-par-rgb-3ch",
+  "model": "LED Par",
+  "symbol": "lightbulb.max",
+  "mode": "3 channel, RGB",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "red",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 2,
+      "attribute": "green",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "blue",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    }
+  ]
+}

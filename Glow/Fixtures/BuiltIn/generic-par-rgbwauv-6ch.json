@@ -1,0 +1,103 @@
+{
+  "id": "generic-par-rgbwauv-6ch",
+  "model": "LED Par",
+  "symbol": "lightbulb.max",
+  "mode": "6 channel, RGBWA and UV",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "red",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 2,
+      "attribute": "green",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "blue",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 4,
+      "attribute": "white",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 5,
+      "attribute": "amber",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 6,
+      "attribute": "uv",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    }
+  ]
+}

@@ -16,15 +16,13 @@ holding Clear offers Release Values. A group is a saved selection, not a
 container. The master fader and blackout hold the accessory whenever nothing is
 selected.
 
-The programmer is the fixture's own feature groups along the top, and one
-control surface for whichever group you are on, fixed above the rest. Intensity
-is a bar carrying the light's colour and its level. Colour is a wheel, the
-fixture's presets, and a temperature strip where there is white to balance.
-Position is a pad reading real degrees, with a fine mode that moves a sixth as
-far for the same gesture. Beam draws the cone, widening with zoom and softening
-with focus, and strobe flashes at the rate the fixture is actually running.
-Wheels are their named slots, split swatches and all. Anything the definition
-carries but the surface does not is under All Channels, on its raw value.
+The programmer is the fixture's own feature groups along the top, and the
+controls for whichever group you are on above the rest of its channels.
+Everything is a system control unless there is nothing that fits: position is a
+pad reading real degrees with a fine mode that moves a sixth as far for the same
+gesture, and beam draws the cone, widening with zoom and softening with focus.
+Wheels are a picker with their swatches under it. Anything the definition
+carries but the group does not show is under All Channels, on its raw value.
 
 Blackout latches and pulls only the dimmers down, the same channels and the same
 way the master fader does, so a head keeps its position and its colour through
@@ -34,18 +32,15 @@ The patch, the groups, the fixtures built here and the scenes sit in one store
 with an undo manager, so editing is undoable. Removing a light writes zeros
 across its channels on the way out. A light whose fixture definition is gone
 says so on its tile and opens straight into a picker to point it at another
-one, keeping its name, address and group. Highlight puts a fixture where you
-can find it on stage without setting anything, so you can leave it and go back
-to what you were doing.
+one, keeping its name, address and group.
 
 A moving head can be told to invert pan, tilt or both. The fixture definition
 carries what is usual for that model and each patched light can differ.
 
 A fixture type is one file, whether Glow ships it or you build it here, and the
-app reads both through the same decoder. A type carries one or more DMX modes,
-and patching picks the mode the fixture is switched to. A channel names the
-attribute it drives rather than an index, so the same control reaches pan on
-any head and the dimmer on any lamp. A channel can claim a second address as
+app reads both through the same decoder. A channel names the attribute it
+drives rather than an index, so the same control reaches pan on any head and
+the dimmer on any lamp. A channel can claim a second address as
 its fine half, carry a default and a highlight value, and split into named
 functions with named sets inside them, which is how a gobo wheel offers its
 gobos and a colour wheel its slots. A function can say what it stands for, the
@@ -56,10 +51,10 @@ whose colour channels go dead while a built-in pattern runs.
 
 Editing a fixture Glow ships keeps the original and saves yours beside it, and
 any light already patched to it moves over. Everything a bundled definition
-can say, the builder can write: modes, 16-bit pairs and their defaults,
-highlight values, named functions, the slots inside them and their swatches,
-real units, and the channel a channel depends on. A test fails if a bundled
-definition ever uses a field the builder cannot set.
+can say, the builder can write: 16-bit pairs and their defaults, named
+functions, the slots inside them and their swatches, real units, and the
+channel a channel depends on. A test fails if a bundled definition ever uses a
+field the builder cannot set.
 
 Every channel has a default, and defaults are not settings. A light patched
 and brought up reads plain white, centred, no gobo and no strobe, because that
@@ -82,9 +77,8 @@ exports and imports as one JSON file carrying the date its format was settled
 and the date it was written. A file from a newer format is refused, one with no
 version at all is taken as it comes.
 
-The DMX monitor shows output after master and blackout, and marks the channels
-you have set against the ones riding their default. Switch to Source to inspect
-or adjust the programmer values before those controls.
+The DMX monitor shows output after master and blackout. Switch to Source to
+inspect or adjust the programmer values before those controls.
 
 Bundled fixture channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
 [Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),

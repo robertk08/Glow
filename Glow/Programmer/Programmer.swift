@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 struct Programmer {
 	nonisolated struct Target: Equatable, Sendable {
-		let mode: FixtureMode
+		let type: FixtureType
 		let start: DMXAddress
 		var invertsPan = false
 		var invertsTilt = false
@@ -17,7 +17,7 @@ struct Programmer {
 		}
 		
 		var span: ClosedRange<Int> {
-			start.value...(start.value + max(1, mode.channelCount) - 1)
+			start.value...(start.value + max(1, type.channelCount) - 1)
 		}
 	}
 	
@@ -25,34 +25,34 @@ struct Programmer {
 	let title: String
 	let console: Console
 	
-	init(mode: FixtureMode, start: DMXAddress, console: Console) {
-		targets = [Target(mode: mode, start: start, invertsPan: mode.invertsPan, invertsTilt: mode.invertsTilt)]
-		title = mode.model
+	init(type: FixtureType, start: DMXAddress, console: Console) {
+		targets = [Target(type: type, start: start, invertsPan: type.invertsPan, invertsTilt: type.invertsTilt)]
+		title = type.model
 		self.console = console
 	}
 	
 	init?(fixture: Fixture, library: FixtureLibrary, console: Console) {
-		guard let mode = library.mode(fixture.typeID) else { return nil }
-		targets = [Target(mode: mode, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)]
+		guard let type = library.type(fixture.typeID) else { return nil }
+		targets = [Target(type: type, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)]
 		title = fixture.name
 		self.console = console
 	}
 	
 	init(fixtures: [Fixture], library: FixtureLibrary, console: Console) {
 		targets = fixtures.compactMap { fixture in
-			guard let mode = library.mode(fixture.typeID) else { return nil }
-			return Target(mode: mode, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)
+			guard let type = library.type(fixture.typeID) else { return nil }
+			return Target(type: type, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)
 		}
 		title = fixtures.count == 1 ? fixtures[0].name : "\(fixtures.count) Lights"
 		self.console = console
 	}
 	
-	var mode: FixtureMode? {
-		guard let first = targets.first, targets.allSatisfy({ $0.mode.id == first.mode.id }) else { return nil }
-		return first.mode
+	var type: FixtureType? {
+		guard let first = targets.first, targets.allSatisfy({ $0.type.id == first.type.id }) else { return nil }
+		return first.type
 	}
 	
-	var symbol: String { mode?.symbol ?? "lightbulb.2" }
+	var symbol: String { type?.symbol ?? "lightbulb.2" }
 	
 	private func address(_ offset: Int, in target: Target) -> DMXAddress? {
 		target.start.offset(by: offset - 1)
@@ -108,7 +108,7 @@ struct Programmer {
 	
 	func isActive(_ group: FeatureGroup) -> Bool {
 		for target in targets {
-			for channel in target.mode.channels(in: group) where isActive(channel) { return true }
+			for channel in target.type.channels(in: group) where isActive(channel) { return true }
 		}
 		
 		return false
@@ -125,8 +125,49 @@ struct Programmer {
 		}
 	}
 	
-	func send(_ set: ChannelSet, channel: FixtureChannel) {
-		self.set(set.midpoint, of: channel)
+	nonisolated struct Choice: Identifiable, Sendable {
+		let id: String
+		let label: String
+		let value: UInt8
+		let swatch: [LightColor]
+		let confirms: Bool
+		let function: ChannelFunction
+	}
+	
+	func choices(of channel: FixtureChannel) -> [Choice] {
+		var found: [Choice] = []
+		
+		for function in bands(of: channel) {
+			guard !function.sets.isEmpty else {
+				found.append(Choice(id: function.id, label: function.label, value: function.midpoint, swatch: function.swatch, confirms: function.requiresConfirmation, function: function))
+				continue
+			}
+			
+			for slot in function.sets {
+				found.append(Choice(id: slot.id, label: slot.label, value: slot.midpoint, swatch: slot.swatch, confirms: function.requiresConfirmation, function: function))
+			}
+		}
+		
+		return found
+	}
+	
+	func swatches(of channel: FixtureChannel) -> [Choice] {
+		choices(of: channel).filter { !$0.swatch.isEmpty }
+	}
+	
+	func choice(_ id: String, of channel: FixtureChannel) -> Choice? {
+		choices(of: channel).first { $0.id == id }
+	}
+	
+	func send(_ choice: Choice, of channel: FixtureChannel) async {
+		set(choice.value, of: channel)
+		guard let seconds = choice.function.holdSeconds, seconds > 0 else { return }
+		try? await Task.sleep(for: .seconds(seconds))
+		
+		for target in targets where value(of: channel, in: target) == choice.value {
+			set(channel.defaultValue, of: channel, in: target)
+			console.release(target.span, only: channel.offset)
+		}
 	}
 	
 	func fractionBinding(of channel: FixtureChannel) -> Binding<Double> {
@@ -146,7 +187,7 @@ struct Programmer {
 	}
 	
 	func bands(of channel: FixtureChannel) -> [ChannelFunction] {
-		guard case let .band(dimmer, from, to, _) = mode?.dimming, dimmer.offset == channel.offset else { return channel.functions }
+		guard case let .band(dimmer, from, to, _) = type?.dimming, dimmer.offset == channel.offset else { return channel.functions }
 		return channel.functions.filter { $0.from != from || $0.to != to }
 	}
 	
@@ -156,20 +197,20 @@ struct Programmer {
 	}
 	
 	private func fraction(_ attribute: Attribute, in target: Target) -> Double {
-		guard let channel = target.mode.channel(attribute) else { return 0 }
+		guard let channel = target.type.channel(attribute) else { return 0 }
 		let raw = Double(self.raw(of: channel, in: target)) / Double(channel.maximum)
 		return target.inverts(attribute) ? 1 - raw : raw
 	}
 	
 	private func setFraction(_ newValue: Double, for attribute: Attribute, in target: Target) {
-		guard let channel = target.mode.channel(attribute) else { return }
+		guard let channel = target.type.channel(attribute) else { return }
 		let wanted = min(max(newValue, 0), 1)
 		let clamped = target.inverts(attribute) ? 1 - wanted : wanted
 		setRaw(Int((clamped * Double(channel.maximum)).rounded()), of: channel, in: target)
 	}
 	
 	func fraction(_ attribute: Attribute) -> Double {
-		for target in targets where target.mode.channel(attribute) != nil {
+		for target in targets where target.type.channel(attribute) != nil {
 			return fraction(attribute, in: target)
 		}
 		
@@ -186,14 +227,14 @@ struct Programmer {
 		Binding { fraction(attribute) } set: { setFraction($0, for: attribute) }
 	}
 	
-	var dims: Bool { targets.contains { $0.mode.dims } }
+	var dims: Bool { targets.contains { $0.type.dims } }
 	
-	var mixesColor: Bool { targets.contains { $0.mode.mixesColor } }
+	var mixesColor: Bool { targets.contains { $0.type.mixesColor } }
 	
-	var movesHead: Bool { targets.contains { $0.mode.movesHead } }
+	var movesHead: Bool { targets.contains { $0.type.movesHead } }
 	
 	private func brightness(of target: Target) -> Double {
-		switch target.mode.dimming {
+		switch target.type.dimming {
 		case .channel:
 			fraction(.dimmer, in: target)
 		case let .band(channel, from, to, _):
@@ -210,7 +251,7 @@ struct Programmer {
 	}
 	
 	private func setBrightness(_ level: Double, of target: Target) {
-		switch target.mode.dimming {
+		switch target.type.dimming {
 		case .channel:
 			setFraction(level, for: .dimmer, in: target)
 		case let .band(channel, from, to, open):
@@ -227,7 +268,7 @@ struct Programmer {
 			var hue = current.max() ?? 0 > 0 ? current : defaults
 			
 			if hue.max() ?? 0 == 0 {
-				let white = EmitterMix.mixing(LightColor(red: 1, green: 1, blue: 1), emitters: target.mode.emitters, mixing: .additive)
+				let white = EmitterMix.mixing(LightColor(red: 1, green: 1, blue: 1), emitters: target.type.emitters, mixing: .additive)
 				hue = channels.map { white[$0.attribute] }
 			}
 			
@@ -247,7 +288,7 @@ struct Programmer {
 			var total = 0.0
 			var count = 0
 			
-			for target in targets where target.mode.dims {
+			for target in targets where target.type.dims {
 				total += brightness(of: target)
 				count += 1
 			}
@@ -258,7 +299,7 @@ struct Programmer {
 		nonmutating set {
 			let level = min(max(newValue, 0), 1)
 			
-			for target in targets where target.mode.dims {
+			for target in targets where target.type.dims {
 				setBrightness(level, of: target)
 			}
 		}
@@ -285,7 +326,7 @@ struct Programmer {
 		var found: [Dimmer] = []
 		
 		for target in targets {
-			switch target.mode.dimming {
+			switch target.type.dimming {
 			case let .channel(channel):
 				if let coarse = address(channel.offset, in: target) {
 					found.append(Dimmer(address: coarse, kind: .linear, fineAddress: channel.fineOffset.flatMap { address($0, in: target) }))
@@ -311,7 +352,7 @@ struct Programmer {
 	private func mix(of target: Target) -> EmitterMix {
 		var mix = EmitterMix()
 		
-		for channel in target.mode.emitterChannels {
+		for channel in target.type.emitterChannels {
 			mix[channel.attribute] = fraction(channel.attribute, in: target)
 		}
 		
@@ -319,27 +360,27 @@ struct Programmer {
 	}
 	
 	private func apply(_ recipe: EmitterMix, to target: Target) {
-		guard target.mode.mixing == .additive else {
-			for channel in target.mode.emitterChannels {
+		guard target.type.mixing == .additive else {
+			for channel in target.type.emitterChannels {
 				setFraction(recipe[channel.attribute], for: channel.attribute, in: target)
 			}
 			return
 		}
 		
-		let peak = target.mode.emitterChannels
+		let peak = target.type.emitterChannels
 			.map { Double(value(of: $0, in: target)) / 255 }
 			.max() ?? 0
 		let level = peak > 0 ? peak : 1
 		let normalised = recipe.normalised
 		
-		for channel in target.mode.emitterChannels {
+		for channel in target.type.emitterChannels {
 			setFraction(normalised[channel.attribute] * level, for: channel.attribute, in: target)
 		}
 	}
 	
 	var light: LightColor {
-		guard let target = targets.first(where: { $0.mode.mixesColor }) else { return .black }
-		return mix(of: target).light(target.mode.mixing).normalised
+		guard let target = targets.first(where: { $0.type.mixesColor }) else { return .black }
+		return mix(of: target).light(target.type.mixing).normalised
 	}
 	
 	var displayInk: Color {
@@ -353,25 +394,25 @@ struct Programmer {
 	}
 	
 	func apply(_ light: LightColor) {
-		for target in targets where target.mode.mixesColor {
-			apply(.mixing(light, emitters: target.mode.emitters, mixing: target.mode.mixing), to: target)
+		for target in targets where target.type.mixesColor {
+			apply(.mixing(light, emitters: target.type.emitters, mixing: target.type.mixing), to: target)
 		}
 	}
 	
 	func apply(_ preset: ColorPreset) {
-		for target in targets where target.mode.mixesColor {
-			apply(preset.mix(emitters: target.mode.emitters, mixing: target.mode.mixing), to: target)
+		for target in targets where target.type.mixesColor {
+			apply(preset.mix(emitters: target.type.emitters, mixing: target.type.mixing), to: target)
 		}
 	}
 	
 	func apply(kelvin: Double) {
-		for target in targets where target.mode.mixesColor {
-			apply(.white(kelvin: kelvin, emitters: target.mode.emitters, mixing: target.mode.mixing), to: target)
+		for target in targets where target.type.mixesColor {
+			apply(.white(kelvin: kelvin, emitters: target.type.emitters, mixing: target.type.mixing), to: target)
 		}
 	}
 	
-	var lightBinding: Binding<LightColor> {
-		Binding { light } set: { apply($0) }
+	var colorBinding: Binding<Color> {
+		Binding { light.color } set: { apply(LightColor($0)) }
 	}
 	
 	var kelvin: Double {
@@ -379,13 +420,13 @@ struct Programmer {
 	}
 	
 	var selectedPresetID: String? {
-		guard !macroOverridesMix, let target = targets.first(where: { $0.mode.mixesColor }) else { return nil }
-		guard target.mode.emitterChannels.contains(where: { isActive($0) }) else { return nil }
+		guard !macroOverridesMix, let target = targets.first(where: { $0.type.mixesColor }) else { return nil }
+		guard target.type.emitterChannels.contains(where: { isActive($0) }) else { return nil }
 		var selected: String?
 		var closest = 0.025
 		
 		for preset in presets {
-			let distance = preset.mix(emitters: target.mode.emitters, mixing: target.mode.mixing).light(target.mode.mixing).normalised.distance(to: light)
+			let distance = preset.mix(emitters: target.type.emitters, mixing: target.type.mixing).light(target.type.mixing).normalised.distance(to: light)
 			if distance < closest {
 				closest = distance
 				selected = preset.id
@@ -398,7 +439,7 @@ struct Programmer {
 	var emitters: [Attribute] {
 		var roles: [Attribute] = []
 		
-		for attribute in Emitter.mixingOrder + [.uv] where targets.contains(where: { $0.mode.channel(attribute) != nil }) {
+		for attribute in Emitter.mixingOrder + [.uv] where targets.contains(where: { $0.type.channel(attribute) != nil }) {
 			roles.append(attribute)
 		}
 		
@@ -407,9 +448,9 @@ struct Programmer {
 	
 	var presets: [ColorPreset] { ColorPreset.all(emitters: emitters) }
 	
-	var emitterChannels: [FixtureChannel] { mode?.emitterChannels ?? [] }
+	var emitterChannels: [FixtureChannel] { type?.emitterChannels ?? [] }
 	
-	var isSubtractive: Bool { targets.contains { $0.mode.mixing == .subtractive } }
+	var isSubtractive: Bool { targets.contains { $0.type.mixing == .subtractive } }
 	
 	func guardedBinding(_ channel: FixtureChannel) -> Binding<Double> {
 		Binding { Double(rawValue(of: channel)) } set: { setRawValue(stepping(whole($0, of: channel), of: channel), of: channel) }
@@ -428,12 +469,12 @@ struct Programmer {
 	}
 	
 	var balancesWhite: Bool {
-		guard let mode, mode.mixing == .additive else { return false }
-		return mode.channel(.white) != nil || mode.channel(.amber) != nil
+		guard let type, type.mixing == .additive else { return false }
+		return type.channel(.white) != nil || type.channel(.amber) != nil
 	}
 	
 	private func macro(of target: Target) -> FixtureChannel? {
-		target.mode.channel(.colorMacro) ?? target.mode.channel(.colorWheel)
+		target.type.channel(.colorMacro) ?? target.type.channel(.colorWheel)
 	}
 	
 	func releaseBand(of channel: FixtureChannel) -> ChannelFunction? {
@@ -441,11 +482,11 @@ struct Programmer {
 	}
 	
 	var macroChannel: FixtureChannel? {
-		mode?.channel(.colorMacro) ?? mode?.channel(.colorWheel)
+		type?.channel(.colorMacro) ?? type?.channel(.colorWheel)
 	}
 	
 	var macroOverridesMix: Bool {
-		for target in targets where target.mode.mixesColor {
+		for target in targets where target.type.mixesColor {
 			guard let macro = macro(of: target), let release = releaseBand(of: macro) else { continue }
 			if !release.contains(value(of: macro, in: target)) { return true }
 		}
@@ -461,11 +502,11 @@ struct Programmer {
 	}
 	
 	func settings(in group: FeatureGroup) -> [FixtureChannel] {
-		guard let mode else { return [] }
+		guard let type else { return [] }
 		var shown: Set<Int> = []
 		
-		if mode.mixesColor {
-			for channel in mode.emitterChannels {
+		if type.mixesColor {
+			for channel in type.emitterChannels {
 				shown.insert(channel.offset)
 			}
 			
@@ -474,21 +515,21 @@ struct Programmer {
 			}
 		}
 		
-		if mode.movesHead {
+		if type.movesHead {
 			for attribute in [Attribute.pan, .tilt, .panTiltSpeed] {
-				if let channel = mode.channel(attribute) {
+				if let channel = type.channel(attribute) {
 					shown.insert(channel.offset)
 				}
 			}
 		}
 		
-		switch mode.dimming {
+		switch type.dimming {
 		case let .channel(channel): shown.insert(channel.offset)
 		case let .emitters(channels): for channel in channels { shown.insert(channel.offset) }
 		case .band, .none: break
 		}
 		
-		return mode.channels(in: group).filter { !shown.contains($0.offset) }
+		return type.channels(in: group).filter { !shown.contains($0.offset) }
 	}
 	
 	var settings: [FixtureChannel] {
@@ -497,7 +538,7 @@ struct Programmer {
 	
 	func release(_ group: FeatureGroup) {
 		for target in targets {
-			for channel in target.mode.channels(in: group) {
+			for channel in target.type.channels(in: group) {
 				setRaw(channel.neutral, of: channel, in: target)
 				console.release(target.span, only: channel.offset)
 				
@@ -524,15 +565,15 @@ struct Programmer {
 	}
 	
 	var groups: [FeatureGroup] {
-		FeatureGroup.allCases.filter { group in targets.contains { !$0.mode.channels(in: group).isEmpty } }
+		FeatureGroup.allCases.filter { group in targets.contains { !$0.type.channels(in: group).isEmpty } }
 	}
 	
 	func channels(in group: FeatureGroup) -> [FixtureChannel] {
-		mode?.channels(in: group) ?? []
+		type?.channels(in: group) ?? []
 	}
 	
 	func channel(_ attribute: Attribute) -> FixtureChannel? {
-		mode?.channel(attribute)
+		type?.channel(attribute)
 	}
 	
 	func isEnabled(_ channel: FixtureChannel) -> Bool {
@@ -548,11 +589,11 @@ struct Programmer {
 	
 	func blocker(of channel: FixtureChannel) -> FixtureChannel? {
 		guard let dependency = channel.enabledBy, !isEnabled(channel) else { return nil }
-		return mode?.channels.first { $0.offset == dependency.offset }
+		return type?.channels.first { $0.offset == dependency.offset }
 	}
 	
 	var shutterChannel: FixtureChannel? {
-		guard case let .band(channel, _, _, _) = mode?.dimming else { return mode?.channel(.shutter) }
+		guard case let .band(channel, _, _, _) = type?.dimming else { return type?.channel(.shutter) }
 		return channel
 	}
 	
@@ -574,26 +615,26 @@ struct Programmer {
 	}
 	
 	func degrees(_ attribute: Attribute) -> Double? {
-		guard let channel = mode?.channel(attribute), let function = channel.functions.first, function.unit == .degrees else { return nil }
+		guard let channel = type?.channel(attribute), let function = channel.functions.first, function.unit == .degrees else { return nil }
 		guard let from = function.physicalFrom, let to = function.physicalTo else { return nil }
 		return from + (to - from) * fraction(attribute)
 	}
 	
 	func applyDefaults() {
 		for target in targets {
-			console.set(target.mode.defaults, at: target.start)
+			console.set(target.type.defaults, at: target.start)
 			console.release(target.span)
 		}
 	}
 	
 	func highlight() {
 		for target in targets {
-			for channel in target.mode.channels {
+			for channel in target.type.channels {
 				guard let value = channel.highlight else { continue }
 				set(value, of: channel, in: target)
 			}
 			
-			if target.mode.movesHead {
+			if target.type.movesHead {
 				setFraction(0.5, for: .pan, in: target)
 				setFraction(0.5, for: .tilt, in: target)
 			}
@@ -607,7 +648,7 @@ struct Programmer {
 		setFraction(0.5, for: .tilt)
 	}
 	
-	var channels: [FixtureChannel] { mode?.channels ?? [] }
+	var channels: [FixtureChannel] { type?.channels ?? [] }
 	
 	func rawValue(of channel: FixtureChannel) -> Int {
 		guard let first = targets.first else { return 0 }

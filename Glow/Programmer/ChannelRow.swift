@@ -8,19 +8,17 @@ struct ChannelRow: View {
 		let blocker = programmer.blocker(of: channel)
 		
 		Group {
-			LabeledContent {
-				Text(programmer.physical(of: channel) ?? programmer.bandLabel(of: channel))
-					.monospacedDigit()
-					.foregroundStyle(programmer.isActive(channel) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-					.lineLimit(1)
-			} label: {
-				Text(channel.name)
-			}
-			.font(.subheadline)
-			
 			if channel.functions.count > 1 {
 				SlotPicker(programmer: programmer, channel: channel)
 			} else {
+				LabeledContent {
+					Text(programmer.physical(of: channel) ?? "\(programmer.value(of: channel))")
+						.monospacedDigit()
+						.foregroundStyle(.secondary)
+				} label: {
+					Text(channel.name)
+				}
+				
 				Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
 					Text(channel.name)
 				}

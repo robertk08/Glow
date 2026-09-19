@@ -17,7 +17,7 @@ struct LightTile: View {
 	@State private var origin = 0.0
 	
 	var body: some View {
-		let mode = library.mode(fixture.typeID)
+		let mode = library.type(fixture.typeID)
 		let programmer = Programmer(fixture: fixture, library: library, console: console)
 		let isOn = programmer?.isOn ?? false
 		let glow = programmer?.glow ?? .accentColor
@@ -30,17 +30,8 @@ struct LightTile: View {
 					.foregroundStyle(isOn || clashes || programmer == nil ? programmer?.displayInk ?? .white : .secondary)
 					.frame(width: 38, height: 38)
 					.background(clashes || programmer == nil ? Color.orange : isOn ? glow : Color(.tertiarySystemFill), in: .circle)
-					.symbolEffect(.breathe, isActive: isOn && programmer?.strobeHertz != nil)
 				
 				Spacer()
-				
-				HStack(spacing: 3) {
-					ForEach(programmer?.activeGroups ?? []) { group in
-						Image(systemName: group.symbol)
-							.font(.system(size: 9))
-							.foregroundStyle(.tint)
-					}
-				}
 				
 				Image(systemName: "checkmark.circle.fill")
 					.font(.title3)
@@ -81,7 +72,7 @@ struct LightTile: View {
 		.foregroundStyle(.primary)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.padding(14)
-		.glassEffect(.regular.tint(isSelected ? .accentColor : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
+		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.onTapGesture {
 			guard programmer != nil else {
@@ -99,10 +90,6 @@ struct LightTile: View {
 		.contextMenu {
 			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "lightbulb.slash" : "lightbulb.max") {
 				programmer?.toggleOn()
-			}
-			
-			Button("Highlight", systemImage: "flashlight.on.fill") {
-				programmer?.highlight()
 			}
 			
 			Button("Release Values", systemImage: "arrow.uturn.backward") {

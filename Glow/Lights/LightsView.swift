@@ -12,8 +12,6 @@ struct LightsView: View {
 	
 	@State private var isOrdering = false
 	@State private var isAdding = false
-	@State private var isNamingGroup = false
-	@State private var newGroupName = ""
 	@State private var editingFixture: Fixture?
 	@State private var editingGroup: FixtureGroup?
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
@@ -150,8 +148,9 @@ struct LightsView: View {
 					}
 					
 					Button("New Group", systemImage: "square.stack.3d.up") {
-						newGroupName = ""
-						isNamingGroup = true
+						let group = FixtureGroup(name: "Group", sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
+						context.insert(group)
+						editingGroup = group
 					}
 				}
 			}
@@ -161,7 +160,7 @@ struct LightsView: View {
 				List {
 					Section("Lights") {
 						ForEach(fixtures) { fixture in
-							Label(fixture.name, systemImage: fixture.symbol(library.mode(fixture.typeID)))
+							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
 						}
 						.onMove { console.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
 					}
@@ -188,13 +187,6 @@ struct LightsView: View {
 		.sheet(isPresented: $isAdding) {
 			NavigationStack {
 				LibraryView(patching: $isAdding)
-			}
-		}
-		.sheet(isPresented: $isNamingGroup) {
-			NameSheet(title: "New Group", prompt: "Group", name: $newGroupName) {
-				let group = FixtureGroup(name: $0, sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
-				context.insert(group)
-				editingGroup = group
 			}
 		}
 		.navigationDestination(item: $editingFixture) { fixture in

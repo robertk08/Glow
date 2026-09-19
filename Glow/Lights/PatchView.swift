@@ -7,7 +7,7 @@ struct PatchView: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
-	let mode: FixtureMode
+	let mode: FixtureType
 	
 	@Binding var isPresented: Bool
 	

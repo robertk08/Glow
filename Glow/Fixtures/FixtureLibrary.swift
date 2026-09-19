@@ -7,9 +7,8 @@ final class FixtureLibrary {
 	private(set) var builtIn: [FixtureType] = []
 	private(set) var made: [FixtureType] = []
 	private(set) var types: [FixtureType] = []
-	private(set) var modes: [FixtureMode] = []
 	
-	private var byIdentifier: [String: FixtureMode] = [:]
+	private var byIdentifier: [String: FixtureType] = [:]
 	
 	init(builtIn: [FixtureType] = FixtureLibrary.bundled()) {
 		self.builtIn = builtIn
@@ -28,7 +27,7 @@ final class FixtureLibrary {
 				if first.manufacturer.isEmpty != second.manufacturer.isEmpty {
 					return second.manufacturer.isEmpty
 				}
-				return (first.manufacturer, first.model) < (second.manufacturer, second.model)
+				return (first.manufacturer, first.model, first.channelCount) < (second.manufacturer, second.model, second.channelCount)
 			}
 	}
 	
@@ -38,34 +37,25 @@ final class FixtureLibrary {
 		index()
 	}
 	
-	func mode(_ id: String) -> FixtureMode? {
-		byIdentifier[id]
-	}
-	
 	func type(_ id: String) -> FixtureType? {
-		types.first { $0.id == id }
-	}
-	
-	func type(holding modeID: String) -> FixtureType? {
-		types.first { type in type.fixtureModes.contains { $0.id == modeID } }
+		byIdentifier[id]
 	}
 	
 	func search(_ query: String) -> [FixtureType] {
 		let trimmed = query.trimmingCharacters(in: .whitespaces)
 		guard !trimmed.isEmpty else { return types }
-		return types.filter { type in
-			type.name.localizedCaseInsensitiveContains(trimmed)
-				|| type.modes.contains { $0.name.localizedCaseInsensitiveContains(trimmed) }
+		return types.filter {
+			$0.name.localizedCaseInsensitiveContains(trimmed) || $0.mode.localizedCaseInsensitiveContains(trimmed)
 		}
 	}
 	
-	func patched(_ typeID: String?, among fixtures: [Fixture]) -> [String] {
-		guard let typeID else { return [] }
-		return fixtures.filter { mode($0.typeID)?.typeID == typeID }.map(\.name)
+	func patched(_ id: String?, among fixtures: [Fixture]) -> [String] {
+		guard let id else { return [] }
+		return fixtures.filter { $0.typeID == id }.map(\.name)
 	}
 	
 	func channelsUsed(by fixtures: [Fixture]) -> Int {
-		fixtures.reduce(0) { $0 + (mode($1.typeID)?.channelCount ?? 0) }
+		fixtures.reduce(0) { $0 + (type($1.typeID)?.channelCount ?? 0) }
 	}
 	
 	func unusedIdentifier(_ base: String) -> String {
@@ -88,29 +78,21 @@ final class FixtureLibrary {
 			saved.id = unusedIdentifier(draft.id.isEmpty || builtIn.contains { $0.id == draft.id } ? "\(draft.model.lowercased().replacingOccurrences(of: " ", with: "-"))-made" : draft.id)
 		}
 		
-		var moves: [String: String] = [:]
-		
-		if let original {
-			for (index, mode) in original.modes.enumerated() where index < saved.modes.count {
-				moves[original.identifier(of: mode)] = saved.identifier(of: saved.modes[index])
-			}
-		}
-		
 		if let existing {
 			existing.definition = saved
 		} else {
 			context.insert(StoredFixtureType(saved))
 		}
 		
-		for fixture in fixtures {
-			guard let moved = moves[fixture.typeID], moved != fixture.typeID else { continue }
-			fixture.typeID = moved
+		guard let original, original.id != saved.id else { return }
+		
+		for fixture in fixtures where fixture.typeID == original.id {
+			fixture.typeID = saved.id
 		}
 	}
 	
 	private func index() {
 		types = made + builtIn
-		modes = types.flatMap(\.fixtureModes)
-		byIdentifier = Dictionary(modes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+		byIdentifier = Dictionary(types.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
 	}
 }

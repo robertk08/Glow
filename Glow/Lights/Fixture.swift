@@ -26,11 +26,11 @@ final class Fixture {
 		set { address = newValue.value }
 	}
 	
-	func symbol(_ mode: FixtureMode?) -> String {
+	func symbol(_ mode: FixtureType?) -> String {
 		symbolOverride ?? mode?.symbol ?? "lightbulb"
 	}
 	
-	func range(_ mode: FixtureMode?) -> ClosedRange<Int> {
+	func range(_ mode: FixtureType?) -> ClosedRange<Int> {
 		address...(address + max(1, mode?.channelCount ?? 1) - 1)
 	}
 	
@@ -38,9 +38,9 @@ final class Fixture {
 		var found: Set<PersistentIdentifier> = []
 		
 		for (index, fixture) in fixtures.enumerated() {
-			let range = fixture.range(library.mode(fixture.typeID))
+			let range = fixture.range(library.type(fixture.typeID))
 			
-			for other in fixtures.dropFirst(index + 1) where other.range(library.mode(other.typeID)).overlaps(range) {
+			for other in fixtures.dropFirst(index + 1) where other.range(library.type(other.typeID)).overlaps(range) {
 				found.insert(fixture.persistentModelID)
 				found.insert(other.persistentModelID)
 			}
@@ -50,14 +50,14 @@ final class Fixture {
 	}
 	
 	@MainActor static func overlapping(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary) -> [Fixture] {
-		let span = fixture.range(library.mode(fixture.typeID))
-		return fixtures.filter { $0.persistentModelID != fixture.persistentModelID && $0.range(library.mode($0.typeID)).overlaps(span) }
+		let span = fixture.range(library.type(fixture.typeID))
+		return fixtures.filter { $0.persistentModelID != fixture.persistentModelID && $0.range(library.type($0.typeID)).overlaps(span) }
 	}
 	
 	@MainActor static func firstFreeAddress(width: Int, among fixtures: [Fixture], library: FixtureLibrary) -> Int {
 		var candidate = 1
 		
-		for range in fixtures.map({ $0.range(library.mode($0.typeID)) }).sorted(by: { $0.lowerBound < $1.lowerBound }) {
+		for range in fixtures.map({ $0.range(library.type($0.typeID)) }).sorted(by: { $0.lowerBound < $1.lowerBound }) {
 			if candidate + width - 1 < range.lowerBound { break }
 			candidate = max(candidate, range.upperBound + 1)
 		}

@@ -1,0 +1,71 @@
+{
+  "id": "generic-par-rgbw-4ch",
+  "model": "LED Par",
+  "symbol": "lightbulb.max",
+  "mode": "4 channel, RGBW",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "red",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 2,
+      "attribute": "green",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "blue",
+      "defaultValue": 0,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 4,
+      "attribute": "white",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    }
+  ]
+}

@@ -6,44 +6,54 @@ struct SlotPicker: View {
 	
 	@State private var pending: ChannelFunction?
 	
-	private let columns = [GridItem(.adaptive(minimum: 84), spacing: 10)]
+	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
 	
 	var body: some View {
 		let active = programmer.band(of: channel)
 		let slot = programmer.slot(of: channel)
+		let swatches = programmer.swatches(of: channel)
 		
-		return Group {
-			LazyVGrid(columns: columns, spacing: 10) {
-				ForEach(programmer.bands(of: channel)) { function in
-					if function.sets.isEmpty {
-						SlotChip(label: function.label, swatch: function.swatch, isSelected: active == function && slot == nil) {
-							guard !function.requiresConfirmation else {
-								pending = function
-								return
-							}
-							
-							Task {
-								await programmer.send(function, channel: channel)
-							}
-						}
-					} else {
-						ForEach(function.sets) { set in
-							SlotChip(label: set.label, swatch: set.swatch, isSelected: slot == set) {
-								programmer.send(set, channel: channel)
-							}
-						}
-					}
+		Group {
+			Picker(channel.name, selection: Binding { slot?.id ?? active?.id ?? "" } set: { id in
+				guard let chosen = programmer.choice(id, of: channel) else { return }
+				
+				guard !chosen.confirms else {
+					pending = chosen.function
+					return
+				}
+				
+				Task {
+					await programmer.send(chosen, of: channel)
+				}
+			}) {
+				if active == nil {
+					Text("\(programmer.value(of: channel))").tag("")
+				}
+				
+				ForEach(programmer.choices(of: channel)) { choice in
+					Text(choice.label).tag(choice.id)
 				}
 			}
 			
-			if let adjustable = programmer.adjustableBand(of: channel), adjustable.sets.isEmpty {
-				LabeledContent(adjustable.label) {
-					Text(programmer.physical(of: channel) ?? "\(programmer.value(of: channel))")
-						.monospacedDigit()
-						.foregroundStyle(.secondary)
+			if !swatches.isEmpty {
+				LazyVGrid(columns: columns, spacing: 12) {
+					ForEach(swatches) { choice in
+						Button {
+							Task {
+								await programmer.send(choice, of: channel)
+							}
+						} label: {
+							Swatch(colors: choice.swatch, isSelected: choice.id == (slot?.id ?? active?.id))
+						}
+						.buttonStyle(.plain)
+						.accessibilityLabel(choice.label)
+						.accessibilityAddTraits(choice.id == (slot?.id ?? active?.id) ? .isSelected : [])
+					}
 				}
-				.font(.subheadline)
-				
+				.padding(.vertical, 4)
+			}
+			
+			if let adjustable = programmer.adjustableBand(of: channel), adjustable.sets.isEmpty {
 				Slider(value: programmer.binding(channel), in: Double(adjustable.from)...Double(adjustable.to)) {
 					Text(adjustable.label)
 				}
@@ -60,39 +70,5 @@ struct SlotPicker: View {
 		} message: { _ in
 			Text("This can interrupt the light or move the head. Glow holds it for the time the fixture needs, then puts the channel back.")
 		}
-	}
-}
-
-private struct SlotChip: View {
-	let label: String
-	let swatch: [LightColor]
-	let isSelected: Bool
-	let choose: () -> Void
-	
-	var body: some View {
-		Button(action: choose) {
-			VStack(spacing: 6) {
-				if swatch.isEmpty {
-					Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-						.font(.title3)
-						.foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-						.frame(height: 26)
-				} else {
-					Swatch(colors: swatch, size: 26, isSelected: isSelected)
-				}
-				
-				Text(label)
-					.font(.caption2)
-					.multilineTextAlignment(.center)
-					.lineLimit(2)
-					.foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-			}
-			.frame(maxWidth: .infinity)
-			.padding(.vertical, 8)
-			.contentShape(.rect)
-		}
-		.buttonStyle(.plain)
-		.accessibilityLabel(label)
-		.accessibilityAddTraits(isSelected ? .isSelected : [])
 	}
 }

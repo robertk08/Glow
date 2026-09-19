@@ -14,17 +14,24 @@ struct NodeView: View {
 		
 		List {
 			Section {
-				LinkCard()
-					.accessibilityHidden(true)
+				LabeledContent {
+					Text(console.link.summary(latency: console.latency))
+						.foregroundStyle(console.link.tint)
+				} label: {
+					Label {
+						Text("Status")
+					} icon: {
+						Image(systemName: console.link.symbol)
+							.foregroundStyle(console.link.tint)
+					}
+				}
 				
 				LabeledContent("Address", value: console.endpoint.host)
 					.textSelection(.enabled)
 				
 				if let node = console.node {
+					LabeledContent("Name", value: node.name)
 					LabeledContent("Firmware", value: node.firmware)
-					LabeledContent("Identifier", value: node.id)
-						.textSelection(.enabled)
-						.font(.callout.monospaced())
 				}
 			} footer: {
 				Text(console.link.explanation)

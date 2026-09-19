@@ -7,7 +7,6 @@ struct ProgrammerView: View {
 	let programmer: Programmer
 	
 	@State private var group = FeatureGroup.dimmer
-	@State private var isShowingChannels = false
 	
 	var body: some View {
 		let group = programmer.groups.contains(self.group) ? self.group : programmer.groups.first ?? .dimmer
@@ -25,9 +24,11 @@ struct ProgrammerView: View {
 				
 				switch group {
 				case .dimmer:
-					ForEach(programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }) { channel in
-						Section(channel.name) {
-							ChannelRow(programmer: programmer, channel: channel)
+					if !programmer.channels(in: .dimmer).filter({ $0.attribute != .dimmer }).isEmpty {
+						Section {
+							ForEach(programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }) { channel in
+								ChannelRow(programmer: programmer, channel: channel)
+							}
 						}
 					}
 				case .color:
@@ -43,23 +44,17 @@ struct ProgrammerView: View {
 				}
 				
 				Section {
-					Button("Highlight", systemImage: "flashlight.on.fill") {
-						programmer.highlight()
-					}
-					
-					if programmer.isActive(group) {
-						Button("Release \(group.name)", systemImage: "arrow.uturn.backward", role: .destructive) {
-							programmer.release(group)
+					if programmer.type != nil {
+						NavigationLink("All Channels") {
+							ChannelsView(programmer: programmer)
 						}
 					}
 					
-					if programmer.mode != nil {
-						Button("All Channels", systemImage: "slider.horizontal.below.square.filled.and.square") {
-							isShowingChannels = true
-						}
+					Button("Reset to Defaults") {
+						programmer.applyDefaults()
 					}
 				} footer: {
-					Text(programmer.mode == nil ? "Channels are shown when every selected light is the same fixture in the same mode." : "Highlight opens the fixture so you can find it on stage without changing anything you have set.")
+					Text(programmer.type == nil ? "Channels are shown when every selected light is the same fixture." : "Every channel the fixture has, on its raw DMX value.")
 				}
 			}
 			.safeAreaInset(edge: .top, spacing: 0) {
@@ -82,9 +77,6 @@ struct ProgrammerView: View {
 			}
 			.navigationTitle(programmer.title)
 			.navigationBarTitleDisplayMode(.inline)
-			.navigationDestination(isPresented: $isShowingChannels) {
-				ChannelsView(programmer: programmer)
-			}
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
 					ClearButton()
@@ -104,20 +96,19 @@ private struct IntensityPane: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		VStack(spacing: 14) {
-			LevelPad(level: programmer.brightnessBinding, glow: programmer.glow, isActive: programmer.isActive(.dimmer))
+		VStack(alignment: .leading, spacing: 4) {
+			LabeledContent("Level", value: programmer.brightness, format: .percent.precision(.fractionLength(0)))
+				.font(.subheadline)
+				.monospacedDigit()
 			
-			HStack(spacing: 10) {
-				Button("Off") { programmer.brightness = 0 }
-				Button("25%") { programmer.brightness = 0.25 }
-				Button("50%") { programmer.brightness = 0.5 }
-				Button("75%") { programmer.brightness = 0.75 }
-				Button("Full") { programmer.brightness = 1 }
+			Slider(value: programmer.brightnessBinding, in: 0...1) {
+				Text("Brightness")
+			} minimumValueLabel: {
+				Image(systemName: "sun.min")
+			} maximumValueLabel: {
+				Image(systemName: "sun.max")
 			}
-			.buttonStyle(.glass)
-			.buttonBorderShape(.capsule)
-			.controlSize(.small)
-			.frame(maxWidth: .infinity)
+			.controlSize(.large)
 		}
 	}
 }
@@ -129,32 +120,18 @@ private struct ColorPane: View {
 	
 	var body: some View {
 		VStack(spacing: 12) {
-			if programmer.macroOverridesMix {
-				ContentUnavailableView {
-					Label("Built-in Color", systemImage: "paintpalette")
-				} description: {
-					Text("This light is showing a color built into the fixture, so the mixer is doing nothing.")
-				} actions: {
-					Button("Use the Color Mixer") {
-						programmer.releaseMix()
+			ColorPicker("Color", selection: programmer.colorBinding, supportsOpacity: false)
+			
+			LazyVGrid(columns: columns, spacing: 10) {
+				ForEach(programmer.presets) { preset in
+					Button {
+						programmer.apply(preset)
+					} label: {
+						Swatch(colors: [preset.swatch], isSelected: programmer.selectedPresetID == preset.id)
 					}
-					.buttonStyle(.glassProminent)
-				}
-				.frame(height: 232)
-			} else {
-				ColorPad(light: programmer.lightBinding, isActive: programmer.isActive(.color))
-				
-				LazyVGrid(columns: columns, spacing: 10) {
-					ForEach(programmer.presets) { preset in
-						Button {
-							programmer.apply(preset)
-						} label: {
-							Swatch(colors: [preset.swatch], size: 40, isSelected: programmer.selectedPresetID == preset.id)
-						}
-						.buttonStyle(.plain)
-						.accessibilityLabel(preset.name)
-						.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
-					}
+					.buttonStyle(.plain)
+					.accessibilityLabel(preset.name)
+					.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
 				}
 			}
 		}
@@ -166,7 +143,7 @@ private struct PositionPane: View {
 	
 	var body: some View {
 		VStack(spacing: 12) {
-			PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.mode?.panDegrees, tiltDegrees: programmer.mode?.tiltDegrees, isActive: programmer.isActive(.position))
+			PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees, isActive: programmer.isActive(.position))
 			
 			HStack(spacing: 10) {
 				Button("Centre", systemImage: "scope") { programmer.centre() }
@@ -210,18 +187,24 @@ private struct ColorRows: View {
 					.font(.subheadline)
 					.monospacedDigit()
 				
-				TemperatureStrip(kelvin: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) })
+				Slider(value: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) }, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
+					Text("White balance")
+				} minimumValueLabel: {
+					Image(systemName: "thermometer.sun")
+				} maximumValueLabel: {
+					Image(systemName: "thermometer.snowflake")
+				}
 			}
 		}
 		
 		if let macro = programmer.macroChannel {
-			Section(macro.name) {
+			Section {
 				SlotPicker(programmer: programmer, channel: macro)
 			}
 		}
 		
-		ForEach(programmer.channels(in: .color).filter { !$0.attribute.isEmitter && $0.offset != programmer.macroChannel?.offset }) { channel in
-			Section(channel.name) {
+		Section {
+			ForEach(programmer.channels(in: .color).filter { !$0.attribute.isEmitter && $0.offset != programmer.macroChannel?.offset }) { channel in
 				ChannelRow(programmer: programmer, channel: channel)
 			}
 		}
@@ -233,7 +216,7 @@ private struct ColorRows: View {
 						LabeledContent(channel.name) {
 							Text("\(programmer.value(of: channel))")
 								.monospacedDigit()
-								.foregroundStyle(programmer.isActive(channel) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+								.foregroundStyle(.secondary)
 						}
 						.font(.subheadline)
 						
@@ -256,8 +239,8 @@ private struct PositionRows: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		ForEach(programmer.channels(in: .position).filter { $0.attribute != .pan && $0.attribute != .tilt }) { channel in
-			Section(channel.name) {
+		Section {
+			ForEach(programmer.channels(in: .position).filter { $0.attribute != .pan && $0.attribute != .tilt }) { channel in
 				ChannelRow(programmer: programmer, channel: channel)
 			}
 		}
@@ -270,8 +253,8 @@ private struct BeamRows: View {
 	var body: some View {
 		let shown = [programmer.channel(.zoom)?.offset, programmer.shutterChannel?.offset]
 		
-		ForEach(programmer.channels(in: .beam).filter { !shown.contains($0.offset) }) { channel in
-			Section(channel.name) {
+		Section {
+			ForEach(programmer.channels(in: .beam).filter { !shown.contains($0.offset) }) { channel in
 				ChannelRow(programmer: programmer, channel: channel)
 			}
 		}
@@ -283,24 +266,9 @@ private struct WheelRows: View {
 	let group: FeatureGroup
 	
 	var body: some View {
-		ForEach(programmer.channels(in: group)) { channel in
-			Section {
-				if channel.isBanded {
-					SlotPicker(programmer: programmer, channel: channel)
-				} else {
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			} header: {
-				HStack {
-					Text(channel.name)
-					
-					if programmer.isActive(channel) {
-						Image(systemName: "circle.fill")
-							.font(.system(size: 6))
-							.foregroundStyle(.tint)
-							.accessibilityLabel("Set")
-					}
-				}
+		Section {
+			ForEach(programmer.channels(in: group)) { channel in
+				ChannelRow(programmer: programmer, channel: channel)
 			}
 		}
 	}

@@ -1,105 +1,117 @@
 import Foundation
 
 nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
-	nonisolated struct Mode: Codable, Hashable, Sendable, Identifiable {
-		var id: String?
-		var name: String
-		var channels: [FixtureChannel]
-		
-		var width: Int { channels.flatMap(\.offsets).max() ?? 0 }
-		
-		var attributes: Set<Attribute> { Set(channels.map(\.attribute)) }
-		
-		var mixesWithFlags: Bool { Set(Emitter.flags).isSubset(of: attributes) }
-		
-		var movesHead: Bool { attributes.contains(.pan) && attributes.contains(.tilt) }
-		
-		mutating func renumber() {
-			var next = 1
-			
-			for index in channels.indices {
-				channels[index].offset = next
-				next += 1
-				
-				if channels[index].isWide {
-					channels[index].fineOffset = next
-					next += 1
-				}
-			}
-		}
-		
-		init(id: String? = nil, name: String, channels: [FixtureChannel]) {
-			self.id = id
-			self.name = name
-			self.channels = channels
-		}
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			id = try container.decodeIfPresent(String.self, forKey: .id)
-			name = try container.decode(String.self, forKey: .name)
-			channels = try container.decode([FixtureChannel].self, forKey: .channels)
-		}
-		
-		private enum CodingKeys: String, CodingKey {
-			case id, name, channels
-		}
+	nonisolated enum Dimming: Sendable, Equatable {
+		case channel(FixtureChannel)
+		case band(FixtureChannel, from: UInt8, to: UInt8, open: UInt8?)
+		case emitters([FixtureChannel])
+		case none
 	}
 	
 	var id: String
 	var manufacturer: String = ""
 	var model: String
+	var mode: String = ""
 	var symbol: String = "lightbulb"
 	var mixing: ColorMixing = .additive
 	var invertsPan = false
 	var invertsTilt = false
 	var panDegrees: Double?
 	var tiltDegrees: Double?
-	var modes: [Mode]
+	var channels: [FixtureChannel]
 	
 	var name: String { manufacturer.isEmpty ? model : "\(manufacturer) \(model)" }
+	var channelCount: Int { channels.flatMap(\.offsets).max() ?? 0 }
 	
-	func identifier(of mode: Mode) -> String {
-		mode.id ?? "\(id)-\(mode.name.replacingOccurrences(of: " ", with: "-").lowercased())"
+	func channel(_ attribute: Attribute) -> FixtureChannel? {
+		channels.first { $0.attribute == attribute }
 	}
 	
-	var fixtureModes: [FixtureMode] {
-		modes.map { mode in
-			FixtureMode(id: identifier(of: mode), typeID: id, manufacturer: manufacturer, model: model, mode: mode.name, channels: mode.channels, symbol: symbol, mixing: mixing, invertsPan: invertsPan, invertsTilt: invertsTilt, panDegrees: panDegrees, tiltDegrees: tiltDegrees)
-		}
+	var emitterChannels: [FixtureChannel] { channels.filter(\.attribute.isEmitter) }
+	var emitters: [Attribute] { emitterChannels.map(\.attribute) }
+	var mixesColor: Bool { emitterChannels.count >= 3 }
+	var movesHead: Bool { channel(.pan) != nil && channel(.tilt) != nil }
+	
+	var groups: [FeatureGroup] {
+		FeatureGroup.allCases.filter { group in channels.contains { $0.attribute.group == group } }
+	}
+	
+	func channels(in group: FeatureGroup) -> [FixtureChannel] {
+		channels.filter { $0.attribute.group == group }
 	}
 	
 	var abilities: [String] {
 		var found: [String] = []
+		if dims { found.append("Dimmer") }
+		if mixesColor { found.append(mixing == .subtractive ? "CMY" : "Color") }
+		if movesHead { found.append("Moving head") }
 		
-		for mode in fixtureModes {
-			for ability in mode.abilities where !found.contains(ability) {
-				found.append(ability)
-			}
+		for attribute in [Attribute.colorWheel, .colorMacro, .shutter, .gobo, .gobo2, .prism, .zoom, .focus, .iris, .frost] where channel(attribute) != nil {
+			found.append(attribute.name)
 		}
 		
 		return found
 	}
 	
-	var channelSpan: String {
-		let counts = fixtureModes.map(\.channelCount).sorted()
-		guard let first = counts.first, let last = counts.last else { return "" }
-		return first == last ? "\(first) ch" : "\(first)–\(last) ch"
+	var defaults: [UInt8] {
+		var values = [UInt8](repeating: 0, count: channelCount)
+		
+		for channel in channels {
+			if channel.offset > 0 && channel.offset <= channelCount { values[channel.offset - 1] = channel.defaultValue }
+			if let fine = channel.fineOffset, fine > 0 && fine <= channelCount { values[fine - 1] = channel.fineDefaultValue }
+		}
+		
+		return values
 	}
 	
-	static let blank = FixtureType(id: "", model: "", modes: [Mode(name: "1 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)])])
+	var dimming: Dimming {
+		if let dedicated = channel(.dimmer) {
+			return .channel(dedicated)
+		}
+		
+		for channel in channels {
+			guard let band = channel.functions.first(where: { $0.purpose == .dim }) else { continue }
+			let open = channel.functions.first { $0.purpose == .open }
+			return .band(channel, from: band.from, to: band.to, open: open?.from)
+		}
+		
+		guard mixing == .additive else { return .none }
+		let emitters = emitterChannels
+		return emitters.isEmpty ? .none : .emitters(emitters)
+	}
 	
-	init(id: String, manufacturer: String = "", model: String, symbol: String = "lightbulb", mixing: ColorMixing = .additive, invertsPan: Bool = false, invertsTilt: Bool = false, panDegrees: Double? = nil, tiltDegrees: Double? = nil, modes: [Mode]) {
+	var dims: Bool { dimming != .none }
+	
+	mutating func renumber() {
+		var next = 1
+		
+		for index in channels.indices {
+			channels[index].offset = next
+			next += 1
+			
+			if channels[index].isWide {
+				channels[index].fineOffset = next
+				next += 1
+			}
+		}
+	}
+	
+	var mixesWithFlags: Bool { Set(Emitter.flags).isSubset(of: Set(channels.map(\.attribute))) }
+	
+	static let blank = FixtureType(id: "", model: "", channels: [FixtureChannel(offset: 1, attribute: .dimmer)])
+	
+	init(id: String, manufacturer: String = "", model: String, mode: String = "", symbol: String = "lightbulb", mixing: ColorMixing = .additive, invertsPan: Bool = false, invertsTilt: Bool = false, panDegrees: Double? = nil, tiltDegrees: Double? = nil, channels: [FixtureChannel]) {
 		self.id = id
 		self.manufacturer = manufacturer
 		self.model = model
+		self.mode = mode
 		self.symbol = symbol
 		self.mixing = mixing
 		self.invertsPan = invertsPan
 		self.invertsTilt = invertsTilt
 		self.panDegrees = panDegrees
 		self.tiltDegrees = tiltDegrees
-		self.modes = modes
+		self.channels = channels
 	}
 	
 	init(from decoder: any Decoder) throws {
@@ -107,13 +119,14 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		id = try container.decode(String.self, forKey: .id)
 		manufacturer = try container.decodeIfPresent(String.self, forKey: .manufacturer) ?? ""
 		model = try container.decode(String.self, forKey: .model)
+		mode = try container.decodeIfPresent(String.self, forKey: .mode) ?? ""
 		symbol = try container.decodeIfPresent(String.self, forKey: .symbol) ?? "lightbulb"
 		mixing = try container.decodeIfPresent(ColorMixing.self, forKey: .mixing) ?? .additive
 		invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan) ?? false
 		invertsTilt = try container.decodeIfPresent(Bool.self, forKey: .invertsTilt) ?? false
 		panDegrees = try container.decodeIfPresent(Double.self, forKey: .panDegrees)
 		tiltDegrees = try container.decodeIfPresent(Double.self, forKey: .tiltDegrees)
-		modes = try container.decode([Mode].self, forKey: .modes)
+		channels = try container.decode([FixtureChannel].self, forKey: .channels)
 	}
 	
 	func encode(to encoder: any Encoder) throws {
@@ -121,16 +134,17 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		try container.encode(id, forKey: .id)
 		if !manufacturer.isEmpty { try container.encode(manufacturer, forKey: .manufacturer) }
 		try container.encode(model, forKey: .model)
+		if !mode.isEmpty { try container.encode(mode, forKey: .mode) }
 		try container.encode(symbol, forKey: .symbol)
 		if mixing != .additive { try container.encode(mixing, forKey: .mixing) }
 		if invertsPan { try container.encode(true, forKey: .invertsPan) }
 		if invertsTilt { try container.encode(true, forKey: .invertsTilt) }
 		try container.encodeIfPresent(panDegrees, forKey: .panDegrees)
 		try container.encodeIfPresent(tiltDegrees, forKey: .tiltDegrees)
-		try container.encode(modes, forKey: .modes)
+		try container.encode(channels, forKey: .channels)
 	}
 	
 	private enum CodingKeys: String, CodingKey {
-		case id, manufacturer, model, symbol, mixing, invertsPan, invertsTilt, panDegrees, tiltDegrees, modes
+		case id, manufacturer, model, mode, symbol, mixing, invertsPan, invertsTilt, panDegrees, tiltDegrees, channels
 	}
 }

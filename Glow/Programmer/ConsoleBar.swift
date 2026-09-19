@@ -25,21 +25,9 @@ struct ConsoleBar: View {
 								.frame(width: 26, height: 26)
 								.background(programmer.isOn ? programmer.glow : Color(.tertiarySystemFill), in: .circle)
 							
-							VStack(alignment: .leading, spacing: 0) {
-								Text(programmer.title)
-									.font(.subheadline.weight(.medium))
-									.lineLimit(1)
-								
-								if !programmer.activeGroups.isEmpty {
-									HStack(spacing: 3) {
-										ForEach(programmer.activeGroups) { group in
-											Image(systemName: group.symbol)
-												.font(.system(size: 8))
-										}
-									}
-									.foregroundStyle(.tint)
-								}
-							}
+							Text(programmer.title)
+								.font(.subheadline.weight(.medium))
+								.lineLimit(1)
 							
 							if !console.link.isConnected {
 								Image(systemName: "wifi.exclamationmark")

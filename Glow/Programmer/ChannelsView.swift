@@ -37,21 +37,8 @@ struct ChannelsView: View {
 						SlotPicker(programmer: programmer, channel: channel)
 					}
 				} header: {
-					HStack {
-						Label(channel.name, systemImage: channel.attribute.symbol)
-						
-						if programmer.isActive(channel) {
-							Image(systemName: "circle.fill")
-								.font(.system(size: 6))
-								.foregroundStyle(.tint)
-								.accessibilityLabel("Set")
-						}
-						
-						Spacer()
-						
-						Text(programmer.channelLabel(of: channel))
-							.monospacedDigit()
-					}
+					LabeledContent(channel.name, value: programmer.channelLabel(of: channel))
+						.monospacedDigit()
 				}
 			}
 		}
