@@ -3,7 +3,7 @@ import SwiftUI
 struct ChannelEditor: View {
 	@Binding var channel: FixtureChannel
 	
-	@State private var isAddingFunction = false
+	let others: [FixtureChannel]
 	
 	var body: some View {
 		Form {
@@ -38,6 +38,17 @@ struct ChannelEditor: View {
 				Slider(value: Binding { Double(channel.defaultValue) } set: { channel.defaultValue = UInt8($0.rounded()) }, in: 0...255) {
 					Text("Starts at")
 				}
+				
+				if channel.isWide {
+					LabeledContent("Fine half starts at", value: "\(channel.fineDefaultValue)")
+						.monospacedDigit()
+					
+					Slider(value: Binding { Double(channel.fineDefaultValue) } set: { channel.fineDefaultValue = UInt8($0.rounded()) }, in: 0...255) {
+						Text("Fine half starts at")
+					}
+				}
+			} header: {
+				Text("Default")
 			} footer: {
 				Text("Where the channel sits before anyone touches it. It goes out on the wire but counts as unset, so raising the dimmer does not turn a default into something you chose.")
 			}
@@ -62,20 +73,28 @@ struct ChannelEditor: View {
 			}
 			
 			Section {
-				ForEach(channel.functions) { function in
-					LabeledContent {
-						Text(function.label)
-							.multilineTextAlignment(.trailing)
+				ForEach($channel.functions) { $function in
+					NavigationLink {
+						FunctionEditor(function: $function)
 					} label: {
-						VStack(alignment: .leading, spacing: 2) {
-							Text("\(function.from)–\(function.to)")
-								.monospacedDigit()
-								.foregroundStyle(.secondary)
-							
-							if let purpose = function.purpose {
-								Text(purpose.rawValue.capitalized)
-									.font(.caption2)
-									.foregroundStyle(.tint)
+						LabeledContent {
+							Text(function.label)
+								.multilineTextAlignment(.trailing)
+						} label: {
+							VStack(alignment: .leading, spacing: 2) {
+								Text("\(function.from)–\(function.to)")
+									.monospacedDigit()
+									.foregroundStyle(.secondary)
+								
+								if let purpose = function.purpose {
+									Text(purpose.rawValue.capitalized)
+										.font(.caption2)
+										.foregroundStyle(.tint)
+								} else if !function.sets.isEmpty {
+									Text("^[\(function.sets.count) slot](inflect: true)")
+										.font(.caption2)
+										.foregroundStyle(.secondary)
+								}
 							}
 						}
 					}
@@ -83,145 +102,50 @@ struct ChannelEditor: View {
 				.onDelete { channel.functions.remove(atOffsets: $0) }
 				
 				Button("Add Range", systemImage: "plus") {
-					isAddingFunction = true
+					let start = channel.functions.map { Int($0.to) + 1 }.max() ?? 0
+					channel.functions.append(ChannelFunction(from: UInt8(min(start, 255)), to: 255, label: "Range \(channel.functions.count + 1)"))
+					channel.functions.sort { $0.from < $1.from }
 				}
 			} header: {
 				Text("Ranges")
 			} footer: {
-				Text("A channel with ranges gets a named picker. One without gets a plain slider on the raw value. Marking a range as the dimmer is what tells Glow this channel carries intensity, so a fixture that dims through its shutter still answers the brightness fader.")
+				Text("A channel with ranges gets a named picker. One without gets a plain slider on the raw value.")
+			}
+			
+			Section {
+				Picker("Only works when", selection: Binding { channel.enabledBy?.offset ?? 0 } set: { offset in
+					guard offset > 0 else {
+						channel.enabledBy = nil
+						return
+					}
+					channel.enabledBy = FixtureChannel.Dependency(offset: offset, from: 0, to: 255)
+				}) {
+					Text("Always").tag(0)
+					
+					ForEach(others.filter { $0.offset != channel.offset }) { other in
+						Text(other.name).tag(other.offset)
+					}
+				}
+				
+				if let dependency = channel.enabledBy {
+					LabeledContent("is between", value: "\(dependency.from) and \(dependency.to)")
+						.monospacedDigit()
+					
+					Slider(value: Binding { Double(dependency.from) } set: { channel.enabledBy?.from = UInt8(min($0.rounded(), Double(dependency.to))) }, in: 0...255) {
+						Text("From")
+					}
+					
+					Slider(value: Binding { Double(dependency.to) } set: { channel.enabledBy?.to = UInt8(max($0.rounded(), Double(dependency.from))) }, in: 0...255) {
+						Text("To")
+					}
+				}
+			} header: {
+				Text("Depends on")
+			} footer: {
+				Text("For a fixture whose colour channels go dead while a built-in pattern runs. Glow greys this channel out and says which one switched it off.")
 			}
 		}
 		.navigationTitle(channel.name)
 		.navigationBarTitleDisplayMode(.inline)
-		.sheet(isPresented: $isAddingFunction) {
-			FunctionSheet(taken: channel.functions) { function in
-				channel.functions.append(function)
-				channel.functions.sort { $0.from < $1.from }
-			}
-		}
-	}
-}
-
-private struct FunctionSheet: View {
-	@Environment(\.dismiss) private var dismiss
-	
-	let taken: [ChannelFunction]
-	let save: (ChannelFunction) -> Void
-	
-	@State private var from = 0.0
-	@State private var to = 255.0
-	@State private var label = ""
-	@State private var kind = ChannelFunction.Kind.setting
-	@State private var purpose: ChannelFunction.Purpose?
-	@State private var unit: PhysicalUnit?
-	@State private var physicalFrom = 0.0
-	@State private var physicalTo = 0.0
-	@State private var requiresConfirmation = false
-	@State private var holdSeconds = 0.0
-	
-	var body: some View {
-		NavigationStack {
-			Form {
-				Section {
-					TextField("What it does", text: $label)
-						.autocorrectionDisabled()
-				}
-				
-				Section {
-					LabeledContent("From", value: "\(Int(from))")
-						.monospacedDigit()
-					
-					Slider(value: Binding { from } set: { from = $0.rounded() }, in: 0...255) {
-						Text("From")
-					}
-					
-					LabeledContent("To", value: "\(Int(to))")
-						.monospacedDigit()
-					
-					Slider(value: Binding { to } set: { to = $0.rounded() }, in: 0...255) {
-						Text("To")
-					}
-				} footer: {
-					if to < from {
-						Text("The end has to come after the start.")
-							.foregroundStyle(.orange)
-					}
-				}
-				
-				Section {
-					Picker("Control", selection: $kind) {
-						Text("Setting").tag(ChannelFunction.Kind.setting)
-						Text("Variable").tag(ChannelFunction.Kind.proportional)
-					}
-					
-					Picker("Stands for", selection: $purpose) {
-						Text("Nothing in particular").tag(ChannelFunction.Purpose?.none)
-						Text("The dimmer").tag(ChannelFunction.Purpose?.some(.dim))
-						Text("Fully open").tag(ChannelFunction.Purpose?.some(.open))
-						Text("Blacked out").tag(ChannelFunction.Purpose?.some(.closed))
-						Text("Hands color back to the mixer").tag(ChannelFunction.Purpose?.some(.release))
-					}
-					
-					Toggle("Confirm Before Sending", isOn: $requiresConfirmation)
-					
-					Stepper(value: $holdSeconds, in: 0...60, step: 0.5) {
-						LabeledContent("Hold", value: holdSeconds == 0 ? "Until Changed" : "\(holdSeconds.formatted()) s")
-					}
-				} header: {
-					Text("Behavior")
-				} footer: {
-					Text("Variable ranges expose a slider. A timed command returns to the channel default after its hold time.")
-				}
-				
-				Section {
-					Picker("Reads in", selection: $unit) {
-						Text("Raw value").tag(PhysicalUnit?.none)
-						Text("Percent").tag(PhysicalUnit?.some(.percent))
-						Text("Degrees").tag(PhysicalUnit?.some(.degrees))
-						Text("Hertz").tag(PhysicalUnit?.some(.hertz))
-						Text("Seconds").tag(PhysicalUnit?.some(.seconds))
-						Text("Kelvin").tag(PhysicalUnit?.some(.kelvin))
-						Text("RPM").tag(PhysicalUnit?.some(.rpm))
-					}
-					
-					if unit != nil {
-						TextField("At the start", value: $physicalFrom, format: .number)
-							.keyboardType(.numbersAndPunctuation)
-						
-						TextField("At the end", value: $physicalTo, format: .number)
-							.keyboardType(.numbersAndPunctuation)
-					}
-				} header: {
-					Text("Real units")
-				} footer: {
-					Text("What the manual says this range means in the world, so Glow can show 3.2 Hz or 37° instead of a DMX number.")
-				}
-			}
-			.navigationTitle("Add Range")
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) {
-					Button(role: .cancel) { dismiss() }
-				}
-				
-				ToolbarItem(placement: .confirmationAction) {
-					Button(role: .confirm) {
-						var function = ChannelFunction(from: UInt8(from), to: UInt8(to), label: label.trimmingCharacters(in: .whitespaces), kind: kind, purpose: purpose)
-						function.requiresConfirmation = requiresConfirmation
-						function.unit = unit
-						if unit != nil { function.physicalFrom = physicalFrom }
-						if unit != nil { function.physicalTo = physicalTo }
-						if holdSeconds > 0 { function.holdSeconds = holdSeconds }
-						save(function)
-						dismiss()
-					}
-					.disabled(to < from || label.trimmingCharacters(in: .whitespaces).isEmpty)
-				}
-			}
-		}
-		.presentationDetents([.large])
-		.task {
-			from = Double(min(taken.map { Int($0.to) + 1 }.max() ?? 0, 255))
-		}
 	}
 }

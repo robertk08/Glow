@@ -14,8 +14,7 @@ struct ChannelRow: View {
 					.foregroundStyle(programmer.isActive(channel) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
 					.lineLimit(1)
 			} label: {
-				Label(channel.name, systemImage: channel.attribute.symbol)
-					.labelStyle(.titleOnly)
+				Text(channel.name)
 			}
 			.font(.subheadline)
 			
@@ -30,12 +29,11 @@ struct ChannelRow: View {
 		}
 		.disabled(blocker != nil)
 		.opacity(blocker == nil ? 1 : 0.45)
-		.overlay(alignment: .bottomLeading) {
-			if let blocker {
-				Text("\(blocker.name) has this channel switched off.")
-					.font(.caption2)
-					.foregroundStyle(.secondary)
-			}
+		
+		if let blocker {
+			Label("\(blocker.name) has this channel switched off.", systemImage: "exclamationmark.circle")
+				.font(.caption)
+				.foregroundStyle(.secondary)
 		}
 	}
 }

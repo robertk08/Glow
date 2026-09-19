@@ -25,11 +25,11 @@ struct LightTile: View {
 		
 		return VStack(alignment: .leading, spacing: 8) {
 			HStack(spacing: 8) {
-				Image(systemName: clashes ? "exclamationmark.triangle.fill" : fixture.symbol(mode))
+				Image(systemName: clashes || programmer == nil ? "exclamationmark.triangle.fill" : fixture.symbol(mode))
 					.font(.title3)
-					.foregroundStyle(isOn || clashes ? programmer?.displayInk ?? .white : .secondary)
+					.foregroundStyle(isOn || clashes || programmer == nil ? programmer?.displayInk ?? .white : .secondary)
 					.frame(width: 38, height: 38)
-					.background(clashes ? Color.orange : isOn ? glow : Color(.tertiarySystemFill), in: .circle)
+					.background(clashes || programmer == nil ? Color.orange : isOn ? glow : Color(.tertiarySystemFill), in: .circle)
 					.symbolEffect(.breathe, isActive: isOn && programmer?.strobeHertz != nil)
 				
 				Spacer()
@@ -52,9 +52,9 @@ struct LightTile: View {
 					.font(.headline)
 					.lineLimit(1)
 				
-				Text(clashes ? "Shares channels" : programmer?.address ?? "Fixture missing")
+				Text(clashes ? "Shares channels" : programmer?.address ?? "Needs a fixture")
 					.font(.caption2)
-					.foregroundStyle(clashes ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.secondary))
+					.foregroundStyle(clashes || programmer == nil ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.secondary))
 					.monospacedDigit()
 					.lineLimit(1)
 			}
@@ -84,6 +84,11 @@ struct LightTile: View {
 		.glassEffect(.regular.tint(isSelected ? .accentColor : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.onTapGesture {
+			guard programmer != nil else {
+				editing = fixture
+				return
+			}
+			
 			console.toggle(fixture)
 		}
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))

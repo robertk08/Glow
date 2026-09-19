@@ -47,6 +47,11 @@ nonisolated struct LightColor: Equatable, Sendable {
 		self.init(red: red, green: green, blue: blue)
 	}
 	
+	var hex: String {
+		let c = clamped
+		return String(format: "%02x%02x%02x", Int((c.red * 255).rounded()), Int((c.green * 255).rounded()), Int((c.blue * 255).rounded()))
+	}
+	
 	var peak: Double { max(red, max(green, blue)) }
 	
 	var trough: Double { min(red, min(green, blue)) }

@@ -17,6 +17,23 @@ struct FixtureEditView: View {
 	
 	var body: some View {
 		Form {
+			if mode == nil {
+				Section {
+					Picker("Fixture", selection: $fixture.typeID) {
+						Text("Not set").tag(fixture.typeID)
+						
+						ForEach(library.modes) { option in
+							Text("\(option.name), \(option.mode)").tag(option.id)
+						}
+					}
+				} header: {
+					Label("Needs a Fixture", systemImage: "exclamationmark.triangle")
+						.foregroundStyle(.orange)
+				} footer: {
+					Text("The definition this light was patched from is gone, so Glow cannot drive it. Point it at another one and it keeps its name, address and group.")
+				}
+			}
+			
 			Section {
 				TextField("Name", text: $fixture.name)
 			}

@@ -32,10 +32,11 @@ one.
 
 The patch, the groups, the fixtures built here and the scenes sit in one store
 with an undo manager, so editing is undoable. Removing a light writes zeros
-across its channels on the way out. A light whose fixture profile no longer
-exists is removed on the next launch, unless the fixture library failed to load.
-Highlight puts a fixture where you can find it on stage without setting
-anything, so you can leave it and go back to what you were doing.
+across its channels on the way out. A light whose fixture definition is gone
+says so on its tile and opens straight into a picker to point it at another
+one, keeping its name, address and group. Highlight puts a fixture where you
+can find it on stage without setting anything, so you can leave it and go back
+to what you were doing.
 
 A moving head can be told to invert pan, tilt or both. The fixture definition
 carries what is usual for that model and each patched light can differ.
@@ -54,7 +55,11 @@ A channel can also name the channel and range it depends on, for a fixture
 whose colour channels go dead while a built-in pattern runs.
 
 Editing a fixture Glow ships keeps the original and saves yours beside it, and
-any light already patched to it moves over.
+any light already patched to it moves over. Everything a bundled definition
+can say, the builder can write: modes, 16-bit pairs and their defaults,
+highlight values, named functions, the slots inside them and their swatches,
+real units, and the channel a channel depends on. A test fails if a bundled
+definition ever uses a field the builder cannot set.
 
 Every channel has a default, and defaults are not settings. A light patched
 and brought up reads plain white, centred, no gobo and no strobe, because that

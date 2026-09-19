@@ -8,7 +8,6 @@ struct StrobePad: View {
 	let isRunning: Bool
 	
 	@State private var isLit = false
-	@State private var isDragging = false
 	
 	var body: some View {
 		let period = max(0.05, 1 / max(0.5, hertz ?? 1))
@@ -54,6 +53,6 @@ struct StrobePad: View {
 		.onChange(of: isRunning) {
 			isLit = false
 		}
-		.sensoryFeedback(.selection, trigger: isDragging)
+		.sensoryFeedback(.selection, trigger: isRunning)
 	}
 }

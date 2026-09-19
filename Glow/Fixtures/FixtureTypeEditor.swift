@@ -38,16 +38,41 @@ struct FixtureTypeEditor: View {
 					AppearancePicker(symbol: $draft.symbol)
 				}
 				
-				if draft.modes.count > 1 {
-					Section {
+				Section {
+					if draft.modes.count > 1 {
 						Picker("Mode", selection: $index) {
 							ForEach(draft.modes.indices, id: \.self) { position in
 								Text(draft.modes[position].name).tag(position)
 							}
 						}
-					} footer: {
-						Text("Each mode is a different channel layout the same fixture can be switched to. Patching picks one.")
 					}
+					
+					TextField("Mode name", text: $draft.modes[min(index, draft.modes.count - 1)].name)
+						.autocorrectionDisabled()
+					
+					Button("Add a Mode", systemImage: "plus") {
+						draft.modes.append(FixtureType.Mode(name: "\(draft.modes.count + 1) channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)]))
+						index = draft.modes.count - 1
+					}
+					
+					Button("Duplicate This Mode", systemImage: "plus.square.on.square") {
+						var copy = draft.modes[index]
+						copy.id = nil
+						copy.name = "\(copy.name) copy"
+						draft.modes.insert(copy, at: index + 1)
+						index += 1
+					}
+					
+					if draft.modes.count > 1 {
+						Button("Delete This Mode", systemImage: "trash", role: .destructive) {
+							draft.modes.remove(at: index)
+							index = min(index, draft.modes.count - 1)
+						}
+					}
+				} header: {
+					Text("Mode")
+				} footer: {
+					Text("Each mode is a different channel layout the same fixture can be switched to, and patching picks one. Read them off the fixture's own menu.")
 				}
 				
 				Section {
@@ -111,7 +136,7 @@ struct FixtureTypeEditor: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.navigationDestination(for: Int.self) { offset in
 				if let position = draft.modes[index].channels.firstIndex(where: { $0.offset == offset }) {
-					ChannelEditor(channel: $draft.modes[index].channels[position])
+					ChannelEditor(channel: $draft.modes[index].channels[position], others: draft.modes[index].channels)
 				}
 			}
 			.toolbar {

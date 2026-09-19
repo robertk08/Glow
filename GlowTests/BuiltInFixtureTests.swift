@@ -193,6 +193,55 @@ struct BuiltInFixtureTests {
 		#expect(ours.defaults == theirs.defaults)
 	}
 	
+	@Test func noBuiltInUsesAnythingTheBuilderCannotWrite() throws {
+		let reachable: Set<String> = [
+			"id", "manufacturer", "model", "symbol", "mixing", "invertsPan", "invertsTilt", "panDegrees", "tiltDegrees", "modes",
+			"name", "channels",
+			"offset", "fineOffset", "attribute", "label", "defaultValue", "fineDefaultValue", "highlightValue", "enabledBy", "functions",
+			"from", "to", "kind", "purpose", "unit", "physicalFrom", "physicalTo", "requiresConfirmation", "holdSeconds", "colors", "sets",
+		]
+		
+		func keys(_ value: Any) -> Set<String> {
+			if let object = value as? [String: Any] {
+				return Set(object.keys).union(object.values.flatMap { keys($0) })
+			}
+			if let list = value as? [Any] {
+				return Set(list.flatMap { keys($0) })
+			}
+			return []
+		}
+		
+		for type in library.builtIn {
+			let data = try JSONEncoder().encode(type)
+			let found = keys(try JSONSerialization.jsonObject(with: data))
+			#expect(found.subtracting(reachable).isEmpty, "\(type.id) uses \(found.subtracting(reachable).sorted()), which the builder cannot set")
+		}
+	}
+	
+	@Test func aBuilderMadeFixtureCanCarryWheelsAndDependencies() throws {
+		var gobo = FixtureChannel(offset: 1, attribute: .gobo, label: "Gobo wheel", defaultValue: 0, highlightValue: 0)
+		var wheel = ChannelFunction(from: 6, to: 89, label: "Gobo", kind: .proportional)
+		wheel.sets = [ChannelSet(from: 6, to: 17, label: "Dots", colors: ["ff0000"]), ChannelSet(from: 18, to: 29, label: "Breakup")]
+		gobo.functions = [ChannelFunction(from: 0, to: 5, label: "Open", purpose: .open), wheel]
+		
+		var colour = FixtureChannel(offset: 2, attribute: .red, fineOffset: 3, defaultValue: 255, fineDefaultValue: 12)
+		colour.enabledBy = FixtureChannel.Dependency(offset: 1, from: 0, to: 5)
+		
+		let mine = FixtureType(id: "mine", model: "Mine", modes: [
+			FixtureType.Mode(name: "3 channel", channels: [gobo, colour]),
+			FixtureType.Mode(name: "1 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)]),
+		])
+		
+		let back = try JSONDecoder().decode(FixtureType.self, from: JSONEncoder().encode(mine))
+		
+		#expect(back == mine)
+		#expect(back.fixtureModes.count == 2)
+		#expect(back.fixtureModes[0].channel(.gobo)?.function(containing: 20)?.set(containing: 20)?.label == "Breakup")
+		#expect(back.fixtureModes[0].channel(.red)?.enabledBy?.contains(3) == true)
+		#expect(back.fixtureModes[0].channel(.red)?.fineDefaultValue == 12)
+		#expect(back.fixtureModes[0].defaults == [0, 255, 12])
+	}
+	
 	@Test func theAppWorksWithNoBuiltInDefinitionsAtAll() {
 		let empty = FixtureLibrary(builtIn: [])
 		let console = Console()

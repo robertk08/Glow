@@ -62,6 +62,16 @@ struct ConsoleTests {
 		#expect(decoded.lights.first?.invertsTilt == nil)
 	}
 	
+	@Test func aShowWrittenBeforeFixtureTypesStillOpens() throws {
+		let data = Data(#"{"name":"Older","lights":[{"identifier":"a","profileID":"mini-moving-head-14ch","name":"Head","address":5,"sortIndex":0}],"groups":[],"profiles":[{"identifier":"x","name":"X","symbol":"star","channels":[]}],"scenes":[]}"#.utf8)
+		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
+		
+		#expect(decoded.name == "Older")
+		#expect(decoded.made.isEmpty)
+		#expect(decoded.lights.first?.typeID == "mini-moving-head-14ch")
+		#expect(decoded.lights.first?.address == 5)
+	}
+	
 	@MainActor @Test func reorderingKeepsEveryFixture() throws {
 		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
 		let fixtures = (0..<3).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: $0) }

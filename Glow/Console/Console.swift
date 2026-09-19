@@ -309,14 +309,6 @@ final class Console {
 		outputFrames.startOver()
 	}
 	
-	func prune(_ fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
-		guard !library.modes.isEmpty else { return }
-		
-		for fixture in fixtures where library.mode(fixture.typeID) == nil {
-			remove(fixture, context: context, library: library)
-		}
-	}
-	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }

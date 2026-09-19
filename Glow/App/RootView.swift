@@ -65,11 +65,9 @@ struct RootView: View {
 		}
 		.onChange(of: stored) {
 			library.setMade(stored.map(\.definition))
-			console.prune(fixtures, library: library, context: context)
 		}
 		.task {
 			library.setMade(stored.map(\.definition))
-			console.prune(fixtures, library: library, context: context)
 		}
 	}
 }
