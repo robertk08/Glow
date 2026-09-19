@@ -1,9 +1,18 @@
 import Foundation
 
 actor NodeLink {
-	nonisolated let events: AsyncStream<LinkEvent>
+	enum Event: Sendable {
+		case state(LinkState)
+		case status(Wire.NodeInfo)
+		case latency(TimeInterval)
+		case frame(start: DMXAddress, values: [UInt8])
+		case master(Double)
+		case blackout(Bool)
+	}
 	
-	private let continuation: AsyncStream<LinkEvent>.Continuation
+	nonisolated let events: AsyncStream<Event>
+	
+	private let continuation: AsyncStream<Event>.Continuation
 	private var socket: URLSessionWebSocketTask?
 	private var supervisor: Task<Void, Never>?
 	private var heartbeat: Task<Void, Never>?
@@ -18,7 +27,7 @@ actor NodeLink {
 	}()
 	
 	init() {
-		let (stream, continuation) = AsyncStream<LinkEvent>.makeStream(bufferingPolicy: .bufferingNewest(64))
+		let (stream, continuation) = AsyncStream<Event>.makeStream(bufferingPolicy: .bufferingNewest(64))
 		events = stream
 		self.continuation = continuation
 	}

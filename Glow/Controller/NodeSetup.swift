@@ -1,6 +1,55 @@
 import Foundation
 
 struct NodeSetup: Sendable {
+	struct Info: Decodable, Sendable {
+		var id = ""
+		var ip = ""
+		var name = "Glow"
+		var isProvisioned = false
+		var didRefuse = false
+		var isJoining = false
+		var ssid = ""
+		
+		private enum CodingKeys: String, CodingKey { case id, ip, name, state, join, ssid }
+		
+		func hasJoined(ssid: String) -> Bool {
+			isProvisioned && !isJoining && !didRefuse && (self.ssid.isEmpty || self.ssid == ssid)
+		}
+		
+		init(from decoder: any Decoder) throws {
+			let container = try decoder.container(keyedBy: CodingKeys.self)
+			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+			name = try container.decode(String.self, forKey: .name)
+			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
+			let join = try container.decodeIfPresent(String.self, forKey: .join)
+			didRefuse = join == "failed"
+			isJoining = join == "trying"
+			ssid = try container.decodeIfPresent(String.self, forKey: .ssid) ?? ""
+		}
+	}
+	
+	struct Scan: Decodable {
+		var networks: [NodeNetwork]
+	}
+	
+	struct Acknowledgment: Decodable {
+		var ok: Bool
+		var error: String?
+	}
+	
+	enum Failure: LocalizedError, Sendable {
+		case unreachable
+		case refused(String)
+		
+		var errorDescription: String? {
+			switch self {
+			case .unreachable: "Couldn't reach the node."
+			case let .refused(reason): reason
+			}
+		}
+	}
+	
 	var host = "192.168.4.1"
 	var port = 80
 	
@@ -12,12 +61,12 @@ struct NodeSetup: Sendable {
 		return URLSession(configuration: configuration)
 	}
 	
-	func info() async throws -> NodeSetupInfo {
+	func info() async throws -> Info {
 		try await get("/api/info")
 	}
 	
 	func scan() async throws -> [NodeNetwork] {
-		let response: NodeNetworkScan = try await get("/api/scan")
+		let response: Scan = try await get("/api/scan")
 		return response.networks.sorted { $0.rssi > $1.rssi }
 	}
 	
@@ -39,13 +88,13 @@ struct NodeSetup: Sendable {
 		components.host = host
 		components.port = port == 80 ? nil : port
 		components.path = path
-		guard let url = components.url else { throw NodeSetupFailure.unreachable }
+		guard let url = components.url else { throw Failure.unreachable }
 		return url
 	}
 	
 	private func get<T: Decodable>(_ path: String) async throws -> T {
 		let (data, _) = try await perform(URLRequest(url: try url(path)))
-		guard let decoded = try? JSONDecoder().decode(T.self, from: data) else { throw NodeSetupFailure.unreachable }
+		guard let decoded = try? JSONDecoder().decode(T.self, from: data) else { throw Failure.unreachable }
 		return decoded
 	}
 	
@@ -57,15 +106,15 @@ struct NodeSetup: Sendable {
 		
 		let (data, _) = try await perform(request)
 		
-		guard let ack = try? JSONDecoder().decode(NodeSetupAcknowledgment.self, from: data) else { throw NodeSetupFailure.unreachable }
-		guard ack.ok else { throw NodeSetupFailure.refused(ack.error ?? "The node turned those details down.") }
+		guard let ack = try? JSONDecoder().decode(Acknowledgment.self, from: data) else { throw Failure.unreachable }
+		guard ack.ok else { throw Failure.refused(ack.error ?? "The node turned those details down.") }
 	}
 	
 	private func perform(_ request: URLRequest) async throws -> (Data, URLResponse) {
 		do {
 			return try await session.data(for: request)
 		} catch {
-			throw NodeSetupFailure.unreachable
+			throw Failure.unreachable
 		}
 	}
 }

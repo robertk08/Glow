@@ -5,12 +5,18 @@ struct AppearancePicker: View {
 	
 	var tint: Binding<FixtureTint>?
 	
+	private let symbols = [
+		"light.beacon.max", "light.panel", "lightbulb", "lightbulb.max", "light.strip.2",
+		"light.max", "sun.max", "laser.burst", "sparkles", "star", "rays",
+		"camera.aperture", "circle.hexagongrid", "smoke", "cloud.fog", "flame",
+		"lamp.desk", "lamp.floor", "lamp.ceiling", "chandelier", "bolt", "waveform", "square.stack.3d.up",
+	]
 	private let symbolColumns = [GridItem(.adaptive(minimum: 44), spacing: 12)]
 	private let tintColumns = [GridItem(.adaptive(minimum: 40), spacing: 10)]
 	
 	var body: some View {
 		LazyVGrid(columns: symbolColumns, spacing: 12) {
-			ForEach(FixtureSymbol.all, id: \.self) { option in
+			ForEach(symbols, id: \.self) { option in
 				Button {
 					symbol = option
 				} label: {

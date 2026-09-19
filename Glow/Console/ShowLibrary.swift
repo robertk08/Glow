@@ -134,19 +134,19 @@ final class ShowLibrary {
 		var file = ShowFile(name: show.name, lights: [], groups: [], profiles: [], scenes: [])
 		
 		for group in groups {
-			file.groups.append(ShowGroup(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
+			file.groups.append(ShowFile.Group(name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
 		}
 		
 		for fixture in fixtures {
-			file.lights.append(ShowLight(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+			file.lights.append(ShowFile.Light(identifier: fixture.identifier, profileID: fixture.profileID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
 		}
 		
 		for profile in profiles {
-			file.profiles.append(ShowProfile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList, isSubtractive: profile.isSubtractive))
+			file.profiles.append(ShowFile.Profile(identifier: profile.identifier, name: profile.name, symbol: profile.symbol, channels: profile.channelList, isSubtractive: profile.isSubtractive))
 		}
 		
 		for look in looks {
-			file.scenes.append(ShowScene(name: look.name, sortIndex: look.sortIndex, levels: look.levels))
+			file.scenes.append(ShowFile.Scene(name: look.name, sortIndex: look.sortIndex, levels: look.levels))
 		}
 		
 		return file

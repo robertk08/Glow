@@ -115,7 +115,7 @@ struct ConsoleTests {
 	}
 	
 	@Test func aShowPreservesFixtureOrientation() throws {
-		let light = ShowLight(identifier: "head", profileID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
+		let light = ShowFile.Light(identifier: "head", profileID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
 		let file = ShowFile(name: "Show", lights: [light], groups: [], profiles: [], scenes: [])
 		let data = try JSONEncoder().encode(file)
 		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)

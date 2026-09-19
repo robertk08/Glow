@@ -1,8 +1,13 @@
 import Foundation
 
 struct Dimmer: Equatable {
+	enum Kind: Equatable {
+		case linear
+		case band(from: UInt8, to: UInt8, open: UInt8?)
+	}
+	
 	var address: DMXAddress
-	var kind: DimmerKind
+	var kind: Kind
 	var fineAddress: DMXAddress?
 	
 	func scale(_ value: UInt8, by master: Double) -> UInt8 {

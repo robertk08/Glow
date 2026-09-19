@@ -4,7 +4,11 @@ import SwiftUI
 
 @Observable @MainActor
 final class NodeSetupModel {
-	var step = NodeSetupStep.findController
+	enum Step {
+		case findController, chooseNetwork, password, joining, done
+	}
+	
+	var step = Step.findController
 	var networks: [NodeNetwork] = []
 	var selected: NodeNetwork?
 	var user = ""
