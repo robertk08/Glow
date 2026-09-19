@@ -10,16 +10,17 @@ is therefore a JSON file in the app, never a reflash.
 
 ```
 Glow/          the iOS app
-  App/         the shell and what it puts on screen first
-  Model/       value types - universe, profiles, colour maths
-  Console/     the universe, the programmer, the two libraries
-  Controller/  socket, discovery, Wi-Fi setup, and their screens
-  Lights/      the patch, the tiles, the fixture builder
+  App/         the shell, the first screen and Settings
+  Lights/      the rig you patched: the lights, the groups, the tiles
+  Fixtures/    the kinds of light that exist, and how one is built here
+    BuiltIn/   bundled fixture profiles
   Programmer/  everything that drives the selection
-  Scenes/
-  Settings/
-  Shared/      controls used by more than one of the above
-  Profiles/    bundled fixture profiles
+  Console/     the universe, what goes out of it, and the monitor
+  Color/       emitters, mixing, colour temperature
+  Controller/  socket, discovery, Wi-Fi setup, and their screens
+  Shows/       the show list, the store behind it, the file it exports
+  Scenes/      saved looks
+  Controls/    controls used by more than one of the above
   Resources/   assets, icon, privacy manifest
 Arduino/       the ESP32-S3 sketch
 ```
