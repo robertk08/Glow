@@ -14,7 +14,7 @@ final class Console {
 	
 	var master: Double = 1 {
 		didSet {
-			needsFullOutput = true
+			outputFrames.startOver()
 			guard !isAdopting else { return }
 			let level = master
 			
@@ -27,7 +27,7 @@ final class Console {
 	var blackout = false {
 		didSet {
 			guard blackout != oldValue else { return }
-			needsFullOutput = true
+			outputFrames.startOver()
 			guard !isAdopting else { return }
 			let value = blackout
 			
@@ -50,10 +50,8 @@ final class Console {
 	private var dimmers: [Dimmer] = []
 	private var loop: Task<Void, Never>?
 	private var events: Task<Void, Never>?
-	private var lastSource: [UInt8] = []
-	private var lastOutput: [UInt8] = []
-	private var needsFullSource = true
-	private var needsFullOutput = true
+	private var sourceFrames = FrameStream()
+	private var outputFrames = FrameStream()
 	private var isSynced = false
 	private var isAdopting = false
 	private var savedLook: [UInt8] = []
@@ -86,8 +84,8 @@ final class Console {
 					link = state
 					if state == .connected {
 						isSynced = false
-						needsFullSource = true
-						needsFullOutput = true
+						sourceFrames.startOver()
+						outputFrames.startOver()
 					}
 				case let .status(info):
 					node = info
@@ -96,8 +94,8 @@ final class Console {
 					latency = value
 				case let .frame(start, values):
 					universe.set(values, at: start)
-					lastSource = universe.values
-					needsFullOutput = true
+					sourceFrames.adopt(universe.values)
+					outputFrames.startOver()
 					isSynced = true
 				case let .master(level):
 					isAdopting = true
@@ -123,8 +121,8 @@ final class Console {
 	
 	func connect() {
 		isSynced = false
-		needsFullSource = true
-		needsFullOutput = true
+		sourceFrames.startOver()
+		outputFrames.startOver()
 		let target = endpoint
 		
 		Task {
@@ -184,8 +182,8 @@ final class Console {
 	func closeShow() {
 		universe = Universe()
 		dimmers = []
-		needsFullSource = true
-		needsFullOutput = true
+		sourceFrames.startOver()
+		outputFrames.startOver()
 		clearSelection()
 	}
 	
@@ -201,7 +199,7 @@ final class Console {
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
 		let width = max(1, library.profile(fixture.profileID)?.channelCount ?? 1)
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
-		needsFullOutput = true
+		outputFrames.startOver()
 		selection.remove(fixture.persistentModelID)
 		isProgrammerOpen = isProgrammerOpen && hasSelection
 		context.delete(fixture)
@@ -290,7 +288,7 @@ final class Console {
 			universe.set(values, at: fixture.start)
 		}
 		
-		needsFullOutput = true
+		outputFrames.startOver()
 	}
 	
 	func prune(_ fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
@@ -305,7 +303,7 @@ final class Console {
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }
 		dimmers = rebuilt
-		needsFullOutput = true
+		outputFrames.startOver()
 	}
 	
 	var output: [UInt8] {
@@ -333,49 +331,14 @@ final class Console {
 	private func tick() async {
 		saveLook()
 		guard link.isConnected, isSynced else { return }
-		await sendSource()
-		await sendOutput()
-	}
-	
-	private func sendSource() async {
-		let frame = universe.values
-		defer { lastSource = frame }
 		
-		guard !needsFullSource, lastSource.count == frame.count else {
-			needsFullSource = false
-			await connection.send(Wire.sourceOpcode, start: DMXAddress(1)!, values: frame)
-			return
+		if let frame = sourceFrames.next(universe.values) {
+			await connection.send(Wire.sourceOpcode, start: frame.start, values: frame.values)
 		}
 		
-		guard let span = Self.changed(lastSource, frame), let start = DMXAddress(span.lowerBound + 1) else { return }
-		await connection.send(Wire.sourceOpcode, start: start, values: Array(frame[span]))
-	}
-	
-	private func sendOutput() async {
-		let frame = output
-		defer { lastOutput = frame }
-		
-		guard !needsFullOutput, lastOutput.count == frame.count else {
-			needsFullOutput = false
-			await connection.send(Wire.outputOpcode, start: DMXAddress(1)!, values: frame)
-			return
+		if let frame = outputFrames.next(output) {
+			await connection.send(Wire.outputOpcode, start: frame.start, values: frame.values)
 		}
-		
-		guard let span = Self.changed(lastOutput, frame), let start = DMXAddress(span.lowerBound + 1) else { return }
-		await connection.send(Wire.outputOpcode, start: start, values: Array(frame[span]))
-	}
-	
-	private static func changed(_ old: [UInt8], _ new: [UInt8]) -> ClosedRange<Int>? {
-		var first: Int?
-		var last: Int?
-		
-		for index in new.indices where old[index] != new[index] {
-			if first == nil { first = index }
-			last = index
-		}
-		
-		guard let first, let last else { return nil }
-		return first...last
 	}
 	
 	private func restoreLook() {
@@ -383,8 +346,8 @@ final class Console {
 		guard let data = try? Data(contentsOf: Self.lookFile), data.count == Universe.channelCount else { return }
 		universe.set([UInt8](data), at: DMXAddress(1)!)
 		savedLook = [UInt8](data)
-		needsFullSource = true
-		needsFullOutput = true
+		sourceFrames.startOver()
+		outputFrames.startOver()
 	}
 	
 	private func saveLook() {
