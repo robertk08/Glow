@@ -9,8 +9,7 @@ final class Console {
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
 	
-	var selection: Set<PersistentIdentifier> = []
-	var isProgrammerOpen = false
+	let selection = Selection()
 	
 	var master: Double = 1 {
 		didSet {
@@ -158,59 +157,22 @@ final class Console {
 		active.remove(span.lowerBound + offset - 1)
 	}
 	
-	var hasSelection: Bool { !selection.isEmpty }
-	
-	func isSelected(_ fixture: Fixture) -> Bool {
-		selection.contains(fixture.persistentModelID)
-	}
-	
-	func isSelected(_ group: FixtureGroup) -> Bool {
-		let members = Set(group.members.map(\.persistentModelID))
-		return !members.isEmpty && members.isSubset(of: selection)
-	}
-	
-	func toggle(_ fixture: Fixture) {
-		if selection.contains(fixture.persistentModelID) {
-			selection.remove(fixture.persistentModelID)
-		} else {
-			selection.insert(fixture.persistentModelID)
-		}
-		
-		isProgrammerOpen = isProgrammerOpen && hasSelection
-	}
-	
-	func toggle(_ group: FixtureGroup) {
-		let members = Set(group.members.map(\.persistentModelID))
-		if members.isSubset(of: selection) {
-			selection.subtract(members)
-		} else {
-			selection.formUnion(members)
-		}
-		
-		isProgrammerOpen = isProgrammerOpen && hasSelection
-	}
-	
-	func clearSelection() {
-		selection.removeAll()
-		isProgrammerOpen = false
-	}
-	
 	func closeShow() {
 		universe = Universe()
 		active = []
 		dimmers = []
+		selection.clear()
 		sourceFrames.startOver()
 		outputFrames.startOver()
-		clearSelection()
 	}
 	
 	func releaseValues(among fixtures: [Fixture], library: FixtureLibrary) {
 		programmer(among: fixtures, library: library).applyDefaults()
-		clearSelection()
+		selection.clear()
 	}
 	
 	func programmer(among fixtures: [Fixture], library: FixtureLibrary) -> Programmer {
-		Programmer(fixtures: fixtures.filter(isSelected), library: library, console: self)
+		Programmer(fixtures: fixtures.filter(selection.contains), library: library, console: self)
 	}
 	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
@@ -218,8 +180,7 @@ final class Console {
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
 		release(fixture.range(library.mode(fixture.typeID)))
 		outputFrames.startOver()
-		selection.remove(fixture.persistentModelID)
-		isProgrammerOpen = isProgrammerOpen && hasSelection
+		selection.forget(fixture)
 		context.delete(fixture)
 	}
 	

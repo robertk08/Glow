@@ -203,7 +203,7 @@ struct LightsView: View {
 		.navigationDestination(item: $editingGroup) { group in
 			GroupView(group: group)
 		}
-		.sensoryFeedback(.selection, trigger: console.selection)
+		.sensoryFeedback(.selection, trigger: console.selection.identifiers)
 		.onChange(of: fixtures) {
 			console.applyPatch(fixtures, library: library)
 		}
@@ -222,7 +222,7 @@ private struct GroupChip: View {
 	@Binding var editing: FixtureGroup?
 	
 	var body: some View {
-		Toggle(isOn: Binding { console.isSelected(group) } set: { _ in console.toggle(group) }) {
+		Toggle(isOn: Binding { console.selection.contains(group) } set: { _ in console.selection.toggle(group) }) {
 			Label(group.name, systemImage: group.symbol)
 				.font(.subheadline)
 		}

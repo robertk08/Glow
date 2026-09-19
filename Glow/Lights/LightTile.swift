@@ -21,7 +21,7 @@ struct LightTile: View {
 		let programmer = Programmer(fixture: fixture, library: library, console: console)
 		let isOn = programmer?.isOn ?? false
 		let glow = programmer?.glow ?? .accentColor
-		let isSelected = console.isSelected(fixture)
+		let isSelected = console.selection.contains(fixture)
 		
 		return VStack(alignment: .leading, spacing: 8) {
 			HStack(spacing: 8) {
@@ -89,7 +89,7 @@ struct LightTile: View {
 				return
 			}
 			
-			console.toggle(fixture)
+			console.selection.toggle(fixture)
 		}
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.accessibilityElement(children: .combine)

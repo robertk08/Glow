@@ -13,10 +13,10 @@ struct ConsoleBar: View {
 		let programmer = console.programmer(among: fixtures, library: library)
 		
 		return Group {
-			if console.hasSelection {
+			if !console.selection.isEmpty {
 				HStack(spacing: 10) {
 					Button {
-						console.isProgrammerOpen = true
+						console.selection.isProgrammerOpen = true
 					} label: {
 						HStack(spacing: 8) {
 							Image(systemName: programmer.symbol)
@@ -59,7 +59,7 @@ struct ConsoleBar: View {
 						.frame(minWidth: 70)
 						.tint(programmer.isOn ? programmer.glow : nil)
 						.simultaneousGesture(TapGesture().onEnded {
-							console.isProgrammerOpen = true
+							console.selection.isProgrammerOpen = true
 						})
 					} else if programmer.dims {
 						Spacer(minLength: 8)
@@ -78,6 +78,6 @@ struct ConsoleBar: View {
 				MasterBar()
 			}
 		}
-		.sensoryFeedback(.selection, trigger: console.selection)
+		.sensoryFeedback(.selection, trigger: console.selection.identifiers)
 	}
 }

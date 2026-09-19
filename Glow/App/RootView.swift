@@ -40,12 +40,12 @@ struct RootView: View {
 	}
 	
 	var body: some View {
-		@Bindable var console = console
+		@Bindable var selection = console.selection
 		
 		return Group {
 			if sizeClass == .compact {
 				tabs
-					.sheet(isPresented: $console.isProgrammerOpen) {
+					.sheet(isPresented: $selection.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
 							.presentationDetents([.fraction(0.5), .large])
 							.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
@@ -54,14 +54,14 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: $console.isProgrammerOpen) {
+					.inspector(isPresented: $selection.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
 							.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
 			}
 		}
-		.onChange(of: console.selection) {
-			if sizeClass == .regular { console.isProgrammerOpen = console.hasSelection }
+		.onChange(of: console.selection.identifiers) {
+			if sizeClass == .regular { console.selection.isProgrammerOpen = !console.selection.isEmpty }
 		}
 		.onChange(of: stored) {
 			library.setMade(stored.map(\.definition))

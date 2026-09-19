@@ -8,13 +8,13 @@ struct ClearButton: View {
 	
 	var body: some View {
 		Button("Clear", role: .cancel) {
-			console.clearSelection()
+			console.selection.clear()
 		}
 		.accessibilityHint("Tap to clear the selection. Touch and hold to release values.")
 		.keyboardShortcut(.escape, modifiers: [])
 		.simultaneousGesture(LongPressGesture().onEnded { _ in
 			console.releaseValues(among: fixtures, library: library)
 		})
-		.sensoryFeedback(.impact(weight: .light), trigger: console.hasSelection)
+		.sensoryFeedback(.impact(weight: .light), trigger: console.selection.isEmpty)
 	}
 }
