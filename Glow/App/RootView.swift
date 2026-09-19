@@ -56,7 +56,7 @@ struct RootView: View {
 				tabs
 					.inspector(isPresented: $console.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
-							.inspectorColumnWidth(min: 320, ideal: 380, max: 480)
+							.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
 			}
 		}

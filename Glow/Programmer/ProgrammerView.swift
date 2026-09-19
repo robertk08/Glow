@@ -77,11 +77,11 @@ struct ProgrammerView: View {
 				ChannelsView(programmer: programmer)
 			}
 			.toolbar {
+				ToolbarItem(placement: .topBarLeading) {
+					ClearButton()
+				}
+				
 				if sizeClass == .compact {
-					ToolbarItem(placement: .topBarLeading) {
-						ClearButton()
-					}
-					
 					ToolbarItem(placement: .confirmationAction) {
 						Button(role: .close) { dismiss() }
 					}

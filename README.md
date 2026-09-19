@@ -3,7 +3,7 @@
 An iOS app that controls DMX stage lights over Wi-Fi, and the ESP32-S3 firmware
 that puts the signal on the wire.
 
-The app is the console: it holds the patch, the fixture profiles and the
+The app is the console: it holds the patch, the fixture definitions and the
 512-channel universe, and decides what every channel is worth. The controller is
 a dumb output that clocks whatever it is sent onto the DMX line. Fixture support
 is therefore a JSON file in the app, never a reflash.
@@ -16,6 +16,16 @@ holding Clear offers Release Values. A group is a saved selection, not a
 container. The master fader and blackout hold the accessory whenever nothing is
 selected.
 
+The programmer is the fixture's own feature groups along the top, and one
+control surface for whichever group you are on, fixed above the rest. Intensity
+is a bar carrying the light's colour and its level. Colour is a wheel, the
+fixture's presets, and a temperature strip where there is white to balance.
+Position is a pad reading real degrees, with a fine mode that moves a sixth as
+far for the same gesture. Beam draws the cone, widening with zoom and softening
+with focus, and strobe flashes at the rate the fixture is actually running.
+Wheels are their named slots, split swatches and all. Anything the definition
+carries but the surface does not is under All Channels, on its raw value.
+
 Blackout latches and pulls only the dimmers down, the same channels and the same
 way the master fader does, so a head keeps its position and its colour through
 one.
@@ -24,8 +34,10 @@ The patch, the groups, the fixtures built here and the scenes sit in one store
 with an undo manager, so editing is undoable. Removing a light writes zeros
 across its channels on the way out. A light whose fixture profile no longer
 exists is removed on the next launch, unless the fixture library failed to load.
+Highlight puts a fixture where you can find it on stage without setting
+anything, so you can leave it and go back to what you were doing.
 
-A moving head can be told to invert pan, tilt or both. The fixture profile
+A moving head can be told to invert pan, tilt or both. The fixture definition
 carries what is usual for that model and each patched light can differ.
 
 A fixture type is one file, whether Glow ships it or you build it here, and the
@@ -65,8 +77,9 @@ exports and imports as one JSON file carrying the date its format was settled
 and the date it was written. A file from a newer format is refused, one with no
 version at all is taken as it comes.
 
-The DMX monitor shows output after master and blackout. Switch to Source to
-inspect or adjust the programmer values before those controls.
+The DMX monitor shows output after master and blackout, and marks the channels
+you have set against the ones riding their default. Switch to Source to inspect
+or adjust the programmer values before those controls.
 
 Bundled fixture channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
 [Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),

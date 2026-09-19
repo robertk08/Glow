@@ -117,6 +117,55 @@ struct BuiltInFixtureTests {
 		#expect(open == 240)
 	}
 	
+	@Test func theFresnelBalancesWhiteAndReadsItBack() {
+		guard let mode = library.mode("cameo-f2-fc-16ch") else {
+			Issue.record("missing the 16 channel mode")
+			return
+		}
+		
+		let console = Console()
+		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		programmer.applyDefaults()
+		
+		#expect(programmer.balancesWhite)
+		#expect(programmer.mixesColor)
+		
+		programmer.apply(kelvin: 3200)
+		#expect(abs(programmer.kelvin - 3200) <= 100)
+		#expect(programmer.isActive(.color))
+		
+		programmer.release(.color)
+		#expect(!programmer.isActive(.color))
+	}
+	
+	@Test func everyFilterPresetInTheFresnelHasASwatch() {
+		guard let macro = library.mode("cameo-f2-fc-16ch")?.channel(.colorMacro) else {
+			Issue.record("missing the color preset channel")
+			return
+		}
+		
+		let filters = macro.functions.first { $0.from == 6 }.map(\.sets) ?? []
+		
+		#expect(filters.count == 49)
+		#expect(filters.allSatisfy { !$0.swatch.isEmpty })
+		#expect(macro.functions.first?.purpose == .release)
+	}
+	
+	@Test func aStrobeReadsInHertzWhereTheManualGivesOne() {
+		guard let mode = library.mode("cameo-f2-fc-16ch"), let shutter = mode.channel(.shutter) else {
+			Issue.record("missing the shutter")
+			return
+		}
+		
+		let console = Console()
+		let programmer = Programmer(mode: mode, start: DMXAddress(1)!, console: console)
+		programmer.applyDefaults()
+		
+		#expect(programmer.strobeHertz == nil)
+		programmer.set(250, of: shutter)
+		#expect(programmer.strobeHertz.map { abs($0 - 20) < 0.1 } == true)
+	}
+	
 	@Test func aHandMadeFixtureIsNoLessCapableThanABuiltInOne() throws {
 		guard let builtIn = library.type("stairville-bsw350") else {
 			Issue.record("missing the head")
