@@ -69,6 +69,24 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		}
 	}
 	
+	var abilities: [String] {
+		var found: [String] = []
+		
+		for mode in fixtureModes {
+			for ability in mode.abilities where !found.contains(ability) {
+				found.append(ability)
+			}
+		}
+		
+		return found
+	}
+	
+	var channelSpan: String {
+		let counts = fixtureModes.map(\.channelCount).sorted()
+		guard let first = counts.first, let last = counts.last else { return "" }
+		return first == last ? "\(first) ch" : "\(first)–\(last) ch"
+	}
+	
 	static let blank = FixtureType(id: "", model: "", modes: [Mode(name: "1 channel", channels: [FixtureChannel(offset: 1, attribute: .dimmer)])])
 	
 	init(id: String, manufacturer: String = "", model: String, symbol: String = "lightbulb", mixing: ColorMixing = .additive, invertsPan: Bool = false, invertsTilt: Bool = false, panDegrees: Double? = nil, tiltDegrees: Double? = nil, modes: [Mode]) {

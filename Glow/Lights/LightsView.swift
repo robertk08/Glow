@@ -83,10 +83,20 @@ struct LightsView: View {
 			
 			tiles
 			
-			Text("\(library.channelsUsed(by: fixtures)) of \(Universe.channelCount) channels used.")
-				.font(.footnote)
-				.foregroundStyle(.secondary)
-				.padding(.vertical, 20)
+			VStack(spacing: 6) {
+				Gauge(value: Double(library.channelsUsed(by: fixtures)), in: 0...Double(Universe.channelCount)) {
+					Text("Universe")
+				}
+				.gaugeStyle(.accessoryLinearCapacity)
+				.labelsHidden()
+				.frame(maxWidth: 220)
+				
+				Text("\(library.channelsUsed(by: fixtures)) of \(Universe.channelCount) channels used")
+					.font(.footnote)
+					.foregroundStyle(.secondary)
+					.monospacedDigit()
+			}
+			.padding(.vertical, 24)
 		}
 	}
 	
@@ -114,6 +124,8 @@ struct LightsView: View {
 		.toolbar {
 			LinkStatusButton()
 			
+			ToolbarSpacer(.flexible, placement: .topBarTrailing)
+			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("Reorder", systemImage: "arrow.up.arrow.down") {
 					isOrdering = true
@@ -128,6 +140,8 @@ struct LightsView: View {
 					}
 				}
 			}
+			
+			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			ToolbarItem(placement: .topBarTrailing) {
 				Menu("Add", systemImage: "plus") {

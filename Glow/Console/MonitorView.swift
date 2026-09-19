@@ -13,19 +13,7 @@ struct MonitorView: View {
 	var body: some View {
 		let owned = monitor.owners(among: fixtures, library: library)
 		
-		return ScrollView {
-			Picker("Values", selection: $monitor.showsSource) {
-				Text("Output").tag(false)
-				Text("Source").tag(true)
-			}
-			.pickerStyle(.segmented)
-			.padding(.horizontal)
-			
-			Text(monitor.showsSource ? "Before master and blackout. Drag sideways across a channel to change it, further from the row for bigger steps." : "After master and blackout, as sent to the controller.")
-				.font(.footnote)
-				.foregroundStyle(.secondary)
-				.padding(.horizontal)
-			
+		ScrollView {
 			LazyVGrid(columns: columns, spacing: 4, pinnedViews: [.sectionHeaders]) {
 				ForEach(monitor.blocks(owned: owned), id: \.first) { block in
 					Section {
@@ -44,6 +32,23 @@ struct MonitorView: View {
 			}
 			.padding(.horizontal)
 			.padding(.bottom)
+		}
+		.safeAreaInset(edge: .top, spacing: 0) {
+			VStack(spacing: 6) {
+				Picker("Values", selection: $monitor.showsSource) {
+					Text("Output").tag(false)
+					Text("Source").tag(true)
+				}
+				.pickerStyle(.segmented)
+				
+				Text(monitor.showsSource ? "Before master and blackout. Drag sideways across a channel to change it, further from the row for bigger steps." : "After master and blackout, exactly as it goes to the controller.")
+					.font(.footnote)
+					.foregroundStyle(.secondary)
+					.frame(maxWidth: .infinity, alignment: .leading)
+			}
+			.padding(.horizontal)
+			.padding(.bottom, 8)
+			.background(.bar)
 		}
 		.scrollEdgeEffectStyle(.hard, for: .top)
 		.navigationTitle("DMX Output")
@@ -72,14 +77,15 @@ private struct ChannelCell: View {
 	var body: some View {
 		let value = monitor.values[address - 1]
 		let isArmed = monitor.adjusting == address
+		let isSet = console.isActive(DMXAddress(clamping: address))
 		
-		return VStack(spacing: 1) {
+		VStack(spacing: 1) {
 			Text("\(address)")
 				.font(.system(size: 9).monospacedDigit())
-				.foregroundStyle(.secondary)
+				.foregroundStyle(isSet ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
 			
 			Text("\(value)")
-				.font(.system(size: 13, weight: .medium).monospacedDigit())
+				.font(.system(size: 13, weight: isSet ? .semibold : .medium).monospacedDigit())
 				.contentTransition(.numericText(value: Double(value)))
 		}
 		.frame(maxWidth: .infinity)
@@ -94,6 +100,10 @@ private struct ChannelCell: View {
 					.scaleEffect(y: Double(value) / 255, anchor: .bottom)
 			}
 		}
+		.overlay {
+			RoundedRectangle(cornerRadius: 6, style: .continuous)
+				.strokeBorder(.tint, lineWidth: isSet ? 1.5 : 0)
+		}
 		.containerShape(.rect(cornerRadius: 6, style: .continuous))
 		.clipShape(.rect(cornerRadius: 6, style: .continuous))
 		.scaleEffect(isArmed ? 1.12 : 1)
@@ -103,5 +113,7 @@ private struct ChannelCell: View {
 		}.onEnded { _ in
 			monitor.commit()
 		}, including: monitor.showsSource ? .all : .subviews)
+		.accessibilityElement(children: .combine)
+		.accessibilityValue(isSet ? "\(value), set" : "\(value)")
 	}
 }
