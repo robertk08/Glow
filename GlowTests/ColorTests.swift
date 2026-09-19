@@ -2,7 +2,7 @@ import Testing
 
 @testable import Glow
 
-struct ColourTests {
+struct ColorTests {
 	@Test func subtractiveMixingInvertsTheTarget() {
 		let mix = EmitterMix.mixing(LightColor(red: 0, green: 0.28, blue: 1), emitters: Emitter.flags, mixing: .subtractive)
 		
