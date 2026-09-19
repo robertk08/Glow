@@ -88,13 +88,27 @@ struct ScenesView: View {
 				.disabled(fixtures.isEmpty)
 			}
 		}
-		.sheet(isPresented: $isNaming) {
-			NameSheet(title: "New Scene", prompt: "Scene", name: $newName) { name in
+		.alert("New Scene", isPresented: $isNaming) {
+			TextField("Name", text: $newName)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Save") {
+				let name = newName.trimmingCharacters(in: .whitespaces)
+				guard !name.isEmpty else { return }
 				context.insert(Look(name: name, sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex), levels: console.levels(among: fixtures, library: library)))
 			}
 		}
-		.sheet(item: $renaming) { look in
-			NameSheet(title: "Rename Scene", prompt: "Scene", name: $renamed) { name in
+		.alert("Rename Scene", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }, presenting: renaming) { look in
+			TextField("Name", text: $renamed)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Rename") {
+				let name = renamed.trimmingCharacters(in: .whitespaces)
+				guard !name.isEmpty else { return }
 				look.name = name
 			}
 		}

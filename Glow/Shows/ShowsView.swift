@@ -33,8 +33,8 @@ struct ShowsView: View {
 					.buttonStyle(.plain)
 					.contextMenu {
 						Button("Rename", systemImage: "pencil") {
-							renaming = show
 							renamed = show.name
+							renaming = show
 						}
 						
 						Button("Duplicate", systemImage: "plus.square.on.square") {
@@ -51,18 +51,12 @@ struct ShowsView: View {
 						Button("Save to Files", systemImage: "folder") {
 							exporting = ShowDocument(show: shows.contents(of: show))
 						}
-						
+					}
+					.swipeActions {
 						Button("Delete", systemImage: "trash", role: .destructive) {
 							deleting = show
 						}
 						.disabled(shows.shows.count < 2)
-					}
-					.swipeActions(edge: .trailing, allowsFullSwipe: false) {
-						if shows.shows.count > 1 {
-							Button("Delete", systemImage: "trash", role: .destructive) {
-								deleting = show
-							}
-						}
 					}
 				}
 			}
@@ -78,14 +72,6 @@ struct ShowsView: View {
 				}
 			}
 		}
-		.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible, presenting: deleting) { show in
-			Button("Delete Show", role: .destructive) {
-				console.closeShow()
-				shows.delete(show)
-			}
-		} message: { _ in
-			Text("Its patch, groups, built fixtures and scenes go with it, and there is no undo.")
-		}
 		.sensoryFeedback(.selection, trigger: shows.activeID)
 		.navigationTitle("Shows")
 		.navigationBarTitleDisplayMode(.inline)
@@ -95,14 +81,38 @@ struct ShowsView: View {
 			shows.adopt(contentsOf: url)
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
-		.sheet(isPresented: $isNaming) {
-			NameSheet(title: "New Show", prompt: "Show", name: $newName) { name in
+		.alert("Delete Show?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, presenting: deleting) { show in
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Delete", role: .destructive) {
+				console.closeShow()
+				shows.delete(show)
+			}
+		} message: { show in
+			Text("\(show.name) goes with its patch, groups, built fixtures and scenes. There is no undo.")
+		}
+		.alert("New Show", isPresented: $isNaming) {
+			TextField("Name", text: $newName)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Create") {
+				let name = newName.trimmingCharacters(in: .whitespaces)
+				guard !name.isEmpty else { return }
 				console.closeShow()
 				shows.create(name: name)
 			}
 		}
-		.sheet(item: $renaming) { show in
-			NameSheet(title: "Rename Show", prompt: "Show", name: $renamed) { name in
+		.alert("Rename Show", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }, presenting: renaming) { show in
+			TextField("Name", text: $renamed)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Rename") {
+				let name = renamed.trimmingCharacters(in: .whitespaces)
+				guard !name.isEmpty else { return }
 				shows.rename(show, to: name)
 			}
 		}

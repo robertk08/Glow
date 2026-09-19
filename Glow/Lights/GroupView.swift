@@ -37,6 +37,14 @@ struct GroupView: View {
 					Button("Delete Group", role: .destructive) {
 						isDeleting = true
 					}
+					.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+						Button("Delete Group", role: .destructive) {
+							context.delete(group)
+							dismiss()
+						}
+					} message: {
+						Text("The lights in it stay patched.")
+					}
 				}
 			}
 			.navigationTitle(group.name.isEmpty ? "New Group" : group.name)
@@ -56,14 +64,6 @@ struct GroupView: View {
 				group.name = group.name.trimmingCharacters(in: .whitespaces)
 				guard group.name.isEmpty, group.members.isEmpty else { return }
 				context.delete(group)
-			}
-			.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
-				Button("Delete Group", role: .destructive) {
-					context.delete(group)
-					dismiss()
-				}
-			} message: {
-				Text("The lights in it stay patched.")
 			}
 		}
 	}

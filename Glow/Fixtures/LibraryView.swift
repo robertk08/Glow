@@ -3,16 +3,12 @@ import SwiftUI
 
 struct LibraryView: View {
 	@Environment(FixtureLibrary.self) private var library
-	@Environment(\.modelContext) private var context
 	@Environment(\.dismiss) private var dismiss
-	@Query private var stored: [StoredFixtureType]
-	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	var patching: Binding<Bool>?
 	
 	@State private var query = ""
 	@State private var isBuilding = false
-	@State private var deleting: StoredFixtureType?
 	
 	var body: some View {
 		let results = library.search(query)
@@ -29,16 +25,7 @@ struct LibraryView: View {
 			if !made.isEmpty {
 				Section("Made Here") {
 					ForEach(made) { type in
-						NavigationLink {
-							FixtureTypeView(type: type, patching: patching)
-						} label: {
-							FixtureTypeRow(type: type)
-						}
-						.swipeActions {
-							Button("Delete", systemImage: "trash", role: .destructive) {
-								deleting = stored.first { $0.identifier == type.id }
-							}
-						}
+						MadeFixtureRow(type: type, patching: patching)
 					}
 				}
 			}
@@ -85,15 +72,41 @@ struct LibraryView: View {
 		.sheet(isPresented: $isBuilding) {
 			FixtureTypeEditor()
 		}
-		.confirmationDialog("Delete \(deleting?.definition.model ?? "")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible) {
+	}
+}
+
+private struct MadeFixtureRow: View {
+	@Environment(FixtureLibrary.self) private var library
+	@Environment(\.modelContext) private var context
+	@Query private var stored: [StoredFixtureType]
+	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	
+	let type: FixtureType
+	
+	var patching: Binding<Bool>?
+	
+	@State private var isDeleting = false
+	
+	var body: some View {
+		let patched = library.patched(type.id, among: fixtures)
+		
+		NavigationLink {
+			FixtureTypeView(type: type, patching: patching)
+		} label: {
+			FixtureTypeRow(type: type)
+		}
+		.swipeActions(edge: .trailing, allowsFullSwipe: false) {
+			Button("Delete", systemImage: "trash", role: .destructive) {
+				isDeleting = true
+			}
+		}
+		.confirmationDialog("Delete \(type.model)?", isPresented: $isDeleting, titleVisibility: .visible) {
 			Button("Delete Fixture", role: .destructive) {
-				if let deleting {
-					context.delete(deleting)
-				}
-				deleting = nil
+				guard let found = stored.first(where: { $0.identifier == type.id }) else { return }
+				context.delete(found)
 			}
 		} message: {
-			Text(library.patched(deleting?.identifier, among: fixtures).isEmpty ? "Nothing is patched from it." : "\(library.patched(deleting?.identifier, among: fixtures).formatted(.list(type: .and))) are patched from it and go with it.")
+			Text(patched.isEmpty ? "Nothing is patched from it." : "\(patched.formatted(.list(type: .and))) are patched from it and go with it.")
 		}
 	}
 }

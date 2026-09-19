@@ -33,25 +33,25 @@ struct NodeView: View {
 				}
 				.foregroundStyle(.red)
 				.disabled(!console.link.isConnected)
+				.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
+					Button("Forget", role: .destructive) {
+						Task {
+							do {
+								try await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).forget()
+							} catch {
+								failure = error.localizedDescription
+							}
+						}
+					}
+				} message: {
+					Text("It restarts and you set it up from scratch.")
+				}
 			}
 		}
 		.navigationTitle("Controller")
 		.navigationBarTitleDisplayMode(.inline)
 		.sheet(isPresented: $isSettingUp) {
 			NodeSetupView()
-		}
-		.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
-			Button("Forget", role: .destructive) {
-				Task {
-					do {
-						try await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).forget()
-					} catch {
-						failure = error.localizedDescription
-					}
-				}
-			}
-		} message: {
-			Text("It restarts and you set it up from scratch.")
 		}
 		.alert("Could Not Forget Network", isPresented: Binding { failure != nil } set: { _ in failure = nil }) {
 			Button("OK", role: .cancel) { failure = nil }
