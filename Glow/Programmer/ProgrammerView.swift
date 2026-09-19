@@ -91,6 +91,104 @@ struct ProgrammerView: View {
 	}
 }
 
+private struct IntensityPane: View {
+	let programmer: Programmer
+	
+	var body: some View {
+		VStack(spacing: 14) {
+			LevelPad(level: programmer.brightnessBinding, glow: programmer.glow, isActive: programmer.isActive(.dimmer))
+			
+			HStack(spacing: 10) {
+				Button("Off") { programmer.brightness = 0 }
+				Button("25%") { programmer.brightness = 0.25 }
+				Button("50%") { programmer.brightness = 0.5 }
+				Button("75%") { programmer.brightness = 0.75 }
+				Button("Full") { programmer.brightness = 1 }
+			}
+			.buttonStyle(.glass)
+			.buttonBorderShape(.capsule)
+			.controlSize(.small)
+			.frame(maxWidth: .infinity)
+		}
+	}
+}
+
+private struct ColorPane: View {
+	let programmer: Programmer
+	
+	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
+	
+	var body: some View {
+		VStack(spacing: 12) {
+			if programmer.macroOverridesMix {
+				ContentUnavailableView {
+					Label("Built-in Color", systemImage: "paintpalette")
+				} description: {
+					Text("This light is showing a color built into the fixture, so the mixer is doing nothing.")
+				} actions: {
+					Button("Use the Color Mixer") {
+						programmer.releaseMix()
+					}
+					.buttonStyle(.glassProminent)
+				}
+				.frame(height: 232)
+			} else {
+				ColorPad(light: programmer.lightBinding, isActive: programmer.isActive(.color))
+				
+				LazyVGrid(columns: columns, spacing: 10) {
+					ForEach(programmer.presets) { preset in
+						Button {
+							programmer.apply(preset)
+						} label: {
+							Swatch(colors: [preset.swatch], size: 40, isSelected: programmer.selectedPresetID == preset.id)
+						}
+						.buttonStyle(.plain)
+						.accessibilityLabel(preset.name)
+						.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
+					}
+				}
+			}
+		}
+	}
+}
+
+private struct PositionPane: View {
+	let programmer: Programmer
+	
+	var body: some View {
+		VStack(spacing: 12) {
+			PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.mode?.panDegrees, tiltDegrees: programmer.mode?.tiltDegrees, isActive: programmer.isActive(.position))
+			
+			HStack(spacing: 10) {
+				Button("Centre", systemImage: "scope") { programmer.centre() }
+				Button("Home", systemImage: "house") { programmer.release(.position) }
+			}
+			.buttonStyle(.glass)
+			.buttonBorderShape(.capsule)
+			.controlSize(.small)
+			.frame(maxWidth: .infinity)
+		}
+	}
+}
+
+private struct BeamPane: View {
+	let programmer: Programmer
+	
+	var body: some View {
+		let shutter = programmer.shutterChannel
+		
+		VStack(spacing: 12) {
+			if programmer.channel(.zoom) != nil {
+				BeamPad(zoom: programmer.fractionBinding(.zoom), focus: programmer.fractionBinding(.focus), glow: programmer.glow, degrees: programmer.degrees(.zoom), hasFocus: programmer.channel(.focus) != nil)
+			}
+			
+			if let shutter, shutter.functions.contains(where: { $0.unit == .hertz }) {
+				StrobePad(rate: programmer.fractionBinding(of: shutter), glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
+			}
+		}
+	}
+}
+
 private struct ColorRows: View {
 	let programmer: Programmer
 	
