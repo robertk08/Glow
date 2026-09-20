@@ -11,6 +11,7 @@ struct FixtureEditView: View {
 	
 	@Bindable var fixture: Fixture
 	
+	@State private var named = ""
 	@State private var isRemoving = false
 	
 	private var type: FixtureType? { library.type(fixture.typeID) }
@@ -126,7 +127,16 @@ struct FixtureEditView: View {
 						fixture.name = fixture.name.trimmingCharacters(in: .whitespaces)
 						dismiss()
 					}
+					.disabled(fixture.name.trimmingCharacters(in: .whitespaces).isEmpty)
 				}
+			}
+			.task {
+				named = fixture.name
+			}
+			.onDisappear {
+				fixture.name = fixture.name.trimmingCharacters(in: .whitespaces)
+				guard fixture.name.isEmpty else { return }
+				fixture.name = named
 			}
 		}
 	}
