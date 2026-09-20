@@ -162,31 +162,41 @@ struct Programmer {
 		return !slots.isEmpty && slots.allSatisfy { $0.shape != nil || !$0.colors.isEmpty }
 	}
 	
-	var goboWheel: FixtureChannel? {
-		guard let wheel = type?.channel(.gobo), wheel.functions.contains(where: { $0.sets.contains { $0.shape != nil } }) else { return nil }
-		return wheel
+	var goboWheels: [FixtureChannel] {
+		[type?.channel(.gobo), type?.channel(.gobo2)].compactMap { $0 }
 	}
 	
-	var goboShape: GoboShape? {
-		goboWheel.flatMap { slot(of: $0)?.shape }
+	func spinner(of wheel: FixtureChannel) -> FixtureChannel? {
+		switch wheel.attribute {
+		case .gobo: type?.channel(.goboRotation)
+		case .gobo2: type?.channel(.gobo2Rotation)
+		default: nil
+		}
 	}
 	
-	var goboLabel: String {
-		guard let wheel = goboWheel else { return "" }
-		return slot(of: wheel)?.label ?? band(of: wheel)?.label ?? ""
+	func draws(_ wheel: FixtureChannel) -> Bool {
+		wheel.functions.contains { $0.sets.contains { $0.shape != nil } }
 	}
 	
-	var goboAngle: Angle? {
-		guard let channel = type?.channel(.goboRotation), let band = band(of: channel), band.unit == .degrees else { return nil }
-		guard let from = band.physicalFrom, let to = band.physicalTo, band.to > band.from else { return nil }
-		let share = Double(value(of: channel) - band.from) / Double(band.to - band.from)
+	func shape(of wheel: FixtureChannel) -> GoboShape? {
+		slot(of: wheel)?.shape
+	}
+	
+	func standing(of wheel: FixtureChannel) -> String {
+		slot(of: wheel)?.label ?? band(of: wheel)?.label ?? ""
+	}
+	
+	func standingAngle(of spinner: FixtureChannel?) -> Angle {
+		guard let spinner, let band = band(of: spinner), band.unit == .degrees else { return .zero }
+		guard let from = band.physicalFrom, let to = band.physicalTo, band.to > band.from else { return .zero }
+		let share = Double(value(of: spinner) - band.from) / Double(band.to - band.from)
 		return .degrees(from + (to - from) * share)
 	}
 	
-	var goboTurns: Double? {
-		guard let channel = type?.channel(.goboRotation), let band = band(of: channel) else { return nil }
+	func turns(of spinner: FixtureChannel?) -> Double? {
+		guard let spinner, let band = band(of: spinner) else { return nil }
 		guard band.kind == .proportional, band.unit == nil, band.to > band.from else { return nil }
-		let share = Double(value(of: channel) - band.from) / Double(band.to - band.from)
+		let share = Double(value(of: spinner) - band.from) / Double(band.to - band.from)
 		return 8 + share * 52
 	}
 	

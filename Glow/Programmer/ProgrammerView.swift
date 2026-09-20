@@ -276,20 +276,35 @@ private struct BeamRows: View {
 
 private struct GoboRows: View {
 	let programmer: Programmer
-	
+
 	var body: some View {
-		if programmer.goboWheel != nil {
-			Section("Gobo") {
-				GoboPad(shape: programmer.goboShape, label: programmer.goboLabel, tint: programmer.glow, angle: programmer.goboAngle ?? .zero, turns: programmer.goboTurns)
-					.listRowBackground(Color.clear)
-					.listRowSeparator(.hidden)
-					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+		let wheels = programmer.goboWheels
+		let shown = wheels.map(\.offset) + wheels.compactMap { programmer.spinner(of: $0)?.offset }
+
+		ForEach(wheels) { wheel in
+			Section(wheel.name) {
+				if programmer.draws(wheel) {
+					GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
+						.listRowBackground(Color.clear)
+						.listRowSeparator(.hidden)
+						.listRowInsets(.init(top: 0, leading: 16, bottom: 16, trailing: 16))
+				}
+
+				ChannelRow(programmer: programmer, channel: wheel)
+
+				if let spinner = programmer.spinner(of: wheel) {
+					ChannelRow(programmer: programmer, channel: spinner)
+				}
 			}
 		}
-		
-		Section {
-			ForEach(programmer.channels(in: .gobo)) { channel in
-				ChannelRow(programmer: programmer, channel: channel)
+
+		let others = programmer.channels(in: .gobo).filter { !shown.contains($0.offset) }
+
+		if !others.isEmpty {
+			Section {
+				ForEach(others) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 	}
