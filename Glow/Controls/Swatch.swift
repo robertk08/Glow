@@ -15,7 +15,7 @@ struct Swatch: View {
 			.init(color: first.color, location: 0.5),
 			.init(color: second.color, location: 0.5),
 			.init(color: second.color, location: 1),
-		], startPoint: .leading, endPoint: .trailing)
+		], startPoint: .top, endPoint: .bottom)
 	}
 	
 	var body: some View {

@@ -40,10 +40,9 @@ carries what is usual for that model and each patched light can differ.
 A fixture type is one file, whether Glow ships it or you build it here, and the
 app reads both through the same decoder. A channel names the attribute it
 drives rather than an index, so the same control reaches pan on any head and
-the dimmer on any lamp. A channel can claim a second address as
-its fine half, carry a default and a highlight value, and split into named
-functions with named sets inside them, which is how a gobo wheel offers its
-gobos and a colour wheel its slots. A function can say what it stands for, the
+the dimmer on any lamp. A channel can claim a second address as its fine half,
+carry a default, and split into named functions with named sets inside them,
+which is how a gobo wheel offers its gobos and a colour wheel its slots. A function can say what it stands for, the
 dimmer band, fully open, blacked out, or handing colour back to the mixer, and
 what it means in the world, so a strobe reads in hertz and a zoom in degrees.
 A channel can also name the channel and range it depends on, for a fixture

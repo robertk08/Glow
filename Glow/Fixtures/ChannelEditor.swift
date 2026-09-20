@@ -48,23 +48,6 @@ struct ChannelEditor: View {
 			}
 			
 			Section {
-				LabeledContent("Highlight", value: channel.highlightValue.map { "\($0)" } ?? "Automatic")
-					.monospacedDigit()
-				
-				Slider(value: Binding { Double(channel.highlightValue ?? channel.highlight ?? 0) } set: { channel.highlightValue = UInt8($0.rounded()) }, in: 0...255) {
-					Text("Highlight")
-				}
-				
-				if channel.highlightValue != nil {
-					Button("Back to Automatic") {
-						channel.highlightValue = nil
-					}
-				}
-			} header: {
-				Text("Highlight")
-			}
-			
-			Section {
 				ForEach($channel.functions) { $function in
 					NavigationLink {
 						FunctionEditor(function: $function)

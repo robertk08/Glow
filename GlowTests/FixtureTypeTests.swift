@@ -99,17 +99,8 @@ struct FixtureTypeTests {
 		#expect(zoom.physical(at: 128) == "20°")
 	}
 	
-	@Test func highlightFallsBackToTheOpenFunction() {
-		var shutter = FixtureChannel(offset: 1, attribute: .shutter)
-		shutter.functions = [ChannelFunction(from: 0, to: 7, label: "Closed", purpose: .closed), ChannelFunction(from: 240, to: 255, label: "Open", purpose: .open)]
-		
-		#expect(shutter.highlight == 240)
-		#expect(FixtureChannel(offset: 1, attribute: .dimmer).highlight == 255)
-		#expect(FixtureChannel(offset: 1, attribute: .zoom).highlight == nil)
-	}
-	
 	@Test func aDefinitionSurvivesARoundTrip() throws {
-		var channel = FixtureChannel(offset: 1, attribute: .gobo, label: "Gobo wheel", fineOffset: 2, defaultValue: 4, highlightValue: 9)
+		var channel = FixtureChannel(offset: 1, attribute: .gobo, label: "Gobo wheel", fineOffset: 2, defaultValue: 4)
 		var function = ChannelFunction(from: 6, to: 89, label: "Gobo", kind: .proportional, purpose: .dim)
 		function.unit = .hertz
 		function.physicalFrom = 1

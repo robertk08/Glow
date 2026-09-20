@@ -112,7 +112,6 @@
       "offset": 6,
       "attribute": "shutter",
       "label": "Strobe",
-      "highlightValue": 0,
       "functions": [
         {
           "from": 0,

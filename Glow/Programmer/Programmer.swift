@@ -627,22 +627,6 @@ struct Programmer {
 		}
 	}
 	
-	func highlight() {
-		for target in targets {
-			for channel in target.type.channels {
-				guard let value = channel.highlight else { continue }
-				set(value, of: channel, in: target)
-			}
-			
-			if target.type.movesHead {
-				setFraction(0.5, for: .pan, in: target)
-				setFraction(0.5, for: .tilt, in: target)
-			}
-			
-			console.release(target.span)
-		}
-	}
-	
 	func centre() {
 		setFraction(0.5, for: .pan)
 		setFraction(0.5, for: .tilt)

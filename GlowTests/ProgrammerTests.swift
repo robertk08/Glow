@@ -125,18 +125,6 @@ struct ProgrammerTests {
 		#expect(abs(programmer.brightness - 1) < 0.005)
 	}
 	
-	@Test func highlightOpensTheFixtureWithoutSettingAnything() {
-		var shutter = FixtureChannel(offset: 2, attribute: .shutter)
-		shutter.functions = [ChannelFunction(from: 0, to: 7, label: "Closed", purpose: .closed), ChannelFunction(from: 240, to: 255, label: "Open", purpose: .open)]
-		let (console, programmer) = rig([FixtureChannel(offset: 1, attribute: .dimmer), shutter])
-		
-		programmer.highlight()
-		
-		#expect(console.value(at: DMXAddress(1)!) == 255)
-		#expect(console.value(at: DMXAddress(2)!) == 240)
-		#expect(!programmer.isActive(.dimmer))
-	}
-	
 	@Test func aSliderStepsOverASettingThatHasToBeConfirmed() {
 		var reset = FixtureChannel(offset: 1, attribute: .reset)
 		var danger = ChannelFunction(from: 150, to: 200, label: "Reset head")

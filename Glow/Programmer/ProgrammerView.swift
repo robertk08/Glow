@@ -145,7 +145,7 @@ private struct PositionPane: View {
 			
 			HStack(spacing: 10) {
 				Button("Centre", systemImage: "scope") { programmer.centre() }
-				Button("Home", systemImage: "house") { programmer.release(.position) }
+				Button("Reset Position", systemImage: "arrow.uturn.backward") { programmer.release(.position) }
 			}
 			.buttonStyle(.glass)
 			.buttonBorderShape(.capsule)

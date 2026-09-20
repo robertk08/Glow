@@ -15,7 +15,6 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 	var label: String?
 	var defaultValue: UInt8 = 0
 	var fineDefaultValue: UInt8 = 0
-	var highlightValue: UInt8?
 	var enabledBy: Dependency?
 	var functions: [ChannelFunction] = []
 	
@@ -31,20 +30,11 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		functions.first { $0.contains(value) }
 	}
 	
-	var highlight: UInt8? {
-		if let highlightValue { return highlightValue }
-		if attribute == .dimmer { return 255 }
-		if let open = functions.first(where: { $0.purpose == .open }) { return open.from }
-		if let release = functions.first(where: { $0.purpose == .release }) { return release.midpoint }
-		return nil
-	}
-	
 	var summary: String {
 		var parts: [String] = []
 		if label != nil { parts.append(attribute.name) }
 		if isWide { parts.append("16-bit") }
 		if defaultValue != 0 { parts.append("starts at \(defaultValue)") }
-		if let highlightValue { parts.append("highlight \(highlightValue)") }
 		parts.append(functions.count == 1 ? "1 range" : "\(functions.count) ranges")
 		return parts.joined(separator: " · ")
 	}
@@ -53,14 +43,13 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		isWide ? "\(offset)+\(fineOffset ?? 0)" : "\(offset)"
 	}
 	
-	init(offset: Int, attribute: Attribute, label: String? = nil, fineOffset: Int? = nil, defaultValue: UInt8 = 0, fineDefaultValue: UInt8 = 0, highlightValue: UInt8? = nil, enabledBy: Dependency? = nil, functions: [ChannelFunction] = []) {
+	init(offset: Int, attribute: Attribute, label: String? = nil, fineOffset: Int? = nil, defaultValue: UInt8 = 0, fineDefaultValue: UInt8 = 0, enabledBy: Dependency? = nil, functions: [ChannelFunction] = []) {
 		self.offset = offset
 		self.fineOffset = fineOffset
 		self.attribute = attribute
 		self.label = label
 		self.defaultValue = defaultValue
 		self.fineDefaultValue = fineDefaultValue
-		self.highlightValue = highlightValue
 		self.enabledBy = enabledBy
 		self.functions = functions
 	}
@@ -73,7 +62,6 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		label = try container.decodeIfPresent(String.self, forKey: .label)
 		defaultValue = try container.decodeIfPresent(UInt8.self, forKey: .defaultValue) ?? 0
 		fineDefaultValue = try container.decodeIfPresent(UInt8.self, forKey: .fineDefaultValue) ?? 0
-		highlightValue = try container.decodeIfPresent(UInt8.self, forKey: .highlightValue)
 		enabledBy = try container.decodeIfPresent(Dependency.self, forKey: .enabledBy)
 		functions = try container.decodeIfPresent([ChannelFunction].self, forKey: .functions) ?? []
 	}
@@ -86,12 +74,11 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		try container.encodeIfPresent(label, forKey: .label)
 		if defaultValue != 0 { try container.encode(defaultValue, forKey: .defaultValue) }
 		if fineDefaultValue != 0 { try container.encode(fineDefaultValue, forKey: .fineDefaultValue) }
-		try container.encodeIfPresent(highlightValue, forKey: .highlightValue)
 		try container.encodeIfPresent(enabledBy, forKey: .enabledBy)
 		if !functions.isEmpty { try container.encode(functions, forKey: .functions) }
 	}
 	
 	private enum CodingKeys: String, CodingKey {
-		case offset, fineOffset, attribute, label, defaultValue, fineDefaultValue, highlightValue, enabledBy, functions
+		case offset, fineOffset, attribute, label, defaultValue, fineDefaultValue, enabledBy, functions
 	}
 }

@@ -62,7 +62,6 @@
       "offset": 7,
       "attribute": "shutter",
       "label": "Shutter and strobe",
-      "highlightValue": 0,
       "functions": [
         {
           "from": 0,
