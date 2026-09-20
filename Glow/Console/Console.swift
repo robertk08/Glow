@@ -46,6 +46,7 @@ final class Console {
 	}
 	
 	private(set) var active: Set<Int> = []
+	private(set) var releases = 0
 	
 	private let connection = NodeLink()
 	private var dimmers: [Dimmer] = []
@@ -164,6 +165,7 @@ final class Console {
 		let chosen = fixtures.filter(selection.contains)
 		Programmer(fixtures: chosen.isEmpty ? fixtures : chosen, library: library, console: self).applyDefaults()
 		selection.clear()
+		releases += 1
 	}
 	
 	func programmer(among fixtures: [Fixture], library: FixtureLibrary) -> Programmer {

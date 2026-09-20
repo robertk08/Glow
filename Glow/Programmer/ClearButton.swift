@@ -16,5 +16,6 @@ struct ClearButton: View {
 			console.releaseValues(among: fixtures, library: library)
 		})
 		.sensoryFeedback(.impact(weight: .light), trigger: console.selection.isEmpty)
+		.sensoryFeedback(.impact(weight: .heavy), trigger: console.releases)
 	}
 }
