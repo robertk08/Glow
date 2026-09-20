@@ -22,16 +22,14 @@ struct GroupView: View {
 						.submitLabel(.done)
 				}
 				
-				Section("Icon") {
-					AppearancePicker(symbol: Binding { group.symbol } set: { group.symbolOverride = $0 }, tint: $group.tint)
-				}
-				
-				Section {
+				Section("Lights") {
 					ForEach(fixtures) { fixture in
 						Toggle(fixture.name, isOn: Binding { fixture.belongs(to: group) } set: { fixture.belong(to: group, $0) })
 					}
-				} header: {
-					Text("Lights")
+				}
+				
+				Section("Icon") {
+					AppearancePicker(symbol: Binding { group.symbol } set: { group.symbolOverride = $0 }, tint: $group.tint)
 				}
 				
 				if !isNew {
@@ -50,7 +48,7 @@ struct GroupView: View {
 					}
 				}
 			}
-			.navigationTitle(group.name.isEmpty ? "New Group" : group.name)
+			.navigationTitle(isNew ? "New Group" : "Edit Group")
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .confirmationAction) {
