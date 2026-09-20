@@ -88,7 +88,7 @@ struct LightTile: View {
 				programmer?.toggleOn()
 			}
 			
-			Button("Release Values", systemImage: "arrow.uturn.backward") {
+			Button("Reset Light", systemImage: "arrow.uturn.backward") {
 				programmer?.applyDefaults()
 			}
 			

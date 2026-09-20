@@ -8,7 +8,7 @@ struct MasterBar: View {
 	
 	private var power: some Gesture {
 		LongPressGesture()
-			.onEnded { _ in console.releaseValues(among: fixtures, library: library) }
+			.onEnded { _ in console.reset(among: fixtures, library: library) }
 			.exclusively(before: TapGesture().onEnded { console.blackout.toggle() })
 	}
 	
@@ -41,11 +41,11 @@ struct MasterBar: View {
 				.accessibilityAddTraits(.isButton)
 				.accessibilityLabel("Blackout")
 				.accessibilityValue(console.blackout ? "On" : "Off")
-				.accessibilityHint("Tap to black out. Touch and hold to release values.")
+				.accessibilityHint("Tap to black out. Touch and hold to reset every light to its defaults.")
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, 12)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.blackout)
-		.sensoryFeedback(.impact(weight: .heavy), trigger: console.releases)
+		.sensoryFeedback(.impact(weight: .heavy), trigger: console.resets)
 	}
 }

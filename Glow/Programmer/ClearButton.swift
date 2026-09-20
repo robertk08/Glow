@@ -10,12 +10,12 @@ struct ClearButton: View {
 		Button("Clear", role: .cancel) {
 			console.selection.clear()
 		}
-		.accessibilityHint("Tap to clear the selection. Touch and hold to release values.")
+		.accessibilityHint("Tap to clear the selection. Touch and hold to reset those lights to their defaults.")
 		.keyboardShortcut(.escape, modifiers: [])
 		.simultaneousGesture(LongPressGesture().onEnded { _ in
-			console.releaseValues(among: fixtures, library: library)
+			console.reset(among: fixtures, library: library)
 		})
 		.sensoryFeedback(.impact(weight: .light), trigger: console.selection.isEmpty)
-		.sensoryFeedback(.impact(weight: .heavy), trigger: console.releases)
+		.sensoryFeedback(.impact(weight: .heavy), trigger: console.resets)
 	}
 }

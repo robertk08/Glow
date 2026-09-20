@@ -12,7 +12,7 @@ Selecting lights is how you control them. Tap one or several in Lights and the
 programmer drives the whole selection at once, the way a grandMA programmer
 does. On iPhone it takes over the tab bar accessory and raises a sheet, on iPad
 it is an inspector beside the grid. The selection stays until you clear it, and
-holding Clear offers Release Values. A group is a saved selection, not a
+holding Clear resets those lights to their defaults. A group is a saved selection, not a
 container. The master fader and blackout hold the accessory whenever nothing is
 selected.
 
@@ -60,7 +60,7 @@ Every channel has a default, and defaults are not settings. A light patched
 and brought up reads plain white, centred, no gobo and no strobe, because that
 is where its channels sit, and none of it counts as chosen. Raising the dimmer
 marks the dimmer and nothing else, so colour and position stay available to
-whatever you do next, and releasing puts every channel back to its default.
+whatever you do next, and resetting puts every channel back to its default.
 
 Color is one control for two kinds of fixture. An LED fixture adds emitters
 together, and a discharge head subtracts cyan, magenta and yellow flags from a
