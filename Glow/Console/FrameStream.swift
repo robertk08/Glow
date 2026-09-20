@@ -3,16 +3,24 @@ import Foundation
 nonisolated struct FrameStream: Sendable {
 	private var last: [UInt8] = []
 	private var needsEverything = true
+	private var reach = DmxBus.universeSlots
+	
+	mutating func cover(_ slots: Int) {
+		guard slots != reach else { return }
+		reach = slots
+		needsEverything = true
+	}
 	
 	mutating func startOver() {
 		needsEverything = true
 	}
 	
 	mutating func adopt(_ frame: [UInt8]) {
-		last = frame
+		last = Array(frame.prefix(reach))
 	}
 	
-	mutating func next(_ frame: [UInt8]) -> (start: DMXAddress, values: [UInt8])? {
+	mutating func next(_ whole: [UInt8]) -> (start: DMXAddress, values: [UInt8])? {
+		let frame = Array(whole.prefix(reach))
 		defer { last = frame }
 		
 		guard !needsEverything, last.count == frame.count else {

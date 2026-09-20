@@ -10,7 +10,6 @@ struct ScenesView: View {
 	
 	@State private var isNaming = false
 	@State private var newName = ""
-	@State private var recalled: PersistentIdentifier?
 	@State private var renaming: Look?
 	@State private var renamed = ""
 	
@@ -19,15 +18,14 @@ struct ScenesView: View {
 			ForEach(looks) { look in
 				Button {
 					console.recall(look, among: fixtures)
-					recalled = look.persistentModelID
 				} label: {
 					LabeledContent {
 						Text("^[\(look.fixtureCount) light](inflect: true)")
 							.font(.subheadline)
 							.foregroundStyle(.secondary)
 					} label: {
-						Label(look.name, systemImage: recalled == look.persistentModelID ? "theatermasks.fill" : "theatermasks")
-							.foregroundStyle(recalled == look.persistentModelID ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+						Label(look.name, systemImage: console.activeScene == look.identifier ? "theatermasks.fill" : "theatermasks")
+							.foregroundStyle(console.activeScene == look.identifier ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
 					}
 					.contentShape(.rect)
 				}
@@ -110,6 +108,6 @@ struct ScenesView: View {
 			}
 			.disabled(renamed.trimmingCharacters(in: .whitespaces).isEmpty)
 		}
-		.sensoryFeedback(.success, trigger: recalled)
+		.sensoryFeedback(.success, trigger: console.activeScene)
 	}
 }

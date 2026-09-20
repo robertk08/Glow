@@ -14,7 +14,7 @@ NetworkServer g_server(GLOW_PORT);
 bool          g_running = false;
 
 const uint32_t REQUEST_MS          = 3000;
-const uint32_t DOCUMENT_MS         = 15000;
+const uint32_t DOCUMENT_MS         = 8000;
 const size_t   REQUEST_LINE_MAX    = 256;
 const size_t   REQUEST_BODY_MAX    = 512;
 const size_t   DOCUMENT_BODY_MAX   = 32768;
@@ -28,6 +28,7 @@ bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
   while ((int32_t)(millis() - deadline) < 0) {
     if (!c.available()) {
       if (!c.connected()) return false;
+      Link::tick();
       delay(1);
       continue;
     }
@@ -54,16 +55,16 @@ const char *reason(int status) {
   }
 }
 
-void sendHead(NetworkClient &c, int status, size_t len) {
-  char head[160];
+void sendHead(NetworkClient &c, int status, size_t len, const char *type = "application/json") {
+  char head[192];
   int n = snprintf(head, sizeof(head),
                    "HTTP/1.1 %d %s\r\n"
-                   "Content-Type: application/json\r\n"
+                   "Content-Type: %s\r\n"
                    "Content-Length: %u\r\n"
                    "Cache-Control: no-store\r\n"
                    "Connection: close\r\n"
                    "\r\n",
-                   status, reason(status), (unsigned)len);
+                   status, reason(status), type, (unsigned)len);
   c.write((const uint8_t *)head, (size_t)n);
 }
 
@@ -156,14 +157,14 @@ void sendAssembled(NetworkClient &c, const char *showID) {
   emitShow(writer, showID, names, count);
 }
 
-void sendStored(NetworkClient &c, const char *path) {
+void sendStored(NetworkClient &c, const char *path, const char *type = "application/json") {
   File f = Store::open(path);
   if (!f || f.isDirectory()) {
     sendResult(c, 404, false, "not_found");
     return;
   }
 
-  sendHead(c, 200, f.size());
+  sendHead(c, 200, f.size(), type);
 
   uint8_t chunk[CHUNK];
   while (true) {
@@ -388,6 +389,23 @@ void route(NetworkClient &c, const char *method, const char *path,
     return;
   }
 
+  if (!strcmp(path, "/") || !strcmp(path, "/index.html")) {
+    if (get) sendStored(c, Store::pagePath(), "text/html; charset=utf-8");
+    else sendResult(c, 405, false, "method");
+    return;
+  }
+
+  if (!strcmp(path, "/api/web")) {
+    if (!put) {
+      sendResult(c, 405, false, "method");
+    } else if (!Store::write(Store::pagePath(), (const uint8_t *)body, bodyLen)) {
+      sendResult(c, 503, false, "write_failed");
+    } else {
+      sendResult(c, 200, true, nullptr);
+    }
+    return;
+  }
+
   if (!strcmp(path, "/api/info")) {
     if (get) info(c);
     else sendResult(c, 405, false, "method");
@@ -447,7 +465,7 @@ void handle(NetworkClient &client) {
   }
   if (query) *query = '\0';
 
-  bool isDocument = !strncmp(target, "/api/show", 9);
+  bool isDocument = !strncmp(target, "/api/show", 9) || !strcmp(target, "/api/web");
   if (isDocument) deadline += DOCUMENT_MS - REQUEST_MS;
 
   char   header[REQUEST_LINE_MAX];
@@ -479,8 +497,8 @@ void handle(NetworkClient &client) {
     return;
   }
 
-  char  inline_[REQUEST_BODY_MAX + 1];
-  char *body = inline_;
+  char  stackBody[REQUEST_BODY_MAX + 1];
+  char *body = stackBody;
   if (contentLength > REQUEST_BODY_MAX) {
     body = (char *)malloc(contentLength + 1);
     if (!body) {
@@ -505,7 +523,7 @@ void handle(NetworkClient &client) {
 
   if (bodyLen == contentLength) route(client, method, target, body, bodyLen, except);
 
-  if (body != inline_) free(body);
+  if (body != stackBody) free(body);
   client.stop();
 }
 

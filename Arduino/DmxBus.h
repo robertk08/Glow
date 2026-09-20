@@ -11,6 +11,8 @@ bool begin();
 bool writeRange(int start, const uint8_t *values, int length);
 
 int  refreshHz();
+void setUsed(int slots);
+int  used();
 
 void pause();
 void resume();

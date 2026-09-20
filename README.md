@@ -173,14 +173,18 @@ All four board settings are required, and none are saved with the sketch:
 - Board: **ESP32S3 Dev Module**, not "Arduino UNO R4 WiFi", which targets the RA4M1
 - **USB CDC On Boot: Enabled**, or `Serial` never reaches the USB port
 - Flash Size: **8MB**
-- Partition Scheme: **Huge APP (3MB No OTA/1MB SPIFFS)**
+- Partition Scheme: **Custom**, which takes `partitions.csv` from the sketch folder
 
-A correct compile reports `Maximum is 3145728 bytes`. If it says ~1.25 MB the
-partition scheme did not take.
+The stock schemes spend only half the 8 MB and leave under a megabyte for shows.
+`partitions.csv` gives the firmware 2 MB, which is roughly twice what it uses,
+and hands the remaining **6.15 MB to shows**. Confirm it took by checking that
+`partitions.csv` appears in the build folder, because the custom scheme makes
+the compiler report the whole flash as the maximum rather than the app
+partition. If the binary ever passes 2 MB, `app0` is the number to raise.
 
-Shows live in the 896 KB data partition that scheme already lays out, mounted as
-LittleFS and formatted on first boot. Nothing to configure, but reflashing with
-a different partition scheme erases every show.
+Shows live in that partition, mounted as LittleFS and formatted on first boot.
+Coming from an older layout moves every partition, so the first flash with this
+table starts you with no shows.
 
 Serial console at 115200: `net | setup | forget`. `net` also reports how much of
 the show filesystem is used.
@@ -219,6 +223,27 @@ bytes 2-3   start     uint16 LE, 1-based
 bytes 4-5   length    uint16 LE
 bytes 6..   values
 ```
+
+`0x03` is a document, which is how an edit reaches the controller and the other
+devices in one hop. Opening a TCP connection per object was what made saving a
+scene feel slow, and it made every other device fetch the object back over HTTP
+before it could show it.
+
+```
+byte 0      opcode    0x03 document
+byte 1      0 put, 1 delete
+byte 2      show name length
+byte 3      folder name length
+byte 4      object id length
+bytes 5-6   body length, uint16 LE
+bytes 7..   show, folder, id, body
+```
+
+The controller stores the body, relays the frame untouched to every other
+client, and answers the sender with `{"t":"wrote"}`. A client folds an object
+into what it believes the controller holds only once that answer arrives, so a
+write that never lands is simply sent again with the next edit. Anything larger
+than the socket carries comfortably still goes over HTTP.
 
 **The opcode says what the frame is for.** `0x01` is the output, what the lamps
 should be doing once master and blackout are in it, and the controller clocks it
@@ -301,6 +326,17 @@ corrupts the packet on the wire. `Flash::guarded` takes the driver down for the
 length of one write, the same guard the Wi-Fi credentials have always used. A
 frame or two is lost and fixtures hold their last value, which is why the app
 only writes when you change something and never on a timer.
+
+**The controller clocks only the slots the rig uses.** A full 512 slot packet
+takes 23 ms on the wire whatever is patched, which is most of the delay you can
+feel between touching a fader and the lamp moving. The controller tracks the
+highest slot it has ever been sent and clocks only that far, so a rig ending at
+channel 124 spends 5 ms per packet instead of 23. It also sends the moment new
+values arrive rather than waiting for the next scheduled slot, capped at 100 Hz,
+and falls back to a 40 Hz refresh when nothing is changing.
+
+If a fixture ever misbehaves at that rate, `DMX_BURST_HZ` in `Config.h` is the
+one number to lower.
 
 Master and blackout are relayed the same way a source frame is, so two devices
 on one node stay in step and both send the same output. The app sends a full

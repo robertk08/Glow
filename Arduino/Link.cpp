@@ -2,6 +2,7 @@
 
 #include "DmxBus.h"
 #include "Net.h"
+#include "Store.h"
 
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
@@ -29,16 +30,19 @@ Sockets g_ws;
 
 bool g_running = false;
 
-const uint8_t  OP_OUTPUT  = 0x01;
-const uint8_t  OP_SOURCE  = 0x02;
-const size_t   DMX_HEADER = 6;
-const uint16_t SLOTS      = 512;
+const uint8_t  OP_OUTPUT   = 0x01;
+const uint8_t  OP_SOURCE   = 0x02;
+const uint8_t  OP_DOCUMENT = 0x03;
+const size_t   DMX_HEADER  = 6;
+const size_t   DOC_HEADER  = 7;
+const uint16_t SLOTS       = 512;
 
 uint8_t g_source[DMX_HEADER + SLOTS];
 bool    g_haveSource = false;
+char    g_scene[Store::NAME_LIMIT] = "";
 
-const uint32_t WS_PING_MS    = 15000;
-const uint32_t WS_PONG_MS    = 4000;
+const uint32_t WS_PING_MS    = 4000;
+const uint32_t WS_PONG_MS    = 2000;
 const uint8_t  WS_PING_TRIES = 2;
 
 char g_out[256];
@@ -61,6 +65,9 @@ void sendStatus(uint8_t num) {
   doc["src"] = g_haveSource;
   doc["uptime"] = (uint32_t)(esp_timer_get_time() / 1000000LL);
   doc["client"] = num;
+  doc["doc"] = true;
+  doc["ip"] = Net::ip().toString();
+  doc["scene"] = g_scene;
   size_t n = serializeJson(doc, g_out, sizeof(g_out));
   g_ws.sendTXT(num, g_out, n);
 }
@@ -81,13 +88,79 @@ void sendSource(uint8_t num) {
   g_ws.sendBIN(num, g_source, sizeof(g_source));
 }
 
+void onDocument(uint8_t num, const uint8_t *p, size_t len) {
+  if (len < DOC_HEADER) {
+    sendError(num, "bad_frame", "document frame is shorter than its header");
+    return;
+  }
+
+  size_t showLen = p[2];
+  size_t folderLen = p[3];
+  size_t idLen = p[4];
+  size_t bodyLen = (size_t)p[5] | ((size_t)p[6] << 8);
+
+  if (len != DOC_HEADER + showLen + folderLen + idLen + bodyLen) {
+    sendError(num, "bad_length", "declared lengths do not match the frame");
+    return;
+  }
+  if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) {
+    sendError(num, "bad_name", "a name is longer than the store allows");
+    return;
+  }
+
+  char show[Store::NAME_LIMIT];
+  char folder[Store::NAME_LIMIT];
+  char id[Store::NAME_LIMIT];
+  const uint8_t *cursor = p + DOC_HEADER;
+
+  memcpy(show, cursor, showLen);
+  show[showLen] = '\0';
+  cursor += showLen;
+  memcpy(folder, cursor, folderLen);
+  folder[folderLen] = '\0';
+  cursor += folderLen;
+  memcpy(id, cursor, idLen);
+  id[idLen] = '\0';
+  cursor += idLen;
+
+  char path[Store::PATH_LIMIT];
+  if (!Store::ready() || !Store::objectPath(path, sizeof(path), show, folder, id)) {
+    sendError(num, "bad_object", "the controller cannot store that object");
+    return;
+  }
+
+  bool stored = p[1] == 0 ? Store::write(path, cursor, bodyLen) : Store::remove(path);
+  if (!stored) {
+    sendError(num, "write_failed", "the controller could not store that object");
+    return;
+  }
+
+  relayBinary(num, p, len);
+
+  JsonDocument doc;
+  doc["t"] = "wrote";
+  doc["show"] = show;
+  doc["folder"] = folder;
+  doc["id"] = id;
+  size_t n = serializeJson(doc, g_out, sizeof(g_out));
+  g_ws.sendTXT(num, g_out, n);
+}
+
 void onBinary(uint8_t num, const uint8_t *p, size_t len) {
+  if (len < 1) {
+    sendError(num, "bad_frame", "binary frame is empty");
+    return;
+  }
+  if (p[0] == OP_DOCUMENT) {
+    onDocument(num, p, len);
+    return;
+  }
   if (len < DMX_HEADER) {
     sendError(num, "bad_frame", "binary frame is shorter than its header");
     return;
   }
   if (p[0] != OP_OUTPUT && p[0] != OP_SOURCE) {
-    sendError(num, "bad_opcode", "opcode must be 0x01 output or 0x02 source");
+    sendError(num, "bad_opcode", "opcode must be 0x01 output, 0x02 source or 0x03 document");
     return;
   }
   if (p[1] != 0) {
@@ -154,6 +227,23 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
       return;
     }
     relayText(num, p, len);
+
+  } else if (!strcmp(t, "scene")) {
+    const char *id = doc["id"];
+    if (!id || strlen(id) >= Store::NAME_LIMIT) {
+      sendError(num, "bad_value", "scene needs id as a short string");
+      return;
+    }
+    snprintf(g_scene, sizeof(g_scene), "%s", id);
+    relayText(num, p, len);
+
+  } else if (!strcmp(t, "span")) {
+    JsonVariant slots = doc["slots"];
+    if (!slots.is<int>()) {
+      sendError(num, "bad_value", "span needs slots as an integer");
+      return;
+    }
+    DmxBus::setUsed(slots.as<int>());
 
   } else if (!strcmp(t, "master")) {
     JsonVariant level = doc["level"];

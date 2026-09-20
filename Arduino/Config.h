@@ -8,7 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-#define GLOW_FW_VERSION "2.0.0"
+#define GLOW_FW_VERSION "2.2.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_SERVICE    "glow"
@@ -38,6 +38,8 @@ static const uint32_t RECOVERY_BOOT_MS = 5000;
 static const int DMX_REFRESH_HZ     = 40;
 static const int DMX_REFRESH_HZ_MIN = 10;
 static const int DMX_REFRESH_HZ_MAX = 44;
+static const int DMX_BURST_HZ       = 100;
+static const int DMX_MIN_SLOTS      = 24;
 
 static const int DMX_TASK_CORE     = 1;
 static const int DMX_TASK_PRIORITY = 5;

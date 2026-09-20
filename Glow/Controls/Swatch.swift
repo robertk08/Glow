@@ -22,10 +22,7 @@ struct Swatch: View {
 		Circle()
 			.fill(fill)
 			.frame(width: size, height: size)
-			.overlay {
-				Circle()
-					.strokeBorder(.separator)
-			}
+			.glassEffect(.regular.interactive(), in: .circle)
 			.overlay {
 				Image(systemName: "checkmark")
 					.font(.headline)

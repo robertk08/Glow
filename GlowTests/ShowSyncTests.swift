@@ -1,7 +1,12 @@
 import Foundation
+import SwiftData
 import Testing
 
 @testable import Glow
+
+private final class Box: @unchecked Sendable {
+	var folders: Set<NodeStore.Folder>?
+}
 
 @MainActor
 struct ShowSyncTests {
@@ -116,6 +121,22 @@ struct ShowSyncTests {
 		let decoded = try JSONDecoder().decode(ShowContents.self, from: Data(text.utf8))
 		
 		#expect(decoded.lights.isEmpty)
+	}
+	
+	@Test func savingASceneMarksOnlyTheScenesFolder() throws {
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let context = container.mainContext
+		let box = Box()
+		
+		let token = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { note in
+			box.folders = ShowLibrary.folders(in: note)
+		}
+		defer { NotificationCenter.default.removeObserver(token) }
+		
+		context.insert(Look(name: "Look", sortIndex: 0, levels: [:]))
+		try context.save()
+		
+		#expect(box.folders == [.scenes])
 	}
 	
 	@Test func anExportFromAnotherFormatIsRefused() {

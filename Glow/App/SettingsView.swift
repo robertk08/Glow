@@ -61,6 +61,16 @@ struct SettingsView: View {
 				LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
 					.textSelection(.enabled)
 			}
+			
+			if shows.isDemo {
+				Section {
+					Button("Leave the Demo", role: .destructive) {
+						shows.stopDemo()
+					}
+				} footer: {
+					Text("Nothing you changed in the demo was kept, and none of it reached a controller.")
+				}
+			}
 		}
 		.navigationTitle("Settings")
 	}

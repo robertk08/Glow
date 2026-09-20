@@ -8,6 +8,7 @@ namespace Store {
 namespace {
 
 const char *SHOWS     = "/shows.json";
+const char *PAGE      = "/web.html";
 const char *SHOWS_DIR = "/s";
 const char *UPLOAD    = "/upload.part";
 
@@ -77,6 +78,8 @@ bool begin() {
 bool ready() { return g_ready; }
 
 const char *showsPath() { return SHOWS; }
+
+const char *pagePath() { return PAGE; }
 
 bool showPath(char *out, size_t size, const char *showID) {
   if (!safe(showID)) return false;

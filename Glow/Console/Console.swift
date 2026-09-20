@@ -8,7 +8,8 @@ final class Console {
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
-	private(set) var notice: Wire.Notice?
+	private(set) var notices: [Wire.Notice] = []
+	private(set) var activeScene: String?
 	
 	let selection = Selection()
 	
@@ -42,11 +43,15 @@ final class Console {
 			if let data = try? JSONEncoder().encode(endpoint) {
 				UserDefaults.standard.set(data, forKey: Self.endpointKey)
 			}
+			isConfigured = true
 			connect()
 		}
 	}
 	
+	private(set) var isConfigured = false
+	
 	private(set) var active: Set<Int> = []
+	private(set) var span = DmxBus.minimumSlots
 	private(set) var resets = 0
 	
 	private let connection = NodeLink()
@@ -58,14 +63,16 @@ final class Console {
 	private var isSynced = false
 	private var isAdopting = false
 	private var hasLoadedPatch = false
-	private var notices = 0
+	private var noticed = 0
 	private var patched: Set<Int> = []
 	
 	private static let endpointKey = "node.endpoint"
+	private static let addressKey = "node.address"
 	
 	init() {
 		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
 			endpoint = stored
+			isConfigured = true
 		} else {
 			endpoint = .fallback
 		}
@@ -84,16 +91,26 @@ final class Console {
 						isSynced = false
 						sourceFrames.startOver()
 						outputFrames.startOver()
+						let reach = span
+						
+						Task {
+							await connection.send(.span(reach))
+						}
 					}
 				case let .status(info):
 					node = info
+					activeScene = info.scene.isEmpty ? nil : info.scene
+					
+					if !info.address.isEmpty, info.address != UserDefaults.standard.string(forKey: Self.addressKey) {
+						UserDefaults.standard.set(info.address, forKey: Self.addressKey)
+					}
 					if !info.hasSource { isSynced = true }
 				case let .latency(value):
 					latency = value
 				case let .frame(start, values):
 					universe.set(values, at: start)
 					sourceFrames.adopt(universe.values)
-					outputFrames.startOver()
+					outputFrames.adopt(output)
 					isSynced = true
 				case let .master(level):
 					isAdopting = true
@@ -103,18 +120,20 @@ final class Console {
 					isAdopting = true
 					blackout = on
 					isAdopting = false
+				case let .scene(identifier):
+					activeScene = identifier
 				case let .notice(incoming):
-					notices += 1
+					noticed += 1
 					var stamped = incoming
-					stamped.sequence = notices
-					notice = stamped
+					stamped.sequence = noticed
+					notices.append(stamped)
 				}
 			}
 		}
 		
 		loop = Task { [weak self] in
 			while !Task.isCancelled {
-				try? await Task.sleep(for: .seconds(1.0 / 40))
+				try? await Task.sleep(for: .seconds(1.0 / 100))
 				await self?.tick()
 			}
 		}
@@ -127,8 +146,10 @@ final class Console {
 		sourceFrames.startOver()
 		outputFrames.startOver()
 		let target = endpoint
+		let known = UserDefaults.standard.string(forKey: Self.addressKey)
 		
 		Task {
+			await connection.prefer(known)
 			await connection.connect(to: target)
 		}
 	}
@@ -159,11 +180,36 @@ final class Console {
 		active.remove(span.lowerBound + offset - 1)
 	}
 	
+	var acceptsDocuments: Bool {
+		link.isConnected && node?.acceptsDocuments == true
+	}
+	
+	var reachable: NodeEndpoint {
+		guard let address = node?.address, !address.isEmpty else { return endpoint }
+		return NodeEndpoint(host: address, port: endpoint.port, name: endpoint.name, nodeID: endpoint.nodeID)
+	}
+	
+	func send(document frame: Data) {
+		Task {
+			await connection.send(frame)
+		}
+	}
+	
+	func takeNotices() -> [Wire.Notice] {
+		let taken = notices
+		notices = []
+		return taken
+	}
+	
 	func closeShow() {
 		universe = Universe()
 		active = []
 		dimmers = []
 		patched = []
+		activeScene = nil
+		span = DmxBus.minimumSlots
+		sourceFrames.cover(DmxBus.minimumSlots)
+		outputFrames.cover(DmxBus.minimumSlots)
 		hasLoadedPatch = false
 		selection.clear()
 		sourceFrames.startOver()
@@ -312,12 +358,20 @@ final class Console {
 	}
 	
 	func recall(_ look: Look, among fixtures: [Fixture]) {
+		let levels = look.levels
+		let identifier = look.identifier
+		
 		for fixture in fixtures {
-			guard let values = look.levels[fixture.identifier] else { continue }
+			guard let values = levels[fixture.identifier] else { continue }
 			universe.set([UInt8](values), at: fixture.start)
 		}
 		
 		outputFrames.startOver()
+		activeScene = identifier
+		
+		Task {
+			await connection.send(.scene(identifier))
+		}
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
@@ -349,6 +403,17 @@ final class Console {
 		}
 		
 		patched = covered
+		
+		let reach = max(covered.max() ?? 0, DmxBus.minimumSlots)
+		if reach != span {
+			span = reach
+			sourceFrames.cover(reach)
+			outputFrames.cover(reach)
+			
+			Task {
+				await connection.send(.span(reach))
+			}
+		}
 		
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }

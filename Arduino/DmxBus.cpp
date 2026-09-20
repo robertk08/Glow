@@ -15,6 +15,9 @@ SemaphoreHandle_t g_wireLock = nullptr;
 
 volatile int  g_hz     = DMX_REFRESH_HZ;
 volatile bool g_resync = false;
+volatile int  g_used   = DMX_MIN_SLOTS;
+
+TaskHandle_t g_task = nullptr;
 
 struct Hold {
   Hold() { if (g_lock) xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -29,27 +32,29 @@ TickType_t periodTicks(int hz) {
 }
 
 void refreshTask(void *) {
-  TickType_t wake = xTaskGetTickCount();
-
   for (;;) {
+    int used = g_used;
+    if (used < DMX_MIN_SLOTS) used = DMX_MIN_SLOTS;
+    if (used > SLOT_MAX) used = SLOT_MAX;
+    size_t length = (size_t)used + 1;
+
     {
       Hold hold;
-      memcpy(g_wire, g_frame, DMX_PACKET_SIZE);
+      memcpy(g_wire, g_frame, length);
     }
 
+    TickType_t sent = xTaskGetTickCount();
+
     if (xSemaphoreTake(g_wireLock, portMAX_DELAY) == pdTRUE) {
-      dmx_write(DMX_PORT, g_wire, DMX_PACKET_SIZE);
-      dmx_send_num(DMX_PORT, DMX_PACKET_SIZE);
+      dmx_write(DMX_PORT, g_wire, length);
+      dmx_send_num(DMX_PORT, length);
       dmx_wait_sent(DMX_PORT, DMX_TIMEOUT_TICK);
       xSemaphoreGive(g_wireLock);
     }
 
-    if (g_resync) {
-      g_resync = false;
-      wake = xTaskGetTickCount();
-    }
-
-    xTaskDelayUntil(&wake, periodTicks(g_hz));
+    g_resync = false;
+    xTaskDelayUntil(&sent, periodTicks(DMX_BURST_HZ));
+    ulTaskNotifyTake(pdTRUE, periodTicks(g_hz));
   }
 }
 
@@ -71,7 +76,7 @@ bool begin() {
     return false;
 
   return xTaskCreatePinnedToCore(refreshTask, "dmx", DMX_TASK_STACK, nullptr,
-                                 DMX_TASK_PRIORITY, nullptr,
+                                 DMX_TASK_PRIORITY, &g_task,
                                  DMX_TASK_CORE) == pdPASS;
 }
 
@@ -80,12 +85,27 @@ bool writeRange(int start, const uint8_t *values, int length) {
   if (length < 1 || length > SLOT_MAX) return false;
   if (start < SLOT_MIN || start > SLOT_MAX) return false;
   if (length > SLOT_MAX - start + 1) return false;
-  Hold hold;
-  memcpy(g_frame + start, values, length);
+
+  {
+    Hold hold;
+    memcpy(g_frame + start, values, length);
+  }
+
+  int top = start + length - 1;
+  if (top > g_used) g_used = top;
+  if (g_task) xTaskNotifyGive(g_task);
   return true;
 }
 
 int refreshHz() { return g_hz; }
+
+void setUsed(int slots) {
+  if (slots < DMX_MIN_SLOTS) slots = DMX_MIN_SLOTS;
+  if (slots > SLOT_MAX) slots = SLOT_MAX;
+  g_used = slots;
+}
+
+int used() { return g_used; }
 
 void pause() {
   if (!g_wireLock) return;

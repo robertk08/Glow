@@ -61,3 +61,52 @@ struct FrameStreamTests {
 		#expect(frame?.values == [1])
 	}
 }
+
+@Suite struct FrameEchoTests {
+	@Test func adoptingWhatAnotherDeviceSentSendsNothingBack() {
+		var stream = FrameStream()
+		stream.cover(120)
+		var universe = [UInt8](repeating: 0, count: 512)
+		universe[4] = 200
+		
+		_ = stream.next(universe)
+		stream.adopt(universe)
+		
+		#expect(stream.next(universe) == nil)
+	}
+	
+	@Test func adoptingAWholeUniverseStillMatchesACoveredSpan() {
+		var stream = FrameStream()
+		stream.cover(120)
+		let universe = [UInt8](repeating: 9, count: 512)
+		
+		_ = stream.next(universe)
+		stream.adopt(universe)
+		
+		#expect(stream.next(universe) == nil)
+	}
+	
+	@Test func aFrameNeverReachesPastTheCoveredSpan() {
+		var stream = FrameStream()
+		stream.cover(120)
+		var universe = [UInt8](repeating: 0, count: 512)
+		universe[300] = 255
+		
+		let first = stream.next(universe)
+		
+		#expect(first?.values.count == 120)
+		#expect(stream.next(universe) == nil)
+	}
+	
+	@Test func wideningTheSpanResendsEverything() {
+		var stream = FrameStream()
+		stream.cover(24)
+		let universe = [UInt8](repeating: 5, count: 512)
+		_ = stream.next(universe)
+		
+		stream.cover(120)
+		let after = stream.next(universe)
+		
+		#expect(after?.values.count == 120)
+	}
+}

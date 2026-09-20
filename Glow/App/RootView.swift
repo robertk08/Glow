@@ -45,7 +45,9 @@ struct RootView: View {
 		@Bindable var selection = console.selection
 		
 		return Group {
-			if !shows.isLoaded {
+			if shows.standby.isBlank, !shows.isLoaded {
+				Color.clear
+			} else if !shows.isLoaded {
 				WaitingView()
 			} else if sizeClass == .compact {
 				tabs
@@ -80,16 +82,16 @@ struct RootView: View {
 			console.applyPatch(fixtures, library: library)
 		}
 		.task {
-			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+			shows.reach(console, library: library)
 		}
 		.onChange(of: console.link) {
-			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+			shows.reach(console, library: library)
 		}
 		.onChange(of: console.node) {
-			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+			shows.reach(console, library: library)
 		}
-		.onChange(of: console.notice) {
-			shows.receive(console.notice)
+		.onChange(of: console.notices) {
+			shows.receive(console.takeNotices())
 		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)

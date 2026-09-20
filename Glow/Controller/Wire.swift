@@ -4,6 +4,8 @@ nonisolated enum Wire {
 	static let version = 2
 	static let outputOpcode: UInt8 = 0x01
 	static let sourceOpcode: UInt8 = 0x02
+	static let documentOpcode: UInt8 = 0x03
+	static let documentHeader = 7
 	
 	static func frame(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) -> Data {
 		var data = Data(capacity: values.count + 6)
@@ -33,8 +35,10 @@ nonisolated enum Wire {
 		case ping(seq: Int)
 		case blackout(Bool)
 		case master(Double)
+		case span(Int)
+		case scene(String)
 		
-		private enum CodingKeys: String, CodingKey { case t, client, version, seq, on, level }
+		private enum CodingKeys: String, CodingKey { case t, client, version, seq, on, level, slots, id }
 		
 		func encode(to encoder: any Encoder) throws {
 			var container = encoder.container(keyedBy: CodingKeys.self)
@@ -52,6 +56,12 @@ nonisolated enum Wire {
 			case let .master(level):
 				try container.encode("master", forKey: .t)
 				try container.encode(level, forKey: .level)
+			case let .span(slots):
+				try container.encode("span", forKey: .t)
+				try container.encode(slots, forKey: .slots)
+			case let .scene(identifier):
+				try container.encode("scene", forKey: .t)
+				try container.encode(identifier, forKey: .id)
 			}
 		}
 		
@@ -67,8 +77,11 @@ nonisolated enum Wire {
 		var name = "Glow"
 		var hasSource = false
 		var client: Int?
+		var acceptsDocuments = false
+		var address = ""
+		var scene = ""
 		
-		private enum CodingKeys: String, CodingKey { case fw, id, name, src, client }
+		private enum CodingKeys: String, CodingKey { case fw, id, name, src, client, doc, ip, scene }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -77,6 +90,9 @@ nonisolated enum Wire {
 			name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Glow"
 			hasSource = try container.decodeIfPresent(Bool.self, forKey: .src) ?? false
 			client = try container.decodeIfPresent(Int.self, forKey: .client)
+			acceptsDocuments = try container.decodeIfPresent(Bool.self, forKey: .doc) ?? false
+			address = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+			scene = try container.decodeIfPresent(String.self, forKey: .scene) ?? ""
 		}
 	}
 	
@@ -86,6 +102,53 @@ nonisolated enum Wire {
 		var folder: String?
 		var id: String?
 		var isDelete = false
+		var body: Data?
+		var isWrite = false
+	}
+	
+	static func document(show: String, folder: String, id: String, body: Data?) -> Data {
+		let name = Array(show.utf8)
+		let place = Array(folder.utf8)
+		let key = Array(id.utf8)
+		let payload = body ?? Data()
+		
+		var data = Data(capacity: documentHeader + name.count + place.count + key.count + payload.count)
+		data.append(documentOpcode)
+		data.append(body == nil ? 1 : 0)
+		data.append(UInt8(name.count))
+		data.append(UInt8(place.count))
+		data.append(UInt8(key.count))
+		data.append(UInt8(payload.count & 0xFF))
+		data.append(UInt8((payload.count >> 8) & 0xFF))
+		data.append(contentsOf: name)
+		data.append(contentsOf: place)
+		data.append(contentsOf: key)
+		data.append(payload)
+		return data
+	}
+	
+	static func decode(document data: Data) -> Notice? {
+		let bytes = [UInt8](data)
+		guard bytes.count >= documentHeader, bytes[0] == documentOpcode else { return nil }
+		
+		let showLength = Int(bytes[2])
+		let folderLength = Int(bytes[3])
+		let idLength = Int(bytes[4])
+		let bodyLength = Int(bytes[5]) | (Int(bytes[6]) << 8)
+		guard bytes.count == documentHeader + showLength + folderLength + idLength + bodyLength else { return nil }
+		
+		var cursor = documentHeader
+		let show = String(decoding: bytes[cursor..<(cursor + showLength)], as: UTF8.self)
+		cursor += showLength
+		let folder = String(decoding: bytes[cursor..<(cursor + folderLength)], as: UTF8.self)
+		cursor += folderLength
+		let id = String(decoding: bytes[cursor..<(cursor + idLength)], as: UTF8.self)
+		cursor += idLength
+		
+		let isDelete = bytes[1] == 1
+		var notice = Notice(show: show, folder: folder, id: id, isDelete: isDelete)
+		if !isDelete { notice.body = Data(bytes[cursor..<(cursor + bodyLength)]) }
+		return notice
 	}
 	
 	nonisolated enum Reply: Sendable {
@@ -93,6 +156,7 @@ nonisolated enum Wire {
 		case pong(seq: Int)
 		case master(Double)
 		case blackout(Bool)
+		case scene(String)
 		case notice(Notice)
 		
 		static func decode(_ data: Data) -> Reply? {
@@ -121,8 +185,14 @@ nonisolated enum Wire {
 			case "blackout":
 				guard let on = envelope.on else { return nil }
 				return .blackout(on)
+			case "scene":
+				guard let identifier = envelope.id else { return nil }
+				return .scene(identifier)
 			case "shows":
 				return .notice(Notice())
+			case "wrote":
+				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
+				return .notice(Notice(show: show, folder: folder, id: id, isWrite: true))
 			case "doc":
 				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
 				return .notice(Notice(show: show, folder: folder, id: id, isDelete: envelope.op == "delete"))

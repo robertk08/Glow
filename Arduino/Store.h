@@ -13,6 +13,7 @@ bool begin();
 bool ready();
 
 const char *showsPath();
+const char *pagePath();
 bool showPath(char *out, size_t size, const char *showID);
 bool folderPath(char *out, size_t size, const char *showID, const char *folder);
 bool objectPath(char *out, size_t size, const char *showID, const char *folder, const char *objID);

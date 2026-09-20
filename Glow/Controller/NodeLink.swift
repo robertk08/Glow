@@ -8,15 +8,19 @@ actor NodeLink {
 		case frame(start: DMXAddress, values: [UInt8])
 		case master(Double)
 		case blackout(Bool)
+		case scene(String)
 		case notice(Wire.Notice)
 	}
 	
 	nonisolated let events: AsyncStream<Event>
 	
 	private let continuation: AsyncStream<Event>.Continuation
+	private static let silenceLimit: TimeInterval = 5
 	private var socket: URLSessionWebSocketTask?
 	private var supervisor: Task<Void, Never>?
 	private var heartbeat: Task<Void, Never>?
+	private var lastHeard = Date()
+	private var preferred: String?
 	private var pings: [Int: Date] = [:]
 	private var seq = 0
 	
@@ -47,6 +51,16 @@ actor NodeLink {
 		try? await socket.send(.data(Wire.frame(opcode, start: start, values: values)))
 	}
 	
+	func prefer(_ host: String?) {
+		preferred = host
+	}
+	
+	func send(_ frame: Data) async {
+		guard let socket else { return }
+		
+		try? await socket.send(.data(frame))
+	}
+	
 	func send(_ command: Wire.Command) async {
 		guard let socket, let json = command.json else { return }
 		
@@ -56,7 +70,13 @@ actor NodeLink {
 	private func supervise(_ endpoint: NodeEndpoint) async {
 		var attempt = 0
 		while !Task.isCancelled {
-			guard let url = endpoint.socketURL else { return }
+			var target = endpoint
+			
+			if let preferred {
+				target = NodeEndpoint(host: preferred, port: endpoint.port, name: endpoint.name, nodeID: endpoint.nodeID)
+			}
+			
+			guard let url = target.socketURL else { return }
 			
 			continuation.yield(.state(.connecting))
 			let reachedNode = await run(url)
@@ -65,6 +85,7 @@ actor NodeLink {
 			if reachedNode {
 				attempt = 1
 			} else {
+				preferred = nil
 				attempt = min(attempt + 1, 5)
 			}
 			for remaining in stride(from: min(15, 1 << (attempt - 1)), to: 0, by: -1) {
@@ -111,7 +132,15 @@ actor NodeLink {
 	}
 	
 	private func receive(_ message: URLSessionWebSocketTask.Message) {
+		lastHeard = Date()
+
 		if case let .data(data) = message {
+			if data.first == Wire.documentOpcode {
+				guard let notice = Wire.decode(document: data) else { return }
+				continuation.yield(.notice(notice))
+				return
+			}
+			
 			guard let frame = Wire.decode(frame: data) else { return }
 			continuation.yield(.frame(start: frame.start, values: frame.values))
 			return
@@ -131,6 +160,8 @@ actor NodeLink {
 			continuation.yield(.master(level))
 		case let .blackout(on):
 			continuation.yield(.blackout(on))
+		case let .scene(identifier):
+			continuation.yield(.scene(identifier))
 		case let .notice(notice):
 			continuation.yield(.notice(notice))
 		}
@@ -138,9 +169,10 @@ actor NodeLink {
 	
 	private func startHeartbeat() {
 		heartbeat?.cancel()
+		lastHeard = Date()
 		heartbeat = Task { [weak self] in
 			while !Task.isCancelled {
-				try? await Task.sleep(for: .seconds(3))
+				try? await Task.sleep(for: .seconds(2))
 				guard !Task.isCancelled else { return }
 				await self?.ping()
 			}
@@ -148,6 +180,11 @@ actor NodeLink {
 	}
 	
 	private func ping() async {
+		guard Date().timeIntervalSince(lastHeard) < Self.silenceLimit else {
+			socket?.cancel(with: .goingAway, reason: nil)
+			return
+		}
+		
 		seq += 1
 		pings[seq] = Date()
 		pings = pings.filter { Date().timeIntervalSince($0.value) < 10 }
