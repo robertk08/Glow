@@ -66,7 +66,7 @@ struct FixtureTypeView: View {
 			}
 		}
 		.listSectionSpacing(.compact)
-		.contentMargins(.top, patching == nil ? 20 : 0, for: .scrollContent)
+		.contentMargins(.top, patching == nil ? 20 : 8, for: .scrollContent)
 		.navigationDestination(isPresented: $isPatching) {
 			if let patching {
 				PatchView(mode: type, isPresented: patching)
@@ -79,7 +79,7 @@ struct FixtureTypeView: View {
 		}
 		.sheet(isPresented: $isEditing) {
 			FixtureTypeEditor(type: type)
-				.id(type)
+				.id(type.id)
 		}
 	}
 }

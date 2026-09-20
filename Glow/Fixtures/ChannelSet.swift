@@ -6,7 +6,9 @@ nonisolated struct ChannelSet: Codable, Hashable, Sendable, Identifiable {
 	var label: String
 	var colors: [String] = []
 	
-	var id: String { "\(from)-\(to)" }
+	private let uid = Identity()
+	
+	var id: UUID { uid.value }
 	var midpoint: UInt8 { UInt8((Int(from) + Int(to)) / 2) }
 	var swatch: [LightColor] { colors.compactMap(LightColor.init(hex:)) }
 	

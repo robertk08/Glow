@@ -37,7 +37,9 @@ struct FixtureTypeEditor: View {
 				
 				Section {
 					ForEach($draft.channels) { $channel in
-						NavigationLink(value: channel.offset) {
+						NavigationLink {
+							ChannelEditor(channel: $channel, others: draft.channels)
+						} label: {
 							LabeledContent {
 								Text(channel.addressLabel)
 									.monospacedDigit()
@@ -88,13 +90,11 @@ struct FixtureTypeEditor: View {
 					}
 				}
 			}
+			.onChange(of: draft.channels.map(\.isWide)) {
+				draft.renumber()
+			}
 			.navigationTitle(original == nil ? "Create Fixture" : "Edit Fixture")
 			.navigationBarTitleDisplayMode(.inline)
-			.navigationDestination(for: Int.self) { offset in
-				if let position = draft.channels.firstIndex(where: { $0.offset == offset }) {
-					ChannelEditor(channel: $draft.channels[position], others: draft.channels)
-				}
-			}
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {
 					Button(role: .close) { dismiss() }

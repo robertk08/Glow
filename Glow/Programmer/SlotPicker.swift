@@ -10,11 +10,11 @@ struct SlotPicker: View {
 	
 	var body: some View {
 		let active = programmer.band(of: channel)
-		let slot = programmer.slot(of: channel)
 		let swatches = programmer.swatches(of: channel)
+		let selected = programmer.selection(of: channel)
 		
 		Group {
-			Picker(channel.name, selection: Binding { slot?.id ?? active?.id ?? "" } set: { id in
+			Picker(channel.name, selection: Binding { selected } set: { id in
 				guard let chosen = programmer.choice(id, of: channel) else { return }
 				
 				guard !chosen.confirms else {
@@ -43,11 +43,11 @@ struct SlotPicker: View {
 								await programmer.send(choice, of: channel)
 							}
 						} label: {
-							Swatch(colors: choice.swatch, isSelected: choice.id == (slot?.id ?? active?.id))
+							Swatch(colors: choice.swatch, isSelected: choice.id == selected)
 						}
 						.buttonStyle(.plain)
 						.accessibilityLabel(choice.label)
-						.accessibilityAddTraits(choice.id == (slot?.id ?? active?.id) ? .isSelected : [])
+						.accessibilityAddTraits(choice.id == selected ? .isSelected : [])
 					}
 				}
 				.padding(.vertical, 4)

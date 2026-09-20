@@ -3,8 +3,6 @@ import SwiftUI
 struct FunctionEditor: View {
 	@Binding var function: ChannelFunction
 	
-	@State private var addingSet = false
-	
 	var body: some View {
 		Form {
 			Section {
@@ -75,16 +73,8 @@ struct FunctionEditor: View {
 				Text("Real units")
 			}
 			
-			Section {
-				ColorPicker("Shows this color", selection: Binding { (function.swatch.first ?? LightColor(red: 1, green: 1, blue: 1)).color } set: { function.colors = [LightColor($0).hex] }, supportsOpacity: false)
-				
-				if !function.colors.isEmpty {
-					Button("No Color", role: .destructive) {
-						function.colors = []
-					}
-				}
-			} header: {
-				Text("Color")
+			Section("Color") {
+				SwatchPicker(colors: $function.colors)
 			}
 			
 			Section {
@@ -149,24 +139,8 @@ private struct ChannelSetEditor: View {
 				}
 			}
 			
-			Section {
-				ColorPicker("Color", selection: Binding { (set.swatch.first ?? LightColor(red: 1, green: 1, blue: 1)).color } set: { set.colors = [LightColor($0).hex] }, supportsOpacity: false)
-				
-				if set.colors.count == 1 {
-					Button("Add a Second Color") {
-						set.colors.append(set.colors[0])
-					}
-				}
-				
-				if set.colors.count > 1 {
-					ColorPicker("Second color", selection: Binding { (set.swatch.last ?? LightColor(red: 1, green: 1, blue: 1)).color } set: { set.colors[1] = LightColor($0).hex }, supportsOpacity: false)
-				}
-				
-				if !set.colors.isEmpty {
-					Button("No Color", role: .destructive) {
-						set.colors = []
-					}
-				}
+			Section("Color") {
+				SwatchPicker(colors: $set.colors)
 			}
 		}
 		.navigationTitle(set.label.isEmpty ? "Slot" : set.label)

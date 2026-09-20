@@ -18,7 +18,9 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 	var enabledBy: Dependency?
 	var functions: [ChannelFunction] = []
 	
-	var id: Int { offset }
+	private let uid = Identity()
+	
+	var id: UUID { uid.value }
 	var name: String { label ?? attribute.name }
 	var isWide: Bool { fineOffset != nil }
 	var maximum: Int { isWide ? 65535 : 255 }

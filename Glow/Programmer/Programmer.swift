@@ -139,12 +139,12 @@ struct Programmer {
 		
 		for function in bands(of: channel) {
 			guard !function.sets.isEmpty else {
-				found.append(Choice(id: function.id, label: function.label, value: function.midpoint, swatch: function.swatch, confirms: function.requiresConfirmation, function: function))
+				found.append(Choice(id: "\(function.from)-\(function.to)", label: function.label, value: function.midpoint, swatch: function.swatch, confirms: function.requiresConfirmation, function: function))
 				continue
 			}
 			
 			for slot in function.sets {
-				found.append(Choice(id: slot.id, label: slot.label, value: slot.midpoint, swatch: slot.swatch, confirms: function.requiresConfirmation, function: function))
+				found.append(Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, confirms: function.requiresConfirmation, function: function))
 			}
 		}
 		
@@ -153,6 +153,12 @@ struct Programmer {
 	
 	func swatches(of channel: FixtureChannel) -> [Choice] {
 		choices(of: channel).filter { !$0.swatch.isEmpty }
+	}
+	
+	func selection(of channel: FixtureChannel) -> String {
+		if let slot = slot(of: channel) { return "\(slot.from)-\(slot.to)" }
+		if let band = band(of: channel) { return "\(band.from)-\(band.to)" }
+		return ""
 	}
 	
 	func choice(_ id: String, of channel: FixtureChannel) -> Choice? {
