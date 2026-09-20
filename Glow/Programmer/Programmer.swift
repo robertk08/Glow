@@ -248,6 +248,25 @@ struct Programmer {
 		return channel.functions.filter { $0.from != from || $0.to != to }
 	}
 	
+	nonisolated struct Scale: Sendable {
+		let from: UInt8
+		let to: UInt8
+		let unit: PhysicalUnit
+	}
+	
+	func scale(of channel: FixtureChannel) -> Scale? {
+		let measured = bands(of: channel).filter { $0.unit != nil && $0.sets.isEmpty }.sorted { $0.from < $1.from }
+		guard measured.count > 2, let unit = measured.first?.unit, measured.allSatisfy({ $0.unit == unit }) else { return nil }
+		guard zip(measured, measured.dropFirst()).allSatisfy({ Int($0.to) + 1 == Int($1.from) }) else { return nil }
+		return Scale(from: measured[0].from, to: measured[measured.count - 1].to, unit: unit)
+	}
+	
+	func stops(of channel: FixtureChannel) -> [Choice] {
+		bands(of: channel).filter { $0.kind == .setting }.map { band in
+			Choice(id: "\(band.from)-\(band.to)", label: band.physical(at: band.midpoint) ?? band.label, value: band.midpoint, swatch: band.swatch, shape: nil, confirms: band.requiresConfirmation, function: band)
+		}
+	}
+	
 	func adjustableBand(of channel: FixtureChannel) -> ChannelFunction? {
 		guard let active = band(of: channel), active.kind == .proportional, bands(of: channel).contains(active) else { return nil }
 		return active
@@ -536,6 +555,10 @@ struct Programmer {
 	
 	func releaseBand(of channel: FixtureChannel) -> ChannelFunction? {
 		channel.functions.first { $0.purpose == .release }
+	}
+	
+	var temperatureChannel: FixtureChannel? {
+		type?.channel(.colorTemperature)
 	}
 	
 	var macroChannel: FixtureChannel? {

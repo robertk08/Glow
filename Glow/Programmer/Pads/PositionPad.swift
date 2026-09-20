@@ -12,23 +12,32 @@ struct PositionPad: View {
 	@State private var anchor: CGPoint?
 	@State private var origin = CGPoint.zero
 
-	private var panReading: String {
-		guard let panDegrees else { return pan.formatted(.percent.precision(.fractionLength(0))) }
-		return "\((pan * panDegrees - panDegrees / 2).formatted(.number.precision(.fractionLength(0))))°"
+	private func reading(_ fraction: Double, over degrees: Double?) -> String {
+		guard let degrees else { return fraction.formatted(.percent.precision(.fractionLength(0))) }
+		return "\((fraction * degrees - degrees / 2).formatted(.number.precision(.fractionLength(0))))°"
 	}
 
-	private var tiltReading: String {
-		guard let tiltDegrees else { return tilt.formatted(.percent.precision(.fractionLength(0))) }
-		return "\((tilt * tiltDegrees - tiltDegrees / 2).formatted(.number.precision(.fractionLength(0))))°"
+	private func widest(_ degrees: Double?) -> String {
+		guard let degrees else { return "100%" }
+		return "-\((degrees / 2).formatted(.number.precision(.fractionLength(0))))°"
+	}
+	
+	private func axis(_ name: String, _ fraction: Double, over degrees: Double?) -> some View {
+		Text("\(name) \(widest(degrees))")
+			.hidden()
+			.overlay(alignment: .leading) {
+				Text("\(name) \(reading(fraction, over: degrees))")
+					.contentTransition(.numericText())
+			}
 	}
 
 	var body: some View {
 		VStack(spacing: 8) {
 			HStack(spacing: 12) {
-				Text("Pan \(panReading)")
-				Text("Tilt \(tiltReading)")
+				axis("Pan", pan, over: panDegrees)
+				axis("Tilt", tilt, over: tiltDegrees)
 
-				Spacer()
+				Spacer(minLength: 8)
 
 				Toggle(isOn: $isFine) {
 					Label("Fine", systemImage: "scope")
@@ -41,7 +50,7 @@ struct PositionPad: View {
 			}
 			.font(.caption.monospacedDigit())
 			.foregroundStyle(.secondary)
-			.contentTransition(.numericText())
+			.padding(.horizontal, 6)
 
 			GeometryReader { proxy in
 				let size = proxy.size

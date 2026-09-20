@@ -104,6 +104,7 @@ private struct ColorRows: View {
 	let programmer: Programmer
 	
 	@State private var showsEmitters = false
+	@State private var picks = 0
 	
 	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
 	
@@ -115,21 +116,25 @@ private struct ColorRows: View {
 				LazyVGrid(columns: columns, spacing: 10) {
 					ForEach(programmer.presets) { preset in
 						Button {
+							picks += 1
 							programmer.apply(preset)
 						} label: {
 							Swatch(colors: [preset.swatch], isSelected: programmer.selectedPresetID == preset.id)
 						}
 						.buttonStyle(.plain)
 						.accessibilityLabel(preset.name)
-						.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
 					}
 				}
 				.padding(.vertical, 4)
-				.sensoryFeedback(.selection, trigger: programmer.selectedPresetID)
+				.sensoryFeedback(.selection, trigger: picks)
 			}
 		}
 		
-		if programmer.balancesWhite {
+		if let temperature = programmer.temperatureChannel {
+			Section("White Balance") {
+				ChannelRow(programmer: programmer, channel: temperature)
+			}
+		} else if programmer.balancesWhite {
 			Section("White Balance") {
 				VStack(alignment: .leading, spacing: 4) {
 					Text("\(Int(programmer.kelvin)) K")
@@ -154,7 +159,8 @@ private struct ColorRows: View {
 			}
 		}
 		
-		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && $0.offset != programmer.macroChannel?.offset }
+		let shown = [programmer.macroChannel?.offset, programmer.temperatureChannel?.offset]
+		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.offset) }
 		
 		if !others.isEmpty {
 			Section {

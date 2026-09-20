@@ -168,7 +168,9 @@
         {
           "from": 6,
           "to": 6,
-          "label": "Warm white"
+          "label": "Warm white",
+          "unit": "kelvin",
+          "physicalFrom": 2000
         },
         {
           "from": 7,

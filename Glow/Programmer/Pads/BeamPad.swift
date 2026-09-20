@@ -14,8 +14,10 @@ struct BeamPad: View {
 		GeometryReader { proxy in
 			let width = proxy.size.width
 			let height = proxy.size.height
-			let spread = width * (0.12 + zoom * 0.72)
+			let spread = width * (0.12 + zoom * 0.6)
 			let softness = 2 + (1 - focus) * 26
+			let pool = max(10, spread * 0.16)
+			let floor = height - pool / 2 - 26
 			
 			ZStack {
 				Stage()
@@ -23,8 +25,8 @@ struct BeamPad: View {
 				Path { path in
 					path.move(to: CGPoint(x: width / 2 - 9, y: 10))
 					path.addLine(to: CGPoint(x: width / 2 + 9, y: 10))
-					path.addLine(to: CGPoint(x: width / 2 + spread / 2, y: height - 12))
-					path.addLine(to: CGPoint(x: width / 2 - spread / 2, y: height - 12))
+					path.addLine(to: CGPoint(x: width / 2 + spread / 2, y: floor))
+					path.addLine(to: CGPoint(x: width / 2 - spread / 2, y: floor))
 					path.closeSubpath()
 				}
 				.fill(LinearGradient(colors: [glow.opacity(0.85), glow.opacity(0.08)], startPoint: .top, endPoint: .bottom))
@@ -32,9 +34,9 @@ struct BeamPad: View {
 				
 				Ellipse()
 					.fill(glow.opacity(0.9))
-					.frame(width: spread, height: max(10, spread * 0.16))
+					.frame(width: spread, height: pool)
 					.blur(radius: softness * 0.6)
-					.position(x: width / 2, y: height - 12)
+					.position(x: width / 2, y: floor)
 				
 				VStack {
 					Spacer()

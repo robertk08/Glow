@@ -217,4 +217,30 @@ struct BuiltInFixtureTests {
 		#expect(!programmer.isActive(.color))
 		#expect(console.value(at: DMXAddress(1)!) == 255)
 	}
+	
+	@Test func theWhiteEngineReadsAsOneKelvinScale() {
+		guard let mode = library.type("cameo-f2-fc-16ch"), let white = mode.channel(.colorTemperature) else {
+			Issue.record("the F2 drives its whites on their own channel")
+			return
+		}
+		
+		let console = Console()
+		let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
+		programmer.applyDefaults()
+		
+		guard let scale = programmer.scale(of: white) else {
+			Issue.record("the whites run from end to end, so they belong on one slider")
+			return
+		}
+		
+		#expect(scale.unit == .kelvin)
+		#expect(scale.from == 6 && scale.to == 255)
+		#expect(programmer.stops(of: white).map(\.label) == ["Off", "2000 K", "2700 K", "3200 K", "4000 K", "5600 K", "6500 K", "10000 K"])
+		#expect(programmer.stops(of: white).map(\.value) == [2, 6, 47, 88, 129, 170, 211, 253])
+		
+		for value in scale.from...scale.to {
+			programmer.set(value, of: white)
+			#expect(programmer.physical(of: white) != nil, "\(value) should read as a temperature")
+		}
+	}
 }

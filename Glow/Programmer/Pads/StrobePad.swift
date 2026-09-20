@@ -17,7 +17,6 @@ struct StrobePad: View {
 				.fill(glow)
 				.frame(width: 54)
 				.opacity(isRunning ? (isLit ? 1 : 0.1) : 0.2)
-				.animation(.linear(duration: period / 2), value: isLit)
 			
 			VStack {
 				Spacer()
