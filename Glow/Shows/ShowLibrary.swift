@@ -384,6 +384,7 @@ final class ShowLibrary {
 		guard let endpoint, let incoming = await store.show(show.id, at: endpoint) else { return false }
 		await fill(with: incoming)
 		isLoaded = true
+		changed(Set(NodeStore.Folder.allCases))
 		return true
 	}
 	
@@ -603,7 +604,7 @@ final class ShowLibrary {
 		
 		try? context.save()
 		context.undoManager?.removeAllActions()
-		baseline = await Self.snapshot(of: contents())
+		baseline = await Self.snapshot(of: incoming)
 		isApplying = false
 		catchUp()
 	}

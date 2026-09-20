@@ -264,6 +264,27 @@ Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 served only on the setup network, and it starts the scan and answers straight
 away, so the app polls until the list arrives.
 
+## The browser
+
+`Web/index.html` is the same desk in a browser, one file with no build step.
+The controller serves it, so opening `http://glow.local` on any phone, tablet or
+laptop reaches the desk on the same origin, with no mixed content block and no
+CORS. Upload it with
+
+```
+curl -X PUT --data-binary @Web/index.html http://glow.local/api/web
+```
+
+It speaks the protocol below and nothing else, so it is a client like any other:
+the lights grid with its groups and gauges, the programmer with the feature
+groups a fixture actually has, scenes with the live one lit, shows, the fixture
+types the show carries and a DMX monitor. It adapts the way the app does, a tab
+bar and a sheet on a phone, a sidebar and an inspector on a laptop.
+
+It can do this because a show carries its fixture definitions, so the browser
+resolves channels and scales the master over the right dimmers without the
+app's bundle. Patching is limited to the types a show already holds.
+
 ## Shows on the wire
 
 Shows move over plain HTTP on the same port, because a made fixture definition
