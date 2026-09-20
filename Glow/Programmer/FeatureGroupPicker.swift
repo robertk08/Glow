@@ -10,16 +10,14 @@ struct FeatureGroupPicker: View {
 			ScrollView(.horizontal) {
 				HStack(spacing: 8) {
 					ForEach(programmer.groups) { option in
-						Button {
-							group = option
-						} label: {
+						Toggle(isOn: Binding { group == option } set: { _ in group = option }) {
 							Label(option.name, systemImage: option.symbol)
 								.font(.subheadline.weight(.medium))
 						}
+						.toggleStyle(.button)
 						.buttonStyle(.glass)
 						.buttonBorderShape(.capsule)
 						.tint(group == option ? Color.accentColor : nil)
-						.accessibilityAddTraits(group == option ? .isSelected : [])
 						.id(option)
 					}
 				}

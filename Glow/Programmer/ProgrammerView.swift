@@ -55,7 +55,7 @@ struct ProgrammerView: View {
 				}
 				
 				if sizeClass == .compact {
-					ToolbarItem(placement: .confirmationAction) {
+					ToolbarItem(placement: .topBarTrailing) {
 						Button(role: .close) { dismiss() }
 					}
 				}
