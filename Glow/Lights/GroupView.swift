@@ -9,6 +9,7 @@ struct GroupView: View {
 	@Bindable var group: FixtureGroup
 	
 	@State private var isNew = false
+	@State private var named = ""
 	@State private var isDeleting = false
 	@FocusState private var isNaming: Bool
 	
@@ -62,11 +63,17 @@ struct GroupView: View {
 			.task {
 				isNew = group.name.isEmpty
 				isNaming = isNew
+				named = group.name
 			}
 			.onDisappear {
 				group.name = group.name.trimmingCharacters(in: .whitespaces)
-				guard group.name.isEmpty, group.members.isEmpty else { return }
-				context.delete(group)
+				guard group.name.isEmpty else { return }
+				
+				if isNew {
+					context.delete(group)
+				} else {
+					group.name = named
+				}
 			}
 		}
 	}
