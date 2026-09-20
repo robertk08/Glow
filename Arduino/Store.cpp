@@ -9,6 +9,7 @@ namespace {
 
 const char *SHOWS     = "/shows.json";
 const char *PAGE      = "/web.html";
+const char *PACKED    = "/web.html.gz";
 const char *SHOWS_DIR = "/s";
 const char *UPLOAD    = "/upload.part";
 
@@ -80,6 +81,8 @@ bool ready() { return g_ready; }
 const char *showsPath() { return SHOWS; }
 
 const char *pagePath() { return PAGE; }
+
+const char *packedPagePath() { return PACKED; }
 
 bool showPath(char *out, size_t size, const char *showID) {
   if (!safe(showID)) return false;

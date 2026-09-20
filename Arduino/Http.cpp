@@ -55,16 +55,18 @@ const char *reason(int status) {
   }
 }
 
-void sendHead(NetworkClient &c, int status, size_t len, const char *type = "application/json") {
-  char head[192];
+void sendHead(NetworkClient &c, int status, size_t len, const char *type = "application/json", bool packed = false) {
+  char head[256];
   int n = snprintf(head, sizeof(head),
                    "HTTP/1.1 %d %s\r\n"
                    "Content-Type: %s\r\n"
                    "Content-Length: %u\r\n"
+                   "%s"
                    "Cache-Control: no-store\r\n"
                    "Connection: close\r\n"
                    "\r\n",
-                   status, reason(status), type, (unsigned)len);
+                   status, reason(status), type, (unsigned)len,
+                   packed ? "Content-Encoding: gzip\r\n" : "");
   c.write((const uint8_t *)head, (size_t)n);
 }
 
@@ -157,14 +159,14 @@ void sendAssembled(NetworkClient &c, const char *showID) {
   emitShow(writer, showID, names, count);
 }
 
-void sendStored(NetworkClient &c, const char *path, const char *type = "application/json") {
+void sendStored(NetworkClient &c, const char *path, const char *type = "application/json", bool packed = false) {
   File f = Store::open(path);
   if (!f || f.isDirectory()) {
     sendResult(c, 404, false, "not_found");
     return;
   }
 
-  sendHead(c, 200, f.size(), type);
+  sendHead(c, 200, f.size(), type, packed);
 
   uint8_t chunk[CHUNK];
   while (true) {
@@ -390,15 +392,26 @@ void route(NetworkClient &c, const char *method, const char *path,
   }
 
   if (!strcmp(path, "/") || !strcmp(path, "/index.html")) {
-    if (get) sendStored(c, Store::pagePath(), "text/html; charset=utf-8");
-    else sendResult(c, 405, false, "method");
+    if (!get) {
+      sendResult(c, 405, false, "method");
+    } else if (Store::open(Store::packedPagePath())) {
+      sendStored(c, Store::packedPagePath(), "text/html; charset=utf-8", true);
+    } else {
+      sendStored(c, Store::pagePath(), "text/html; charset=utf-8");
+    }
     return;
   }
 
   if (!strcmp(path, "/api/web")) {
     if (!put) {
       sendResult(c, 405, false, "method");
-    } else if (!Store::write(Store::pagePath(), (const uint8_t *)body, bodyLen)) {
+      return;
+    }
+
+    bool packed = bodyLen > 2 && (uint8_t)body[0] == 0x1f && (uint8_t)body[1] == 0x8b;
+    Store::remove(packed ? Store::pagePath() : Store::packedPagePath());
+
+    if (!Store::write(packed ? Store::packedPagePath() : Store::pagePath(), (const uint8_t *)body, bodyLen)) {
       sendResult(c, 503, false, "write_failed");
     } else {
       sendResult(c, 200, true, nullptr);
