@@ -66,8 +66,9 @@ nonisolated enum Wire {
 		var id = ""
 		var name = "Glow"
 		var hasSource = false
+		var client: Int?
 		
-		private enum CodingKeys: String, CodingKey { case fw, id, name, src }
+		private enum CodingKeys: String, CodingKey { case fw, id, name, src, client }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -75,7 +76,16 @@ nonisolated enum Wire {
 			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
 			name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Glow"
 			hasSource = try container.decodeIfPresent(Bool.self, forKey: .src) ?? false
+			client = try container.decodeIfPresent(Int.self, forKey: .client)
 		}
+	}
+	
+	nonisolated struct Notice: Sendable, Equatable {
+		var sequence = 0
+		var show: String?
+		var folder: String?
+		var id: String?
+		var isDelete = false
 	}
 	
 	nonisolated enum Reply: Sendable {
@@ -83,6 +93,7 @@ nonisolated enum Wire {
 		case pong(seq: Int)
 		case master(Double)
 		case blackout(Bool)
+		case notice(Notice)
 		
 		static func decode(_ data: Data) -> Reply? {
 			struct Envelope: Decodable {
@@ -90,6 +101,10 @@ nonisolated enum Wire {
 				var seq: Int?
 				var level: Double?
 				var on: Bool?
+				var show: String?
+				var folder: String?
+				var id: String?
+				var op: String?
 			}
 			
 			guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else { return nil }
@@ -106,6 +121,11 @@ nonisolated enum Wire {
 			case "blackout":
 				guard let on = envelope.on else { return nil }
 				return .blackout(on)
+			case "shows":
+				return .notice(Notice())
+			case "doc":
+				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
+				return .notice(Notice(show: show, folder: folder, id: id, isDelete: envelope.op == "delete"))
 			default:
 				return nil
 			}

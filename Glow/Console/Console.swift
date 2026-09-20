@@ -8,6 +8,7 @@ final class Console {
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
+	private(set) var notice: Wire.Notice?
 	
 	let selection = Selection()
 	
@@ -57,6 +58,8 @@ final class Console {
 	private var isSynced = false
 	private var isAdopting = false
 	private var hasLoadedPatch = false
+	private var notices = 0
+	private var patched: Set<Int> = []
 	
 	private static let endpointKey = "node.endpoint"
 	
@@ -100,6 +103,11 @@ final class Console {
 					isAdopting = true
 					blackout = on
 					isAdopting = false
+				case let .notice(incoming):
+					notices += 1
+					var stamped = incoming
+					stamped.sequence = notices
+					notice = stamped
 				}
 			}
 		}
@@ -155,6 +163,7 @@ final class Console {
 		universe = Universe()
 		active = []
 		dimmers = []
+		patched = []
 		hasLoadedPatch = false
 		selection.clear()
 		sourceFrames.startOver()
@@ -224,40 +233,72 @@ final class Console {
 		}
 	}
 	
-	static func nextSortIndex<Item>(_ items: [Item], sortIndex: KeyPath<Item, Int>) -> Int {
+	static func nextSortIndex<Item>(_ items: [Item], sortIndex: KeyPath<Item, Double>) -> Double {
 		(items.map { $0[keyPath: sortIndex] }.max() ?? 0) + 1
 	}
 	
 	@available(iOS 27.0, *)
-	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Int>) {
-		var ordered = items.filter { !difference.sources.contains($0.persistentModelID) }
+	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
+		let ordered = items.filter { !difference.sources.contains($0.persistentModelID) }
 		let lifted = items.filter { difference.sources.contains($0.persistentModelID) }
 		
 		switch difference.destination.position {
-		case let .before(id): ordered.insert(contentsOf: lifted, at: ordered.firstIndex { $0.persistentModelID == id } ?? ordered.endIndex)
-		case .end: ordered.append(contentsOf: lifted)
-		}
-		
-		for (index, item) in ordered.enumerated() {
-			item[keyPath: sortIndex] = index
+		case let .before(id): place(lifted, into: ordered, at: ordered.firstIndex { $0.persistentModelID == id } ?? ordered.endIndex, sortIndex: sortIndex)
+		case .end: place(lifted, into: ordered, at: ordered.endIndex, sortIndex: sortIndex)
 		}
 	}
 	
-	func move<Item: PersistentModel>(_ offsets: IndexSet, to destination: Int, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Int>) {
+	func move<Item: PersistentModel>(_ offsets: IndexSet, to destination: Int, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
+		let lifted = offsets.map { items[$0] }
 		var ordered = items
-		ordered.move(fromOffsets: offsets, toOffset: destination)
+		ordered.remove(atOffsets: offsets)
 		
-		for (index, item) in ordered.enumerated() {
-			item[keyPath: sortIndex] = index
+		var position = destination
+		
+		for offset in offsets where offset < destination {
+			position -= 1
+		}
+		
+		place(lifted, into: ordered, at: min(max(position, 0), ordered.count), sortIndex: sortIndex)
+	}
+	
+	private func place<Item: PersistentModel>(_ lifted: [Item], into ordered: [Item], at position: Int, sortIndex: ReferenceWritableKeyPath<Item, Double>) {
+		guard !lifted.isEmpty else { return }
+		
+		var low = 0.0
+		var step = 1.0
+		
+		if position > 0 {
+			low = ordered[position - 1][keyPath: sortIndex]
+		} else if position < ordered.count {
+			low = ordered[position][keyPath: sortIndex] - Double(lifted.count) - 1
+		}
+		
+		if position > 0, position < ordered.count {
+			step = (ordered[position][keyPath: sortIndex] - low) / Double(lifted.count + 1)
+		}
+		
+		guard step > 0 else {
+			var all = ordered
+			all.insert(contentsOf: lifted, at: position)
+			
+			for (index, item) in all.enumerated() {
+				item[keyPath: sortIndex] = Double(index)
+			}
+			return
+		}
+		
+		for (offset, item) in lifted.enumerated() {
+			item[keyPath: sortIndex] = low + step * Double(offset + 1)
 		}
 	}
 	
-	func levels(among fixtures: [Fixture], library: FixtureLibrary) -> [String: [UInt8]] {
-		var levels: [String: [UInt8]] = [:]
+	func levels(among fixtures: [Fixture], library: FixtureLibrary) -> [String: Data] {
+		var levels: [String: Data] = [:]
 		
 		for fixture in fixtures {
 			guard let profile = library.type(fixture.typeID) else { continue }
-			var values: [UInt8] = []
+			var values = Data()
 			
 			for offset in 0..<profile.channelCount {
 				guard let address = fixture.start.offset(by: offset) else { break }
@@ -271,11 +312,9 @@ final class Console {
 	}
 	
 	func recall(_ look: Look, among fixtures: [Fixture]) {
-		let levels = look.fixtureLevels
-		
 		for fixture in fixtures {
-			guard let values = levels[fixture.identifier] else { continue }
-			universe.set(values, at: fixture.start)
+			guard let values = look.levels[fixture.identifier] else { continue }
+			universe.set([UInt8](values), at: fixture.start)
 		}
 		
 		outputFrames.startOver()
@@ -294,6 +333,22 @@ final class Console {
 			
 			sourceFrames.startOver()
 		}
+		
+		var covered: Set<Int> = []
+		
+		for fixture in fixtures {
+			for address in fixture.range(library.type(fixture.typeID)) {
+				covered.insert(address)
+			}
+		}
+		
+		for address in patched.subtracting(covered) {
+			guard let slot = DMXAddress(address) else { continue }
+			universe.set([0], at: slot)
+			active.remove(address)
+		}
+		
+		patched = covered
 		
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }

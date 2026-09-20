@@ -1,0 +1,165 @@
+{
+ "exportedAt": "2026-09-20T00:00:00Z",
+ "format": "glow.show",
+ "name": "Demo Show",
+ "show": {
+  "groups": [
+   {
+    "identifier": "eee37f0e4d24b493",
+    "name": "Wash",
+    "sortIndex": 0,
+    "tint": "orange"
+   },
+   {
+    "identifier": "66e48d6f7ac16f67",
+    "name": "Movers",
+    "sortIndex": 1,
+    "tint": "blue"
+   }
+  ],
+  "lights": [
+   {
+    "address": 1,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "44c8a609b6316b78",
+    "name": "Wash 1",
+    "sortIndex": 0,
+    "typeID": "stairville-hl-x180-8ch"
+   },
+   {
+    "address": 9,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "26e9b6c1b280574b",
+    "name": "Wash 2",
+    "sortIndex": 1,
+    "typeID": "stairville-hl-x180-8ch"
+   },
+   {
+    "address": 17,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "61fa3c08eef8bb38",
+    "name": "Wash 3",
+    "sortIndex": 2,
+    "typeID": "stairville-hl-x180-8ch"
+   },
+   {
+    "address": 25,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "2c8baa42bf00d325",
+    "name": "Wash 4",
+    "sortIndex": 3,
+    "typeID": "stairville-hl-x180-8ch"
+   },
+   {
+    "address": 33,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "828f930ff5946195",
+    "name": "Front Left",
+    "sortIndex": 4,
+    "typeID": "cameo-f2-fc-16ch"
+   },
+   {
+    "address": 49,
+    "groups": [
+     "eee37f0e4d24b493"
+    ],
+    "identifier": "9801d00285444fa1",
+    "name": "Front Right",
+    "sortIndex": 5,
+    "typeID": "cameo-f2-fc-16ch"
+   },
+   {
+    "address": 65,
+    "groups": [
+     "66e48d6f7ac16f67"
+    ],
+    "identifier": "65f567c945670fa8",
+    "name": "Mover Left",
+    "sortIndex": 6,
+    "typeID": "mini-moving-head-14ch"
+   },
+   {
+    "address": 79,
+    "groups": [
+     "66e48d6f7ac16f67"
+    ],
+    "identifier": "2ca007cee856a1ef",
+    "name": "Mover Right",
+    "sortIndex": 7,
+    "typeID": "mini-moving-head-14ch"
+   },
+   {
+    "address": 93,
+    "groups": [
+     "66e48d6f7ac16f67"
+    ],
+    "identifier": "b3652fe1d4283a19",
+    "name": "Beam",
+    "sortIndex": 8,
+    "typeID": "stairville-bsw350-32ch"
+   }
+  ],
+  "made": [],
+  "scenes": [
+   {
+    "identifier": "0908ef53afc76309",
+    "levels": {
+     "26e9b6c1b280574b": "/////wAAAP8=",
+     "2c8baa42bf00d325": "/////wAAAP8=",
+     "2ca007cee856a1ef": "gACAAAAA/////wAAAAA=",
+     "44c8a609b6316b78": "/////wAAAP8=",
+     "61fa3c08eef8bb38": "/////wAAAP8=",
+     "65f567c945670fa8": "gACAAAAA/////wAAAAA=",
+     "828f930ff5946195": "/wAA/wD/AP8A/wAAgAAAAA==",
+     "9801d00285444fa1": "/wAA/wD/AP8A/wAAgAAAAA==",
+     "b3652fe1d4283a19": "gACAAP8AAAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA="
+    },
+    "name": "Open White",
+    "sortIndex": 0
+   },
+   {
+    "identifier": "8af9ebf0368c0554",
+    "levels": {
+     "26e9b6c1b280574b": "ACj/AAAAAP8=",
+     "2c8baa42bf00d325": "ACj/AAAAAP8=",
+     "2ca007cee856a1ef": "gACAAAAAACj/AAAAAAA=",
+     "44c8a609b6316b78": "ACj/AAAAAP8=",
+     "61fa3c08eef8bb38": "ACj/AAAAAP8=",
+     "65f567c945670fa8": "gACAAAAAACj/AAAAAAA=",
+     "828f930ff5946195": "/wAAAAAoAP8AAAAAgAAAAA==",
+     "9801d00285444fa1": "/wAAAAAoAP8AAAAAgAAAAA==",
+     "b3652fe1d4283a19": "gACAAP8AAAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA="
+    },
+    "name": "Deep Blue",
+    "sortIndex": 1
+   },
+   {
+    "identifier": "b6594bbd7e4ea2a6",
+    "levels": {
+     "26e9b6c1b280574b": "/3gKUAAAAP8=",
+     "2c8baa42bf00d325": "/3gKUAAAAP8=",
+     "2ca007cee856a1ef": "gACAAAAA/3gKUAAAAAA=",
+     "44c8a609b6316b78": "/3gKUAAAAP8=",
+     "61fa3c08eef8bb38": "/3gKUAAAAP8=",
+     "65f567c945670fa8": "gACAAAAA/3gKUAAAAAA=",
+     "828f930ff5946195": "/wAA/wB4AAoAUAAAgAAAAA==",
+     "9801d00285444fa1": "/wAA/wB4AAoAUAAAgAAAAA==",
+     "b3652fe1d4283a19": "gACAAP8AAAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA="
+    },
+    "name": "Warm Amber",
+    "sortIndex": 2
+   }
+  ]
+ },
+ "version": "2026-09-20"
+}

@@ -8,16 +8,9 @@ static const int SLOT_MAX = DMX_PACKET_SIZE - 1;
 
 bool begin();
 
-bool setSlot(int slot, uint8_t value);
-int  getSlot(int slot);
 bool writeRange(int start, const uint8_t *values, int length);
-void clear();
 
 int  refreshHz();
-
-void setBlackout(bool on);
-bool blackout();
-
 
 void pause();
 void resume();

@@ -4,7 +4,9 @@ import SwiftUI
 struct RootView: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
+	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.horizontalSizeClass) private var sizeClass
+	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.modelContext) private var context
 	@Query private var stored: [StoredFixtureType]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
@@ -43,7 +45,9 @@ struct RootView: View {
 		@Bindable var selection = console.selection
 		
 		return Group {
-			if sizeClass == .compact {
+			if !shows.isLoaded {
+				WaitingView()
+			} else if sizeClass == .compact {
 				tabs
 					.sheet(isPresented: $selection.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
@@ -68,6 +72,27 @@ struct RootView: View {
 		}
 		.task {
 			library.setMade(stored.map(\.definition))
+		}
+		.onChange(of: shows.activeID) {
+			console.closeShow()
+		}
+		.onChange(of: fixtures) {
+			console.applyPatch(fixtures, library: library)
+		}
+		.task {
+			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+		}
+		.onChange(of: console.link) {
+			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+		}
+		.onChange(of: console.node) {
+			shows.reach(console.link, endpoint: console.endpoint, client: console.node?.client)
+		}
+		.onChange(of: console.notice) {
+			shows.receive(console.notice)
+		}
+		.onChange(of: scenePhase) {
+			shows.settle(scenePhase)
 		}
 	}
 }

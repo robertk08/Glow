@@ -196,12 +196,6 @@ struct LightsView: View {
 			GroupView(group: group)
 		}
 		.sensoryFeedback(.selection, trigger: console.selection.identifiers)
-		.onChange(of: fixtures) {
-			console.applyPatch(fixtures, library: library)
-		}
-		.task {
-			console.applyPatch(fixtures, library: library)
-		}
 	}
 }
 

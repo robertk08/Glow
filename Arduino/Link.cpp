@@ -52,26 +52,17 @@ void sendError(uint8_t num, const char *code, const char *message) {
   g_ws.sendTXT(num, g_out, n);
 }
 
-size_t buildStatus() {
+void sendStatus(uint8_t num) {
   JsonDocument doc;
   doc["t"] = "status";
   doc["fw"] = GLOW_FW_VERSION;
   doc["id"] = Net::id();
   doc["name"] = GLOW_NODE_NAME;
-  doc["blackout"] = DmxBus::blackout();
   doc["src"] = g_haveSource;
   doc["uptime"] = (uint32_t)(esp_timer_get_time() / 1000000LL);
-  return serializeJson(doc, g_out, sizeof(g_out));
-}
-
-void sendStatus(uint8_t num) {
-  size_t n = buildStatus();
+  doc["client"] = num;
+  size_t n = serializeJson(doc, g_out, sizeof(g_out));
   g_ws.sendTXT(num, g_out, n);
-}
-
-void broadcastStatus() {
-  size_t n = buildStatus();
-  g_ws.broadcastTXT(g_out, n);
 }
 
 void relayBinary(uint8_t from, const uint8_t *p, size_t len) {
@@ -222,6 +213,14 @@ void tick() {
 }
 
 int clients() { return g_running ? g_ws.connectedClients() : 0; }
+
+void notify(const char *json, int except) {
+  if (!g_running) return;
+  size_t len = strlen(json);
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if ((int)i != except) g_ws.sendTXT(i, json, len);
+  }
+}
 
 bool adopt(NetworkClient &tcp, const char *url) {
   return g_running ? g_ws.adopt(tcp, url) : false;

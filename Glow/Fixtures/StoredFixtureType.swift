@@ -12,8 +12,4 @@ final class StoredFixtureType {
 		self.definition = definition
 		createdAt = .now
 	}
-	
-	static func unusedIdentifier() -> String {
-		"made-\(UUID().uuidString.prefix(8).lowercased())"
-	}
 }

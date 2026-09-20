@@ -8,43 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-static const int FIXTURE_START_ADDRESS = 1;
-
-enum Function : uint8_t {
-  FN_PAN, FN_PAN_FINE, FN_TILT, FN_TILT_FINE, FN_XY_SPEED, FN_DIMMER,
-  FN_RED, FN_GREEN, FN_BLUE, FN_WHITE, FN_COLOR_MACRO, FN_JUMP_SPEED,
-  FN_MODE, FN_RESET,
-  FN_COUNT
-};
-
-struct ChannelDef {
-  uint8_t     channel;
-  const char *name;
-};
-
-static const ChannelDef FIXTURE_PROFILE[FN_COUNT] = {
-  {  1, "Pan"           },
-  {  2, "Pan fine"      },
-  {  3, "Tilt"          },
-  {  4, "Tilt fine"     },
-  {  5, "XY speed"      },
-  {  6, "Dimmer/strobe" },
-  {  7, "Red"           },
-  {  8, "Green"         },
-  {  9, "Blue"          },
-  { 10, "White"         },
-  { 11, "Colour macro"  },
-  { 12, "Jump speed"    },
-  { 13, "Mode"          },
-  { 14, "Reset"         },
-};
-
-static const uint8_t DIMMER_OFF  = 0;
-static const uint8_t DIMMER_OPEN = 255;
-static const uint8_t MODE_MANUAL = 0;
-static const uint8_t MACRO_RGBW  = 0;
-
-#define GLOW_FW_VERSION "1.3.0"
+#define GLOW_FW_VERSION "2.0.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_SERVICE    "glow"

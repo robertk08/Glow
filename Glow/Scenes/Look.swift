@@ -3,19 +3,17 @@ import SwiftUI
 
 @Model
 final class Look {
+	var identifier: String = Identifier.fresh()
 	var name: String = ""
-	var sortIndex: Int = 0
-	var levels: Data = Data()
+	var sortIndex: Double = 0
+	var levels: [String: Data] = [:]
 	
-	init(name: String, sortIndex: Int, levels: [String: [UInt8]]) {
+	init(name: String, sortIndex: Double, levels: [String: Data]) {
+		identifier = Identifier.fresh()
 		self.name = name
 		self.sortIndex = sortIndex
-		self.levels = (try? JSONEncoder().encode(levels)) ?? Data()
+		self.levels = levels
 	}
 	
-	var fixtureLevels: [String: [UInt8]] {
-		(try? JSONDecoder().decode([String: [UInt8]].self, from: levels)) ?? [:]
-	}
-	
-	var fixtureCount: Int { fixtureLevels.count }
+	var fixtureCount: Int { levels.count }
 }

@@ -2,7 +2,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ShowsView: View {
-	@Environment(Console.self) private var console
 	@Environment(ShowLibrary.self) private var shows
 	
 	@State private var isNaming = false
@@ -18,7 +17,6 @@ struct ShowsView: View {
 			Section {
 				ForEach(shows.shows) { show in
 					Button {
-						console.closeShow()
 						shows.activate(show)
 					} label: {
 						LabeledContent {
@@ -38,18 +36,19 @@ struct ShowsView: View {
 						}
 						
 						Button("Duplicate", systemImage: "plus.square.on.square") {
-							console.closeShow()
 							shows.duplicate(show)
 						}
 						
-						if let url = shows.shareable(show) {
-							ShareLink(item: url) {
-								Label("Share", systemImage: "square.and.arrow.up")
+						if show.id == shows.activeID {
+							if let url = shows.shareable() {
+								ShareLink(item: url) {
+									Label("Share", systemImage: "square.and.arrow.up")
+								}
 							}
-						}
-						
-						Button("Save to Files", systemImage: "folder") {
-							exporting = ShowDocument(show: shows.contents(of: show))
+							
+							Button("Save to Files", systemImage: "folder") {
+								exporting = ShowDocument(show: shows.exportable())
+							}
 						}
 					}
 					.swipeActions {
@@ -79,7 +78,6 @@ struct ShowsView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
 			guard let url = try? result.get() else { return }
-			console.closeShow()
 			shows.adopt(contentsOf: url)
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
@@ -87,7 +85,6 @@ struct ShowsView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Delete", role: .destructive) {
-				console.closeShow()
 				shows.delete(show)
 			}
 		} message: { show in
@@ -100,7 +97,6 @@ struct ShowsView: View {
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Create") {
-				console.closeShow()
 				shows.create(name: newName.trimmingCharacters(in: .whitespaces))
 			}
 			.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)

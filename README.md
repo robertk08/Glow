@@ -3,10 +3,22 @@
 An iOS app that controls DMX stage lights over Wi-Fi, and the ESP32-S3 firmware
 that puts the signal on the wire.
 
-The app is the console: it holds the patch, the fixture definitions and the
-512-channel universe, and decides what every channel is worth. The controller is
-a dumb output that clocks whatever it is sent onto the DMX line. Fixture support
-is therefore a JSON file in the app, never a reflash.
+The controller is the desk. It holds the shows, and every device is a terminal
+on it. Connect and you are handed the whole show. Disconnect and there is
+nothing to see, because nothing is kept on the device. Two phones and an iPad on
+one controller see the same patch, the same scenes and the same look, and a
+scene saved on one appears on the others.
+
+The app still decides what every channel is worth. It holds the fixture
+definitions and the 512-channel universe and works out the values, and the
+controller clocks them onto the DMX line and files the show away. It never reads
+a show it is given, so fixture support stays a JSON file in the app, never a
+reflash.
+
+A device changes itself first and tells the controller after, the way an X32
+remote does, so nothing waits on a round trip. The controller passes the change
+to every other device and never back to the sender. Last writer wins, per
+object, with no locking and nothing to resolve.
 
 Selecting lights is how you control them. Tap one or several in Lights and the
 programmer drives the whole selection at once, the way a grandMA programmer
@@ -34,7 +46,7 @@ way the master fader does, so a head keeps its position and its colour through
 one.
 
 The patch, the groups, the fixtures built here and the scenes sit in one store
-with an undo manager, so editing is undoable. Removing a light writes zeros
+in memory with an undo manager, so editing is undoable. Removing a light writes zeros
 across its channels on the way out. A light whose fixture definition is gone
 says so on its tile and opens straight into a picker to point it at another
 one, keeping its name, address and group.
@@ -74,13 +86,22 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
-A show is a store of its own on disk, holding one patch, its groups, the
-fixtures built here and its scenes. Switching show swaps the store underneath
-the app without moving you off the screen you are on. A show stores no DMX
-values, so every light comes back on its defaults. The controller you send to belongs to the device, not the show. A show
-exports and imports as one JSON file carrying the date its format was settled
-and the date it was written. A file from a newer format is refused, and so is
-one that names no format at all.
+A show is a folder on the controller, holding one patch, its groups, the
+fixtures built here and its scenes, one file per object. Switching show swaps
+the store underneath the app without moving you off the screen you are on, and
+switches it on every other device too. A show stores no DMX values, so every
+light comes back on its defaults. The controller you send to belongs to the
+device, not the show. The show you are in exports and imports as one JSON file
+carrying the date its format was settled and the date it was written. A file
+from a newer format is refused.
+
+**The controller is the only copy of your shows.** A dead board or an erased
+filesystem loses them, and there is no local cache softening that. Export is the
+backup.
+
+With no controller reachable, Glow shows a waiting screen with a way into
+controller setup and a way into a demo. The demo runs the whole app on a show
+built into the app, changes go nowhere, and quitting throws it away.
 
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.
@@ -157,7 +178,12 @@ All four board settings are required, and none are saved with the sketch:
 A correct compile reports `Maximum is 3145728 bytes`. If it says ~1.25 MB the
 partition scheme did not take.
 
-Serial console at 115200: `red | green | blue | net | setup | forget`.
+Shows live in the 896 KB data partition that scheme already lays out, mounted as
+LittleFS and formatted on first boot. Nothing to configure, but reflashing with
+a different partition scheme erases every show.
+
+Serial console at 115200: `net | setup | forget`. `net` also reports how much of
+the show filesystem is used.
 
 ## Toolchain
 
@@ -201,15 +227,80 @@ before master touches it, and the controller stores it and passes it to every
 other client without clocking it.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`. In: `status` (`fw`, `id`, `name`, `blackout`, `uptime` in
-seconds, `src`), `pong`, `error`, plus `blackout` and `master` relayed from
-another client. Types are strict, an integer is not a float and a boolean is not
-`1`. `status` is only sent in reply to `hello`, so say hello first.
+`blackout`, `master`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds,
+`src`, `client`), `pong`, `error`, plus `blackout` and `master` relayed from
+another client, and the document notices below. Types are strict, an integer is
+not a float and a boolean is not `1`. `status` is only sent in reply to `hello`,
+so say hello first. `client` is the slot the controller gave you, and you send
+it back as `X-Glow-Client` so your own writes are not relayed to you.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is
 served only on the setup network, and it starts the scan and answers straight
 away, so the app polls until the list arrives.
+
+## Shows on the wire
+
+Shows move over plain HTTP on the same port, because a made fixture definition
+runs to tens of kilobytes and the WebSocket carries only small messages.
+
+| Method | Path | |
+|---|---|---|
+| GET, PUT | `/api/shows` | the list of shows and which one is active |
+| GET | `/api/show/<id>` | the whole show, assembled |
+| DELETE | `/api/show/<id>` | the show and everything in it |
+| GET, PUT, DELETE | `/api/show/<id>/<folder>/<objid>` | one object |
+
+A show is a folder of folders. `lights`, `groups`, `made` and `scenes` today,
+and each one holds one JSON file per object named by its id. Names are letters,
+digits, hyphen and underscore, up to 39 characters, and anything else is
+refused.
+
+**The controller does not know what a folder means.** It lists the folders it
+finds and assembles `GET /api/show/<id>` as `{"<folder>":[…],"<folder>":[…]}`,
+measuring the files to write the `Content-Length` and then splicing the bytes in
+without parsing one of them. So adding cue stacks later is a folder the app
+starts writing to, and the firmware does not change. `/shows.json` is the one
+file the controller reads, and it only ever hands it back.
+
+**One file per object, not one file per show.** A whole-show write would mean
+your rename wiping my new scene. Per object, both survive under the same last
+writer wins rule, and one edit sends one small file rather than the show.
+
+After a write lands, the controller sends `{"t":"doc","show","folder","id","op"}`
+to every client but the sender, or `{"t":"shows"}` when the list changed. A
+client fetches just that object and applies it, so nothing reloads the show to
+learn one name changed.
+
+A scene is a base64 blob of raw channel bytes per light, not an array of
+numbers, which is where a show with many scenes would otherwise spend its space.
+It still records lights rather than addresses, so re-addressing later does not
+point a scene at whatever now sits on those channels.
+
+An id is sixteen hex characters, not a UUID. A scene names every light it holds,
+so the id is most of what a scene weighs, and the odds of two devices minting
+the same one are still far past never.
+
+**Order is a fraction, not a position.** Dragging a light to a new place gives
+it a value between its new neighbours and leaves every other light alone, so one
+drag is one small write rather than one per light in the list. Each write pauses
+DMX, which is the real reason this matters. If a gap ever gets too small to
+divide, that list renumbers itself once and carries on.
+
+Every field is read with a fallback rather than a requirement, so a folder or a
+field that is not there yet reads as empty instead of failing the whole show.
+That is what makes adding to the format safe.
+
+A show exports as one file carrying `format`, `version`, the date it was written
+and the show itself. Glow reads a file only when both the format and the version
+are the ones it writes today. There is no migration and no reader for anything
+older.
+
+**Writing to flash pauses DMX**, because a flash write drops the cache and
+corrupts the packet on the wire. `Flash::guarded` takes the driver down for the
+length of one write, the same guard the Wi-Fi credentials have always used. A
+frame or two is lost and fixtures hold their last value, which is why the app
+only writes when you change something and never on a timer.
 
 Master and blackout are relayed the same way a source frame is, so two devices
 on one node stay in step and both send the same output. The app sends a full

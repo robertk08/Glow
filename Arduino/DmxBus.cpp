@@ -13,9 +13,8 @@ uint8_t g_wire[DMX_PACKET_SIZE];
 SemaphoreHandle_t g_lock     = nullptr;
 SemaphoreHandle_t g_wireLock = nullptr;
 
-volatile int      g_hz            = DMX_REFRESH_HZ;
-volatile bool     g_blackout      = false;
-volatile bool     g_resync        = false;
+volatile int  g_hz     = DMX_REFRESH_HZ;
+volatile bool g_resync = false;
 
 struct Hold {
   Hold() { if (g_lock) xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -37,8 +36,6 @@ void refreshTask(void *) {
       Hold hold;
       memcpy(g_wire, g_frame, DMX_PACKET_SIZE);
     }
-
-    if (g_blackout) memset(g_wire + SLOT_MIN, 0, SLOT_MAX);
 
     if (xSemaphoreTake(g_wireLock, portMAX_DELAY) == pdTRUE) {
       dmx_write(DMX_PORT, g_wire, DMX_PACKET_SIZE);
@@ -78,19 +75,6 @@ bool begin() {
                                  DMX_TASK_CORE) == pdPASS;
 }
 
-bool setSlot(int slot, uint8_t value) {
-  if (slot < SLOT_MIN || slot > SLOT_MAX) return false;
-  Hold hold;
-  g_frame[slot] = value;
-  return true;
-}
-
-int getSlot(int slot) {
-  if (slot < SLOT_MIN || slot > SLOT_MAX) return -1;
-  Hold hold;
-  return g_frame[slot];
-}
-
 bool writeRange(int start, const uint8_t *values, int length) {
   if (!values) return false;
   if (length < 1 || length > SLOT_MAX) return false;
@@ -101,15 +85,7 @@ bool writeRange(int start, const uint8_t *values, int length) {
   return true;
 }
 
-void clear() {
-  Hold hold;
-  memset(g_frame + SLOT_MIN, 0, SLOT_MAX);
-}
-
 int refreshHz() { return g_hz; }
-
-void setBlackout(bool on) { g_blackout = on; }
-bool blackout() { return g_blackout; }
 
 void pause() {
   if (!g_wireLock) return;

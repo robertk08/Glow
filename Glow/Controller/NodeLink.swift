@@ -8,6 +8,7 @@ actor NodeLink {
 		case frame(start: DMXAddress, values: [UInt8])
 		case master(Double)
 		case blackout(Bool)
+		case notice(Wire.Notice)
 	}
 	
 	nonisolated let events: AsyncStream<Event>
@@ -130,6 +131,8 @@ actor NodeLink {
 			continuation.yield(.master(level))
 		case let .blackout(on):
 			continuation.yield(.blackout(on))
+		case let .notice(notice):
+			continuation.yield(.notice(notice))
 		}
 	}
 	

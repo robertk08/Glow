@@ -3,18 +3,18 @@ import SwiftUI
 
 @Model
 final class Fixture {
-	var identifier: String = UUID().uuidString
+	var identifier: String = Identifier.fresh()
 	var typeID: String = ""
 	var name: String = ""
 	var address: Int = 1
-	var sortIndex: Int = 0
+	var sortIndex: Double = 0
 	var symbolOverride: String?
 	var invertsPan: Bool = false
 	var invertsTilt: Bool = false
 	var groups: [FixtureGroup]? = []
 	
-	init(typeID: String, name: String, address: DMXAddress, sortIndex: Int) {
-		identifier = UUID().uuidString
+	init(typeID: String, name: String, address: DMXAddress, sortIndex: Double) {
+		identifier = Identifier.fresh()
 		self.typeID = typeID
 		self.name = name
 		self.address = address.value

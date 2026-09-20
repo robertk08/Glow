@@ -1,5 +1,5 @@
 #include "Creds.h"
-#include "DmxBus.h"
+#include "Guard.h"
 
 #include <Preferences.h>
 
@@ -18,14 +18,6 @@ bool        g_open = false;
 char g_ssid[33] = "";   // 32 + NUL, the 802.11 maximum
 char g_user[65] = "";   // 64 + NUL, the EAP maximum
 char g_pass[65] = "";   // 64 + NUL, the EAP maximum, one above WPA2-PSK's
-
-template <typename Fn>
-bool guarded(Fn write) {
-  DmxBus::pause();
-  bool ok = write();
-  DmxBus::resume();
-  return ok;
-}
 
 void copyInto(char *dst, size_t size, const char *src) {
   if (!src) src = "";
@@ -65,7 +57,7 @@ bool save(const char *ssid, const char *user, const char *password) {
   copyInto(g_user, sizeof(g_user), user);
   copyInto(g_pass, sizeof(g_pass), password);
 
-  return guarded([] {
+  return Flash::guarded([] {
     bool ssidOk = g_nvs.putString(KEY_SSID, g_ssid) > 0;
     g_nvs.putString(KEY_USER, g_user);
     g_nvs.putString(KEY_PASS, g_pass);
@@ -80,7 +72,7 @@ bool forget() {
   g_user[0] = '\0';
   g_pass[0] = '\0';
   if (!g_open) return false;
-  return guarded([] {
+  return Flash::guarded([] {
     g_nvs.remove(KEY_SSID);
     g_nvs.remove(KEY_USER);
     g_nvs.remove(KEY_PASS);
@@ -92,14 +84,14 @@ uint8_t bumpBootCount() {
   if (!g_open) return 0;
   uint8_t next = g_nvs.getUChar(KEY_BOOTS, 0);
   if (next < 255) next++;
-  guarded([next] { return g_nvs.putUChar(KEY_BOOTS, next) > 0; });
+  Flash::guarded([next] { return g_nvs.putUChar(KEY_BOOTS, next) > 0; });
   return next;
 }
 
 void clearBootCount() {
   if (!g_open) return;
   if (g_nvs.getUChar(KEY_BOOTS, 0) == 0) return;
-  guarded([] { return g_nvs.putUChar(KEY_BOOTS, 0) > 0; });
+  Flash::guarded([] { return g_nvs.putUChar(KEY_BOOTS, 0) > 0; });
 }
 
 }  // namespace Creds

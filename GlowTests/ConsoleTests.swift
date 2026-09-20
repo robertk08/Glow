@@ -41,39 +41,72 @@ struct ConsoleTests {
 	
 	@MainActor @Test func aSortIndexFollowsTheHighestSoFar() {
 		#expect(Console.nextSortIndex([1, 4, 2], sortIndex: \.self) == 5)
-		#expect(Console.nextSortIndex([Int](), sortIndex: \.self) == 1)
+		#expect(Console.nextSortIndex([Double](), sortIndex: \.self) == 1)
 	}
 	
 	@Test func aShowPreservesFixtureOrientation() throws {
-		let light = ShowFile.Light(identifier: "head", typeID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
-		let file = ShowFile(name: "Show", lights: [light], groups: [], made: [], scenes: [])
-		let data = try JSONEncoder().encode(file)
-		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
+		let light = ShowContents.Light(identifier: "head", typeID: "moving-head", name: "Head", address: 1, sortIndex: 0, invertsPan: true, invertsTilt: false)
+		let show = ShowContents(lights: [light])
+		let decoded = try JSONDecoder().decode(ShowContents.self, from: try JSONEncoder().encode(show))
 		
 		#expect(decoded.lights.first?.invertsPan == true)
 		#expect(decoded.lights.first?.invertsTilt == false)
 	}
 	
 	@Test func aLightCanSitInSeveralGroups() throws {
-		let light = ShowFile.Light(identifier: "par", typeID: "par", name: "Par", address: 1, sortIndex: 0, groups: ["Front", "Warm"])
-		let file = ShowFile(name: "Show", lights: [light], groups: [], made: [], scenes: [])
-		let data = try JSONEncoder().encode(file)
-		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
+		let front = ShowContents.Group(identifier: "front", name: "Front", sortIndex: 0)
+		let warm = ShowContents.Group(identifier: "warm", name: "Warm", sortIndex: 1)
+		let light = ShowContents.Light(identifier: "par", typeID: "par", name: "Par", address: 1, sortIndex: 0, groups: ["front", "warm"])
+		let show = ShowContents(lights: [light], groups: [front, warm])
+		let decoded = try JSONDecoder().decode(ShowContents.self, from: try JSONEncoder().encode(show))
 		
-		#expect(decoded.lights.first?.groups == ["Front", "Warm"])
+		#expect(decoded.lights.first?.groups == ["front", "warm"])
+		#expect(decoded.groups.map(\.identifier) == ["front", "warm"])
+	}
+	
+	@Test func aGroupRenamedKeepsTheIdentifierItsLightsPointAt() throws {
+		var group = ShowContents.Group(identifier: "front", name: "Front", sortIndex: 0)
+		let light = ShowContents.Light(identifier: "par", typeID: "par", name: "Par", address: 1, sortIndex: 0, groups: ["front"])
+		group.name = "Front Truss"
+		let show = ShowContents(lights: [light], groups: [group])
+		let decoded = try JSONDecoder().decode(ShowContents.self, from: try JSONEncoder().encode(show))
+		
+		#expect(decoded.groups.first?.name == "Front Truss")
+		#expect(decoded.lights.first?.groups == ["front"])
 	}
 	
 	@MainActor @Test func reorderingKeepsEveryFixture() throws {
 		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-		let fixtures = (0..<3).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: $0) }
+		let fixtures = (0..<3).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
 		for fixture in fixtures {
 			container.mainContext.insert(fixture)
 		}
 		
 		Console().move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
 		
-		#expect(fixtures.map(\.sortIndex) == [2, 0, 1])
+		#expect(fixtures.sorted { $0.sortIndex < $1.sortIndex }.map(\.name) == ["Light 1", "Light 2", "Light 0"])
 		#expect(try container.mainContext.fetchCount(FetchDescriptor<Fixture>()) == 3)
+	}
+	
+	@MainActor @Test func aReorderRewritesOnlyTheLightThatMoved() {
+		let fixtures = (0..<5).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
+		let before = fixtures.map(\.sortIndex)
+		
+		Console().move(IndexSet(integer: 4), to: 0, among: fixtures, sortIndex: \.sortIndex)
+		
+		#expect(zip(before, fixtures).filter { $0.0 != $0.1.sortIndex }.count == 1)
+		#expect(fixtures.sorted { $0.sortIndex < $1.sortIndex }.map(\.name) == ["Light 4", "Light 0", "Light 1", "Light 2", "Light 3"])
+	}
+	
+	@MainActor @Test func droppingBetweenTwoLightsSplitsTheGap() {
+		let fixtures = (0..<5).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
+		let before = fixtures.map(\.sortIndex)
+		
+		Console().move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
+		
+		#expect(zip(before, fixtures).filter { $0.0 != $0.1.sortIndex }.count == 1)
+		#expect(fixtures[0].sortIndex == 2.5)
+		#expect(fixtures.sorted { $0.sortIndex < $1.sortIndex }.map(\.name) == ["Light 1", "Light 2", "Light 0", "Light 3", "Light 4"])
 	}
 	
 	@MainActor @Test func masterAndBlackoutScaleBothDimmerBytes() throws {

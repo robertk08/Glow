@@ -17,6 +17,15 @@ nonisolated struct NodeEndpoint: Sendable, Hashable, Codable, Identifiable {
 		return components.url
 	}
 	
+	func apiURL(path: String) -> URL? {
+		var components = URLComponents()
+		components.scheme = "http"
+		components.host = host
+		components.port = port == 80 ? nil : port
+		components.path = "/api/\(path)"
+		return components.url
+	}
+	
 	static let fallback = NodeEndpoint(host: "glow.local", name: "glow.local")
 	
 	init(host: String, port: Int = 80, name: String, nodeID: String? = nil) {

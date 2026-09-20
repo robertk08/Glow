@@ -62,7 +62,7 @@ void announce() {
 
   MDNS.setInstanceName(GLOW_NODE_NAME);
   MDNS.addService(GLOW_SERVICE, "tcp", GLOW_PORT);
-  MDNS.addServiceTxt(GLOW_SERVICE, "tcp", "v", "1");
+  MDNS.addServiceTxt(GLOW_SERVICE, "tcp", "v", "2");
   MDNS.addServiceTxt(GLOW_SERVICE, "tcp", "id", id());
   MDNS.addServiceTxt(GLOW_SERVICE, "tcp", "name", GLOW_NODE_NAME);
   Serial.printf("mDNS: %s.local, _%s._tcp on %u\n", GLOW_HOSTNAME, GLOW_SERVICE,

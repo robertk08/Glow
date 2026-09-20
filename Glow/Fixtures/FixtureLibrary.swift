@@ -59,11 +59,29 @@ final class FixtureLibrary {
 	}
 	
 	func unusedIdentifier(_ base: String) -> String {
-		var candidate = base
+		var cleaned = ""
+		
+		for character in base.lowercased() {
+			if character.isASCII, character.isLetter || character.isNumber {
+				cleaned.append(character)
+			} else if !cleaned.isEmpty, !cleaned.hasSuffix("-") {
+				cleaned.append("-")
+			}
+		}
+		
+		while cleaned.hasSuffix("-") {
+			cleaned.removeLast()
+		}
+		
+		if cleaned.isEmpty {
+			cleaned = "made"
+		}
+		
+		var candidate = cleaned
 		var index = 2
 		
 		while types.contains(where: { $0.id == candidate }) {
-			candidate = "\(base)-\(index)"
+			candidate = "\(cleaned)-\(index)"
 			index += 1
 		}
 		

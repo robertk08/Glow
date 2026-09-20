@@ -1,35 +1,26 @@
 #include "Config.h"
 #include "Creds.h"
 #include "DmxBus.h"
-#include "Fixture.h"
 #include "Http.h"
 #include "Link.h"
 #include "Net.h"
-
-static void setColour(const char *name, uint8_t r, uint8_t g, uint8_t b) {
-  Fixture::setColor(r, g, b, 0);
-  Fixture::set(FN_DIMMER, DIMMER_OPEN);
-  Serial.println(name);
-}
+#include "Store.h"
 
 static void report() {
-  Serial.printf("id %s  %s  %d client(s)  %dHz%s\n", Net::id(),
+  Serial.printf("id %s  %s  %d client(s)  %dHz\n", Net::id(),
                 Net::up() ? Net::ip().toString().c_str() : "offline",
-                Link::clients(), DmxBus::refreshHz(),
-                DmxBus::blackout() ? "  BLACKOUT" : "");
+                Link::clients(), DmxBus::refreshHz());
+  Serial.printf("   store %u of %u bytes\n", (unsigned)Store::used(), (unsigned)Store::capacity());
   Serial.printf("   %s", Net::provisioned() ? "provisioned" : "unprovisioned");
   if (Net::apUp()) Serial.printf(", \"%s\" is up", GLOW_SETUP_SSID);
   Serial.println();
 }
 
 static void run(const char *line) {
-  if      (!strcmp(line, "red"))    setColour("red",   255, 0,   0);
-  else if (!strcmp(line, "green"))  setColour("green", 0,   255, 0);
-  else if (!strcmp(line, "blue"))   setColour("blue",  0,   0,   255);
-  else if (!strcmp(line, "net"))    report();
+  if      (!strcmp(line, "net"))    report();
   else if (!strcmp(line, "setup"))  Net::enterSetup();
   else if (!strcmp(line, "forget")) Net::forget();
-  else Serial.println(F("type: red | green | blue | net | setup | forget"));
+  else Serial.println(F("type: net | setup | forget"));
 }
 
 static void pollSerial() {
@@ -59,17 +50,15 @@ void setup() {
     while (true) delay(1000);
   }
 
-  Fixture::begin();
-
-  Serial.printf("\nDMX on GPIO%d at %dHz, start address %d\n", DMX_TX_PIN,
-                DmxBus::refreshHz(), Fixture::startAddress());
+  Serial.printf("\nDMX on GPIO%d at %dHz\n", DMX_TX_PIN, DmxBus::refreshHz());
 
   Creds::begin();
+  Store::begin();
   Net::begin();
   Link::begin();
   Http::begin();
 
-  Serial.println(F("type: red | green | blue | net | setup | forget"));
+  Serial.println(F("type: net | setup | forget"));
 }
 
 void loop() {
