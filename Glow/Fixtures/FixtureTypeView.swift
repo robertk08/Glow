@@ -104,10 +104,10 @@ private struct ChannelDetail: View {
 				}
 				
 				ForEach(channel.functions) { function in
-					RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, width: rangeWidth, indent: 0)
+					RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, hidesSeparator: !function.sets.isEmpty, width: rangeWidth, indent: 0)
 					
 					ForEach(function.sets) { set in
-						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, width: rangeWidth, indent: 20)
+						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, isNested: true, hidesSeparator: set.id != function.sets.last?.id, width: rangeWidth, indent: 24)
 					}
 				}
 			} label: {
@@ -124,6 +124,8 @@ private struct RangeRow: View {
 	let label: String
 	
 	var swatch: [LightColor] = []
+	var isNested = false
+	var hidesSeparator = false
 	
 	let width: CGFloat
 	let indent: CGFloat
@@ -132,19 +134,21 @@ private struct RangeRow: View {
 		HStack(spacing: 10) {
 			Text("\(from)–\(to)")
 				.monospacedDigit()
-				.foregroundStyle(.secondary)
+				.foregroundStyle(isNested ? HierarchicalShapeStyle.tertiary : .secondary)
 				.lineLimit(1)
 				.frame(width: width, alignment: .leading)
 			
 			Text(label)
+				.foregroundStyle(isNested ? HierarchicalShapeStyle.secondary : .primary)
 				.frame(maxWidth: .infinity, alignment: .leading)
 			
 			if !swatch.isEmpty {
-				Swatch(colors: swatch, size: 14)
+				Swatch(colors: swatch, size: isNested ? 12 : 14)
 			}
 		}
-		.font(.subheadline)
+		.font(isNested ? .footnote : .subheadline)
 		.padding(.leading, indent)
-		.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+		.alignmentGuide(.listRowSeparatorLeading) { _ in indent }
+		.listRowSeparator(hidesSeparator ? .hidden : .visible, edges: .bottom)
 	}
 }
