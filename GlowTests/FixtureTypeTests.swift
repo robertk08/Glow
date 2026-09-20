@@ -99,6 +99,23 @@ struct FixtureTypeTests {
 		#expect(zoom.physical(at: 128) == "20°")
 	}
 	
+	@MainActor @Test func eachGoboWheelKeepsItsOwnRotation() {
+		let type = FixtureType(id: "two-wheels", model: "Two Wheels", channels: [
+			FixtureChannel(offset: 1, attribute: .gobo),
+			FixtureChannel(offset: 2, attribute: .goboRotation),
+			FixtureChannel(offset: 3, attribute: .gobo2),
+			FixtureChannel(offset: 4, attribute: .gobo2Rotation),
+		])
+		let library = FixtureLibrary(builtIn: [type])
+		let console = Console()
+		let programmer = Programmer(type: type, start: DMXAddress(1)!, console: console)
+		
+		#expect(programmer.goboWheels.map(\.attribute) == [.gobo, .gobo2])
+		#expect(programmer.spinner(of: type.channel(.gobo)!)?.attribute == .goboRotation)
+		#expect(programmer.spinner(of: type.channel(.gobo2)!)?.attribute == .gobo2Rotation)
+		#expect(library.type("two-wheels") != nil)
+	}
+	
 	@Test func aDefinitionSurvivesARoundTrip() throws {
 		var channel = FixtureChannel(offset: 1, attribute: .gobo, label: "Gobo wheel", fineOffset: 2, defaultValue: 4)
 		var function = ChannelFunction(from: 6, to: 89, label: "Gobo", kind: .proportional, purpose: .dim)

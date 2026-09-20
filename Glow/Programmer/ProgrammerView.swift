@@ -198,7 +198,7 @@ private struct PositionRows: View {
 				PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees)
 					.listRowBackground(Color.clear)
 					.listRowSeparator(.hidden)
-					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+					.listRowInsets(.init(top: 4, leading: 0, bottom: 4, trailing: 0))
 				
 				HStack(spacing: 10) {
 					Button("Centre", systemImage: "scope") { programmer.centre() }
@@ -237,7 +237,7 @@ private struct BeamRows: View {
 				BeamPad(zoom: programmer.fractionBinding(.zoom), focus: programmer.fractionBinding(.focus), glow: programmer.glow, degrees: programmer.degrees(.zoom), hasFocus: programmer.channel(.focus) != nil)
 					.listRowBackground(Color.clear)
 					.listRowSeparator(.hidden)
-					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+					.listRowInsets(.init(top: 4, leading: 0, bottom: 4, trailing: 0))
 			}
 		}
 		
@@ -247,7 +247,7 @@ private struct BeamRows: View {
 					StrobePad(glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
 						.listRowBackground(Color.clear)
 						.listRowSeparator(.hidden)
-						.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+						.listRowInsets(.init(top: 4, leading: 0, bottom: 4, trailing: 0))
 				}
 				
 				Section {
@@ -282,22 +282,21 @@ private struct GoboRows: View {
 		let shown = wheels.map(\.offset) + wheels.compactMap { programmer.spinner(of: $0)?.offset }
 
 		ForEach(wheels) { wheel in
-			Section {
-				ChannelRow(programmer: programmer, channel: wheel)
+			if programmer.draws(wheel) {
+				Section(wheel.name) {
+					GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
+						.listRowBackground(Color.clear)
+						.listRowSeparator(.hidden)
+						.listRowInsets(.init(top: 0, leading: 0, bottom: 4, trailing: 0))
+				}
 				
-				if let spinner = programmer.spinner(of: wheel) {
-					ChannelRow(programmer: programmer, channel: spinner)
+				Section {
+					GoboWheelRows(programmer: programmer, wheel: wheel)
 				}
-			} header: {
-				VStack(alignment: .leading, spacing: 8) {
-					Text(wheel.name)
-					
-					if programmer.draws(wheel) {
-						GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
-					}
+			} else {
+				Section(wheel.name) {
+					GoboWheelRows(programmer: programmer, wheel: wheel)
 				}
-				.textCase(nil)
-				.padding(.bottom, 2)
 			}
 		}
 
@@ -309,6 +308,19 @@ private struct GoboRows: View {
 					ChannelRow(programmer: programmer, channel: channel)
 				}
 			}
+		}
+	}
+}
+
+private struct GoboWheelRows: View {
+	let programmer: Programmer
+	let wheel: FixtureChannel
+	
+	var body: some View {
+		ChannelRow(programmer: programmer, channel: wheel)
+		
+		if let spinner = programmer.spinner(of: wheel) {
+			ChannelRow(programmer: programmer, channel: spinner)
 		}
 	}
 }
