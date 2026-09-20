@@ -282,19 +282,22 @@ private struct GoboRows: View {
 		let shown = wheels.map(\.offset) + wheels.compactMap { programmer.spinner(of: $0)?.offset }
 
 		ForEach(wheels) { wheel in
-			Section(wheel.name) {
-				if programmer.draws(wheel) {
-					GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
-						.listRowBackground(Color.clear)
-						.listRowSeparator(.hidden)
-						.listRowInsets(.init(top: 0, leading: 16, bottom: 16, trailing: 16))
-				}
-
+			Section {
 				ChannelRow(programmer: programmer, channel: wheel)
-
+				
 				if let spinner = programmer.spinner(of: wheel) {
 					ChannelRow(programmer: programmer, channel: spinner)
 				}
+			} header: {
+				VStack(alignment: .leading, spacing: 8) {
+					Text(wheel.name)
+					
+					if programmer.draws(wheel) {
+						GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
+					}
+				}
+				.textCase(nil)
+				.padding(.bottom, 2)
 			}
 		}
 

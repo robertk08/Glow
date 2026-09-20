@@ -148,9 +148,13 @@ struct Programmer {
 	func slots(of channel: FixtureChannel) -> [Choice] {
 		guard let band = slotBand(of: channel) else { return [] }
 		
-		return band.sets.map { slot in
+		let found = band.sets.map { slot in
 			Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, shape: slot.shape, confirms: band.requiresConfirmation, function: band)
 		}
+		
+		guard let open = channel.functions.first(where: { $0.purpose == .open }), band.sets.contains(where: { $0.shape != nil }) else { return found }
+		
+		return [Choice(id: "\(open.from)-\(open.to)", label: open.label, value: open.midpoint, swatch: [], shape: .open, confirms: open.requiresConfirmation, function: open)] + found
 	}
 	
 	func choices(of channel: FixtureChannel) -> [Choice] {

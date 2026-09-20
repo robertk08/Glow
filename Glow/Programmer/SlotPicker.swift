@@ -6,7 +6,7 @@ struct SlotPicker: View {
 
 	@State private var pending: ChannelFunction?
 
-	private let columns = [GridItem(.adaptive(minimum: 48), spacing: 12)]
+	private let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
 
 	private func choose(_ choice: Programmer.Choice) {
 		guard !choice.confirms else {
@@ -43,10 +43,17 @@ struct SlotPicker: View {
 						Button {
 							choose(slot)
 						} label: {
-							if let shape = slot.shape {
-								GoboMark(shape: shape, size: 48, tint: programmer.glow, isSelected: slot.id == selected)
-							} else {
-								Swatch(colors: slot.swatch, isSelected: slot.id == selected)
+							VStack(spacing: 4) {
+								if let shape = slot.shape {
+									GoboMark(shape: shape, size: 50, tint: programmer.glow, isSelected: slot.id == selected)
+								} else {
+									Swatch(colors: slot.swatch, size: 50, isSelected: slot.id == selected)
+								}
+								
+								Text(slot.label)
+									.font(.caption2)
+									.lineLimit(1)
+									.foregroundStyle(slot.id == selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
 							}
 						}
 						.buttonStyle(.plain)

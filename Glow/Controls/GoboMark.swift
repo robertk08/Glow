@@ -18,6 +18,8 @@ struct GoboMark: View {
 			let line = StrokeStyle(lineWidth: side * 0.06, lineCap: .round)
 			
 			switch shape {
+			case .open:
+				context.stroke(Path(ellipseIn: CGRect(x: centre.x - side * 0.32, y: centre.y - side * 0.32, width: side * 0.64, height: side * 0.64)), with: ink, style: StrokeStyle(lineWidth: side * 0.045, dash: [side * 0.1, side * 0.07]))
 			case .dot, .smallDot, .largeDot:
 				let radius = side * (shape == .smallDot ? 0.16 : shape == .largeDot ? 0.37 : 0.27)
 				context.fill(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)), with: ink)
@@ -129,7 +131,7 @@ struct GoboMark: View {
 				edges.addLine(to: CGPoint(x: -reach * 0.866, y: -reach * 0.5))
 				edges.addLine(to: CGPoint(x: reach * 0.866, y: -reach * 0.5))
 				edges.closeSubpath()
-				context.stroke(edges.applying(CGAffineTransform(translationX: centre.x, y: centre.y).rotated(by: 0.16)), with: ink, style: StrokeStyle(lineWidth: side * 0.05))
+				context.stroke(edges.applying(CGAffineTransform(translationX: centre.x, y: centre.y)), with: ink, style: StrokeStyle(lineWidth: side * 0.055, lineJoin: .round))
 			case .grid:
 				let cell = side * 0.152
 				let pitch = side * 0.186
