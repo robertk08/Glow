@@ -116,6 +116,7 @@ struct PositionPad: View {
 		.overlay(alignment: .topTrailing) {
 			Toggle(isOn: $isFine) {
 				Label("Fine", systemImage: "scope")
+					.labelStyle(.iconOnly)
 			}
 			.toggleStyle(.button)
 			.buttonStyle(.glass)

@@ -121,7 +121,7 @@ private struct ChannelDetail: View {
 					RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, hidesSeparator: !function.sets.isEmpty, width: rangeWidth, indent: 0)
 					
 					ForEach(function.sets) { set in
-						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, isNested: true, hidesSeparator: set.id != function.sets.last?.id, width: rangeWidth, indent: 24)
+						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, shape: set.shape, isNested: true, hidesSeparator: set.id != function.sets.last?.id, width: rangeWidth, indent: 24)
 					}
 				}
 			} label: {
@@ -138,6 +138,7 @@ private struct RangeRow: View {
 	let label: String
 	
 	var swatch: [LightColor] = []
+	var shape: GoboShape?
 	var isNested = false
 	var hidesSeparator = false
 	
@@ -156,7 +157,9 @@ private struct RangeRow: View {
 				.foregroundStyle(isNested ? HierarchicalShapeStyle.secondary : .primary)
 				.frame(maxWidth: .infinity, alignment: .leading)
 			
-			if !swatch.isEmpty {
+			if let shape {
+				GoboMark(shape: shape, size: isNested ? 18 : 20, tint: .white)
+			} else if !swatch.isEmpty {
 				Swatch(colors: swatch, size: isNested ? 12 : 14)
 			}
 		}

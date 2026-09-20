@@ -22,9 +22,10 @@ that scroll with everything else. Everything is a system control unless there
 is nothing that fits: position is a pad reading real degrees with a fine mode
 that moves a sixth as far for the same gesture, and beam and strobe draw the
 light itself against a dark stage, the cone widening with zoom and softening
-with focus. Wheels are a picker with their swatches under it, and a shutter is
-the same picker, so every band it carries is reachable and a rate runs the
-width of the band it belongs to. Anything the definition carries but the group
+with focus. Wheels are a picker with their slots under it, coloured or drawn as the
+shape they throw and turning when the wheel turns, and a shutter is the same
+picker, so every band it carries is reachable and a rate runs the width of
+the band it belongs to. Anything the definition carries but the group
 does not show is under All Channels, on its raw value. Selecting lights of
 different kinds leaves the groups they can be driven by together.
 

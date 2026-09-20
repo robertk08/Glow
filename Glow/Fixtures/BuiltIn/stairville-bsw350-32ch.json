@@ -390,37 +390,44 @@
             {
               "from": 6,
               "to": 17,
-              "label": "Petals"
+              "label": "Petals",
+              "shape": "petals"
             },
             {
               "from": 18,
               "to": 29,
-              "label": "Speckle"
+              "label": "Speckle",
+              "shape": "speckle"
             },
             {
               "from": 30,
               "to": 41,
-              "label": "Rings"
+              "label": "Rings",
+              "shape": "rings"
             },
             {
               "from": 42,
               "to": 53,
-              "label": "Tunnel"
+              "label": "Tunnel",
+              "shape": "tunnel"
             },
             {
               "from": 54,
               "to": 65,
-              "label": "Dot line"
+              "label": "Dot line",
+              "shape": "dotLine"
             },
             {
               "from": 66,
               "to": 77,
-              "label": "Breakup"
+              "label": "Breakup",
+              "shape": "breakup"
             },
             {
               "from": 78,
               "to": 89,
-              "label": "Cross"
+              "label": "Cross",
+              "shape": "cross"
             }
           ]
         },
@@ -433,37 +440,44 @@
             {
               "from": 90,
               "to": 101,
-              "label": "Petals shake"
+              "label": "Petals shake",
+              "shape": "petals"
             },
             {
               "from": 102,
               "to": 113,
-              "label": "Speckle shake"
+              "label": "Speckle shake",
+              "shape": "speckle"
             },
             {
               "from": 114,
               "to": 125,
-              "label": "Rings shake"
+              "label": "Rings shake",
+              "shape": "rings"
             },
             {
               "from": 126,
               "to": 137,
-              "label": "Tunnel shake"
+              "label": "Tunnel shake",
+              "shape": "tunnel"
             },
             {
               "from": 138,
               "to": 149,
-              "label": "Dot line shake"
+              "label": "Dot line shake",
+              "shape": "dotLine"
             },
             {
               "from": 150,
               "to": 161,
-              "label": "Breakup shake"
+              "label": "Breakup shake",
+              "shape": "breakup"
             },
             {
               "from": 162,
               "to": 173,
-              "label": "Cross shake"
+              "label": "Cross shake",
+              "shape": "cross"
             }
           ]
         },
@@ -548,57 +562,68 @@
             {
               "from": 6,
               "to": 13,
-              "label": "Large dot"
+              "label": "Large dot",
+              "shape": "largeDot"
             },
             {
               "from": 14,
               "to": 21,
-              "label": "Medium dot"
+              "label": "Medium dot",
+              "shape": "dot"
             },
             {
               "from": 22,
               "to": 29,
-              "label": "Small dot"
+              "label": "Small dot",
+              "shape": "smallDot"
             },
             {
               "from": 30,
               "to": 37,
-              "label": "Triangle"
+              "label": "Triangle",
+              "shape": "triangle"
             },
             {
               "from": 38,
               "to": 45,
-              "label": "Starburst"
+              "label": "Starburst",
+              "shape": "starburst"
             },
             {
               "from": 46,
               "to": 53,
-              "label": "Four petals"
+              "label": "Four petals",
+              "shape": "fourPetals"
             },
             {
               "from": 54,
               "to": 61,
-              "label": "Dot ring"
+              "label": "Dot ring",
+              "shape": "dotRing"
             },
             {
               "from": 62,
               "to": 69,
-              "label": "Grid"
+              "label": "Grid",
+              "shape": "grid"
             },
             {
               "from": 70,
               "to": 77,
-              "label": "Cross"
+              "label": "Cross",
+              "shape": "diagonalCross"
             },
             {
               "from": 78,
               "to": 85,
-              "label": "Star"
+              "label": "Star",
+              "shape": "star"
             },
             {
               "from": 86,
               "to": 93,
-              "label": "Dashes"
+              "label": "Dashes",
+              "shape": "dashes"
             }
           ]
         },
@@ -616,57 +641,68 @@
             {
               "from": 102,
               "to": 109,
-              "label": "Large dot shake"
+              "label": "Large dot shake",
+              "shape": "largeDot"
             },
             {
               "from": 110,
               "to": 117,
-              "label": "Medium dot shake"
+              "label": "Medium dot shake",
+              "shape": "dot"
             },
             {
               "from": 118,
               "to": 125,
-              "label": "Small dot shake"
+              "label": "Small dot shake",
+              "shape": "smallDot"
             },
             {
               "from": 126,
               "to": 133,
-              "label": "Triangle shake"
+              "label": "Triangle shake",
+              "shape": "triangle"
             },
             {
               "from": 134,
               "to": 141,
-              "label": "Starburst shake"
+              "label": "Starburst shake",
+              "shape": "starburst"
             },
             {
               "from": 142,
               "to": 149,
-              "label": "Four petals shake"
+              "label": "Four petals shake",
+              "shape": "fourPetals"
             },
             {
               "from": 150,
               "to": 157,
-              "label": "Dot ring shake"
+              "label": "Dot ring shake",
+              "shape": "dotRing"
             },
             {
               "from": 158,
               "to": 165,
-              "label": "Grid shake"
+              "label": "Grid shake",
+              "shape": "grid"
             },
             {
               "from": 166,
               "to": 173,
-              "label": "Cross shake"
+              "label": "Cross shake",
+              "shape": "diagonalCross"
             },
             {
               "from": 174,
               "to": 181,
-              "label": "Star shake"
+              "label": "Star shake",
+              "shape": "star"
             },
             {
               "from": 182,
               "to": 189,
-              "label": "Dashes shake"
+              "label": "Dashes shake",
+              "shape": "dashes"
             }
           ]
         },

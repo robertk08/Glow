@@ -43,7 +43,11 @@ struct SlotPicker: View {
 								await programmer.send(choice, of: channel)
 							}
 						} label: {
-							Swatch(colors: choice.swatch, isSelected: choice.id == selected)
+							if let shape = choice.shape {
+								GoboMark(shape: shape, tint: programmer.glow, angle: programmer.goboAngle ?? .zero, turns: choice.id == selected ? programmer.goboTurns : nil, isSelected: choice.id == selected)
+							} else {
+								Swatch(colors: choice.swatch, isSelected: choice.id == selected)
+							}
 						}
 						.buttonStyle(.plain)
 						.accessibilityLabel(choice.label)

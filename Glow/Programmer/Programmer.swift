@@ -130,6 +130,7 @@ struct Programmer {
 		let label: String
 		let value: UInt8
 		let swatch: [LightColor]
+		let shape: GoboShape?
 		let confirms: Bool
 		let function: ChannelFunction
 	}
@@ -139,12 +140,12 @@ struct Programmer {
 		
 		for function in bands(of: channel) {
 			guard !function.sets.isEmpty else {
-				found.append(Choice(id: "\(function.from)-\(function.to)", label: function.label, value: function.midpoint, swatch: function.swatch, confirms: function.requiresConfirmation, function: function))
+				found.append(Choice(id: "\(function.from)-\(function.to)", label: function.label, value: function.midpoint, swatch: function.swatch, shape: nil, confirms: function.requiresConfirmation, function: function))
 				continue
 			}
 			
 			for slot in function.sets {
-				found.append(Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, confirms: function.requiresConfirmation, function: function))
+				found.append(Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, shape: slot.shape, confirms: function.requiresConfirmation, function: function))
 			}
 		}
 		
@@ -152,7 +153,24 @@ struct Programmer {
 	}
 	
 	func swatches(of channel: FixtureChannel) -> [Choice] {
-		choices(of: channel).filter { !$0.swatch.isEmpty }
+		let marked = choices(of: channel).filter { !$0.swatch.isEmpty || $0.shape != nil }
+		let showing = band(of: channel).flatMap { $0.sets.isEmpty ? nil : $0 } ?? bands(of: channel).first { !$0.sets.isEmpty }
+		guard let showing else { return marked }
+		return marked.filter { showing.contains($0.value) }
+	}
+	
+	var goboAngle: Angle? {
+		guard let channel = type?.channel(.goboRotation), let band = band(of: channel), band.unit == .degrees else { return nil }
+		guard let from = band.physicalFrom, let to = band.physicalTo, band.to > band.from else { return nil }
+		let share = Double(value(of: channel) - band.from) / Double(band.to - band.from)
+		return .degrees(from + (to - from) * share)
+	}
+	
+	var goboTurns: Double? {
+		guard let channel = type?.channel(.goboRotation), let band = band(of: channel) else { return nil }
+		guard band.kind == .proportional, band.unit == nil, band.to > band.from else { return nil }
+		let share = Double(value(of: channel) - band.from) / Double(band.to - band.from)
+		return 8 + share * 52
 	}
 	
 	func selection(of channel: FixtureChannel) -> String {

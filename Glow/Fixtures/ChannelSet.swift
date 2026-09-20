@@ -5,6 +5,7 @@ nonisolated struct ChannelSet: Codable, Hashable, Sendable, Identifiable {
 	var to: UInt8
 	var label: String
 	var colors: [String] = []
+	var shape: GoboShape?
 	
 	private let uid = Identity()
 	
@@ -14,16 +15,17 @@ nonisolated struct ChannelSet: Codable, Hashable, Sendable, Identifiable {
 	
 	func contains(_ value: UInt8) -> Bool { (from...to).contains(value) }
 	
-	init(from: UInt8, to: UInt8, label: String, colors: [String] = []) {
+	init(from: UInt8, to: UInt8, label: String, colors: [String] = [], shape: GoboShape? = nil) {
 		self.from = min(from, to)
 		self.to = max(from, to)
 		self.label = label
 		self.colors = colors
+		self.shape = shape
 	}
 	
 	init(from decoder: any Decoder) throws {
 		let container = try decoder.container(keyedBy: CodingKeys.self)
-		self.init(from: try container.decode(UInt8.self, forKey: .from), to: try container.decode(UInt8.self, forKey: .to), label: try container.decode(String.self, forKey: .label), colors: try container.decodeIfPresent([String].self, forKey: .colors) ?? [])
+		self.init(from: try container.decode(UInt8.self, forKey: .from), to: try container.decode(UInt8.self, forKey: .to), label: try container.decode(String.self, forKey: .label), colors: try container.decodeIfPresent([String].self, forKey: .colors) ?? [], shape: try container.decodeIfPresent(GoboShape.self, forKey: .shape))
 	}
 	
 	func encode(to encoder: any Encoder) throws {
@@ -32,9 +34,10 @@ nonisolated struct ChannelSet: Codable, Hashable, Sendable, Identifiable {
 		try container.encode(to, forKey: .to)
 		try container.encode(label, forKey: .label)
 		if !colors.isEmpty { try container.encode(colors, forKey: .colors) }
+		try container.encodeIfPresent(shape, forKey: .shape)
 	}
 	
 	private enum CodingKeys: String, CodingKey {
-		case from, to, label, colors
+		case from, to, label, colors, shape
 	}
 }
