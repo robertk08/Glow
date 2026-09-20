@@ -27,6 +27,7 @@ struct FixtureTypeView: View {
 					.frame(maxWidth: .infinity)
 				}
 				.listRowBackground(Color.clear)
+				.listRowInsets(.init(top: 0, leading: 20, bottom: 4, trailing: 20))
 			}
 			
 			Section {
@@ -65,6 +66,7 @@ struct FixtureTypeView: View {
 			}
 		}
 		.listSectionSpacing(.compact)
+		.contentMargins(.top, patching == nil ? 20 : 0, for: .scrollContent)
 		.navigationDestination(isPresented: $isPatching) {
 			if let patching {
 				PatchView(mode: type, isPresented: patching)
