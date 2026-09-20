@@ -8,6 +8,7 @@ struct FixtureTypeView: View {
 	var patching: Binding<Bool>?
 	
 	@State private var isEditing = false
+	@State private var isPatching = false
 	@ScaledMetric(relativeTo: .body) private var addressWidth = 58
 	@ScaledMetric(relativeTo: .subheadline) private var rangeWidth = 68
 	
@@ -15,6 +16,19 @@ struct FixtureTypeView: View {
 		let type = library.type(self.type.id) ?? self.type
 		
 		List {
+			if patching != nil {
+				Section {
+					Button("Use This Fixture") {
+						isPatching = true
+					}
+					.font(.headline)
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
+					.frame(maxWidth: .infinity)
+				}
+				.listRowBackground(Color.clear)
+			}
+			
 			Section {
 				if !type.manufacturer.isEmpty {
 					LabeledContent("Make", value: type.manufacturer)
@@ -44,14 +58,6 @@ struct FixtureTypeView: View {
 				}
 			}
 			
-			if let patching {
-				Section {
-					NavigationLink("Add to the Patch") {
-						PatchView(mode: type, isPresented: patching)
-					}
-				}
-			}
-			
 			ForEach(type.channels) { channel in
 				Section {
 					ChannelDetail(channel: channel, addressWidth: addressWidth, rangeWidth: rangeWidth)
@@ -59,6 +65,11 @@ struct FixtureTypeView: View {
 			}
 		}
 		.listSectionSpacing(.compact)
+		.navigationDestination(isPresented: $isPatching) {
+			if let patching {
+				PatchView(mode: type, isPresented: patching)
+			}
+		}
 		.navigationTitle(type.model)
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {

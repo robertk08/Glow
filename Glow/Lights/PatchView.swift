@@ -25,6 +25,8 @@ struct PatchView: View {
 			Section {
 				TextField("Name", text: $name)
 					.autocorrectionDisabled()
+			} footer: {
+				Text("Left empty, each light is named after the fixture.")
 			}
 			
 			Section {
@@ -52,7 +54,7 @@ struct PatchView: View {
 			}
 			
 			Section {
-				Button("Add to the Patch") {
+				Button("Add to Lights") {
 					console.patch(mode, count: count, at: address, named: name, among: fixtures, context: context)
 					isPresented = false
 				}
