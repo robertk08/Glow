@@ -14,15 +14,81 @@ struct FixtureEditView: View {
 	@State private var isRemoving = false
 	
 	private var type: FixtureType? { library.type(fixture.typeID) }
+	private var span: ClosedRange<Int> { fixture.range(type) }
+	private var fits: Bool { span.upperBound <= Universe.channelCount }
+	private var sharing: [Fixture] { Fixture.overlapping(fixture, among: fixtures, library: library) }
+	
+	private var address: Binding<Int> {
+		Binding { fixture.address } set: { value in
+			console.repatch(fixture, library: library) { $0.start = DMXAddress(clamping: value) }
+		}
+	}
+	
+	private var typeID: Binding<String> {
+		Binding { fixture.typeID } set: { value in
+			console.repatch(fixture, library: library) { $0.typeID = value }
+		}
+	}
 	
 	var body: some View {
 		Form {
 			Section {
 				TextField("Name", text: $fixture.name)
+					.autocorrectionDisabled()
 			}
 			
-			Section("Icon") {
-				AppearancePicker(symbol: Binding { fixture.symbol(type) } set: { fixture.symbolOverride = $0 })
+			Section {
+				Picker("Fixture", selection: typeID) {
+					if type == nil {
+						Text("Not Set").tag(fixture.typeID)
+					}
+					
+					ForEach(library.types) { option in
+						Text(option.mode.isEmpty ? option.name : "\(option.name), \(option.mode)").tag(option.id)
+					}
+				}
+				
+				Stepper(value: address, in: DMXAddress.range) {
+					LabeledContent("Address") {
+						TextField("Address", value: address, format: .number)
+							.keyboardType(.numberPad)
+							.multilineTextAlignment(.trailing)
+							.monospacedDigit()
+					}
+				}
+				
+				if let type {
+					NavigationLink {
+						FixtureTypeView(type: type)
+					} label: {
+						LabeledContent("Channels", value: "\(span.lowerBound)–\(span.upperBound)")
+							.monospacedDigit()
+					}
+				}
+			} header: {
+				Text("Patch")
+			} footer: {
+				VStack(alignment: .leading, spacing: 6) {
+					if type == nil {
+						Label("The fixture this light was patched from is gone. Point it at another one and it keeps its name, address and group.", systemImage: "exclamationmark.triangle")
+					}
+					
+					if !fits {
+						Label("It runs past channel 512.", systemImage: "exclamationmark.triangle")
+					}
+					
+					if !sharing.isEmpty {
+						Label("Shares channels with \(sharing.map(\.name).formatted(.list(type: .and))).", systemImage: "exclamationmark.triangle")
+					}
+				}
+				.foregroundStyle(.orange)
+			}
+			
+			if type?.movesHead == true {
+				Section("Orientation") {
+					Toggle("Invert Pan", isOn: $fixture.invertsPan)
+					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
+				}
 			}
 			
 			if !groups.isEmpty {
@@ -36,45 +102,8 @@ struct FixtureEditView: View {
 				}
 			}
 			
-			if type?.movesHead == true {
-				Section {
-					Toggle("Invert Pan", isOn: $fixture.invertsPan)
-					Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
-				} header: {
-					Text("Orientation")
-				}
-			}
-			
-			Section {
-				Stepper(value: $fixture.address, in: DMXAddress.range) {
-					LabeledContent("Address", value: "\(fixture.address)")
-						.monospacedDigit()
-				}
-				
-				Picker("Fixture", selection: $fixture.typeID) {
-					if type == nil {
-						Text("Not Set").tag(fixture.typeID)
-					}
-					
-					ForEach(library.types) { option in
-						Text(option.mode.isEmpty ? option.name : "\(option.name), \(option.mode)").tag(option.id)
-					}
-				}
-				
-				if let type {
-					NavigationLink {
-						FixtureTypeView(type: type)
-					} label: {
-						LabeledContent("Channels", value: "\(type.channelCount)")
-					}
-				}
-			} header: {
-				Text("Patch")
-			} footer: {
-				if type == nil {
-					Label("The fixture this light was patched from is gone. Point it at another one and it keeps its name, address and group.", systemImage: "exclamationmark.triangle")
-						.foregroundStyle(.orange)
-				}
+			Section("Icon") {
+				AppearancePicker(symbol: Binding { fixture.symbol(type) } set: { fixture.symbolOverride = $0 })
 			}
 			
 			Section {
@@ -91,7 +120,7 @@ struct FixtureEditView: View {
 				}
 			}
 		}
-		.navigationTitle(fixture.name)
+		.navigationTitle("Edit Light")
 		.navigationBarTitleDisplayMode(.inline)
 	}
 }

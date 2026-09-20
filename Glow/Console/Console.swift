@@ -172,6 +172,20 @@ final class Console {
 		Programmer(fixtures: fixtures.filter(selection.contains), library: library, console: self)
 	}
 	
+	func repatch(_ fixture: Fixture, library: FixtureLibrary, change: (Fixture) -> Void) {
+		let old = fixture.range(library.type(fixture.typeID))
+		universe.set([UInt8](repeating: 0, count: old.count), at: DMXAddress(clamping: old.lowerBound))
+		release(old)
+		change(fixture)
+		
+		if let type = library.type(fixture.typeID) {
+			universe.set(type.defaults, at: fixture.start)
+			release(fixture.range(type))
+		}
+		
+		outputFrames.startOver()
+	}
+	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
 		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
