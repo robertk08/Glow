@@ -201,7 +201,7 @@ final class Console {
 		copy.symbolOverride = fixture.symbolOverride
 		copy.invertsPan = fixture.invertsPan
 		copy.invertsTilt = fixture.invertsTilt
-		copy.group = fixture.group
+		copy.groups = fixture.groups
 		context.insert(copy)
 	}
 	

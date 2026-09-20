@@ -8,7 +8,7 @@ final class FixtureGroup {
 	var symbolOverride: String?
 	var tintName: String?
 	
-	@Relationship(deleteRule: .nullify, inverse: \Fixture.group)
+	@Relationship(deleteRule: .nullify, inverse: \Fixture.groups)
 	var fixtures: [Fixture]? = []
 	
 	init(name: String, sortIndex: Int) {

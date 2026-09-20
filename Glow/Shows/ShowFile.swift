@@ -8,18 +8,18 @@ nonisolated struct ShowFile: Codable, Sendable {
 		var address: Int
 		var sortIndex: Int
 		var symbol: String?
-		var group: String?
+		var groups: [String]?
 		var invertsPan: Bool?
 		var invertsTilt: Bool?
 		
-		init(identifier: String, typeID: String, name: String, address: Int, sortIndex: Int, symbol: String? = nil, group: String? = nil, invertsPan: Bool? = nil, invertsTilt: Bool? = nil) {
+		init(identifier: String, typeID: String, name: String, address: Int, sortIndex: Int, symbol: String? = nil, groups: [String]? = nil, invertsPan: Bool? = nil, invertsTilt: Bool? = nil) {
 			self.identifier = identifier
 			self.typeID = typeID
 			self.name = name
 			self.address = address
 			self.sortIndex = sortIndex
 			self.symbol = symbol
-			self.group = group
+			self.groups = groups
 			self.invertsPan = invertsPan
 			self.invertsTilt = invertsTilt
 		}
@@ -32,7 +32,11 @@ nonisolated struct ShowFile: Codable, Sendable {
 			address = try container.decode(Int.self, forKey: .address)
 			sortIndex = try container.decode(Int.self, forKey: .sortIndex)
 			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
-			group = try container.decodeIfPresent(String.self, forKey: .group)
+			if let list = try container.decodeIfPresent([String].self, forKey: .groups) {
+				groups = list
+			} else if let one = try container.decodeIfPresent(String.self, forKey: .group) {
+				groups = [one]
+			}
 			invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan)
 			invertsTilt = try container.decodeIfPresent(Bool.self, forKey: .invertsTilt)
 		}
@@ -45,13 +49,13 @@ nonisolated struct ShowFile: Codable, Sendable {
 			try container.encode(address, forKey: .address)
 			try container.encode(sortIndex, forKey: .sortIndex)
 			try container.encodeIfPresent(symbol, forKey: .symbol)
-			try container.encodeIfPresent(group, forKey: .group)
+			try container.encodeIfPresent(groups, forKey: .groups)
 			try container.encodeIfPresent(invertsPan, forKey: .invertsPan)
 			try container.encodeIfPresent(invertsTilt, forKey: .invertsTilt)
 		}
 		
 		private enum CodingKeys: String, CodingKey {
-			case identifier, typeID, profileID, name, address, sortIndex, symbol, group, invertsPan, invertsTilt
+			case identifier, typeID, profileID, name, address, sortIndex, symbol, group, groups, invertsPan, invertsTilt
 		}
 	}
 	

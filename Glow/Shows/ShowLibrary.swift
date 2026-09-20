@@ -138,7 +138,8 @@ final class ShowLibrary {
 		}
 		
 		for fixture in fixtures {
-			file.lights.append(ShowFile.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, group: fixture.group?.name, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+			let names = fixture.belongsTo.map(\.name)
+			file.lights.append(ShowFile.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: names.isEmpty ? nil : names, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
 		}
 		
 		for stored in made {
@@ -187,8 +188,9 @@ final class ShowLibrary {
 			fixture.invertsTilt = entry.invertsTilt ?? false
 			context.insert(fixture)
 			
-			if let name = entry.group {
-				fixture.group = groups[name]
+			for name in entry.groups ?? [] {
+				guard let group = groups[name] else { continue }
+				fixture.belong(to: group, true)
 			}
 		}
 		

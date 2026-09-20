@@ -13,7 +13,7 @@ programmer drives the whole selection at once, the way a grandMA programmer
 does. On iPhone it takes over the tab bar accessory and raises a sheet, on iPad
 it is an inspector beside the grid. The selection stays until you clear it, and
 holding Clear resets those lights to their defaults. A group is a saved
-selection, not a container. The master fader and blackout hold the accessory
+selection, not a container, so a light can be in several. The master fader and blackout hold the accessory
 whenever nothing is selected.
 
 The programmer is the fixture's own feature groups along the top, and the

@@ -58,11 +58,11 @@ struct FixtureEditView: View {
 				}
 				
 				if let type {
-					NavigationLink {
+					LabeledContent("Channels", value: "\(span.lowerBound)–\(span.upperBound)")
+						.monospacedDigit()
+					
+					NavigationLink("Edit Fixture") {
 						FixtureTypeView(type: type)
-					} label: {
-						LabeledContent("Channels", value: "\(span.lowerBound)–\(span.upperBound)")
-							.monospacedDigit()
 					}
 				}
 			} header: {
@@ -92,12 +92,9 @@ struct FixtureEditView: View {
 			}
 			
 			if !groups.isEmpty {
-				Section("Group") {
-					Picker("Group", selection: $fixture.group) {
-						Text("None").tag(FixtureGroup?.none)
-						ForEach(groups) { group in
-							Text(group.name).tag(FixtureGroup?.some(group))
-						}
+				Section("Groups") {
+					ForEach(groups) { group in
+						Toggle(group.name, isOn: Binding { fixture.belongs(to: group) } set: { fixture.belong(to: group, $0) })
 					}
 				}
 			}

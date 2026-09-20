@@ -11,7 +11,7 @@ final class Fixture {
 	var symbolOverride: String?
 	var invertsPan: Bool = false
 	var invertsTilt: Bool = false
-	var group: FixtureGroup?
+	var groups: [FixtureGroup]? = []
 	
 	init(typeID: String, name: String, address: DMXAddress, sortIndex: Int) {
 		identifier = UUID().uuidString
@@ -19,6 +19,23 @@ final class Fixture {
 		self.name = name
 		self.address = address.value
 		self.sortIndex = sortIndex
+	}
+	
+	var belongsTo: [FixtureGroup] {
+		(groups ?? []).sorted { $0.sortIndex < $1.sortIndex }
+	}
+	
+	func belongs(to group: FixtureGroup) -> Bool {
+		(groups ?? []).contains(group)
+	}
+	
+	func belong(to group: FixtureGroup, _ isMember: Bool) {
+		if isMember {
+			guard !belongs(to: group) else { return }
+			groups = (groups ?? []) + [group]
+		} else {
+			groups?.removeAll { $0 == group }
+		}
 	}
 	
 	var start: DMXAddress {

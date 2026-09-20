@@ -28,7 +28,7 @@ struct GroupView: View {
 				
 				Section {
 					ForEach(fixtures) { fixture in
-						Toggle(fixture.name, isOn: Binding { fixture.group == group } set: { fixture.group = $0 ? group : nil })
+						Toggle(fixture.name, isOn: Binding { fixture.belongs(to: group) } set: { fixture.belong(to: group, $0) })
 					}
 				} header: {
 					Text("Lights")
