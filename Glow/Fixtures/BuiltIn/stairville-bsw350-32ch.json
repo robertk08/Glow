@@ -390,37 +390,37 @@
             {
               "from": 6,
               "to": 17,
-              "label": "Gobo 1"
+              "label": "Petals"
             },
             {
               "from": 18,
               "to": 29,
-              "label": "Gobo 2"
+              "label": "Speckle"
             },
             {
               "from": 30,
               "to": 41,
-              "label": "Gobo 3"
+              "label": "Rings"
             },
             {
               "from": 42,
               "to": 53,
-              "label": "Gobo 4"
+              "label": "Tunnel"
             },
             {
               "from": 54,
               "to": 65,
-              "label": "Gobo 5"
+              "label": "Dot line"
             },
             {
               "from": 66,
               "to": 77,
-              "label": "Gobo 6"
+              "label": "Breakup"
             },
             {
               "from": 78,
               "to": 89,
-              "label": "Gobo 7"
+              "label": "Cross"
             }
           ]
         },
@@ -433,37 +433,37 @@
             {
               "from": 90,
               "to": 101,
-              "label": "Gobo 1 shake"
+              "label": "Petals shake"
             },
             {
               "from": 102,
               "to": 113,
-              "label": "Gobo 2 shake"
+              "label": "Speckle shake"
             },
             {
               "from": 114,
               "to": 125,
-              "label": "Gobo 3 shake"
+              "label": "Rings shake"
             },
             {
               "from": 126,
               "to": 137,
-              "label": "Gobo 4 shake"
+              "label": "Tunnel shake"
             },
             {
               "from": 138,
               "to": 149,
-              "label": "Gobo 5 shake"
+              "label": "Dot line shake"
             },
             {
               "from": 150,
               "to": 161,
-              "label": "Gobo 6 shake"
+              "label": "Breakup shake"
             },
             {
               "from": 162,
               "to": 173,
-              "label": "Gobo 7 shake"
+              "label": "Cross shake"
             }
           ]
         },
@@ -532,6 +532,7 @@
     {
       "offset": 21,
       "attribute": "gobo2",
+      "label": "Gobo wheel 2",
       "functions": [
         {
           "from": 0,
@@ -547,57 +548,57 @@
             {
               "from": 6,
               "to": 13,
-              "label": "Gobo 1"
+              "label": "Large dot"
             },
             {
               "from": 14,
               "to": 21,
-              "label": "Gobo 2"
+              "label": "Medium dot"
             },
             {
               "from": 22,
               "to": 29,
-              "label": "Gobo 3"
+              "label": "Small dot"
             },
             {
               "from": 30,
               "to": 37,
-              "label": "Gobo 4"
+              "label": "Triangle"
             },
             {
               "from": 38,
               "to": 45,
-              "label": "Gobo 5"
+              "label": "Starburst"
             },
             {
               "from": 46,
               "to": 53,
-              "label": "Gobo 6"
+              "label": "Four petals"
             },
             {
               "from": 54,
               "to": 61,
-              "label": "Gobo 7"
+              "label": "Dot ring"
             },
             {
               "from": 62,
               "to": 69,
-              "label": "Gobo 8"
+              "label": "Grid"
             },
             {
               "from": 70,
               "to": 77,
-              "label": "Gobo 9"
+              "label": "Cross"
             },
             {
               "from": 78,
               "to": 85,
-              "label": "Gobo 10"
+              "label": "Star"
             },
             {
               "from": 86,
               "to": 93,
-              "label": "Gobo 11"
+              "label": "Dashes"
             }
           ]
         },
@@ -615,57 +616,57 @@
             {
               "from": 102,
               "to": 109,
-              "label": "Gobo 1 shake"
+              "label": "Large dot shake"
             },
             {
               "from": 110,
               "to": 117,
-              "label": "Gobo 2 shake"
+              "label": "Medium dot shake"
             },
             {
               "from": 118,
               "to": 125,
-              "label": "Gobo 3 shake"
+              "label": "Small dot shake"
             },
             {
               "from": 126,
               "to": 133,
-              "label": "Gobo 4 shake"
+              "label": "Triangle shake"
             },
             {
               "from": 134,
               "to": 141,
-              "label": "Gobo 5 shake"
+              "label": "Starburst shake"
             },
             {
               "from": 142,
               "to": 149,
-              "label": "Gobo 6 shake"
+              "label": "Four petals shake"
             },
             {
               "from": 150,
               "to": 157,
-              "label": "Gobo 7 shake"
+              "label": "Dot ring shake"
             },
             {
               "from": 158,
               "to": 165,
-              "label": "Gobo 8 shake"
+              "label": "Grid shake"
             },
             {
               "from": 166,
               "to": 173,
-              "label": "Gobo 9 shake"
+              "label": "Cross shake"
             },
             {
               "from": 174,
               "to": 181,
-              "label": "Gobo 10 shake"
+              "label": "Star shake"
             },
             {
               "from": 182,
               "to": 189,
-              "label": "Gobo 11 shake"
+              "label": "Dashes shake"
             }
           ]
         },
