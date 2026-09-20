@@ -20,6 +20,7 @@ struct ProgrammerView: View {
 						Text(programmer.targets.isEmpty ? "Tap a light in the grid to take control of it." : "These lights have no channels Glow recognises.")
 					}
 					.listRowBackground(Color.clear)
+					.listRowSeparator(.hidden)
 				}
 				
 				switch group {
@@ -130,17 +131,19 @@ private struct ColorRows: View {
 		
 		if programmer.balancesWhite {
 			Section("White Balance") {
-				Text("\(Int(programmer.kelvin)) K")
-					.font(.title3.weight(.semibold))
-					.monospacedDigit()
-					.contentTransition(.numericText())
-				
-				Slider(value: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) }, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
-					Text("White balance")
-				} minimumValueLabel: {
-					Image(systemName: "thermometer.sun")
-				} maximumValueLabel: {
-					Image(systemName: "thermometer.snowflake")
+				VStack(alignment: .leading, spacing: 4) {
+					Text("\(Int(programmer.kelvin)) K")
+						.font(.title3.weight(.semibold))
+						.monospacedDigit()
+						.contentTransition(.numericText())
+					
+					Slider(value: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) }, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
+						Text("White balance")
+					} minimumValueLabel: {
+						Image(systemName: "thermometer.sun")
+					} maximumValueLabel: {
+						Image(systemName: "thermometer.snowflake")
+					}
 				}
 			}
 		}
@@ -210,7 +213,8 @@ private struct PositionRows: View {
 			}
 		}
 		
-		let others = programmer.channels(in: .position).filter { $0.attribute != .pan && $0.attribute != .tilt }
+		let aimed = programmer.movesHead
+		let others = programmer.channels(in: .position).filter { !aimed || ($0.attribute != .pan && $0.attribute != .tilt) }
 		
 		if !others.isEmpty {
 			Section {
@@ -237,16 +241,27 @@ private struct BeamRows: View {
 			}
 		}
 		
-		if let shutter, shutter.functions.contains(where: { $0.unit == .hertz }) {
-			Section("Strobe") {
-				StrobePad(rate: programmer.fractionBinding(of: shutter), glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
-					.listRowBackground(Color.clear)
-					.listRowSeparator(.hidden)
-					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+		if let shutter {
+			if shutter.functions.contains(where: { $0.unit == .hertz }) {
+				Section("Shutter") {
+					StrobePad(glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
+						.listRowBackground(Color.clear)
+						.listRowSeparator(.hidden)
+						.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+				}
+				
+				Section {
+					ChannelRow(programmer: programmer, channel: shutter)
+				}
+			} else {
+				Section("Shutter") {
+					ChannelRow(programmer: programmer, channel: shutter)
+				}
 			}
 		}
 		
-		let shown = [programmer.channel(.zoom)?.offset, shutter?.offset]
+		let shaped = programmer.channel(.zoom) != nil
+		let shown = [shaped ? programmer.channel(.zoom)?.offset : nil, shaped ? programmer.channel(.focus)?.offset : nil, shutter?.offset]
 		let others = programmer.channels(in: .beam).filter { !shown.contains($0.offset) }
 		
 		if !others.isEmpty {

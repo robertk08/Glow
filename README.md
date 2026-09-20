@@ -16,13 +16,17 @@ holding Clear resets those lights to their defaults. A group is a saved
 selection, not a container, so a light can be in several. The master fader and
 blackout hold the accessory whenever nothing is selected.
 
-The programmer is the fixture's own feature groups along the top, and the
-controls for whichever group you are on above the rest of its channels.
-Everything is a system control unless there is nothing that fits: position is a
-pad reading real degrees with a fine mode that moves a sixth as far for the same
-gesture, and beam draws the cone, widening with zoom and softening with focus.
-Wheels are a picker with their swatches under it. Anything the definition
-carries but the group does not show is under All Channels, on its raw value.
+The programmer is the fixture's own feature groups along the top, the only
+thing that stays put, and under them the group you are on in named sections
+that scroll with everything else. Everything is a system control unless there
+is nothing that fits: position is a pad reading real degrees with a fine mode
+that moves a sixth as far for the same gesture, and beam and strobe draw the
+light itself against a dark stage, the cone widening with zoom and softening
+with focus. Wheels are a picker with their swatches under it, and a shutter is
+the same picker, so every band it carries is reachable and a rate runs the
+width of the band it belongs to. Anything the definition carries but the group
+does not show is under All Channels, on its raw value. Selecting lights of
+different kinds leaves the groups they can be driven by together.
 
 Blackout latches and pulls only the dimmers down, the same channels and the same
 way the master fader does, so a head keeps its position and its colour through

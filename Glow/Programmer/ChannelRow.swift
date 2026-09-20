@@ -11,18 +11,21 @@ struct ChannelRow: View {
 			if channel.functions.count > 1 {
 				SlotPicker(programmer: programmer, channel: channel)
 			} else {
-				LabeledContent {
-					Text(programmer.physical(of: channel) ?? "\(programmer.value(of: channel))")
-						.monospacedDigit()
-						.foregroundStyle(.secondary)
-				} label: {
-					Text(channel.name)
+				VStack(alignment: .leading, spacing: 6) {
+					LabeledContent {
+						Text(programmer.physical(of: channel) ?? "\(programmer.value(of: channel))")
+							.monospacedDigit()
+							.foregroundStyle(.secondary)
+							.contentTransition(.numericText())
+					} label: {
+						Text(channel.name)
+					}
+					
+					Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
+						Text(channel.name)
+					}
+					.tint(channel.attribute.color)
 				}
-				
-				Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
-					Text(channel.name)
-				}
-				.tint(channel.attribute.color)
 			}
 		}
 		.disabled(blocker != nil)

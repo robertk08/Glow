@@ -6,25 +6,33 @@ struct FeatureGroupPicker: View {
 	@Binding var group: FeatureGroup
 	
 	var body: some View {
-		ScrollView(.horizontal) {
-			HStack(spacing: 8) {
-				ForEach(programmer.groups) { option in
-					Button {
-						group = option
-					} label: {
-						Label(option.name, systemImage: option.symbol)
-							.font(.subheadline.weight(.medium))
+		ScrollViewReader { proxy in
+			ScrollView(.horizontal) {
+				HStack(spacing: 8) {
+					ForEach(programmer.groups) { option in
+						Button {
+							group = option
+						} label: {
+							Label(option.name, systemImage: option.symbol)
+								.font(.subheadline.weight(.medium))
+						}
+						.buttonStyle(.glass)
+						.buttonBorderShape(.capsule)
+						.tint(group == option ? Color.accentColor : nil)
+						.accessibilityAddTraits(group == option ? .isSelected : [])
+						.id(option)
 					}
-					.buttonStyle(.glass)
-					.buttonBorderShape(.capsule)
-					.tint(group == option ? Color.accentColor : nil)
-					.accessibilityAddTraits(group == option ? .isSelected : [])
+				}
+				.padding(.horizontal)
+				.padding(.vertical, 6)
+			}
+			.scrollIndicators(.hidden)
+			.sensoryFeedback(.selection, trigger: group)
+			.onChange(of: group) {
+				withAnimation {
+					proxy.scrollTo(group, anchor: .center)
 				}
 			}
-			.padding(.horizontal)
-			.padding(.vertical, 6)
 		}
-		.scrollIndicators(.hidden)
-		.sensoryFeedback(.selection, trigger: group)
 	}
 }

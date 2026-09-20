@@ -18,8 +18,7 @@ struct BeamPad: View {
 			let softness = 2 + (1 - focus) * 26
 			
 			ZStack {
-				RoundedRectangle(cornerRadius: 18, style: .continuous)
-					.fill(.fill.quaternary)
+				Stage()
 				
 				Path { path in
 					path.move(to: CGPoint(x: width / 2 - 9, y: 10))
@@ -43,7 +42,7 @@ struct BeamPad: View {
 					if let degrees {
 						Text("\(degrees.formatted(.number.precision(.fractionLength(0))))°")
 							.font(.caption.monospacedDigit())
-							.foregroundStyle(.secondary)
+							.foregroundStyle(.white.opacity(0.7))
 							.padding(.bottom, 4)
 					}
 				}
@@ -62,6 +61,7 @@ struct BeamPad: View {
 		.frame(height: 190)
 		.accessibilityElement()
 		.accessibilityLabel(hasFocus ? "Zoom and focus" : "Zoom")
+		.accessibilityValue(hasFocus ? "Zoom \(zoom.formatted(.percent.precision(.fractionLength(0)))), focus \(focus.formatted(.percent.precision(.fractionLength(0))))" : "Zoom \(zoom.formatted(.percent.precision(.fractionLength(0))))")
 		.sensoryFeedback(.selection, trigger: isDragging)
 	}
 }

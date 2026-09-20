@@ -555,11 +555,6 @@ struct Programmer {
 		}
 	}
 	
-	var hasBeamShape: Bool {
-		guard channel(.zoom) == nil else { return true }
-		return shutterChannel?.functions.contains { $0.unit == .hertz } ?? false
-	}
-	
 	var activeGroups: [FeatureGroup] {
 		groups.filter(isActive)
 	}
@@ -571,7 +566,16 @@ struct Programmer {
 	}
 	
 	var groups: [FeatureGroup] {
-		FeatureGroup.allCases.filter { group in targets.contains { !$0.type.channels(in: group).isEmpty } }
+		guard type == nil else { return FeatureGroup.allCases.filter { !channels(in: $0).isEmpty } }
+		
+		return FeatureGroup.allCases.filter { group in
+			switch group {
+			case .dimmer: dims
+			case .color: mixesColor
+			case .position: movesHead
+			case .gobo, .beam, .control: false
+			}
+		}
 	}
 	
 	func channels(in group: FeatureGroup) -> [FixtureChannel] {
