@@ -52,9 +52,27 @@ struct FixtureTypeView: View {
 				}
 			}
 			
-			Section("Channels") {
-				ForEach(type.channels) { channel in
-					ChannelDetail(channel: channel, addressWidth: addressWidth, rangeWidth: rangeWidth)
+			ForEach(type.channels) { channel in
+				Section {
+					if channel.functions.isEmpty {
+						Text("No ranges")
+							.font(.subheadline)
+							.foregroundStyle(.secondary)
+					}
+					
+					if let dependency = channel.enabledBy {
+						RangeRow(from: dependency.from, to: dependency.to, label: "Only while channel \(dependency.offset) reads this", width: rangeWidth, indent: 0)
+					}
+					
+					ForEach(channel.functions) { function in
+						RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, hidesSeparator: !function.sets.isEmpty, width: rangeWidth, indent: 0)
+						
+						ForEach(function.sets) { set in
+							RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, isNested: true, hidesSeparator: set.id != function.sets.last?.id, width: rangeWidth, indent: 24)
+						}
+					}
+				} header: {
+					ChannelHeader(channel: channel, addressWidth: addressWidth)
 				}
 			}
 		}
@@ -70,12 +88,11 @@ struct FixtureTypeView: View {
 	}
 }
 
-private struct ChannelDetail: View {
+private struct ChannelHeader: View {
 	let channel: FixtureChannel
 	let addressWidth: CGFloat
-	let rangeWidth: CGFloat
 	
-	private var heading: some View {
+	var body: some View {
 		HStack(alignment: .firstTextBaseline, spacing: 10) {
 			Text(channel.addressLabel)
 				.monospacedDigit()
@@ -85,36 +102,15 @@ private struct ChannelDetail: View {
 			
 			VStack(alignment: .leading, spacing: 2) {
 				Text(channel.name)
+					.font(.headline)
+					.foregroundStyle(.primary)
 				
 				Text(channel.summary)
 					.font(.caption)
-					.foregroundStyle(.secondary)
 			}
 		}
-	}
-	
-	var body: some View {
-		if channel.functions.isEmpty {
-			heading
-				.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-		} else {
-			DisclosureGroup {
-				if let dependency = channel.enabledBy {
-					RangeRow(from: dependency.from, to: dependency.to, label: "Only while channel \(dependency.offset) reads this", width: rangeWidth, indent: 0)
-				}
-				
-				ForEach(channel.functions) { function in
-					RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, hidesSeparator: !function.sets.isEmpty, width: rangeWidth, indent: 0)
-					
-					ForEach(function.sets) { set in
-						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, isNested: true, hidesSeparator: set.id != function.sets.last?.id, width: rangeWidth, indent: 24)
-					}
-				}
-			} label: {
-				heading
-			}
-			.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-		}
+		.textCase(nil)
+		.padding(.bottom, 2)
 	}
 }
 
@@ -149,6 +145,6 @@ private struct RangeRow: View {
 		.font(isNested ? .footnote : .subheadline)
 		.padding(.leading, indent)
 		.alignmentGuide(.listRowSeparatorLeading) { _ in indent }
-		.listRowSeparator(hidesSeparator ? .hidden : .visible, edges: .bottom)
+		.listRowSeparator(hidesSeparator ? .hidden : .automatic, edges: .bottom)
 	}
 }
