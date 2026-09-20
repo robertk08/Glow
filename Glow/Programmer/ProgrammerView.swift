@@ -23,24 +23,12 @@ struct ProgrammerView: View {
 				}
 				
 				switch group {
-				case .dimmer:
-					if !programmer.channels(in: .dimmer).filter({ $0.attribute != .dimmer }).isEmpty {
-						Section {
-							ForEach(programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }) { channel in
-								ChannelRow(programmer: programmer, channel: channel)
-							}
-						}
-					}
-				case .color:
-					ColorRows(programmer: programmer)
-				case .position:
-					PositionRows(programmer: programmer)
-				case .gobo:
-					WheelRows(programmer: programmer, group: .gobo)
-				case .beam:
-					BeamRows(programmer: programmer)
-				case .control:
-					WheelRows(programmer: programmer, group: .control)
+				case .dimmer: IntensityRows(programmer: programmer)
+				case .color: ColorRows(programmer: programmer)
+				case .position: PositionRows(programmer: programmer)
+				case .gobo: WheelRows(programmer: programmer, group: .gobo)
+				case .beam: BeamRows(programmer: programmer)
+				case .control: WheelRows(programmer: programmer, group: .control)
 				}
 				
 				Section {
@@ -55,23 +43,8 @@ struct ProgrammerView: View {
 					}
 				}
 			}
-			.safeAreaInset(edge: .top, spacing: 0) {
-				VStack(spacing: 10) {
-					FeatureGroupPicker(programmer: programmer, group: $group)
-					
-					Group {
-						switch group {
-						case .dimmer where programmer.dims: IntensityPane(programmer: programmer)
-						case .color where programmer.mixesColor: ColorPane(programmer: programmer)
-						case .position where programmer.movesHead: PositionPane(programmer: programmer)
-						case .beam where programmer.hasBeamShape: BeamPane(programmer: programmer)
-						default: EmptyView()
-						}
-					}
-					.padding(.horizontal)
-					.padding(.bottom, 10)
-				}
-				.background(.bar)
+			.safeAreaBar(edge: .top) {
+				FeatureGroupPicker(programmer: programmer, group: $group)
 			}
 			.navigationTitle(programmer.title)
 			.navigationBarTitleDisplayMode(.inline)
@@ -90,84 +63,37 @@ struct ProgrammerView: View {
 	}
 }
 
-private struct IntensityPane: View {
+private struct IntensityRows: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		VStack(alignment: .leading, spacing: 4) {
-			LabeledContent("Level", value: programmer.brightness, format: .percent.precision(.fractionLength(0)))
-				.font(.subheadline)
-				.monospacedDigit()
-			
-			Slider(value: programmer.brightnessBinding, in: 0...1) {
-				Text("Brightness")
-			} minimumValueLabel: {
-				Image(systemName: "sun.min")
-			} maximumValueLabel: {
-				Image(systemName: "sun.max")
-			}
-			.controlSize(.large)
-		}
-	}
-}
-
-private struct ColorPane: View {
-	let programmer: Programmer
-	
-	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
-	
-	var body: some View {
-		VStack(spacing: 12) {
-			ColorPicker("Color", selection: programmer.colorBinding, supportsOpacity: false)
-			
-			LazyVGrid(columns: columns, spacing: 10) {
-				ForEach(programmer.presets) { preset in
-					Button {
-						programmer.apply(preset)
-					} label: {
-						Swatch(colors: [preset.swatch], isSelected: programmer.selectedPresetID == preset.id)
+		if programmer.dims {
+			Section("Level") {
+				VStack(alignment: .leading, spacing: 4) {
+					Text(programmer.brightness, format: .percent.precision(.fractionLength(0)))
+						.font(.title.weight(.semibold))
+						.monospacedDigit()
+						.contentTransition(.numericText())
+					
+					Slider(value: programmer.brightnessBinding, in: 0...1) {
+						Text("Brightness")
+					} minimumValueLabel: {
+						Image(systemName: "sun.min")
+					} maximumValueLabel: {
+						Image(systemName: "sun.max")
 					}
-					.buttonStyle(.plain)
-					.accessibilityLabel(preset.name)
-					.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
+					.controlSize(.large)
 				}
 			}
 		}
-	}
-}
-
-private struct PositionPane: View {
-	let programmer: Programmer
-	
-	var body: some View {
-		VStack(spacing: 12) {
-			PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees, isActive: programmer.isActive(.position))
-			
-			HStack(spacing: 10) {
-				Button("Centre", systemImage: "scope") { programmer.centre() }
-				Button("Reset Position", systemImage: "arrow.uturn.backward") { programmer.release(.position) }
-			}
-			.buttonStyle(.glass)
-			.buttonBorderShape(.capsule)
-			.controlSize(.small)
-			.frame(maxWidth: .infinity)
-		}
-	}
-}
-
-private struct BeamPane: View {
-	let programmer: Programmer
-	
-	var body: some View {
-		let shutter = programmer.shutterChannel
 		
-		VStack(spacing: 12) {
-			if programmer.channel(.zoom) != nil {
-				BeamPad(zoom: programmer.fractionBinding(.zoom), focus: programmer.fractionBinding(.focus), glow: programmer.glow, degrees: programmer.degrees(.zoom), hasFocus: programmer.channel(.focus) != nil)
-			}
-			
-			if let shutter, shutter.functions.contains(where: { $0.unit == .hertz }) {
-				StrobePad(rate: programmer.fractionBinding(of: shutter), glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
+		let others = programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }
+		
+		if !others.isEmpty {
+			Section {
+				ForEach(others) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 	}
@@ -178,12 +104,36 @@ private struct ColorRows: View {
 	
 	@State private var showsEmitters = false
 	
+	private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
+	
 	var body: some View {
+		if programmer.mixesColor {
+			Section("Color") {
+				ColorPicker("Color", selection: programmer.colorBinding, supportsOpacity: false)
+				
+				LazyVGrid(columns: columns, spacing: 10) {
+					ForEach(programmer.presets) { preset in
+						Button {
+							programmer.apply(preset)
+						} label: {
+							Swatch(colors: [preset.swatch], isSelected: programmer.selectedPresetID == preset.id)
+						}
+						.buttonStyle(.plain)
+						.accessibilityLabel(preset.name)
+						.accessibilityAddTraits(programmer.selectedPresetID == preset.id ? .isSelected : [])
+					}
+				}
+				.padding(.vertical, 4)
+				.sensoryFeedback(.selection, trigger: programmer.selectedPresetID)
+			}
+		}
+		
 		if programmer.balancesWhite {
-			Section {
-				LabeledContent("White balance", value: "\(Int(programmer.kelvin)) K")
-					.font(.subheadline)
+			Section("White Balance") {
+				Text("\(Int(programmer.kelvin)) K")
+					.font(.title3.weight(.semibold))
 					.monospacedDigit()
+					.contentTransition(.numericText())
 				
 				Slider(value: Binding { programmer.kelvin } set: { programmer.apply(kelvin: $0) }, in: ColorTemperature.range, neutralValue: ColorTemperature.neutral) {
 					Text("White balance")
@@ -196,32 +146,39 @@ private struct ColorRows: View {
 		}
 		
 		if let macro = programmer.macroChannel {
-			Section {
+			Section("Built-in Colors") {
 				SlotPicker(programmer: programmer, channel: macro)
 			}
 		}
 		
-		Section {
-			ForEach(programmer.channels(in: .color).filter { !$0.attribute.isEmitter && $0.offset != programmer.macroChannel?.offset }) { channel in
-				ChannelRow(programmer: programmer, channel: channel)
+		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && $0.offset != programmer.macroChannel?.offset }
+		
+		if !others.isEmpty {
+			Section {
+				ForEach(others) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 		
-		Section {
-			DisclosureGroup(programmer.isSubtractive ? "Filters" : "Emitters", isExpanded: $showsEmitters) {
-				ForEach(programmer.emitterChannels) { channel in
-					VStack(alignment: .leading, spacing: 6) {
-						LabeledContent(channel.name) {
-							Text("\(programmer.value(of: channel))")
-								.monospacedDigit()
-								.foregroundStyle(.secondary)
+		if !programmer.emitterChannels.isEmpty {
+			Section {
+				DisclosureGroup(programmer.isSubtractive ? "Filters" : "Emitters", isExpanded: $showsEmitters) {
+					ForEach(programmer.emitterChannels) { channel in
+						VStack(alignment: .leading, spacing: 6) {
+							LabeledContent(channel.name) {
+								Text("\(programmer.value(of: channel))")
+									.monospacedDigit()
+									.foregroundStyle(.secondary)
+									.contentTransition(.numericText())
+							}
+							.font(.subheadline)
+							
+							Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
+								Text(channel.name)
+							}
+							.tint(channel.attribute.color)
 						}
-						.font(.subheadline)
-						
-						Slider(value: programmer.binding(channel), in: 0...255, neutralValue: Double(channel.defaultValue)) {
-							Text(channel.name)
-						}
-						.tint(channel.attribute.color)
 					}
 				}
 			}
@@ -233,9 +190,33 @@ private struct PositionRows: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		Section {
-			ForEach(programmer.channels(in: .position).filter { $0.attribute != .pan && $0.attribute != .tilt }) { channel in
-				ChannelRow(programmer: programmer, channel: channel)
+		if programmer.movesHead {
+			Section("Aim") {
+				PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees, isActive: programmer.isActive(.position))
+					.listRowBackground(Color.clear)
+					.listRowSeparator(.hidden)
+					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+				
+				HStack(spacing: 10) {
+					Button("Centre", systemImage: "scope") { programmer.centre() }
+					Button("Reset Position", systemImage: "arrow.uturn.backward") { programmer.release(.position) }
+				}
+				.buttonStyle(.glass)
+				.buttonBorderShape(.capsule)
+				.controlSize(.small)
+				.frame(maxWidth: .infinity)
+				.listRowBackground(Color.clear)
+				.listRowSeparator(.hidden)
+			}
+		}
+		
+		let others = programmer.channels(in: .position).filter { $0.attribute != .pan && $0.attribute != .tilt }
+		
+		if !others.isEmpty {
+			Section {
+				ForEach(others) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 	}
@@ -245,11 +226,34 @@ private struct BeamRows: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		let shown = [programmer.channel(.zoom)?.offset, programmer.shutterChannel?.offset]
+		let shutter = programmer.shutterChannel
 		
-		Section {
-			ForEach(programmer.channels(in: .beam).filter { !shown.contains($0.offset) }) { channel in
-				ChannelRow(programmer: programmer, channel: channel)
+		if programmer.channel(.zoom) != nil {
+			Section("Beam") {
+				BeamPad(zoom: programmer.fractionBinding(.zoom), focus: programmer.fractionBinding(.focus), glow: programmer.glow, degrees: programmer.degrees(.zoom), hasFocus: programmer.channel(.focus) != nil)
+					.listRowBackground(Color.clear)
+					.listRowSeparator(.hidden)
+					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+			}
+		}
+		
+		if let shutter, shutter.functions.contains(where: { $0.unit == .hertz }) {
+			Section("Strobe") {
+				StrobePad(rate: programmer.fractionBinding(of: shutter), glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
+					.listRowBackground(Color.clear)
+					.listRowSeparator(.hidden)
+					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+			}
+		}
+		
+		let shown = [programmer.channel(.zoom)?.offset, shutter?.offset]
+		let others = programmer.channels(in: .beam).filter { !shown.contains($0.offset) }
+		
+		if !others.isEmpty {
+			Section {
+				ForEach(others) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 	}
