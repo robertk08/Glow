@@ -53,11 +53,12 @@ struct ShowsView: View {
 						}
 					}
 					.swipeActions {
-						Button("Delete", systemImage: "trash") {
-							deleting = show
+						if shows.shows.count > 1 {
+							Button("Delete", systemImage: "trash") {
+								deleting = show
+							}
+							.tint(.red)
 						}
-						.tint(.red)
-						.disabled(shows.shows.count < 2)
 					}
 				}
 			}
