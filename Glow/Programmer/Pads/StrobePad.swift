@@ -39,7 +39,6 @@ struct StrobePad: View {
 		.onChange(of: isRunning) {
 			isLit = false
 		}
-		.sensoryFeedback(.selection, trigger: isRunning)
 		.accessibilityElement()
 		.accessibilityLabel("Strobe")
 		.accessibilityValue(hertz.map { "\($0.formatted(.number.precision(.fractionLength(1)))) hertz" } ?? "Not strobing")
