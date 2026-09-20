@@ -9,7 +9,7 @@ struct FixtureTypeView: View {
 	
 	@State private var isEditing = false
 	@ScaledMetric(relativeTo: .body) private var addressWidth = 58
-	@ScaledMetric(relativeTo: .subheadline) private var rangeWidth = 64
+	@ScaledMetric(relativeTo: .subheadline) private var rangeWidth = 68
 	
 	var body: some View {
 		let type = library.type(self.type.id) ?? self.type
@@ -52,13 +52,9 @@ struct FixtureTypeView: View {
 				}
 			}
 			
-			ForEach(type.groups) { group in
-				Section {
-					ForEach(type.channels(in: group)) { channel in
-						ChannelDetail(channel: channel, addressWidth: addressWidth, rangeWidth: rangeWidth)
-					}
-				} header: {
-					Label(group.name, systemImage: group.symbol)
+			Section("Channels") {
+				ForEach(type.channels) { channel in
+					ChannelDetail(channel: channel, addressWidth: addressWidth, rangeWidth: rangeWidth)
 				}
 			}
 		}
@@ -100,22 +96,24 @@ private struct ChannelDetail: View {
 	var body: some View {
 		if channel.functions.isEmpty {
 			heading
+				.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
 		} else {
 			DisclosureGroup {
 				if let dependency = channel.enabledBy {
-					RangeRow(from: dependency.from, to: dependency.to, label: "Only while channel \(dependency.offset) reads", width: rangeWidth, indent: 0)
+					RangeRow(from: dependency.from, to: dependency.to, label: "Only while channel \(dependency.offset) reads this", width: rangeWidth, indent: 0)
 				}
 				
 				ForEach(channel.functions) { function in
-					RangeRow(from: function.from, to: function.to, label: function.label, detail: function.physicalRange, swatch: function.swatch, width: rangeWidth, indent: 0)
+					RangeRow(from: function.from, to: function.to, label: function.label, swatch: function.swatch, width: rangeWidth, indent: 0)
 					
 					ForEach(function.sets) { set in
-						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, width: rangeWidth, indent: 18)
+						RangeRow(from: set.from, to: set.to, label: set.label, swatch: set.swatch, width: rangeWidth, indent: 20)
 					}
 				}
 			} label: {
 				heading
 			}
+			.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
 		}
 	}
 }
@@ -125,38 +123,28 @@ private struct RangeRow: View {
 	let to: UInt8
 	let label: String
 	
-	var detail: String?
 	var swatch: [LightColor] = []
 	
 	let width: CGFloat
 	let indent: CGFloat
 	
 	var body: some View {
-		LabeledContent {
-			VStack(alignment: .trailing, spacing: 1) {
-				Text(label)
-					.multilineTextAlignment(.trailing)
-				
-				if let detail {
-					Text(detail)
-						.font(.caption2)
-						.foregroundStyle(.secondary)
-				}
+		HStack(spacing: 10) {
+			Text("\(from)–\(to)")
+				.monospacedDigit()
+				.foregroundStyle(.secondary)
+				.lineLimit(1)
+				.frame(width: width, alignment: .leading)
+			
+			Text(label)
+				.frame(maxWidth: .infinity, alignment: .leading)
+			
+			if !swatch.isEmpty {
+				Swatch(colors: swatch, size: 14)
 			}
-		} label: {
-			HStack(spacing: 8) {
-				Text("\(from)–\(to)")
-					.monospacedDigit()
-					.foregroundStyle(.secondary)
-					.lineLimit(1)
-					.frame(width: width, alignment: .leading)
-				
-				if !swatch.isEmpty {
-					Swatch(colors: swatch, size: 14)
-				}
-			}
-			.padding(.leading, indent)
 		}
 		.font(.subheadline)
+		.padding(.leading, indent)
+		.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
 	}
 }

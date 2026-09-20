@@ -32,12 +32,6 @@ nonisolated struct ChannelFunction: Codable, Hashable, Sendable, Identifiable {
 		sets.first { $0.contains(value) }
 	}
 	
-	var physicalRange: String? {
-		guard let low = physical(at: from) else { return nil }
-		guard let high = physical(at: to), high != low else { return low }
-		return "\(low) – \(high)"
-	}
-	
 	func physical(at value: UInt8) -> String? {
 		guard let unit, let physicalFrom else { return nil }
 		guard let physicalTo, to > from else { return unit.label(physicalFrom) }

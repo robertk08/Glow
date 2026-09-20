@@ -32,7 +32,7 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 	
 	var summary: String {
 		var parts: [String] = []
-		if label != nil { parts.append(attribute.name) }
+		if name != attribute.name { parts.append(attribute.name) }
 		if isWide { parts.append("16-bit") }
 		if defaultValue != 0 { parts.append("starts at \(defaultValue)") }
 		parts.append(functions.count == 1 ? "1 range" : "\(functions.count) ranges")
