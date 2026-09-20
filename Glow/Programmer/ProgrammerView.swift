@@ -27,7 +27,7 @@ struct ProgrammerView: View {
 				case .dimmer: IntensityRows(programmer: programmer)
 				case .color: ColorRows(programmer: programmer)
 				case .position: PositionRows(programmer: programmer)
-				case .gobo: WheelRows(programmer: programmer, group: .gobo)
+				case .gobo: GoboRows(programmer: programmer)
 				case .beam: BeamRows(programmer: programmer)
 				case .control: WheelRows(programmer: programmer, group: .control)
 				}
@@ -269,6 +269,27 @@ private struct BeamRows: View {
 				ForEach(others) { channel in
 					ChannelRow(programmer: programmer, channel: channel)
 				}
+			}
+		}
+	}
+}
+
+private struct GoboRows: View {
+	let programmer: Programmer
+	
+	var body: some View {
+		if programmer.goboWheel != nil {
+			Section("Gobo") {
+				GoboPad(shape: programmer.goboShape, label: programmer.goboLabel, tint: programmer.glow, angle: programmer.goboAngle ?? .zero, turns: programmer.goboTurns)
+					.listRowBackground(Color.clear)
+					.listRowSeparator(.hidden)
+					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
+			}
+		}
+		
+		Section {
+			ForEach(programmer.channels(in: .gobo)) { channel in
+				ChannelRow(programmer: programmer, channel: channel)
 			}
 		}
 	}

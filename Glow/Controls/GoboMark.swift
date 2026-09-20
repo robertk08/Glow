@@ -7,6 +7,7 @@ struct GoboMark: View {
 	var tint: Color = .white
 	var angle: Angle = .zero
 	var turns: Double?
+	var backdrop = true
 	var isSelected = false
 
 	private var drawing: some View {
@@ -23,9 +24,8 @@ struct GoboMark: View {
 			case .ring:
 				context.stroke(Path(ellipseIn: CGRect(x: centre.x - side * 0.26, y: centre.y - side * 0.26, width: side * 0.52, height: side * 0.52)), with: ink, style: line)
 			case .rings:
-				for step in 1...3 {
-					let radius = side * 0.12 * Double(step)
-					context.stroke(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)), with: ink, style: StrokeStyle(lineWidth: side * 0.05))
+				for radius in [side * 0.34, side * 0.25, side * 0.15] {
+					context.stroke(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)), with: ink, style: StrokeStyle(lineWidth: side * 0.055))
 				}
 			case .tunnel:
 				for step in 0..<5 {
@@ -33,13 +33,22 @@ struct GoboMark: View {
 					let drop = side * Double(step) * 0.05
 					context.stroke(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius + drop, width: radius * 2, height: radius * 2)), with: ink, style: StrokeStyle(lineWidth: side * 0.04))
 				}
-			case .petals, .fourPetals:
-				let count = shape == .petals ? 8 : 4
-				for step in 0..<count {
+			case .petals:
+				for step in 0..<8 {
 					var petal = Path(ellipseIn: CGRect(x: -side * 0.055, y: -side * 0.34, width: side * 0.11, height: side * 0.26))
-					petal = petal.applying(.init(rotationAngle: Double(step) * 2 * .pi / Double(count)))
+					petal = petal.applying(.init(rotationAngle: Double(step) * .pi / 4))
 					context.fill(petal.applying(.init(translationX: centre.x, y: centre.y)), with: ink)
 				}
+			case .fourPetals:
+				for step in 0..<4 {
+					var petal = Path()
+					petal.move(to: CGPoint(x: 0, y: -side * 0.38))
+					petal.addQuadCurve(to: CGPoint(x: 0, y: -side * 0.12), control: CGPoint(x: side * 0.13, y: -side * 0.23))
+					petal.addQuadCurve(to: CGPoint(x: 0, y: -side * 0.38), control: CGPoint(x: -side * 0.13, y: -side * 0.23))
+					petal = petal.applying(.init(rotationAngle: Double(step) * .pi / 2))
+					context.fill(petal.applying(.init(translationX: centre.x, y: centre.y)), with: ink)
+				}
+				context.fill(Path(ellipseIn: CGRect(x: centre.x - side * 0.05, y: centre.y - side * 0.05, width: side * 0.1, height: side * 0.1)), with: ink)
 			case .speckle:
 				var seed = 7.0
 				for _ in 0..<70 {
@@ -69,6 +78,14 @@ struct GoboMark: View {
 				var bars = Path()
 				bars.addRoundedRect(in: CGRect(x: centre.x - side * 0.05, y: centre.y - side * 0.34, width: side * 0.1, height: side * 0.68), cornerSize: CGSize(width: side * 0.03, height: side * 0.03))
 				bars.addRoundedRect(in: CGRect(x: centre.x - side * 0.34, y: centre.y - side * 0.05, width: side * 0.68, height: side * 0.1), cornerSize: CGSize(width: side * 0.03, height: side * 0.03))
+				
+				if shape == .cross {
+					for edge in [-1.0, 1.0] {
+						bars.addRect(CGRect(x: centre.x - side * 0.15, y: centre.y + edge * side * 0.26 - side * 0.02, width: side * 0.3, height: side * 0.04))
+						bars.addRect(CGRect(x: centre.x + edge * side * 0.26 - side * 0.02, y: centre.y - side * 0.15, width: side * 0.04, height: side * 0.3))
+					}
+				}
+				
 				guard shape == .cross else {
 					let turn = CGAffineTransform(translationX: centre.x, y: centre.y).rotated(by: .pi / 4).translatedBy(x: -centre.x, y: -centre.y)
 					context.fill(bars.applying(turn), with: ink)
@@ -76,8 +93,8 @@ struct GoboMark: View {
 				}
 				context.fill(bars, with: ink)
 			case .star, .starburst:
-				let points = shape == .star ? 4 : 12
-				let inner = shape == .star ? 0.12 : 0.2
+				let points = shape == .star ? 4 : 16
+				let inner = shape == .star ? 0.11 : 0.19
 				var spikes = Path()
 				for step in 0..<(points * 2) {
 					let radius = side * (step.isMultiple(of: 2) ? 0.36 : inner)
@@ -109,15 +126,13 @@ struct GoboMark: View {
 					}
 				}
 			case .dashes:
-				for step in 0..<6 {
-					let row = Double(step % 3)
-					let column = Double(step / 3)
+				let marks = [(-0.20, -0.22, 0.0), (0.06, -0.28, 0.35), (0.24, -0.10, 0.0), (-0.24, 0.02, 0.35), (0.02, 0.06, 0.0), (0.20, 0.20, 0.35), (-0.10, 0.26, 0.0)]
+				for (x, y, lean) in marks {
 					var dash = Path()
-					let y = centre.y + (row - 1) * side * 0.18
-					let x = centre.x + (column - 0.5) * side * 0.3
-					dash.move(to: CGPoint(x: x - side * 0.1, y: y))
-					dash.addLine(to: CGPoint(x: x + side * 0.1, y: y))
-					context.stroke(dash, with: ink, style: StrokeStyle(lineWidth: side * 0.05, lineCap: .round))
+					dash.move(to: CGPoint(x: -side * 0.09, y: 0))
+					dash.addLine(to: CGPoint(x: side * 0.09, y: 0))
+					let place = CGAffineTransform(translationX: centre.x + side * x, y: centre.y + side * y).rotated(by: lean)
+					context.stroke(dash.applying(place), with: ink, style: StrokeStyle(lineWidth: side * 0.055, lineCap: .round))
 				}
 			case .dotLine:
 				for step in 0..<7 {
@@ -137,7 +152,7 @@ struct GoboMark: View {
 
 	var body: some View {
 		Circle()
-			.fill(Color(white: 0.12))
+			.fill(backdrop ? Color(white: 0.12) : .clear)
 			.overlay {
 				if let turns {
 					TimelineView(.animation) { timeline in
@@ -151,7 +166,7 @@ struct GoboMark: View {
 			}
 			.overlay {
 				Circle()
-					.strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator), lineWidth: isSelected ? 3 : 1)
+					.strokeBorder(isSelected ? AnyShapeStyle(.tint) : backdrop ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear), lineWidth: isSelected ? 3 : 1)
 			}
 			.frame(width: size, height: size)
 	}

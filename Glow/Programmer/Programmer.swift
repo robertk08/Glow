@@ -135,28 +135,45 @@ struct Programmer {
 		let function: ChannelFunction
 	}
 	
-	func choices(of channel: FixtureChannel) -> [Choice] {
-		var found: [Choice] = []
-		
-		for function in bands(of: channel) {
-			guard !function.sets.isEmpty else {
-				found.append(Choice(id: "\(function.from)-\(function.to)", label: function.label, value: function.midpoint, swatch: function.swatch, shape: nil, confirms: function.requiresConfirmation, function: function))
-				continue
-			}
-			
-			for slot in function.sets {
-				found.append(Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, shape: slot.shape, confirms: function.requiresConfirmation, function: function))
-			}
+	func modes(of channel: FixtureChannel) -> [Choice] {
+		bands(of: channel).map { band in
+			Choice(id: "\(band.from)-\(band.to)", label: band.label, value: band.sets.first?.midpoint ?? band.midpoint, swatch: band.swatch, shape: nil, confirms: band.requiresConfirmation, function: band)
 		}
-		
-		return found
 	}
 	
-	func swatches(of channel: FixtureChannel) -> [Choice] {
-		let marked = choices(of: channel).filter { !$0.swatch.isEmpty || $0.shape != nil }
-		let showing = band(of: channel).flatMap { $0.sets.isEmpty ? nil : $0 } ?? bands(of: channel).first { !$0.sets.isEmpty }
-		guard let showing else { return marked }
-		return marked.filter { showing.contains($0.value) }
+	func slotBand(of channel: FixtureChannel) -> ChannelFunction? {
+		band(of: channel).flatMap { $0.sets.isEmpty ? nil : $0 } ?? bands(of: channel).first { !$0.sets.isEmpty }
+	}
+	
+	func slots(of channel: FixtureChannel) -> [Choice] {
+		guard let band = slotBand(of: channel) else { return [] }
+		
+		return band.sets.map { slot in
+			Choice(id: "\(slot.from)-\(slot.to)", label: slot.label, value: slot.midpoint, swatch: slot.swatch, shape: slot.shape, confirms: band.requiresConfirmation, function: band)
+		}
+	}
+	
+	func choices(of channel: FixtureChannel) -> [Choice] {
+		modes(of: channel) + slots(of: channel)
+	}
+	
+	func isMarked(_ channel: FixtureChannel) -> Bool {
+		let slots = slotBand(of: channel)?.sets ?? []
+		return !slots.isEmpty && slots.allSatisfy { $0.shape != nil || !$0.colors.isEmpty }
+	}
+	
+	var goboWheel: FixtureChannel? {
+		guard let wheel = type?.channel(.gobo), wheel.functions.contains(where: { $0.sets.contains { $0.shape != nil } }) else { return nil }
+		return wheel
+	}
+	
+	var goboShape: GoboShape? {
+		goboWheel.flatMap { slot(of: $0)?.shape }
+	}
+	
+	var goboLabel: String {
+		guard let wheel = goboWheel else { return "" }
+		return slot(of: wheel)?.label ?? band(of: wheel)?.label ?? ""
 	}
 	
 	var goboAngle: Angle? {
@@ -173,10 +190,12 @@ struct Programmer {
 		return 8 + share * 52
 	}
 	
+	func mode(of channel: FixtureChannel) -> String {
+		band(of: channel).map { "\($0.from)-\($0.to)" } ?? ""
+	}
+	
 	func selection(of channel: FixtureChannel) -> String {
-		if let slot = slot(of: channel) { return "\(slot.from)-\(slot.to)" }
-		if let band = band(of: channel) { return "\(band.from)-\(band.to)" }
-		return ""
+		slot(of: channel).map { "\($0.from)-\($0.to)" } ?? ""
 	}
 	
 	func choice(_ id: String, of channel: FixtureChannel) -> Choice? {
