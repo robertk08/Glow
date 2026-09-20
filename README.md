@@ -269,11 +269,17 @@ away, so the app polls until the list arrives.
 `Web/index.html` is the same desk in a browser, one file with no build step.
 The controller serves it, so opening `http://glow.local` on any phone, tablet or
 laptop reaches the desk on the same origin, with no mixed content block and no
-CORS. Upload it with
+CORS. It is 51 KB of source, past the 32 KB a document upload takes, so it goes
+up compressed:
 
 ```
-curl -X PUT --data-binary @Web/index.html http://glow.local/api/web
+gzip -9 -c Web/index.html | curl -X PUT --data-binary @- http://glow.local/api/web
 ```
+
+`/api/web` reads the first two bytes, keeps the packed and plain forms in
+separate files, and serves whichever is there, adding `Content-Encoding: gzip`
+when it is the packed one. Uploading one form removes the other, so the page
+never goes stale behind a newer copy.
 
 It speaks the protocol below and nothing else, so it is a client like any other:
 the lights grid with its groups and gauges, the programmer with the feature
