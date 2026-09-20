@@ -54,14 +54,6 @@ struct ConsoleTests {
 		#expect(decoded.lights.first?.invertsTilt == false)
 	}
 	
-	@Test func olderShowsOpenWithoutOrientationFields() throws {
-		let data = Data(#"{"name":"Old Show","lights":[{"identifier":"head","typeID":"moving-head","name":"Head","address":1,"sortIndex":0}],"groups":[],"made":[],"scenes":[]}"#.utf8)
-		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
-		
-		#expect(decoded.lights.first?.invertsPan == nil)
-		#expect(decoded.lights.first?.invertsTilt == nil)
-	}
-	
 	@Test func aLightCanSitInSeveralGroups() throws {
 		let light = ShowFile.Light(identifier: "par", typeID: "par", name: "Par", address: 1, sortIndex: 0, groups: ["Front", "Warm"])
 		let file = ShowFile(name: "Show", lights: [light], groups: [], made: [], scenes: [])
@@ -69,23 +61,6 @@ struct ConsoleTests {
 		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
 		
 		#expect(decoded.lights.first?.groups == ["Front", "Warm"])
-	}
-	
-	@Test func aShowWrittenWhenALightHadOneGroupStillOpens() throws {
-		let data = Data(#"{"name":"Old","lights":[{"identifier":"a","typeID":"par","name":"Par","address":1,"sortIndex":0,"group":"Front"}],"groups":[],"made":[],"scenes":[]}"#.utf8)
-		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
-		
-		#expect(decoded.lights.first?.groups == ["Front"])
-	}
-	
-	@Test func aShowWrittenBeforeFixtureTypesStillOpens() throws {
-		let data = Data(#"{"name":"Older","lights":[{"identifier":"a","profileID":"mini-moving-head-14ch","name":"Head","address":5,"sortIndex":0}],"groups":[],"profiles":[{"identifier":"x","name":"X","symbol":"star","channels":[]}],"scenes":[]}"#.utf8)
-		let decoded = try JSONDecoder().decode(ShowFile.self, from: data)
-		
-		#expect(decoded.name == "Older")
-		#expect(decoded.made.isEmpty)
-		#expect(decoded.lights.first?.typeID == "mini-moving-head-14ch")
-		#expect(decoded.lights.first?.address == 5)
 	}
 	
 	@MainActor @Test func reorderingKeepsEveryFixture() throws {

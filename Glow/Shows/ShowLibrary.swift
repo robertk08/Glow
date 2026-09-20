@@ -139,7 +139,7 @@ final class ShowLibrary {
 		
 		for fixture in fixtures {
 			let names = fixture.belongsTo.map(\.name)
-			file.lights.append(ShowFile.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: names.isEmpty ? nil : names, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+			file.lights.append(ShowFile.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: names, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
 		}
 		
 		for stored in made {
@@ -159,7 +159,7 @@ final class ShowLibrary {
 		let decoder = JSONDecoder()
 		decoder.dateDecodingStrategy = .iso8601
 		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data) else { return }
-		guard file.version ?? "" <= ShowFile.current else { return }
+		guard file.version <= ShowFile.current else { return }
 		adopt(file)
 	}
 	
@@ -184,11 +184,11 @@ final class ShowLibrary {
 			let fixture = Fixture(typeID: entry.typeID, name: entry.name, address: address, sortIndex: entry.sortIndex)
 			fixture.identifier = entry.identifier
 			fixture.symbolOverride = entry.symbol
-			fixture.invertsPan = entry.invertsPan ?? false
-			fixture.invertsTilt = entry.invertsTilt ?? false
+			fixture.invertsPan = entry.invertsPan
+			fixture.invertsTilt = entry.invertsTilt
 			context.insert(fixture)
 			
-			for name in entry.groups ?? [] {
+			for name in entry.groups {
 				guard let group = groups[name] else { continue }
 				fixture.belong(to: group, true)
 			}

@@ -4,7 +4,7 @@ import SwiftUI
 @Model
 final class Fixture {
 	var identifier: String = UUID().uuidString
-	@Attribute(originalName: "typeID") var typeID: String = ""
+	var typeID: String = ""
 	var name: String = ""
 	var address: Int = 1
 	var sortIndex: Int = 0

@@ -189,7 +189,7 @@ struct LightsView: View {
 				LibraryView(patching: $isAdding)
 			}
 		}
-		.navigationDestination(item: $editingFixture) { fixture in
+		.sheet(item: $editingFixture) { fixture in
 			FixtureEditView(fixture: fixture)
 		}
 		.sheet(item: $editingGroup) { group in

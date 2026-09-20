@@ -74,8 +74,8 @@ fixtures built here and its scenes. Switching show swaps the store underneath
 the app without moving you off the screen you are on. A show stores no DMX
 values, so every light comes back on its defaults. The controller you send to belongs to the device, not the show. A show
 exports and imports as one JSON file carrying the date its format was settled
-and the date it was written. A file from a newer format is refused, one with no
-version at all is taken as it comes.
+and the date it was written. A file from a newer format is refused, and so is
+one that names no format at all.
 
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.
