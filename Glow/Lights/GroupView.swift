@@ -8,6 +8,7 @@ struct GroupView: View {
 	
 	@Bindable var group: FixtureGroup
 	
+	@State private var isNew = false
 	@State private var isDeleting = false
 	@FocusState private var isNaming: Bool
 	
@@ -33,17 +34,19 @@ struct GroupView: View {
 					Text("Lights")
 				}
 				
-				Section {
-					Button("Delete Group", role: .destructive) {
-						isDeleting = true
-					}
-					.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+				if !isNew {
+					Section {
 						Button("Delete Group", role: .destructive) {
-							context.delete(group)
-							dismiss()
+							isDeleting = true
 						}
-					} message: {
-						Text("The lights in it stay patched.")
+						.confirmationDialog("Delete \(group.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+							Button("Delete Group", role: .destructive) {
+								context.delete(group)
+								dismiss()
+							}
+						} message: {
+							Text("The lights in it stay patched.")
+						}
 					}
 				}
 			}
@@ -59,7 +62,8 @@ struct GroupView: View {
 				}
 			}
 			.task {
-				isNaming = group.name.isEmpty
+				isNew = group.name.isEmpty
+				isNaming = isNew
 			}
 			.onDisappear {
 				group.name = group.name.trimmingCharacters(in: .whitespaces)
