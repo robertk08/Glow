@@ -3,37 +3,36 @@ import SwiftUI
 struct PositionPad: View {
 	@Binding var pan: Double
 	@Binding var tilt: Double
-
+	
 	var panDegrees: Double?
 	var tiltDegrees: Double?
-	var isActive = false
-
+	
 	@State private var isDragging = false
 	@State private var isFine = false
 	@State private var anchor: CGPoint?
 	@State private var origin = CGPoint.zero
-
+	
 	private var panReading: String {
 		guard let panDegrees else { return pan.formatted(.percent.precision(.fractionLength(0))) }
 		return "\((pan * panDegrees - panDegrees / 2).formatted(.number.precision(.fractionLength(0))))°"
 	}
-
+	
 	private var tiltReading: String {
 		guard let tiltDegrees else { return tilt.formatted(.percent.precision(.fractionLength(0))) }
 		return "\((tilt * tiltDegrees - tiltDegrees / 2).formatted(.number.precision(.fractionLength(0))))°"
 	}
-
+	
 	var body: some View {
 		GeometryReader { proxy in
 			let size = proxy.size
-			let inset = 27.0
+			let inset = 22.0
 			let field = CGRect(x: inset, y: inset, width: size.width - inset * 2, height: size.height - inset * 2)
 			let position = CGPoint(x: field.minX + pan * field.width, y: field.minY + (1 - tilt) * field.height)
-
+			
 			ZStack {
 				RoundedRectangle(cornerRadius: 22, style: .continuous)
 					.fill(.fill.quaternary)
-
+				
 				Path { path in
 					for step in 1..<4 {
 						let x = field.minX + field.width * Double(step) / 4
@@ -45,12 +44,7 @@ struct PositionPad: View {
 					}
 				}
 				.stroke(.separator.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
-
-				Circle()
-					.strokeBorder(.separator, lineWidth: 1)
-					.frame(width: 14)
-					.position(x: field.midX, y: field.midY)
-
+				
 				Path { path in
 					path.move(to: CGPoint(x: position.x, y: field.minY))
 					path.addLine(to: CGPoint(x: position.x, y: field.maxY))
@@ -58,15 +52,11 @@ struct PositionPad: View {
 					path.addLine(to: CGPoint(x: field.maxX, y: position.y))
 				}
 				.stroke(.tint.opacity(isDragging ? 0.7 : 0.35), lineWidth: 1)
-
+				
 				Circle()
-					.fill(.tint)
-					.overlay {
-						Circle()
-							.strokeBorder(.white.opacity(0.9), lineWidth: 2)
-					}
-					.frame(width: isDragging ? 36 : 28)
-					.glassEffect(.regular.tint(.accentColor).interactive(), in: .circle)
+					.fill(.clear)
+					.frame(width: isDragging ? 26 : 24)
+					.glassEffect(.regular.interactive(), in: .circle)
 					.position(position)
 					.animation(.snappy(duration: 0.15), value: isDragging)
 			}
@@ -80,10 +70,6 @@ struct PositionPad: View {
 				.contentTransition(.numericText())
 				.padding(10)
 			}
-			.overlay {
-				RoundedRectangle(cornerRadius: 22, style: .continuous)
-					.strokeBorder(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear), lineWidth: 2)
-			}
 			.contentShape(.rect(cornerRadius: 22))
 			.gesture(
 				DragGesture(minimumDistance: 0)
@@ -93,13 +79,13 @@ struct PositionPad: View {
 							origin = CGPoint(x: pan, y: tilt)
 							isDragging = true
 						}
-
+						
 						guard isFine else {
 							pan = min(max((drag.location.x - field.minX) / field.width, 0), 1)
 							tilt = min(max(1 - (drag.location.y - field.minY) / field.height, 0), 1)
 							return
 						}
-
+						
 						pan = min(max(origin.x + drag.translation.width / field.width / 6, 0), 1)
 						tilt = min(max(origin.y - drag.translation.height / field.height / 6, 0), 1)
 					}

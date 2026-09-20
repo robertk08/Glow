@@ -195,7 +195,7 @@ private struct PositionRows: View {
 	var body: some View {
 		if programmer.movesHead {
 			Section("Aim") {
-				PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees, isActive: programmer.isActive(.position))
+				PositionPad(pan: programmer.fractionBinding(.pan), tilt: programmer.fractionBinding(.tilt), panDegrees: programmer.type?.panDegrees, tiltDegrees: programmer.type?.tiltDegrees)
 					.listRowBackground(Color.clear)
 					.listRowSeparator(.hidden)
 					.listRowInsets(.init(top: 4, leading: 16, bottom: 4, trailing: 16))
