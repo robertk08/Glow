@@ -377,15 +377,18 @@ final class Console {
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
 		if !hasLoadedPatch, !library.types.isEmpty {
 			hasLoadedPatch = true
-			universe = Universe()
-			active = []
 			
-			for fixture in fixtures {
-				guard let type = library.type(fixture.typeID) else { continue }
-				universe.set(type.defaults, at: fixture.start)
+			if node?.hasSource != true {
+				universe = Universe()
+				active = []
+				
+				for fixture in fixtures {
+					guard let type = library.type(fixture.typeID) else { continue }
+					universe.set(type.defaults, at: fixture.start)
+				}
+				
+				sourceFrames.startOver()
 			}
-			
-			sourceFrames.startOver()
 		}
 		
 		var covered: Set<Int> = []
