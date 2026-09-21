@@ -62,6 +62,7 @@ final class Console {
 	private var outputFrames = FrameStream()
 	private var isSynced = false
 	private var isAdopting = false
+	private var hasAdoptedSource = false
 	private var hasLoadedPatch = false
 	private var noticed = 0
 	private var patched: Set<Int> = []
@@ -89,6 +90,7 @@ final class Console {
 					link = state
 					if state == .connected {
 						isSynced = false
+						hasAdoptedSource = false
 						sourceFrames.startOver()
 						outputFrames.startOver()
 						let reach = span
@@ -112,6 +114,7 @@ final class Console {
 					sourceFrames.adopt(universe.values)
 					outputFrames.adopt(output)
 					isSynced = true
+					hasAdoptedSource = true
 				case let .master(level):
 					isAdopting = true
 					master = level
@@ -210,6 +213,7 @@ final class Console {
 		span = DmxBus.minimumSlots
 		sourceFrames.cover(DmxBus.minimumSlots)
 		outputFrames.cover(DmxBus.minimumSlots)
+		hasAdoptedSource = false
 		hasLoadedPatch = false
 		selection.clear()
 		sourceFrames.startOver()
@@ -378,7 +382,7 @@ final class Console {
 		if !hasLoadedPatch, !library.types.isEmpty {
 			hasLoadedPatch = true
 			
-			if node?.hasSource != true {
+			if !hasAdoptedSource {
 				universe = Universe()
 				active = []
 				

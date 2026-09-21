@@ -780,8 +780,6 @@ final class ShowLibrary {
 	}
 	
 	private func clear() {
-		console?.closeShow()
-		
 		let context = container.mainContext
 		try? context.delete(model: Fixture.self)
 		try? context.delete(model: FixtureGroup.self)

@@ -79,7 +79,8 @@ struct RootView: View {
 		.task {
 			library.setMade(stored.map(\.definition))
 		}
-		.onChange(of: shows.activeID) {
+		.onChange(of: shows.activeID) { previous, _ in
+			guard !previous.isEmpty else { return }
 			console.closeShow()
 		}
 		.onChange(of: fixtures) {
