@@ -186,13 +186,14 @@ Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
 table starts you with no shows.
 
-Serial console at 115200: `net | setup | forget`. `net` also reports how much of
-the show filesystem is used.
+Serial console at 115200: `net | setup | forget | home | unpair`. `net` also
+reports how much of the show filesystem is used, and `home` prints the HomeKit
+accessory database with any errors in it.
 
 ## Toolchain
 
 arduino-esp32 core 3.3.11 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
-ArduinoJson 7.4.3
+ArduinoJson 7.4.3 · HomeSpan 2.1.8
 
 **esp_dmx needs patching, twice.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
 which removed `.module` from `uart_signal_conn_t`. And its ISR only goes into
@@ -290,6 +291,69 @@ bar and a sheet on a phone, a sidebar and an inspector on a laptop.
 It can do this because a show carries its fixture definitions, so the browser
 resolves channels and scales the master over the right dimmers without the
 app's bundle. Patching is limited to the types a show already holds.
+
+## Apple Home
+
+The controller is a HomeKit accessory as well as a desk. It serves HAP itself,
+so Siri and the Home app reach the rig with no phone, no hub and no bridge in
+between.
+
+**Apple Home belongs to one show.** The accessory is live only while the show
+named **Home** is the active one, because channel 1 is this head in that show
+and something else entirely in the others. Switch to another show and Home's
+controls refuse the write and report a failure rather than moving a stranger's
+fixture. Switch back and they pick the light up again. The binding is by name,
+so renaming the show in Glow moves it.
+
+The head is one accessory carrying three controls:
+
+| Control | What it drives | Channels |
+|---|---|---|
+| Moving Head | on, brightness, hue and saturation | 6 to 10 |
+| Pan | 0 to 100 percent across 540 degrees | 1 and 2 |
+| Tilt | 0 to 100 percent across 270 degrees | 3 and 4 |
+
+Home has no control for an axis, so Pan and Tilt borrow the window covering
+service and read as a percentage rather than in degrees. They carry shade icons
+and say Open and Closed at the extremes. A light is what they would rather look
+like, but every Lightbulb service answers "turn off the lights" and a Good Night
+scene, which would drag the head's position to zero along with the real lamps.
+
+**Home touches only those nine channels.** The movement speed, the colour macro,
+the program speed, the program and reset are the desk's alone, and a change from
+Home leaves them exactly where you put them. Each control writes only the
+channels it owns, and only when the value it computes differs from what the
+controller already holds, so nothing is sent for a drag that lands where it
+started.
+
+Brightness runs the dimmer band on channel 6 and never touches the emitters, so
+colour keeps its full resolution at any level. Saturation crossfades the red,
+green and blue emitters against the white one, which is the centre of Home's
+colour wheel.
+
+**It follows the desk.** Every control reads the controller's source back and
+updates itself, so moving the head in Glow or in the browser moves the sliders
+in Home. Position, brightness and on or off come back exactly. Colour comes back
+as the nearest hue and saturation Home can show, because `EmitterMix` can reach
+mixes that one pair of values cannot describe.
+
+A change from Home enters as a source frame, the same as a change from any other
+device, so the app and the browser see the fader move and the look survives for
+the next device to connect. Master and blackout are held on the controller and
+scale the head's dimmer the way they do everywhere else.
+
+**The head is the fourteen channels starting at address 1.** That is fixed in
+`Config.h`, as a block that reads the same way the fixture's own channel table
+does, along with the dimmer band, the pan and tilt inversions, the show name,
+the pairing code and the HAP port. Nothing about it is sent from the app.
+
+**Pairing:** HAP is on port 1201, advertised as `_hap._tcp` beside `_glow._tcp`
+on the same `glow.local`. Add the accessory in Home and enter **466-37-726**.
+Pair with the rig dark, because pairing writes to flash and a flash write
+corrupts the packet on the wire. Removing the accessory from Home leaves the
+controller believing it is paired, so serial `unpair` is what lets it be added
+again. Home caches the accessory database, so a firmware change that adds or
+removes a control needs the accessory removed and added back before it shows.
 
 ## Shows on the wire
 

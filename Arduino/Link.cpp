@@ -40,6 +40,10 @@ const uint16_t SLOTS       = 512;
 uint8_t g_source[DMX_HEADER + SLOTS];
 bool    g_haveSource = false;
 char    g_scene[Store::NAME_LIMIT] = "";
+float   g_master = 1;
+bool    g_blackout = false;
+
+const uint8_t NO_CLIENT = 0xFF;
 
 const uint32_t WS_PING_MS    = 4000;
 const uint32_t WS_PONG_MS    = 2000;
@@ -226,6 +230,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
       sendError(num, "bad_value", "blackout needs on as a bool");
       return;
     }
+    g_blackout = on.as<bool>();
     relayText(num, p, len);
 
   } else if (!strcmp(t, "scene")) {
@@ -251,6 +256,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
       sendError(num, "bad_value", "master needs level as a number");
       return;
     }
+    g_master = level.as<float>();
     relayText(num, p, len);
 
   } else {
@@ -303,6 +309,34 @@ void tick() {
 }
 
 int clients() { return g_running ? g_ws.connectedClients() : 0; }
+
+void apply(int start, const uint8_t *source, const uint8_t *output, int length) {
+  if (start < 1 || length < 1 || (uint32_t)start + length - 1 > SLOTS) return;
+
+  memcpy(g_source + DMX_HEADER + (start - 1), source, length);
+  g_haveSource = true;
+
+  uint8_t frame[DMX_HEADER + SLOTS];
+  frame[0] = OP_SOURCE;
+  frame[1] = 0;
+  frame[2] = (uint8_t)(start & 0xFF);
+  frame[3] = (uint8_t)(start >> 8);
+  frame[4] = (uint8_t)(length & 0xFF);
+  frame[5] = (uint8_t)(length >> 8);
+  memcpy(frame + DMX_HEADER, source, length);
+
+  relayBinary(NO_CLIENT, frame, DMX_HEADER + length);
+  DmxBus::writeRange(start, output, length);
+}
+
+void source(int start, uint8_t *out, int length) {
+  if (start < 1 || length < 1 || (uint32_t)start + length - 1 > SLOTS) return;
+  memcpy(out, g_source + DMX_HEADER + (start - 1), length);
+}
+
+float master() { return g_master; }
+
+bool blackout() { return g_blackout; }
 
 void notify(const char *json, int except) {
   if (!g_running) return;

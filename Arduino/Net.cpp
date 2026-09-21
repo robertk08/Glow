@@ -51,8 +51,7 @@ void complain() {
 }
 
 void announce() {
-  if (g_mdns) MDNS.end();
-  g_mdns = false;
+  if (g_mdns) return;
 
   if (!MDNS.begin(GLOW_HOSTNAME)) {
     Serial.println(F("mDNS: failed"));

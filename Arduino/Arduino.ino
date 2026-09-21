@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "Creds.h"
 #include "DmxBus.h"
+#include "HomeKit.h"
 #include "Http.h"
 #include "Link.h"
 #include "Net.h"
@@ -20,7 +21,9 @@ static void run(const char *line) {
   if      (!strcmp(line, "net"))    report();
   else if (!strcmp(line, "setup"))  Net::enterSetup();
   else if (!strcmp(line, "forget")) Net::forget();
-  else Serial.println(F("type: net | setup | forget"));
+  else if (!strcmp(line, "home"))   HomeKit::report();
+  else if (!strcmp(line, "unpair")) HomeKit::unpair();
+  else Serial.println(F("type: net | setup | forget | home | unpair"));
 }
 
 static void pollSerial() {
@@ -57,8 +60,9 @@ void setup() {
   Net::begin();
   Link::begin();
   Http::begin();
+  HomeKit::begin();
 
-  Serial.println(F("type: net | setup | forget"));
+  Serial.println(F("type: net | setup | forget | home | unpair"));
 }
 
 void loop() {

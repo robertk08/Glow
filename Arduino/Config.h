@@ -8,7 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-#define GLOW_FW_VERSION "2.2.0"
+#define GLOW_FW_VERSION "2.3.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_SERVICE    "glow"
@@ -45,3 +45,33 @@ static const int DMX_TASK_CORE     = 1;
 static const int DMX_TASK_PRIORITY = 5;
 static const int DMX_TASK_STACK    = 3072;
 
+static const uint16_t HOMEKIT_PORT = 1201;
+
+#define HOMEKIT_NAME         "Moving Head"
+#define HOMEKIT_MODEL        "Mini LED Moving Head"
+#define HOMEKIT_PAIRING_CODE "46637726"
+#define HOMEKIT_SHOW         "Home"
+
+static const int HEAD_ADDRESS = 1;
+
+static const int HEAD_PAN           = 1;
+static const int HEAD_PAN_FINE      = 2;
+static const int HEAD_TILT          = 3;
+static const int HEAD_TILT_FINE     = 4;
+static const int HEAD_MOVE_SPEED    = 5;
+static const int HEAD_DIMMER        = 6;
+static const int HEAD_RED           = 7;
+static const int HEAD_GREEN         = 8;
+static const int HEAD_BLUE          = 9;
+static const int HEAD_WHITE         = 10;
+static const int HEAD_COLOR_MACRO   = 11;
+static const int HEAD_PROGRAM_SPEED = 12;
+static const int HEAD_PROGRAM       = 13;
+static const int HEAD_RESET         = 14;
+static const int HEAD_CHANNELS      = 14;
+
+static const uint8_t HEAD_DIM_FROM = 8;
+static const uint8_t HEAD_DIM_TO   = 134;
+
+static const bool HEAD_INVERTS_PAN  = true;
+static const bool HEAD_INVERTS_TILT = false;

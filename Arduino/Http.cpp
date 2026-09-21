@@ -1,5 +1,6 @@
 #include "Http.h"
 
+#include "HomeKit.h"
 #include "Link.h"
 #include "Net.h"
 #include "Store.h"
@@ -297,6 +298,7 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
         return;
       }
       sendResult(c, 200, true, nullptr);
+      HomeKit::showChanged();
       Link::notify("{\"t\":\"shows\"}", except);
     } else {
       sendResult(c, 405, false, "method");
