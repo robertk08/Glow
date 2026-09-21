@@ -26,7 +26,7 @@ final class Fixture {
 	}
 	
 	func belongs(to group: FixtureGroup) -> Bool {
-		(groups ?? []).contains(group)
+		(groups ?? []).contains { $0.identifier == group.identifier }
 	}
 	
 	func belong(to group: FixtureGroup, _ isMember: Bool) {
@@ -34,7 +34,7 @@ final class Fixture {
 			guard !belongs(to: group) else { return }
 			groups = (groups ?? []) + [group]
 		} else {
-			groups?.removeAll { $0 == group }
+			groups?.removeAll { $0.identifier == group.identifier }
 		}
 	}
 	

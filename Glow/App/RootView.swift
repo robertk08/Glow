@@ -36,9 +36,6 @@ struct RootView: View {
 		}
 		.tabViewStyle(.sidebarAdaptable)
 		.tabBarMinimizeBehavior(.onScrollDown)
-		.tabViewBottomAccessory {
-			ConsoleBar(transition: transition)
-		}
 	}
 	
 	var body: some View {
@@ -51,8 +48,11 @@ struct RootView: View {
 				WaitingView()
 			} else if sizeClass == .compact {
 				tabs
+					.tabViewBottomAccessory {
+						ConsoleBar(transition: transition)
+					}
 					.sheet(isPresented: $selection.isProgrammerOpen) {
-						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
+						ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: true)
 							.presentationDetents([.fraction(0.5), .large])
 							.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
 							.presentationDragIndicator(.visible)
@@ -60,12 +60,16 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: Binding { !console.selection.isEmpty } set: { shown in
-						guard !shown else { return }
-						console.selection.clear()
-					}) {
-						ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
-							.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
+					.inspector(isPresented: .constant(section == "lights")) {
+						VStack(spacing: 0) {
+							ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
+
+							Divider()
+
+							MasterBar()
+								.padding(.vertical, 10)
+						}
+						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
 			}
 		}

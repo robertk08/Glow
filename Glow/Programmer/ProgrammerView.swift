@@ -2,9 +2,10 @@ import SwiftUI
 
 struct ProgrammerView: View {
 	@Environment(\.dismiss) private var dismiss
-	@Environment(\.horizontalSizeClass) private var sizeClass
 	
 	let programmer: Programmer
+	
+	var isSheet = false
 	
 	@State private var group = FeatureGroup.dimmer
 	
@@ -54,7 +55,7 @@ struct ProgrammerView: View {
 					ClearButton()
 				}
 				
-				if sizeClass == .compact {
+				if isSheet {
 					ToolbarItem(placement: .topBarTrailing) {
 						Button(role: .close) { dismiss() }
 					}
