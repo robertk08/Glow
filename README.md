@@ -126,9 +126,15 @@ reconnects to the chosen network and checks the controller identity before
 reporting Ready. Credentials are written only after the join succeeds, so a
 wrong password cannot displace a working network.
 
+**Two networks are remembered, the two most recent.** Joining a third pushes out
+the older one. On boot the controller tries the one it joined last and falls
+back to the other every ten seconds until one answers, so carrying it between
+two places needs no setup at either end. Provisioning a network it already knows
+just moves that one back to the front.
+
 **Getting back to setup:** the controller raises **Glow Setup** by itself after
-a minute of not finding its stored network, and keeps it up until it joins. To
-ask for it while the stored network is fine, use Change Wi-Fi Network in Glow,
+a minute of finding neither stored network, and keeps it up until it joins. To
+ask for it while a stored network is fine, use Change Wi-Fi Network in Glow,
 or power the controller off and on three times leaving it on for less than five
 seconds each time, which raises the setup network for five minutes. Neither
 erases anything. Serial `forget`, or the app's forget button, is what erases.
@@ -187,8 +193,8 @@ Coming from an older layout moves every partition, so the first flash with this
 table starts you with no shows.
 
 Serial console at 115200: `net | setup | forget | home | unpair`. `net` also
-reports how much of the show filesystem is used, and `home` prints the HomeKit
-accessory database with any errors in it.
+reports the networks it remembers and how much of the show filesystem is used,
+and `home` prints the HomeKit accessory database with any errors in it.
 
 ## Toolchain
 

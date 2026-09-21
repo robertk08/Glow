@@ -13,6 +13,9 @@ static void report() {
                 Link::clients(), DmxBus::refreshHz());
   Serial.printf("   store %u of %u bytes\n", (unsigned)Store::used(), (unsigned)Store::capacity());
   Serial.printf("   %s", Net::provisioned() ? "provisioned" : "unprovisioned");
+  for (int slot = 0; slot < Creds::SLOTS; slot++) {
+    if (Creds::ssid(slot)[0]) Serial.printf(", \"%s\"", Creds::ssid(slot));
+  }
   if (Net::apUp()) Serial.printf(", \"%s\" is up", GLOW_SETUP_SSID);
   Serial.println();
 }

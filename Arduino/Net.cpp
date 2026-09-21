@@ -31,6 +31,8 @@ char     g_tryPass[65] = "";
 bool g_bootCleared = false;
 bool g_scanning    = false;
 
+int      g_slot      = 0;
+
 bool     g_apLost    = false;
 bool     g_apHeld    = false;
 bool     g_apGrace   = false;
@@ -95,6 +97,19 @@ void startStation(const char *ssid, const char *user, const char *password) {
   g_sta     = true;
   Serial.printf("WiFi: joining \"%s\"%s\n", ssid,
                 user && user[0] ? " as an enterprise network" : "");
+}
+
+void startSlot(int slot) {
+  g_slot = slot;
+  startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
+}
+
+int nextSlot(int from) {
+  for (int step = 1; step <= Creds::SLOTS; step++) {
+    int slot = (from + step) % Creds::SLOTS;
+    if (Creds::ssid(slot)[0]) return slot;
+  }
+  return from;
 }
 
 void raiseAp(uint32_t ms) {
@@ -167,7 +182,7 @@ void begin() {
   }
 
   if (Creds::have()) {
-    startStation(Creds::ssid(), Creds::user(), Creds::password());
+    startSlot(0);
     g_downSince = millis();
     if (asked) raiseAp(SETUP_AP_MS);
   } else {
@@ -206,6 +221,7 @@ void tick() {
 
     if (now && g_tryLetGo) {
       g_trying = false;
+      g_slot = 0;
       if (!Creds::save(g_trySsid, g_tryUser, g_tryPass))
         Serial.println(F("creds: NVS write failed"));
       else
@@ -221,7 +237,7 @@ void tick() {
       g_joinFailed = true;
       Serial.printf("WiFi: could not join \"%s\"\n", g_trySsid);
       if (Creds::have()) {
-        startStation(Creds::ssid(), Creds::user(), Creds::password());
+        startSlot(0);
         raiseAp(SETUP_AP_MS);
       } else {
         WiFi.disconnect();
@@ -241,7 +257,7 @@ void tick() {
   }
 
   if (!now && !g_ap && millis() - g_downSince >= SETUP_LOST_MS) {
-    Serial.printf("setup: \"%s\" is out of reach\n", Creds::ssid());
+    Serial.println(F("setup: no stored network is in reach"));
     g_apLost  = true;
     g_lastTry = millis();
     WiFi.disconnect();
@@ -261,7 +277,7 @@ void tick() {
   uint32_t retry = g_ap ? SETUP_RETRY_MS : WIFI_RETRY_MS;
   if (!now && millis() - g_lastTry >= retry) {
     WiFi.disconnect();
-    startStation(Creds::ssid(), Creds::user(), Creds::password());
+    startSlot(nextSlot(g_slot));
   }
 }
 
