@@ -154,4 +154,37 @@ struct ProgrammerTests {
 		programmer.releaseMix()
 		#expect(!programmer.macroOverridesMix)
 	}
+	
+	@Test func aLightThatDimsThroughItsColoursStillGetsAnIntensityPage() {
+		let (_, programmer) = rig([
+			FixtureChannel(offset: 1, attribute: .red),
+			FixtureChannel(offset: 2, attribute: .green),
+			FixtureChannel(offset: 3, attribute: .blue),
+		])
+		
+		#expect(programmer.groups.first == .dimmer)
+	}
+	
+	@Test func mixedLightsShareWhatMatchesAndKeepWhatOnlyOneHas() {
+		var gobo = FixtureChannel(offset: 4, attribute: .gobo)
+		gobo.functions = [ChannelFunction(from: 0, to: 127, label: "Open"), ChannelFunction(from: 128, to: 255, label: "Star")]
+		var otherGobo = FixtureChannel(offset: 2, attribute: .gobo)
+		otherGobo.functions = [ChannelFunction(from: 0, to: 63, label: "Open"), ChannelFunction(from: 64, to: 255, label: "Ring")]
+		let head = FixtureType(id: "head", model: "Head", channels: [FixtureChannel(offset: 1, attribute: .dimmer), FixtureChannel(offset: 2, attribute: .zoom), FixtureChannel(offset: 3, attribute: .shutter), gobo])
+		let spot = FixtureType(id: "spot", model: "Spot", channels: [FixtureChannel(offset: 1, attribute: .shutter), otherGobo, FixtureChannel(offset: 3, attribute: .dimmer)])
+		let fixtures = [Fixture(typeID: "head", name: "Head", address: DMXAddress(1)!, sortIndex: 0), Fixture(typeID: "spot", name: "Spot", address: DMXAddress(11)!, sortIndex: 1)]
+		let console = Console()
+		let programmer = Programmer(fixtures: fixtures, library: FixtureLibrary(builtIn: [head, spot]), console: console)
+		
+		#expect(programmer.channels.map(\.attribute) == [.dimmer, .zoom, .shutter])
+		#expect(programmer.groups == [.dimmer, .beam])
+		
+		programmer.set(200, of: programmer.channel(.shutter)!)
+		programmer.set(90, of: programmer.channel(.zoom)!)
+		
+		#expect(console.value(at: DMXAddress(3)!) == 200)
+		#expect(console.value(at: DMXAddress(11)!) == 200)
+		#expect(console.value(at: DMXAddress(2)!) == 90)
+		#expect(console.value(at: DMXAddress(12)!) == 0)
+	}
 }

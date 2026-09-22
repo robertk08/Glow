@@ -32,6 +32,10 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		functions.first { $0.contains(value) }
 	}
 	
+	func matches(_ channel: FixtureChannel) -> Bool {
+		attribute == channel.attribute && name == channel.name && isWide == channel.isWide && defaultValue == channel.defaultValue && fineDefaultValue == channel.fineDefaultValue && functions == channel.functions
+	}
+	
 	var summary: String {
 		var parts: [String] = []
 		if name != attribute.name { parts.append(attribute.name) }

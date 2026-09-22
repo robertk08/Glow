@@ -160,8 +160,8 @@ private struct ColorRows: View {
 			}
 		}
 		
-		let shown = [programmer.macroChannel?.offset, programmer.temperatureChannel?.offset]
-		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.offset) }
+		let shown = [programmer.macroChannel?.id, programmer.temperatureChannel?.id]
+		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.id) }
 		
 		if !others.isEmpty {
 			Section {
@@ -268,8 +268,8 @@ private struct BeamRows: View {
 		}
 		
 		let shaped = programmer.channel(.zoom) != nil
-		let shown = [shaped ? programmer.channel(.zoom)?.offset : nil, shaped ? programmer.channel(.focus)?.offset : nil, shutter?.offset]
-		let others = programmer.channels(in: .beam).filter { !shown.contains($0.offset) }
+		let shown = [shaped ? programmer.channel(.zoom)?.id : nil, shaped ? programmer.channel(.focus)?.id : nil, shutter?.id]
+		let others = programmer.channels(in: .beam).filter { !shown.contains($0.id) }
 		
 		if !others.isEmpty {
 			Section {
@@ -286,7 +286,7 @@ private struct GoboRows: View {
 
 	var body: some View {
 		let wheels = programmer.goboWheels
-		let shown = wheels.map(\.offset) + wheels.compactMap { programmer.spinner(of: $0)?.offset }
+		let shown = wheels.map(\.id) + wheels.compactMap { programmer.spinner(of: $0)?.id }
 
 		ForEach(wheels) { wheel in
 			if programmer.draws(wheel) {
@@ -307,7 +307,7 @@ private struct GoboRows: View {
 			}
 		}
 
-		let others = programmer.channels(in: .gobo).filter { !shown.contains($0.offset) }
+		let others = programmer.channels(in: .gobo).filter { !shown.contains($0.id) }
 
 		if !others.isEmpty {
 			Section {

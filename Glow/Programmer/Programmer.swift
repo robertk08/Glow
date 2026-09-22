@@ -86,20 +86,27 @@ struct Programmer {
 		console.set(UInt8(clamped & 0xFF), at: address)
 	}
 	
+	private func counterpart(of channel: FixtureChannel, in target: Target) -> FixtureChannel? {
+		target.type.channels.first { $0 == channel } ?? target.type.channels.first { $0.matches(channel) }
+	}
+	
 	func value(of channel: FixtureChannel) -> UInt8 {
-		guard let first = targets.first else { return 0 }
-		return value(of: channel, in: first)
+		for target in targets {
+			if let own = counterpart(of: channel, in: target) { return value(of: own, in: target) }
+		}
+		
+		return 0
 	}
 	
 	func set(_ value: UInt8, of channel: FixtureChannel) {
 		for target in targets {
-			set(value, of: channel, in: target)
+			if let own = counterpart(of: channel, in: target) { set(value, of: own, in: target) }
 		}
 	}
 	
 	func isActive(_ channel: FixtureChannel) -> Bool {
 		for target in targets {
-			guard let address = address(channel.offset, in: target) else { continue }
+			guard let own = counterpart(of: channel, in: target), let address = address(own.offset, in: target) else { continue }
 			if console.isActive(address) { return true }
 		}
 		
@@ -119,9 +126,10 @@ struct Programmer {
 		guard let seconds = range.holdSeconds, seconds > 0 else { return }
 		try? await Task.sleep(for: .seconds(seconds))
 		
-		for target in targets where value(of: channel, in: target) == range.midpoint {
-			set(channel.defaultValue, of: channel, in: target)
-			console.release(target.span, only: channel.offset)
+		for target in targets {
+			guard let own = counterpart(of: channel, in: target), value(of: own, in: target) == range.midpoint else { continue }
+			set(own.defaultValue, of: own, in: target)
+			console.release(target.span, only: own.offset)
 		}
 	}
 	
@@ -167,13 +175,13 @@ struct Programmer {
 	}
 	
 	var goboWheels: [FixtureChannel] {
-		[type?.channel(.gobo), type?.channel(.gobo2)].compactMap { $0 }
+		[channel(.gobo), channel(.gobo2)].compactMap { $0 }
 	}
 	
 	func spinner(of wheel: FixtureChannel) -> FixtureChannel? {
 		switch wheel.attribute {
-		case .gobo: type?.channel(.goboRotation)
-		case .gobo2: type?.channel(.gobo2Rotation)
+		case .gobo: channel(.goboRotation)
+		case .gobo2: channel(.gobo2Rotation)
 		default: nil
 		}
 	}
@@ -221,9 +229,10 @@ struct Programmer {
 		guard let seconds = choice.function.holdSeconds, seconds > 0 else { return }
 		try? await Task.sleep(for: .seconds(seconds))
 		
-		for target in targets where value(of: channel, in: target) == choice.value {
-			set(channel.defaultValue, of: channel, in: target)
-			console.release(target.span, only: channel.offset)
+		for target in targets {
+			guard let own = counterpart(of: channel, in: target), value(of: own, in: target) == choice.value else { continue }
+			set(own.defaultValue, of: own, in: target)
+			console.release(target.span, only: own.offset)
 		}
 	}
 	
@@ -244,8 +253,12 @@ struct Programmer {
 	}
 	
 	func bands(of channel: FixtureChannel) -> [ChannelFunction] {
-		guard case let .band(dimmer, from, to, _) = type?.dimming, dimmer.offset == channel.offset else { return channel.functions }
-		return channel.functions.filter { $0.from != from || $0.to != to }
+		for target in targets {
+			guard case let .band(dimmer, from, to, _) = target.type.dimming, dimmer.matches(channel) else { continue }
+			return channel.functions.filter { $0.from != from || $0.to != to }
+		}
+		
+		return channel.functions
 	}
 	
 	nonisolated struct Scale: Sendable {
@@ -524,7 +537,7 @@ struct Programmer {
 	
 	var presets: [ColorPreset] { ColorPreset.all(emitters: emitters) }
 	
-	var emitterChannels: [FixtureChannel] { type?.emitterChannels ?? [] }
+	var emitterChannels: [FixtureChannel] { channels.filter(\.attribute.isEmitter) }
 	
 	var isSubtractive: Bool { targets.contains { $0.type.mixing == .subtractive } }
 	
@@ -545,8 +558,7 @@ struct Programmer {
 	}
 	
 	var balancesWhite: Bool {
-		guard let type, type.mixing == .additive else { return false }
-		return type.channel(.white) != nil || type.channel(.amber) != nil
+		targets.contains { $0.type.mixing == .additive && ($0.type.channel(.white) != nil || $0.type.channel(.amber) != nil) }
 	}
 	
 	private func macro(of target: Target) -> FixtureChannel? {
@@ -558,11 +570,11 @@ struct Programmer {
 	}
 	
 	var temperatureChannel: FixtureChannel? {
-		type?.channel(.colorTemperature)
+		channel(.colorTemperature)
 	}
 	
 	var macroChannel: FixtureChannel? {
-		type?.channel(.colorMacro) ?? type?.channel(.colorWheel)
+		channel(.colorMacro) ?? channel(.colorWheel)
 	}
 	
 	var macroOverridesMix: Bool {
@@ -640,45 +652,40 @@ struct Programmer {
 	}
 	
 	var groups: [FeatureGroup] {
-		guard type == nil else { return FeatureGroup.allCases.filter { !channels(in: $0).isEmpty } }
-		
-		return FeatureGroup.allCases.filter { group in
+		FeatureGroup.allCases.filter { group in
 			switch group {
-			case .dimmer: dims
-			case .color: mixesColor
-			case .position: movesHead
-			case .gobo, .beam, .control: false
+			case .dimmer: dims || !channels(in: group).isEmpty
+			case .color: mixesColor || !channels(in: group).isEmpty
+			case .position: movesHead || !channels(in: group).isEmpty
+			case .gobo, .beam, .control: !channels(in: group).isEmpty
 			}
 		}
 	}
 	
 	func channels(in group: FeatureGroup) -> [FixtureChannel] {
-		type?.channels(in: group) ?? []
+		channels.filter { $0.attribute.group == group }
 	}
 	
 	func channel(_ attribute: Attribute) -> FixtureChannel? {
-		type?.channel(attribute)
-	}
-	
-	func isEnabled(_ channel: FixtureChannel) -> Bool {
-		guard let dependency = channel.enabledBy else { return true }
-		
-		for target in targets {
-			guard let address = address(dependency.offset, in: target) else { continue }
-			if !dependency.contains(console.value(at: address)) { return false }
-		}
-		
-		return true
+		channels.first { $0.attribute == attribute }
 	}
 	
 	func blocker(of channel: FixtureChannel) -> FixtureChannel? {
-		guard let dependency = channel.enabledBy, !isEnabled(channel) else { return nil }
-		return type?.channels.first { $0.offset == dependency.offset }
+		for target in targets {
+			guard let own = counterpart(of: channel, in: target), let dependency = own.enabledBy, let address = address(dependency.offset, in: target) else { continue }
+			if !dependency.contains(console.value(at: address)) { return target.type.channels.first { $0.offset == dependency.offset } }
+		}
+		
+		return nil
 	}
 	
 	var shutterChannel: FixtureChannel? {
-		guard case let .band(channel, _, _, _) = type?.dimming else { return type?.channel(.shutter) }
-		return channel
+		for target in targets {
+			guard case let .band(dimmer, _, _, _) = target.type.dimming, let shared = channels.first(where: { $0.matches(dimmer) }) else { continue }
+			return shared
+		}
+		
+		return channel(.shutter)
 	}
 	
 	var strobeFunction: ChannelFunction? {
@@ -699,7 +706,7 @@ struct Programmer {
 	}
 	
 	func degrees(_ attribute: Attribute) -> Double? {
-		guard let channel = type?.channel(attribute), let function = channel.functions.first, function.unit == .degrees else { return nil }
+		guard let channel = channel(attribute), let function = channel.functions.first, function.unit == .degrees else { return nil }
 		guard let from = function.physicalFrom, let to = function.physicalTo else { return nil }
 		return from + (to - from) * fraction(attribute)
 	}
@@ -716,16 +723,35 @@ struct Programmer {
 		setFraction(0.5, for: .tilt)
 	}
 	
-	var channels: [FixtureChannel] { type?.channels ?? [] }
+	var channels: [FixtureChannel] {
+		if let type { return type.channels }
+		var kinds: [FixtureType] = []
+		var shared: [FixtureChannel] = []
+		
+		for target in targets where !kinds.contains(where: { $0.id == target.type.id }) {
+			kinds.append(target.type)
+		}
+		
+		for kind in kinds {
+			for channel in kind.channels where !shared.contains(where: { $0.attribute == channel.attribute && $0.name == channel.name }) {
+				if kinds.allSatisfy({ other in other.channels.allSatisfy { $0.attribute != channel.attribute || $0.name != channel.name || $0.matches(channel) } }) { shared.append(channel) }
+			}
+		}
+		
+		return shared
+	}
 	
 	func rawValue(of channel: FixtureChannel) -> Int {
-		guard let first = targets.first else { return 0 }
-		return raw(of: channel, in: first)
+		for target in targets {
+			if let own = counterpart(of: channel, in: target) { return raw(of: own, in: target) }
+		}
+		
+		return 0
 	}
 	
 	func setRawValue(_ newValue: Int, of channel: FixtureChannel) {
 		for target in targets {
-			setRaw(newValue, of: channel, in: target)
+			if let own = counterpart(of: channel, in: target) { setRaw(newValue, of: own, in: target) }
 		}
 	}
 	
