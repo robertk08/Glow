@@ -163,7 +163,7 @@ struct ShowSyncTests {
 	}
 	
 	@Test func aWriteTheControllerCouldNotStoreSaysWhichObject() throws {
-		let reply = try #require(Wire.Reply.decode(Data(#"{"t":"unwritten","show":"s","folder":"scenes","id":"look"}"#.utf8)))
+		let reply = try #require(Wire.event(.string(#"{"t":"unwritten","show":"s","folder":"scenes","id":"look"}"#)))
 		
 		guard case let .notice(notice) = reply else {
 			Issue.record("expected a notice")
@@ -176,7 +176,7 @@ struct ShowSyncTests {
 	}
 	
 	@Test func aJoiningDeviceLearnsTheMasterAndBlackout() throws {
-		let reply = try #require(Wire.Reply.decode(Data(#"{"t":"status","src":true,"master":0.5,"blackout":true}"#.utf8)))
+		let reply = try #require(Wire.event(.string(#"{"t":"status","src":true,"master":0.5,"blackout":true}"#)))
 		
 		guard case let .status(info) = reply else {
 			Issue.record("expected a status")
@@ -195,6 +195,35 @@ struct ShowSyncTests {
 		#expect(identifier.count < 40)
 		#expect(identifier.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") })
 		#expect(!identifier.hasSuffix("-"))
+	}
+	
+	@Test func aDocumentFrameReadsBackAsWritten() throws {
+		let body = Data(#"{"name":"Par"}"#.utf8)
+		
+		guard case let .notice(put) = try #require(Wire.event(.data(Wire.document(show: "show", folder: "lights", id: "par", body: body)))) else {
+			Issue.record("expected a notice")
+			return
+		}
+		
+		guard case let .notice(erased) = try #require(Wire.event(.data(Wire.document(show: "show", folder: "lights", id: "par", body: nil)))) else {
+			Issue.record("expected a notice")
+			return
+		}
+		
+		#expect(put == Wire.Notice(show: "show", folder: "lights", id: "par", body: body))
+		#expect(erased == Wire.Notice(show: "show", folder: "lights", id: "par", isDelete: true))
+		#expect(Wire.event(.data(Wire.document(show: "show", folder: "lights", id: "par", body: body).dropLast())) == nil)
+	}
+	
+	@Test func aSourceFrameReadsBackAsWritten() throws {
+		guard case let .frame(start, values) = try #require(Wire.event(.data(Wire.frame(Wire.sourceOpcode, start: DMXAddress(510)!, values: [1, 2, 3])))) else {
+			Issue.record("expected a frame")
+			return
+		}
+		
+		#expect(start.value == 510)
+		#expect(values == [1, 2, 3])
+		#expect(Wire.event(.data(Wire.frame(Wire.outputOpcode, start: DMXAddress(1)!, values: [1]))) == nil)
 	}
 }
 

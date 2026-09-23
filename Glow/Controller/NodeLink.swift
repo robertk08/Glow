@@ -5,6 +5,7 @@ actor NodeLink {
 		case state(LinkState)
 		case status(Wire.NodeInfo)
 		case latency(TimeInterval)
+		case pong(Int)
 		case frame(start: DMXAddress, values: [UInt8])
 		case master(Double)
 		case blackout(Bool)
@@ -122,38 +123,15 @@ actor NodeLink {
 	
 	private func receive(_ message: URLSessionWebSocketTask.Message) {
 		lastHeard = Date()
-
-		if case let .data(data) = message {
-			if data.first == Wire.documentOpcode {
-				guard let notice = Wire.decode(document: data) else { return }
-				continuation.yield(.notice(notice))
-				return
-			}
-			
-			guard let frame = Wire.decode(frame: data) else { return }
-			continuation.yield(.frame(start: frame.start, values: frame.values))
+		guard let event = Wire.event(message) else { return }
+		
+		guard case let .pong(seq) = event else {
+			continuation.yield(event)
 			return
 		}
 		
-		guard case let .string(text) = message, let data = text.data(using: .utf8) else { return }
-		guard let reply = Wire.Reply.decode(data) else { return }
-		
-		switch reply {
-		case let .status(info):
-			continuation.yield(.status(info))
-		case let .pong(seq):
-			if let sent = pings.removeValue(forKey: seq) {
-				continuation.yield(.latency(Date().timeIntervalSince(sent)))
-			}
-		case let .master(level):
-			continuation.yield(.master(level))
-		case let .blackout(on):
-			continuation.yield(.blackout(on))
-		case let .scene(identifier):
-			continuation.yield(.scene(identifier))
-		case let .notice(notice):
-			continuation.yield(.notice(notice))
-		}
+		guard let sent = pings.removeValue(forKey: seq) else { return }
+		continuation.yield(.latency(Date().timeIntervalSince(sent)))
 	}
 	
 	private func startHeartbeat() {

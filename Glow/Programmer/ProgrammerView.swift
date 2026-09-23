@@ -30,7 +30,7 @@ struct ProgrammerView: View {
 				case .position: PositionRows(programmer: programmer)
 				case .gobo: GoboRows(programmer: programmer)
 				case .beam: BeamRows(programmer: programmer)
-				case .control: WheelRows(programmer: programmer, group: .control)
+				case .control: ChannelRows(programmer: programmer, channels: programmer.channels(in: .control))
 				}
 				
 				Section {
@@ -89,15 +89,7 @@ private struct IntensityRows: View {
 			}
 		}
 		
-		let others = programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer }
-		
-		if !others.isEmpty {
-			Section {
-				ForEach(others) { channel in
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			}
-		}
+		ChannelRows(programmer: programmer, channels: programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer })
 	}
 }
 
@@ -161,15 +153,7 @@ private struct ColorRows: View {
 		}
 		
 		let shown = [programmer.macroChannel?.id, programmer.temperatureChannel?.id]
-		let others = programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.id) }
-		
-		if !others.isEmpty {
-			Section {
-				ForEach(others) { channel in
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			}
-		}
+		ChannelRows(programmer: programmer, channels: programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.id) })
 		
 		if !programmer.emitterChannels.isEmpty {
 			Section {
@@ -221,15 +205,7 @@ private struct PositionRows: View {
 		}
 		
 		let aimed = programmer.movesHead
-		let others = programmer.channels(in: .position).filter { !aimed || ($0.attribute != .pan && $0.attribute != .tilt) }
-		
-		if !others.isEmpty {
-			Section {
-				ForEach(others) { channel in
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			}
-		}
+		ChannelRows(programmer: programmer, channels: programmer.channels(in: .position).filter { !aimed || ($0.attribute != .pan && $0.attribute != .tilt) })
 	}
 }
 
@@ -269,15 +245,7 @@ private struct BeamRows: View {
 		
 		let shaped = programmer.channel(.zoom) != nil
 		let shown = [shaped ? programmer.channel(.zoom)?.id : nil, shaped ? programmer.channel(.focus)?.id : nil, shutter?.id]
-		let others = programmer.channels(in: .beam).filter { !shown.contains($0.id) }
-		
-		if !others.isEmpty {
-			Section {
-				ForEach(others) { channel in
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			}
-		}
+		ChannelRows(programmer: programmer, channels: programmer.channels(in: .beam).filter { !shown.contains($0.id) })
 	}
 }
 
@@ -307,15 +275,7 @@ private struct GoboRows: View {
 			}
 		}
 
-		let others = programmer.channels(in: .gobo).filter { !shown.contains($0.id) }
-
-		if !others.isEmpty {
-			Section {
-				ForEach(others) { channel in
-					ChannelRow(programmer: programmer, channel: channel)
-				}
-			}
-		}
+		ChannelRows(programmer: programmer, channels: programmer.channels(in: .gobo).filter { !shown.contains($0.id) })
 	}
 }
 
@@ -332,14 +292,16 @@ private struct GoboWheelRows: View {
 	}
 }
 
-private struct WheelRows: View {
+private struct ChannelRows: View {
 	let programmer: Programmer
-	let group: FeatureGroup
+	let channels: [FixtureChannel]
 	
 	var body: some View {
-		Section {
-			ForEach(programmer.channels(in: group)) { channel in
-				ChannelRow(programmer: programmer, channel: channel)
+		if !channels.isEmpty {
+			Section {
+				ForEach(channels) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
 			}
 		}
 	}

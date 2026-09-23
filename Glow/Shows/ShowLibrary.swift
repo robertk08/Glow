@@ -6,9 +6,10 @@ import SwiftUI
 final class ShowLibrary {
 	private(set) var shows: [Show] = []
 	private(set) var activeID = ""
-	let container = ShowLibrary.store()
 	private(set) var isLoaded = false
 	private(set) var isDemo = false
+	private(set) var canUndo = false
+	let container = ShowLibrary.store()
 	
 	private let store = NodeStore()
 	private let decoder = JSONDecoder()
@@ -20,8 +21,7 @@ final class ShowLibrary {
 	private var loadedID = ""
 	private var epoch = 0
 	private var baseline: [String: Data] = [:]
-	private var inFlight: [String: Data] = [:]
-	private var erasing: Set<String> = []
+	private var sent: [String: Data] = [:]
 	private var deferred: Set<String> = []
 	private var waiting: Set<NodeStore.Folder> = []
 	private var lastSync = Date.distantPast
@@ -36,10 +36,10 @@ final class ShowLibrary {
 	private var saves: Task<Void, Never>?
 	private var commits: Task<Void, Never>?
 	
+	nonisolated static let everything = Set(NodeStore.Folder.allCases)
 	private static let nothing = Show(name: "")
-	nonisolated private static let everything = Set(NodeStore.Folder.allCases)
 	private static let frameLimit = 12000
-	private static let coalesce: TimeInterval = 0.08
+	private static let coalesce: TimeInterval = 0.25
 	private static let commitEvery: Duration = .milliseconds(100)
 	
 	init() {
@@ -59,8 +59,7 @@ final class ShowLibrary {
 		
 		saves = Task { [weak self] in
 			for await note in NotificationCenter.default.notifications(named: ModelContext.didSave) {
-				let touched = Self.folders(in: note)
-				self?.changed(touched)
+				self?.saved(Self.folders(in: note))
 			}
 		}
 	}
@@ -95,8 +94,7 @@ final class ShowLibrary {
 		defer { wasConnected = connected }
 		
 		guard connected else {
-			inFlight = [:]
-			erasing = []
+			sent = [:]
 			deferred = []
 			loading?.cancel()
 			loading = nil
@@ -158,19 +156,9 @@ final class ShowLibrary {
 	func activate(_ show: Show) {
 		guard show.id != activeID else { return }
 		activeID = show.id
-		let started = epoch
 		
-		enqueue {
-			await self.synchronise(Self.everything)
-			
-			await self.commit { list in
-				list.active = show.id
-			}
-			
-			guard await self.open(show, since: started) else {
-				self.reload()
-				return
-			}
+		switchTo(show) { list in
+			list.active = show.id
 		}
 	}
 	
@@ -178,20 +166,10 @@ final class ShowLibrary {
 		let show = Show(name: Self.unusedName(name, among: shows))
 		shows.append(show)
 		activeID = show.id
-		let started = epoch
 		
-		enqueue {
-			await self.synchronise(Self.everything)
-			
-			await self.commit { list in
-				list.shows.append(show)
-				list.active = show.id
-			}
-			
-			guard await self.open(show, since: started) else {
-				self.reload()
-				return
-			}
+		switchTo(show) { list in
+			list.shows.append(show)
+			list.active = show.id
 		}
 	}
 	
@@ -242,65 +220,34 @@ final class ShowLibrary {
 			}
 			
 			guard wasActive, let next = self.shows.first(where: { $0.id == self.activeID }) else { return }
-			
-			guard await self.open(next, since: started) else {
-				self.reload()
-				return
-			}
+			await self.open(next, since: started)
 		}
 	}
 	
-	func contents() -> ShowContents {
-		contents(Self.everything)
-	}
-	
-	func contents(_ folders: Set<NodeStore.Folder>, only identifier: String? = nil) -> ShowContents {
+	func contents(_ folders: Set<NodeStore.Folder> = everything, only identifier: String? = nil) -> ShowContents {
 		let context = container.mainContext
+		var show = ShowContents()
 		var fixtures: [Fixture] = []
-		var groups: [FixtureGroup] = []
-		var made: [StoredFixtureType] = []
-		var looks: [Look] = []
 		
 		if !folders.isDisjoint(with: [.lights, .made]) { fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
-		if folders.contains(.groups) { groups = (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
-		if folders.contains(.made) { made = (try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [] }
-		if folders.contains(.scenes) { looks = (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		if folders.contains(.lights) { show.lights = fixtures.map(\.entry) }
+		if folders.contains(.groups) { show.groups = ((try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
+		if folders.contains(.scenes) { show.scenes = ((try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
 		
-		var show = ShowContents()
-		
-		for group in groups where identifier == nil || group.identifier == identifier {
-			show.groups.append(ShowContents.Group(identifier: group.identifier, name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
-		}
-		
-		if folders.contains(.lights) {
-			for fixture in fixtures where identifier == nil || fixture.identifier == identifier {
-				let identifiers = fixture.belongsTo.map(\.identifier)
-				show.lights.append(ShowContents.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: identifiers, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
-			}
-		}
-		
-		for stored in made {
-			show.made.append(stored.definition)
-		}
-		
-		if folders.contains(.made), let types {
-			var carried = Set(show.made.map(\.id))
+		if folders.contains(.made) {
+			show.made = ((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition)
 			
-			for fixture in fixtures where !carried.contains(fixture.typeID) {
-				guard let definition = types.type(fixture.typeID) else { continue }
-				carried.insert(definition.id)
+			for fixture in fixtures where !show.made.contains(where: { $0.id == fixture.typeID }) {
+				guard let definition = types?.type(fixture.typeID) else { continue }
 				show.made.append(definition)
 			}
 		}
 		
-		if let identifier {
-			show.made.removeAll { $0.id != identifier }
-		}
-		
-		for look in looks where identifier == nil || look.identifier == identifier {
-			show.scenes.append(ShowContents.Scene(identifier: look.identifier, name: look.name, sortIndex: look.sortIndex, levels: look.levels))
-		}
-		
+		guard let identifier else { return show }
+		show.lights.removeAll { $0.identifier != identifier }
+		show.groups.removeAll { $0.identifier != identifier }
+		show.made.removeAll { $0.id != identifier }
+		show.scenes.removeAll { $0.identifier != identifier }
 		return show
 	}
 	
@@ -344,6 +291,16 @@ final class ShowLibrary {
 		return next
 	}
 	
+	private func switchTo(_ show: Show, listing change: @escaping @MainActor (inout ShowList) -> Void) {
+		let started = epoch
+		
+		enqueue {
+			await self.synchronise(Self.everything)
+			await self.commit(change)
+			await self.open(show, since: started)
+		}
+	}
+	
 	private func startLoading() {
 		guard loading == nil else { return }
 		
@@ -356,11 +313,6 @@ final class ShowLibrary {
 			guard !Task.isCancelled else { return }
 			loading = nil
 		}
-	}
-	
-	private func reload() {
-		unload()
-		startLoading()
 	}
 	
 	private func load() async -> Bool {
@@ -378,7 +330,7 @@ final class ShowLibrary {
 				list.active = first.id
 			}) else { return false }
 			
-			return await open(first, since: started)
+			return await open(first, since: started, retrying: false)
 		case let .list(list):
 			if isLoaded, list.shows.contains(where: { $0.id == loadedID }) {
 				await synchronise(Self.everything, direct: true)
@@ -387,12 +339,18 @@ final class ShowLibrary {
 			guard let show = list.activeShow else { return false }
 			shows = list.shows
 			activeID = show.id
-			return await open(show, since: started)
+			return await open(show, since: started, retrying: false)
 		}
 	}
 	
-	private func open(_ show: Show, since started: Int) async -> Bool {
-		guard let endpoint, let incoming = await store.show(show.id, at: endpoint), started == epoch else { return false }
+	@discardableResult private func open(_ show: Show, since started: Int, retrying: Bool = true) async -> Bool {
+		guard let endpoint, let incoming = await store.show(show.id, at: endpoint), started == epoch else {
+			if retrying {
+				unload()
+				startLoading()
+			}
+			return false
+		}
 		
 		if !loadedID.isEmpty, loadedID != show.id {
 			console?.closeShow()
@@ -409,7 +367,6 @@ final class ShowLibrary {
 	
 	private func adopt(_ contents: ShowContents, named name: String) async {
 		guard let endpoint else { return }
-		let started = epoch
 		await synchronise(Self.everything)
 		
 		let show = Show(name: Self.unusedName(name, among: shows))
@@ -417,7 +374,7 @@ final class ShowLibrary {
 		activeID = show.id
 		
 		for (key, data) in await Self.snapshot(of: contents) {
-			guard let folder = Self.folder(key), let identifier = Self.identifier(key) else { continue }
+			guard let (folder, identifier) = Self.split(key) else { continue }
 			_ = await store.put(data, folder: folder, id: identifier, in: show.id, at: endpoint, client: client)
 		}
 		
@@ -426,10 +383,7 @@ final class ShowLibrary {
 			list.active = show.id
 		}
 		
-		guard await open(show, since: started) else {
-			reload()
-			return
-		}
+		await open(show, since: epoch)
 	}
 	
 	private func receive(_ notice: Wire.Notice) {
@@ -450,11 +404,7 @@ final class ShowLibrary {
 			activeID = opening.id
 			let started = epoch
 			await synchronise(Self.everything)
-			
-			guard await open(opening, since: started) else {
-				reload()
-				return
-			}
+			await open(opening, since: started)
 			return
 		}
 		
@@ -462,15 +412,11 @@ final class ShowLibrary {
 		let key = "\(name)/\(identifier)"
 		
 		if let landed = notice.landed {
-			let sent = inFlight.removeValue(forKey: key)
-			let erased = erasing.remove(key) != nil
-			
-			if landed, let sent {
-				baseline[key] = sent
-			} else if landed, erased {
-				baseline.removeValue(forKey: key)
+			if landed, let data = sent[key] {
+				baseline[key] = data.isEmpty ? nil : data
 			}
 			
+			sent[key] = nil
 			guard deferred.remove(key) != nil else { return }
 			changed([folder])
 			return
@@ -482,11 +428,24 @@ final class ShowLibrary {
 			guard data != nil, show == loadedID else { return }
 		}
 		
-		let related = Self.dependents(of: folder)
+		let related: Set<NodeStore.Folder> = switch folder {
+		case .groups: [.lights]
+		case .lights: [.made]
+		case .made, .scenes: []
+		}
 		let before = Self.encoded(contents(related), folders: related)
-		apply(folder, data: data, identifier: identifier)
-		let after = Self.encoded(contents(related), folders: related)
 		
+		if let data {
+			var wrapped = Data("{\"\(name)\":[".utf8)
+			wrapped.append(data)
+			wrapped.append(Data("]}".utf8))
+			guard let single = try? decoder.decode(ShowContents.self, from: wrapped) else { return }
+			merge(single)
+		} else {
+			remove(folder, identifier: identifier)
+		}
+		
+		let after = Self.encoded(contents(related), folders: related)
 		baseline[key] = Self.encoded(contents([folder], only: identifier), folders: [folder])[key]
 		
 		for (other, fresh) in after where before[other] != fresh {
@@ -494,7 +453,7 @@ final class ShowLibrary {
 		}
 		
 		for other in before.keys where after[other] == nil {
-			baseline.removeValue(forKey: other)
+			baseline[other] = nil
 		}
 	}
 	
@@ -505,71 +464,68 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func apply(_ folder: NodeStore.Folder, data: Data?, identifier: String) {
+	private func saved(_ folders: Set<NodeStore.Folder>) {
 		let context = container.mainContext
+		canUndo = context.undoManager?.canUndo == true
+		
+		if let types, !folders.isDisjoint(with: [.lights, .made]) {
+			types.setMade(((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition))
+			console?.applyPatch((try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [], library: types)
+		}
+		
+		changed(folders)
+	}
+	
+	private func merge(_ incoming: ShowContents) {
+		let context = container.mainContext
+		context.undoManager?.disableUndoRegistration()
+		defer { context.undoManager?.enableUndoRegistration() }
+		
+		var groups = Dictionary(((try? context.fetch(FetchDescriptor<FixtureGroup>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let fixtures = Dictionary(((try? context.fetch(FetchDescriptor<Fixture>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let made = Dictionary(((try? context.fetch(FetchDescriptor<StoredFixtureType>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let looks = Dictionary(((try? context.fetch(FetchDescriptor<Look>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let shipped = Set((types?.builtIn ?? []).map(\.id))
+		
+		for entry in incoming.groups {
+			let group = groups[entry.identifier] ?? FixtureGroup(name: entry.name, sortIndex: entry.sortIndex)
+			if group.modelContext == nil { context.insert(group) }
+			group.take(entry)
+			groups[entry.identifier] = group
+		}
+		
+		for entry in incoming.lights {
+			guard let address = DMXAddress(entry.address) else { continue }
+			let fixture = fixtures[entry.identifier] ?? Fixture(typeID: entry.typeID, name: entry.name, address: address, sortIndex: entry.sortIndex)
+			if fixture.modelContext == nil { context.insert(fixture) }
+			fixture.take(entry, groups: Array(groups.values))
+		}
+		
+		for entry in incoming.made where !shipped.contains(entry.id) {
+			let stored = made[entry.id] ?? StoredFixtureType(entry)
+			if stored.modelContext == nil { context.insert(stored) }
+			stored.definition = entry
+		}
+		
+		for entry in incoming.scenes {
+			let look = looks[entry.identifier] ?? Look(name: entry.name, sortIndex: entry.sortIndex, levels: entry.levels)
+			if look.modelContext == nil { context.insert(look) }
+			look.take(entry)
+		}
+		
+		try? context.save()
+	}
+	
+	private func remove(_ folder: NodeStore.Folder, identifier: String) {
+		let context = container.mainContext
+		context.undoManager?.disableUndoRegistration()
+		defer { context.undoManager?.enableUndoRegistration() }
 		
 		switch folder {
-		case .lights:
-			let found = try? context.fetch(FetchDescriptor<Fixture>(predicate: #Predicate { $0.identifier == identifier })).first
-			guard let data, let entry = try? decoder.decode(ShowContents.Light.self, from: data), let address = DMXAddress(entry.address) else {
-				if let found { context.delete(found) }
-				break
-			}
-			
-			let fixture = found ?? Fixture(typeID: entry.typeID, name: entry.name, address: address, sortIndex: entry.sortIndex)
-			fixture.identifier = entry.identifier
-			fixture.typeID = entry.typeID
-			fixture.address = entry.address
-			fixture.name = entry.name
-			fixture.sortIndex = entry.sortIndex
-			fixture.symbolOverride = entry.symbol
-			fixture.invertsPan = entry.invertsPan
-			fixture.invertsTilt = entry.invertsTilt
-			if found == nil { context.insert(fixture) }
-			
-			for group in (try? context.fetch(FetchDescriptor<FixtureGroup>())) ?? [] {
-				fixture.belong(to: group, entry.groups.contains(group.identifier))
-			}
-		case .groups:
-			let found = try? context.fetch(FetchDescriptor<FixtureGroup>(predicate: #Predicate { $0.identifier == identifier })).first
-			guard let data, let entry = try? decoder.decode(ShowContents.Group.self, from: data) else {
-				if let found { context.delete(found) }
-				break
-			}
-			
-			let group = found ?? FixtureGroup(name: entry.name, sortIndex: entry.sortIndex)
-			group.identifier = entry.identifier
-			group.name = entry.name
-			group.sortIndex = entry.sortIndex
-			group.symbolOverride = entry.symbol
-			group.tintName = entry.tint
-			if found == nil { context.insert(group) }
-		case .made:
-			let found = try? context.fetch(FetchDescriptor<StoredFixtureType>(predicate: #Predicate { $0.identifier == identifier })).first
-			guard let data, let entry = try? decoder.decode(FixtureType.self, from: data) else {
-				if let found { context.delete(found) }
-				break
-			}
-			guard !(types?.builtIn ?? []).contains(where: { $0.id == entry.id }) else { break }
-			
-			if let found {
-				found.definition = entry
-			} else {
-				context.insert(StoredFixtureType(entry))
-			}
-		case .scenes:
-			let found = try? context.fetch(FetchDescriptor<Look>(predicate: #Predicate { $0.identifier == identifier })).first
-			guard let data, let entry = try? decoder.decode(ShowContents.Scene.self, from: data) else {
-				if let found { context.delete(found) }
-				break
-			}
-			
-			let look = found ?? Look(name: entry.name, sortIndex: entry.sortIndex, levels: entry.levels)
-			look.identifier = entry.identifier
-			look.name = entry.name
-			look.sortIndex = entry.sortIndex
-			look.levels = entry.levels
-			if found == nil { context.insert(look) }
+		case .lights: try? context.delete(model: Fixture.self, where: #Predicate { $0.identifier == identifier })
+		case .groups: try? context.delete(model: FixtureGroup.self, where: #Predicate { $0.identifier == identifier })
+		case .made: try? context.delete(model: StoredFixtureType.self, where: #Predicate { $0.identifier == identifier })
+		case .scenes: try? context.delete(model: Look.self, where: #Predicate { $0.identifier == identifier })
 		}
 		
 		try? context.save()
@@ -585,8 +541,7 @@ final class ShowLibrary {
 		activeID = ""
 		loadedID = ""
 		baseline = [:]
-		inFlight = [:]
-		erasing = []
+		sent = [:]
 		deferred = []
 		waiting = []
 		clear()
@@ -595,50 +550,8 @@ final class ShowLibrary {
 	
 	private func fill(with incoming: ShowContents) async {
 		clear()
-		
-		let context = container.mainContext
-		var groups: [String: FixtureGroup] = [:]
-		
-		for entry in incoming.groups {
-			let group = FixtureGroup(name: entry.name, sortIndex: entry.sortIndex)
-			group.identifier = entry.identifier
-			group.symbolOverride = entry.symbol
-			group.tintName = entry.tint
-			context.insert(group)
-			groups[entry.identifier] = group
-		}
-		
-		for entry in incoming.lights {
-			guard let address = DMXAddress(entry.address) else { continue }
-			let fixture = Fixture(typeID: entry.typeID, name: entry.name, address: address, sortIndex: entry.sortIndex)
-			fixture.identifier = entry.identifier
-			fixture.symbolOverride = entry.symbol
-			fixture.invertsPan = entry.invertsPan
-			fixture.invertsTilt = entry.invertsTilt
-			context.insert(fixture)
-			
-			for identifier in entry.groups {
-				guard let group = groups[identifier] else { continue }
-				fixture.belong(to: group, true)
-			}
-		}
-		
-		let shipped = Set((types?.builtIn ?? []).map(\.id))
-		
-		for entry in incoming.made where !shipped.contains(entry.id) {
-			context.insert(StoredFixtureType(entry))
-		}
-		
-		for entry in incoming.scenes {
-			let look = Look(name: entry.name, sortIndex: entry.sortIndex, levels: entry.levels)
-			look.identifier = entry.identifier
-			context.insert(look)
-		}
-		
-		try? context.save()
-		context.undoManager?.removeAllActions()
-		inFlight = [:]
-		erasing = []
+		merge(incoming)
+		sent = [:]
 		deferred = []
 		baseline = await Self.snapshot(of: incoming)
 	}
@@ -661,7 +574,7 @@ final class ShowLibrary {
 	}
 	
 	private func changed(_ folders: Set<NodeStore.Folder>) {
-		guard isLoaded, !isDemo else { return }
+		guard isLoaded, !isDemo, !folders.isEmpty else { return }
 		waiting.formUnion(folders)
 		guard pending == nil else { return }
 		let delay = Self.coalesce - Date().timeIntervalSince(lastSync)
@@ -674,16 +587,12 @@ final class ShowLibrary {
 			pending = nil
 			
 			enqueue {
-				await self.flush()
+				let touched = self.waiting
+				self.waiting = []
+				self.lastSync = Date()
+				await self.synchronise(touched)
 			}
 		}
-	}
-	
-	private func flush() async {
-		let touched = waiting
-		waiting = []
-		lastSync = Date()
-		await synchronise(touched)
 	}
 	
 	private func synchronise(_ folders: Set<NodeStore.Folder>, direct: Bool = false) async {
@@ -694,80 +603,70 @@ final class ShowLibrary {
 		let isLive = !direct && console?.link.isConnected == true
 		guard showID == loadedID else { return }
 		
-		for (key, data) in current where baseline[key] != data {
-			guard let folder = Self.folder(key), let identifier = Self.identifier(key) else { continue }
+		var changes = current.filter { baseline[$0.key] != $0.value }
+		
+		for key in baseline.keys where current[key] == nil {
+			guard let (folder, _) = Self.split(key), folders.contains(folder) else { continue }
+			changes[key] = Data()
+		}
+		
+		for (key, data) in changes {
+			guard let (folder, identifier) = Self.split(key) else { continue }
 			
-			guard inFlight[key] == nil, !erasing.contains(key) else {
+			guard sent[key] == nil else {
 				deferred.insert(key)
 				continue
 			}
 			
 			if isLive, data.count <= Self.frameLimit {
-				inFlight[key] = data
-				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data))
+				sent[key] = data
+				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data.isEmpty ? nil : data))
 				continue
 			}
 			
-			guard await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client) else { continue }
+			var isStored = false
+			if data.isEmpty {
+				isStored = await store.delete(folder, id: identifier, in: showID, at: endpoint, client: client)
+			} else {
+				isStored = await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client)
+			}
+			
 			guard showID == loadedID else { return }
-			baseline[key] = data
-		}
-		
-		for key in baseline.keys where current[key] == nil {
-			guard let folder = Self.folder(key), folders.contains(folder), let identifier = Self.identifier(key) else { continue }
-			
-			guard inFlight[key] == nil, !erasing.contains(key) else {
-				deferred.insert(key)
-				continue
-			}
-			
-			if isLive {
-				erasing.insert(key)
-				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: nil))
-				continue
-			}
-			
-			guard await store.delete(folder, id: identifier, in: showID, at: endpoint, client: client) else { continue }
-			guard showID == loadedID else { return }
-			baseline.removeValue(forKey: key)
+			guard isStored else { continue }
+			baseline[key] = data.isEmpty ? nil : data
 		}
 	}
 	
-	@concurrent nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = Set(NodeStore.Folder.allCases)) async -> [String: Data] {
+	@concurrent nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = everything) async -> [String: Data] {
 		encoded(contents, folders: folders)
 	}
 	
 	nonisolated static func encoded(_ contents: ShowContents, folders: Set<NodeStore.Folder>) -> [String: Data] {
 		let encoder = JSONEncoder()
 		encoder.outputFormatting = [.sortedKeys]
-		encoder.dateEncodingStrategy = .iso8601
 		var out: [String: Data] = [:]
 		
 		if folders.contains(.lights) {
 			for light in contents.lights {
-				guard let data = try? encoder.encode(light) else { continue }
-				out["\(NodeStore.Folder.lights.rawValue)/\(light.identifier)"] = data
+				out["\(NodeStore.Folder.lights.rawValue)/\(light.identifier)"] = try? encoder.encode(light)
 			}
 		}
 		
 		if folders.contains(.groups) {
 			for group in contents.groups {
-				guard let data = try? encoder.encode(group) else { continue }
-				out["\(NodeStore.Folder.groups.rawValue)/\(group.identifier)"] = data
+				out["\(NodeStore.Folder.groups.rawValue)/\(group.identifier)"] = try? encoder.encode(group)
 			}
 		}
 		
 		if folders.contains(.made) {
 			for made in contents.made {
-				guard let data = try? encoder.encode(made) else { continue }
-				out["\(NodeStore.Folder.made.rawValue)/\(made.id)"] = data
+				out["\(NodeStore.Folder.made.rawValue)/\(made.id)"] = try? encoder.encode(made)
 			}
 		}
 		
 		if folders.contains(.scenes) {
 			for scene in contents.scenes {
-				guard let data = try? encoder.encode(scene) else { continue }
-				out["\(NodeStore.Folder.scenes.rawValue)/\(scene.identifier)"] = data
+				out["\(NodeStore.Folder.scenes.rawValue)/\(scene.identifier)"] = try? encoder.encode(scene)
 			}
 		}
 		
@@ -785,39 +684,23 @@ final class ShowLibrary {
 			sawKey = true
 			
 			for id in ids {
-				found.formUnion(Self.folders(entity: id.entityName))
+				switch id.entityName {
+				case "Fixture": found.formUnion([.lights, .made])
+				case "FixtureGroup": found.insert(.groups)
+				case "StoredFixtureType": found.insert(.made)
+				case "Look": found.insert(.scenes)
+				default: break
+				}
 			}
 		}
 		
 		return sawKey ? found : everything
 	}
 	
-	nonisolated private static func folders(entity: String) -> Set<NodeStore.Folder> {
-		switch entity {
-		case "Fixture": [.lights, .made]
-		case "FixtureGroup": [.groups]
-		case "StoredFixtureType": [.made]
-		case "Look": [.scenes]
-		default: []
-		}
-	}
-	
-	nonisolated private static func dependents(of folder: NodeStore.Folder) -> Set<NodeStore.Folder> {
-		switch folder {
-		case .groups: [.lights]
-		case .lights: [.made]
-		case .made, .scenes: []
-		}
-	}
-	
-	private static func folder(_ key: String) -> NodeStore.Folder? {
-		guard let slash = key.firstIndex(of: "/") else { return nil }
-		return NodeStore.Folder(rawValue: String(key[key.startIndex..<slash]))
-	}
-	
-	private static func identifier(_ key: String) -> String? {
-		guard let slash = key.firstIndex(of: "/") else { return nil }
-		return String(key[key.index(after: slash)...])
+	nonisolated private static func split(_ key: String) -> (NodeStore.Folder, String)? {
+		let parts = key.split(separator: "/", maxSplits: 1)
+		guard parts.count == 2, let folder = NodeStore.Folder(rawValue: String(parts[0])) else { return nil }
+		return (folder, String(parts[1]))
 	}
 	
 	private func clear() {

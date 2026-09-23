@@ -203,7 +203,6 @@ void sendStored(NetworkClient &c, const char *path) {
 
 void info(NetworkClient &c) {
   JsonDocument doc;
-  doc["fw"]   = GLOW_FW_VERSION;
   doc["id"]   = Net::id();
   doc["name"] = GLOW_NODE_NAME;
   doc["state"] = Net::provisioned() ? "provisioned" : "unprovisioned";
@@ -243,163 +242,69 @@ void scan(NetworkClient &c) {
   sendJson(c, 200, out);
 }
 
-void provision(NetworkClient &c, const char *body, size_t len) {
-  JsonDocument doc;
-  if (deserializeJson(doc, body, len)) {
-    sendResult(c, 400, false, "bad_json");
-    return;
-  }
-
-  JsonVariant ssidVar = doc["ssid"];
-  if (!ssidVar.is<const char *>()) {
-    sendResult(c, 400, false, "bad_ssid");
-    return;
-  }
-  const char *ssid = ssidVar.as<const char *>();
-  if (!ssid[0] || strlen(ssid) > 32) {
-    sendResult(c, 400, false, "bad_ssid");
-    return;
-  }
-
-  const char *user    = "";
-  JsonVariant userVar = doc["user"];
-  if (!userVar.isNull()) {
-    if (!userVar.is<const char *>()) {
-      sendResult(c, 400, false, "bad_user");
-      return;
-    }
-    user = userVar.as<const char *>();
-    if (strlen(user) > 64) {
-      sendResult(c, 400, false, "bad_user");
-      return;
-    }
-  }
-
-  const char *password = "";
-  JsonVariant pwVar    = doc["password"];
-  if (!pwVar.isNull()) {
-    if (!pwVar.is<const char *>()) {
-      sendResult(c, 400, false, "bad_password");
-      return;
-    }
-    password = pwVar.as<const char *>();
-    if (strlen(password) > (user[0] ? 64u : 63u)) {
-      sendResult(c, 400, false, "bad_password");
-      return;
-    }
-  }
-
-  sendResult(c, 200, true, nullptr);
-  c.stop();
-
-  if (!Net::provision(ssid, user, password))
-    Serial.println(F("provision: refused after being accepted"));
+bool text(JsonDocument &doc, const char *key, size_t max, bool required, const char *&out) {
+  JsonVariant value = doc[key];
+  out = "";
+  if (value.isNull()) return !required;
+  if (!value.is<const char *>()) return false;
+  out = value.as<const char *>();
+  return (out[0] || !required) && strlen(out) <= max;
 }
 
-void forget(NetworkClient &c) {
+void provision(NetworkClient &c, const char *body, size_t len) {
+  JsonDocument doc;
+  const char  *ssid;
+  const char  *user;
+  const char  *password;
+  if (deserializeJson(doc, body, len)) return sendResult(c, 400, false, "bad_json");
+  if (!text(doc, "ssid", 32, true, ssid)) return sendResult(c, 400, false, "bad_ssid");
+  if (!text(doc, "user", 64, false, user)) return sendResult(c, 400, false, "bad_user");
+  if (!text(doc, "password", user[0] ? 64 : 63, false, password)) return sendResult(c, 400, false, "bad_password");
+
   sendResult(c, 200, true, nullptr);
   c.stop();
-  Net::forget();   // does not return
+  Net::provision(ssid, user, password);
 }
 
 void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
               const char *body, size_t bodyLen, int except) {
-  if (!Store::ready()) {
-    sendResult(c, 503, false, "no_store");
-    return;
-  }
-
-  char notice[224];
+  if (!Store::ready()) return sendResult(c, 503, false, "no_store");
 
   if (!strcmp(path, "/api/shows")) {
-    if (get) {
-      sendStored(c, Store::showsPath());
-    } else if (put) {
-      if (!Store::write(Store::showsPath(), (const uint8_t *)body, bodyLen)) {
-        sendResult(c, 503, false, "write_failed");
-        return;
-      }
-      sendResult(c, 200, true, nullptr);
-      HomeKit::showChanged();
-      Link::notify("{\"t\":\"shows\"}", except);
-    } else {
-      sendResult(c, 405, false, "method");
-    }
-    return;
-  }
-
-  if (strncmp(path, "/api/show/", 10)) {
-    sendResult(c, 404, false, "not_found");
-    return;
+    if (get) return sendStored(c, Store::showsPath());
+    if (!put) return sendResult(c, 404, false, "not_found");
+    if (!Store::write(Store::showsPath(), (const uint8_t *)body, bodyLen)) return sendResult(c, 503, false, "write_failed");
+    sendResult(c, 200, true, nullptr);
+    HomeKit::showChanged();
+    return Link::notify("{\"t\":\"shows\"}", except);
   }
 
   char rest[Store::PATH_LIMIT];
-  if (snprintf(rest, sizeof(rest), "%s", path + 10) >= (int)sizeof(rest)) {
-    sendResult(c, 400, false, "too_long");
-    return;
-  }
+  if (strncmp(path, "/api/show/", 10) || snprintf(rest, sizeof(rest), "%s", path + 10) >= (int)sizeof(rest)) return sendResult(c, 404, false, "not_found");
 
-  char       *slash  = strchr(rest, '/');
-  const char *showID = rest;
-  if (slash) *slash = '\0';
-
-  char show[Store::PATH_LIMIT];
-  if (!Store::showPath(show, sizeof(show), showID)) {
-    sendResult(c, 400, false, "bad_show");
-    return;
-  }
-
-  if (!slash) {
-    if (get) {
-      sendShow(c, showID);
-    } else if (del) {
-      if (!Store::removeShow(showID)) {
-        sendResult(c, 503, false, "write_failed");
-        return;
-      }
-      sendResult(c, 200, true, nullptr);
-      snprintf(notice, sizeof(notice), "{\"t\":\"show\",\"id\":\"%s\",\"op\":\"delete\"}", showID);
-      Link::notify(notice, except);
-    } else {
-      sendResult(c, 405, false, "method");
-    }
-    return;
-  }
-
-  char *folder   = slash + 1;
-  char *objStart = strchr(folder, '/');
-  if (!objStart) {
-    sendResult(c, 404, false, "not_found");
-    return;
-  }
-  *objStart = '\0';
-  const char *objID = objStart + 1;
-
+  char *folder = strchr(rest, '/');
+  char *objID  = folder ? strchr(folder + 1, '/') : nullptr;
+  if (folder) *folder++ = '\0';
+  if (objID) *objID++ = '\0';
   char file[Store::PATH_LIMIT];
-  if (!Store::objectPath(file, sizeof(file), showID, folder, objID)) {
-    sendResult(c, 400, false, "bad_object");
-    return;
+
+  if (!folder) {
+    if (!Store::showPath(file, sizeof(file), rest)) return sendResult(c, 400, false, "bad_show");
+    if (get) return sendShow(c, rest);
+    if (!del) return sendResult(c, 404, false, "not_found");
+    if (!Store::removeShow(rest)) return sendResult(c, 503, false, "write_failed");
+    return sendResult(c, 200, true, nullptr);
   }
 
-  if (get) {
-    sendStored(c, file);
-    return;
-  }
-
-  if (!put && !del) {
-    sendResult(c, 405, false, "method");
-    return;
-  }
-
-  bool ok = put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file);
-  if (!ok) {
-    sendResult(c, 503, false, "write_failed");
-    return;
-  }
-
+  if (!objID || !Store::objectPath(file, sizeof(file), rest, folder, objID)) return sendResult(c, 400, false, "bad_object");
+  if (get) return sendStored(c, file);
+  if (!put && !del) return sendResult(c, 404, false, "not_found");
+  if (!(put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file))) return sendResult(c, 503, false, "write_failed");
   sendResult(c, 200, true, nullptr);
+
+  char notice[224];
   snprintf(notice, sizeof(notice), "{\"t\":\"doc\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\",\"op\":\"%s\"}",
-           showID, folder, objID, put ? "put" : "delete");
+           rest, folder, objID, put ? "put" : "delete");
   Link::notify(notice, except);
 }
 
@@ -415,62 +320,43 @@ void route(NetworkClient &c, const char *method, const char *path,
     return;
   }
 
-  if (!strcmp(path, "/api/info")) {
-    if (get) info(c);
-    else sendResult(c, 405, false, "method");
-  } else if (!strcmp(path, "/api/scan")) {
-    if (get) scan(c);
-    else sendResult(c, 405, false, "method");
-  } else if (!strcmp(path, "/api/provision")) {
-    if (post) provision(c, body, bodyLen);
-    else sendResult(c, 405, false, "method");
-  } else if (!strcmp(path, "/api/setup")) {
-    if (post) {
-      sendResult(c, 200, true, nullptr);
-      c.stop();
-      Net::enterSetup();
-    } else sendResult(c, 405, false, "method");
-  } else if (!strcmp(path, "/api/forget")) {
-    if (post) forget(c);
-    else sendResult(c, 405, false, "method");
+  if (!strcmp(path, "/api/info") && get) {
+    info(c);
+  } else if (!strcmp(path, "/api/scan") && get) {
+    scan(c);
+  } else if (!strcmp(path, "/api/provision") && post) {
+    provision(c, body, bodyLen);
+  } else if (!strcmp(path, "/api/setup") && post) {
+    sendResult(c, 200, true, nullptr);
+    c.stop();
+    Net::enterSetup();
+  } else if (!strcmp(path, "/api/forget") && post) {
+    sendResult(c, 200, true, nullptr);
+    c.stop();
+    Net::forget();
   } else {
     sendResult(c, 404, false, "not_found");
   }
 }
 
-void handle(NetworkClient &client) {
+bool handle(NetworkClient &client) {
   uint32_t deadline = millis() + REQUEST_MS;
   char     line[REQUEST_LINE_MAX];
+  if (!readLine(client, line, sizeof(line), deadline)) return false;
 
-  if (!readLine(client, line, sizeof(line), deadline)) {
-    client.stop();
-    return;
-  }
-
-  char *sp = strchr(line, ' ');
-  if (!sp) {
-    client.stop();
-    return;
-  }
-  *sp = '\0';
+  char *target = strchr(line, ' ');
+  if (!target) return false;
+  *target++ = '\0';
   const char *method = line;
-  char       *target = sp + 1;
-  sp = strchr(target, ' ');
-  if (sp) *sp = '\0';
+  char       *end    = strchr(target, ' ');
+  if (end) *end = '\0';
 
   char  *query   = strchr(target, '?');
   size_t pathLen = query ? (size_t)(query - target) : strlen(target);
-  if (pathLen == strlen(GLOW_WS_PATH) &&
-      !strncmp(target, GLOW_WS_PATH, pathLen)) {
-    if (strcmp(method, "GET") != 0) {
-      sendResult(client, 405, false, "method");
-    } else if (!Link::adopt(client, target)) {
-      sendResult(client, 503, false, "no_slot");
-    } else {
-      return;
-    }
-    client.stop();
-    return;
+  if (pathLen == strlen(GLOW_WS_PATH) && !strncmp(target, GLOW_WS_PATH, pathLen)) {
+    if (!strcmp(method, "GET") && Link::adopt(client, target)) return true;
+    sendResult(client, 503, false, "no_slot");
+    return false;
   }
   if (query) *query = '\0';
 
@@ -480,41 +366,23 @@ void handle(NetworkClient &client) {
   char   header[REQUEST_LINE_MAX];
   size_t contentLength = 0;
   int    except        = -1;
-  bool   headersEnded  = false;
-  for (int i = 0; i < REQUEST_HEADERS_MAX; i++) {
-    if (!readLine(client, header, sizeof(header), deadline)) {
-      client.stop();
-      return;
-    }
-    if (!header[0]) {
-      headersEnded = true;
-      break;
-    }
-    if (!strncasecmp(header, "Content-Length:", 15))
-      contentLength = strtoul(header + 15, nullptr, 10);
-    if (!strncasecmp(header, "X-Glow-Client:", 14))
-      except = (int)strtol(header + 14, nullptr, 10);
-  }
-  if (!headersEnded) {
-    client.stop();
-    return;
+  for (int i = 0;; i++) {
+    if (i == REQUEST_HEADERS_MAX || !readLine(client, header, sizeof(header), deadline)) return false;
+    if (!header[0]) break;
+    if (!strncasecmp(header, "Content-Length:", 15)) contentLength = strtoul(header + 15, nullptr, 10);
+    if (!strncasecmp(header, "X-Glow-Client:", 14)) except = (int)strtol(header + 14, nullptr, 10);
   }
 
   if (contentLength > (isDocument ? DOCUMENT_BODY_MAX : REQUEST_BODY_MAX)) {
     sendResult(client, 400, false, "too_large");
-    client.stop();
-    return;
+    return false;
   }
 
   char  stackBody[REQUEST_BODY_MAX + 1];
-  char *body = stackBody;
-  if (contentLength > REQUEST_BODY_MAX) {
-    body = (char *)malloc(contentLength + 1);
-    if (!body) {
-      sendResult(client, 503, false, "no_memory");
-      client.stop();
-      return;
-    }
+  char *body = contentLength > REQUEST_BODY_MAX ? (char *)malloc(contentLength + 1) : stackBody;
+  if (!body) {
+    sendResult(client, 503, false, "no_memory");
+    return false;
   }
 
   size_t bodyLen = 0;
@@ -531,9 +399,8 @@ void handle(NetworkClient &client) {
   body[bodyLen] = '\0';
 
   if (bodyLen == contentLength) route(client, method, target, body, bodyLen, except);
-
   if (body != stackBody) free(body);
-  client.stop();
+  return false;
 }
 
 }  // namespace
@@ -548,8 +415,7 @@ void begin() {
 void tick() {
   if (!g_running) return;
   NetworkClient client = g_server.accept();
-  if (!client) return;
-  handle(client);
+  if (client && !handle(client)) client.stop();
 }
 
 }  // namespace Http

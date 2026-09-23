@@ -377,17 +377,10 @@ int scan(Network *out, int max) {
   return n;
 }
 
-bool provision(const char *ssid, const char *user, const char *password) {
-  if (!ssid || !ssid[0]) return false;
-  if (strlen(ssid) > 32) return false;
-  if (user && strlen(user) > 64) return false;
-
-  size_t passMax = user && user[0] ? 64 : 63;
-  if (password && strlen(password) > passMax) return false;
-
+void provision(const char *ssid, const char *user, const char *password) {
   snprintf(g_trySsid, sizeof(g_trySsid), "%s", ssid);
-  snprintf(g_tryUser, sizeof(g_tryUser), "%s", user ? user : "");
-  snprintf(g_tryPass, sizeof(g_tryPass), "%s", password ? password : "");
+  snprintf(g_tryUser, sizeof(g_tryUser), "%s", user);
+  snprintf(g_tryPass, sizeof(g_tryPass), "%s", password);
 
   if (!g_ap) raiseAp(SETUP_AP_MS);
 
@@ -397,7 +390,6 @@ bool provision(const char *ssid, const char *user, const char *password) {
   g_joinStart  = millis();
   WiFi.disconnect();
   startStation(g_trySsid, g_tryUser, g_tryPass);
-  return true;
 }
 
 void enterSetup() {

@@ -8,7 +8,6 @@ struct RootView: View {
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.modelContext) private var context
-	@Query private var stored: [StoredFixtureType]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var section = "lights"
@@ -72,15 +71,6 @@ struct RootView: View {
 						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
 			}
-		}
-		.onChange(of: stored) {
-			library.setMade(stored.map(\.definition))
-		}
-		.task {
-			library.setMade(stored.map(\.definition))
-		}
-		.onChange(of: fixtures) {
-			console.applyPatch(fixtures, library: library)
 		}
 		.task {
 			shows.reach(console, library: library)

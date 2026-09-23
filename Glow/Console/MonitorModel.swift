@@ -31,16 +31,6 @@ final class MonitorModel {
 		poll = nil
 	}
 	
-	func owners(among fixtures: [Fixture], library: FixtureLibrary) -> Set<Int> {
-		var found: Set<Int> = []
-		
-		for fixture in fixtures {
-			found.formUnion(fixture.range(library.type(fixture.typeID)))
-		}
-		
-		return found
-	}
-	
 	func blocks(owned: Set<Int>) -> [[Int]] {
 		let addresses = patchedOnly ? DMXAddress.range.filter(owned.contains) : Array(DMXAddress.range)
 		return stride(from: 0, to: addresses.count, by: 32).map { Array(addresses[$0..<min($0 + 32, addresses.count)]) }

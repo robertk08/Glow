@@ -16,4 +16,15 @@ final class Look {
 	}
 	
 	var fixtureCount: Int { levels.count }
+	
+	var entry: ShowContents.Scene {
+		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, levels: levels)
+	}
+	
+	func take(_ entry: ShowContents.Scene) {
+		identifier = entry.identifier
+		name = entry.name
+		sortIndex = entry.sortIndex
+		levels = entry.levels
+	}
 }

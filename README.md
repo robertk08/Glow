@@ -261,13 +261,13 @@ before master touches it, and the controller stores it and passes it to every
 other client without clocking it.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`, `scene`, `span`. In: `status` (`fw`, `id`, `name`,
-`uptime` in seconds, `src`, `client`, `ip`, `scene`, `master`, `blackout`),
-`pong`, `error`, plus `blackout`, `master` and `scene` relayed from another
-client, and the document notices below. Types are strict, an integer is
-not a float and a boolean is not `1`. `status` is only sent in reply to `hello`,
-so say hello first. `client` is the slot the controller gave you, and you send
-it back as `X-Glow-Client` so your own writes are not relayed to you.
+`blackout`, `master`, `scene`, `span`. In: `status` (`fw`, `src`, `client`,
+`ip`, `scene`, `master`, `blackout`), `pong`, `error` (with a `code`), plus
+`blackout`, `master` and `scene` relayed from another client, and the document
+notices below. Types are strict, a fraction is not an integer and a boolean is
+not `1`. `status` is only sent in reply to `hello`, so say hello first. `client`
+is the slot the controller gave you, and you send it back as `X-Glow-Client` so
+your own writes are not relayed to you.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is

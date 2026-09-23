@@ -37,6 +37,7 @@ final class Console {
 	private(set) var isConfigured = false
 	
 	private(set) var active: Set<Int> = []
+	private(set) var patched: Set<Int> = []
 	private(set) var span = Universe.minimumSlots
 	private(set) var resets = 0
 	
@@ -61,7 +62,6 @@ final class Console {
 	private var announcedBlackout: Bool?
 	private var hasAdoptedSource = false
 	private var hasLoadedPatch = false
-	private var patched: Set<Int> = []
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -145,6 +145,8 @@ final class Console {
 			}
 		case let .latency(value):
 			latency = value
+		case .pong:
+			break
 		case let .frame(start, values):
 			universe.set(values, at: start)
 			sourceFrames.adopt(universe.values, start: start, count: values.count)
@@ -235,22 +237,10 @@ final class Console {
 	}
 	
 	func repatch(_ fixture: Fixture, library: FixtureLibrary, change: (Fixture) -> Void) {
-		let old = fixture.range(library.type(fixture.typeID))
-		universe.set([UInt8](repeating: 0, count: old.count), at: DMXAddress(clamping: old.lowerBound))
-		release(old)
 		change(fixture)
-		
-		if let type = library.type(fixture.typeID) {
-			universe.set(type.defaults, at: fixture.start)
-			release(fixture.range(type))
-		}
-	}
-	
-	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
-		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
-		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
-		release(fixture.range(library.type(fixture.typeID)))
-		context.delete(fixture)
+		guard let type = library.type(fixture.typeID) else { return }
+		universe.set(type.defaults, at: fixture.start)
+		release(fixture.range(type))
 	}
 	
 	func duplicate(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
@@ -346,15 +336,9 @@ final class Console {
 		var levels: [String: Data] = [:]
 		
 		for fixture in fixtures {
-			guard let profile = library.type(fixture.typeID) else { continue }
-			var values = Data()
-			
-			for offset in 0..<profile.channelCount {
-				guard let address = fixture.start.offset(by: offset) else { break }
-				values.append(universe[address])
-			}
-			
-			levels[fixture.identifier] = values
+			guard let type = library.type(fixture.typeID) else { continue }
+			let first = fixture.start.value - 1
+			levels[fixture.identifier] = Data(universe.values[first..<min(first + type.channelCount, Universe.channelCount)])
 		}
 		
 		return levels
@@ -391,9 +375,7 @@ final class Console {
 		var covered: Set<Int> = []
 		
 		for fixture in fixtures {
-			for address in fixture.range(library.type(fixture.typeID)) {
-				covered.insert(address)
-			}
+			covered.formUnion(fixture.range(library.type(fixture.typeID)))
 		}
 		
 		for address in patched.subtracting(covered) {

@@ -21,8 +21,23 @@ final class Fixture {
 		self.sortIndex = sortIndex
 	}
 	
-	var belongsTo: [FixtureGroup] {
-		(groups ?? []).sorted { $0.sortIndex < $1.sortIndex }
+	var entry: ShowContents.Light {
+		ShowContents.Light(identifier: identifier, typeID: typeID, name: name, address: address, sortIndex: sortIndex, symbol: symbolOverride, groups: (groups ?? []).map(\.identifier).sorted(), invertsPan: invertsPan, invertsTilt: invertsTilt)
+	}
+	
+	func take(_ entry: ShowContents.Light, groups: [FixtureGroup]) {
+		identifier = entry.identifier
+		typeID = entry.typeID
+		name = entry.name
+		address = entry.address
+		sortIndex = entry.sortIndex
+		symbolOverride = entry.symbol
+		invertsPan = entry.invertsPan
+		invertsTilt = entry.invertsTilt
+		
+		for group in groups {
+			belong(to: group, entry.groups.contains(group.identifier))
+		}
 	}
 	
 	func belongs(to group: FixtureGroup) -> Bool {

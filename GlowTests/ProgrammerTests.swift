@@ -151,7 +151,7 @@ struct ProgrammerTests {
 		#expect(!programmer.macroOverridesMix)
 		programmer.set(120, of: macro)
 		#expect(programmer.macroOverridesMix)
-		programmer.releaseMix()
+		programmer.set(3, of: macro)
 		#expect(!programmer.macroOverridesMix)
 	}
 	

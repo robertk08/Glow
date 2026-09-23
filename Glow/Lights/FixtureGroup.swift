@@ -18,6 +18,18 @@ final class FixtureGroup {
 		self.sortIndex = sortIndex
 	}
 	
+	var entry: ShowContents.Group {
+		ShowContents.Group(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName)
+	}
+	
+	func take(_ entry: ShowContents.Group) {
+		identifier = entry.identifier
+		name = entry.name
+		sortIndex = entry.sortIndex
+		symbolOverride = entry.symbol
+		tintName = entry.tint
+	}
+	
 	var members: [Fixture] {
 		(fixtures ?? []).sorted { $0.address < $1.address }
 	}

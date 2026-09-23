@@ -1,20 +1,15 @@
-import SwiftData
 import SwiftUI
 
 struct MonitorView: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
-	@Query(sort: \Fixture.address) private var fixtures: [Fixture]
 	
 	@State private var monitor = MonitorModel()
 	
 	private let columns = [GridItem(.adaptive(minimum: 54, maximum: 74), spacing: 4)]
 	
 	var body: some View {
-		let owned = monitor.owners(among: fixtures, library: library)
-		
 		List {
-			ForEach(monitor.blocks(owned: owned), id: \.first) { block in
+			ForEach(monitor.blocks(owned: console.patched), id: \.first) { block in
 				Section("\(block.first ?? 1)–\(block.last ?? 1)") {
 					LazyVGrid(columns: columns, spacing: 4) {
 						ForEach(block, id: \.self) { address in

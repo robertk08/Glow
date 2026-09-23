@@ -40,19 +40,6 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		channels.filter { $0.attribute.group == group }
 	}
 	
-	var abilities: [String] {
-		var found: [String] = []
-		if dims { found.append("Dimmer") }
-		if mixesColor { found.append(mixing == .subtractive ? "CMY" : "Color") }
-		if movesHead { found.append("Moving head") }
-		
-		for attribute in [Attribute.colorWheel, .colorMacro, .shutter, .gobo, .gobo2, .prism, .zoom, .focus, .iris, .frost] where channel(attribute) != nil {
-			found.append(attribute.name)
-		}
-		
-		return found
-	}
-	
 	var defaults: [UInt8] {
 		var values = [UInt8](repeating: 0, count: channelCount)
 		

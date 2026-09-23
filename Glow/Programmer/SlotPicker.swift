@@ -4,7 +4,7 @@ struct SlotPicker: View {
 	let programmer: Programmer
 	let channel: FixtureChannel
 	
-	@State private var pending: ChannelFunction?
+	@State private var pending: Programmer.Choice?
 	@State private var picks = 0
 	
 	private let columns = [GridItem(.adaptive(minimum: 72), spacing: 10)]
@@ -12,7 +12,7 @@ struct SlotPicker: View {
 	
 	private func choose(_ choice: Programmer.Choice) {
 		guard !choice.confirms else {
-			pending = choice.function
+			pending = choice
 			return
 		}
 		
@@ -130,12 +130,12 @@ struct SlotPicker: View {
 			}
 		}
 		.sensoryFeedback(.selection, trigger: picks)
-		.alert("Send \(pending?.label ?? "")?", isPresented: Binding { pending != nil } set: { _ in pending = nil }, presenting: pending) { function in
+		.alert("Send \(pending?.label ?? "")?", isPresented: Binding { pending != nil } set: { _ in pending = nil }, presenting: pending) { choice in
 			Button("Cancel", role: .cancel) {}
 			
 			Button("Send", role: .destructive) {
 				Task {
-					await programmer.send(function, channel: channel)
+					await programmer.send(choice, of: channel)
 				}
 			}
 		} message: { _ in

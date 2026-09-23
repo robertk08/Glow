@@ -29,7 +29,7 @@ static const int SCAN_FAILED  = -2;
 
 int scan(Network *out, int max);
 
-bool provision(const char *ssid, const char *user, const char *password);
+void provision(const char *ssid, const char *user, const char *password);
 
 void forget();       // erases, then reboots
 void enterSetup();

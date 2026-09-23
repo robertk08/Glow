@@ -186,7 +186,7 @@ struct BuiltInFixtureTests {
 		
 		#expect(ours.channels == builtIn.channels)
 		#expect(ours.dimming == builtIn.dimming)
-		#expect(ours.abilities == builtIn.abilities)
+		#expect(ours.mixing == builtIn.mixing)
 		#expect(ours.defaults == builtIn.defaults)
 	}
 	

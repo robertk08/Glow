@@ -39,13 +39,4 @@ enum LinkState: Sendable, Equatable {
 		case .retrying: .orange
 		}
 	}
-	
-	var explanation: String {
-		switch self {
-		case .offline: "Glow is not talking to a controller, so nothing reaches the lights."
-		case .connecting: "Looking for the controller on this network."
-		case .connected: "Everything you change goes straight down the DMX line."
-		case .retrying: "The controller stopped answering. Glow keeps trying, and the rig holds its last look."
-		}
-	}
 }

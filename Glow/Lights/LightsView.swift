@@ -132,7 +132,7 @@ struct LightsView: View {
 				.disabled(fixtures.isEmpty)
 			}
 			
-			if context.undoManager?.canUndo == true {
+			if shows.canUndo {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button("Undo", systemImage: "arrow.uturn.backward") {
 						context.undoManager?.undo()

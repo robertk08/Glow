@@ -108,7 +108,7 @@ struct LightTile: View {
 		}
 		.confirmationDialog("Remove \(fixture.name)?", isPresented: $isRemoving, titleVisibility: .visible) {
 			Button("Remove Light", role: .destructive) {
-				console.remove(fixture, context: context, library: library)
+				context.delete(fixture)
 			}
 		} message: {
 			Text("Its channels go back to zero and any scene holding it forgets it.")

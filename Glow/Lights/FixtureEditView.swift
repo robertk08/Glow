@@ -111,7 +111,7 @@ struct FixtureEditView: View {
 					}
 					.confirmationDialog("Remove \(fixture.name)?", isPresented: $isRemoving, titleVisibility: .visible) {
 						Button("Remove Light", role: .destructive) {
-							console.remove(fixture, context: context, library: library)
+							context.delete(fixture)
 							dismiss()
 						}
 					} message: {

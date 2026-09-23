@@ -37,13 +37,6 @@ final class NodeDiscovery {
 		endpoints = []
 	}
 	
-	func controllers(endpoint: NodeEndpoint, nodeID: String?) -> [NodeEndpoint] {
-		var selected = endpoint
-		selected.nodeID = nodeID ?? endpoint.nodeID
-		if endpoints.contains(where: { $0.id == selected.id || ($0.host == selected.host && $0.port == selected.port) }) { return endpoints }
-		return [selected] + endpoints
-	}
-	
 	private func update(_ results: Set<NWBrowser.Result>) async {
 		var found: [NodeEndpoint] = []
 		

@@ -141,18 +141,6 @@ struct Programmer {
 		return false
 	}
 	
-	func send(_ range: ChannelFunction, channel: FixtureChannel) async {
-		set(range.midpoint, of: channel)
-		guard let seconds = range.holdSeconds, seconds > 0 else { return }
-		try? await Task.sleep(for: .seconds(seconds))
-		
-		for target in targets {
-			guard let own = counterpart(of: channel, in: target), value(of: own, in: target) == range.midpoint else { continue }
-			set(own.defaultValue, of: own, in: target)
-			console.release(target.span, only: own.offset)
-		}
-	}
-	
 	nonisolated struct Choice: Identifiable, Sendable {
 		let id: String
 		let label: String
@@ -183,10 +171,6 @@ struct Programmer {
 		guard let open = channel.functions.first(where: { $0.purpose == .open }), band.sets.contains(where: { $0.shape != nil }) else { return found }
 		
 		return [Choice(id: "\(open.from)-\(open.to)", label: open.label, value: open.midpoint, swatch: [], shape: .open, confirms: open.requiresConfirmation, function: open)] + found
-	}
-	
-	func choices(of channel: FixtureChannel) -> [Choice] {
-		modes(of: channel) + slots(of: channel)
 	}
 	
 	func isMarked(_ channel: FixtureChannel) -> Bool {
@@ -241,7 +225,7 @@ struct Programmer {
 	}
 	
 	func choice(_ id: String, of channel: FixtureChannel) -> Choice? {
-		choices(of: channel).first { $0.id == id }
+		(modes(of: channel) + slots(of: channel)).first { $0.id == id }
 	}
 	
 	func send(_ choice: Choice, of channel: FixtureChannel) async {
@@ -254,10 +238,6 @@ struct Programmer {
 			set(own.defaultValue, of: own, in: target)
 			console.release(target.span, only: own.offset)
 		}
-	}
-	
-	func fractionBinding(of channel: FixtureChannel) -> Binding<Double> {
-		Binding { Double(rawValue(of: channel)) / Double(channel.maximum) } set: { setRawValue(Int(($0 * Double(channel.maximum)).rounded()), of: channel) }
 	}
 	
 	func binding(_ channel: FixtureChannel) -> Binding<Double> {
@@ -342,64 +322,29 @@ struct Programmer {
 	
 	var movesHead: Bool { targets.contains { $0.type.movesHead } }
 	
-	private func brightness(of target: Target) -> Double {
-		switch target.type.dimming {
-		case .channel:
-			fraction(.dimmer, in: target)
-		case let .band(channel, from, to, _):
-			switch value(of: channel, in: target) {
-			case ..<from: 0
-			case from...to: Double(value(of: channel, in: target) - from) / Double(max(1, to - from))
-			default: 1
-			}
-		case let .emitters(channels):
-			Double(channels.map { value(of: $0, in: target) }.max() ?? 0) / 255
-		case .none:
-			0
-		}
-	}
-	
-	private func setBrightness(_ level: Double, of target: Target) {
-		switch target.type.dimming {
-		case .channel:
-			setFraction(level, for: .dimmer, in: target)
-		case let .band(channel, from, to, open):
-			if level <= 0 {
-				set(0, of: channel, in: target)
-			} else if level >= 1, let open {
-				set(open, of: channel, in: target)
-			} else {
-				set(from + UInt8((Double(to - from) * level).rounded()), of: channel, in: target)
-			}
-		case let .emitters(channels):
-			let current = channels.map { Double(value(of: $0, in: target)) }
-			let defaults = channels.map { Double($0.defaultValue) }
-			var hue = current.max() ?? 0 > 0 ? current : defaults
-			
-			if hue.max() ?? 0 == 0 {
-				let white = EmitterMix.mixing(LightColor(red: 1, green: 1, blue: 1), emitters: target.type.emitters, mixing: .additive)
-				hue = channels.map { white[$0.attribute] }
-			}
-			
-			let reference = hue.max() ?? 0
-			guard reference > 0 else { return }
-			
-			for (channel, share) in zip(channels, hue) {
-				set(UInt8(min(max((share * level * 255 / reference).rounded(), 0), 255)), of: channel, in: target)
-			}
-		case .none:
-			break
-		}
-	}
-	
 	var brightness: Double {
 		get {
 			var total = 0.0
 			var count = 0
 			
 			for target in targets where target.type.dims {
-				total += brightness(of: target)
 				count += 1
+				
+				switch target.type.dimming {
+				case .channel:
+					total += fraction(.dimmer, in: target)
+				case let .band(channel, from, to, _):
+					let level = value(of: channel, in: target)
+					if level > to {
+						total += 1
+					} else if level >= from {
+						total += Double(level - from) / Double(max(1, to - from))
+					}
+				case let .emitters(channels):
+					total += Double(channels.map { value(of: $0, in: target) }.max() ?? 0) / 255
+				case .none:
+					break
+				}
 			}
 			
 			guard count > 0 else { return 0 }
@@ -409,7 +354,36 @@ struct Programmer {
 			let level = min(max(newValue, 0), 1)
 			
 			for target in targets where target.type.dims {
-				setBrightness(level, of: target)
+				switch target.type.dimming {
+				case .channel:
+					setFraction(level, for: .dimmer, in: target)
+				case let .band(channel, from, to, open):
+					if level <= 0 {
+						set(0, of: channel, in: target)
+					} else if level >= 1, let open {
+						set(open, of: channel, in: target)
+					} else {
+						set(from + UInt8((Double(to - from) * level).rounded()), of: channel, in: target)
+					}
+				case let .emitters(channels):
+					let current = channels.map { Double(value(of: $0, in: target)) }
+					let defaults = channels.map { Double($0.defaultValue) }
+					var hue = current.max() ?? 0 > 0 ? current : defaults
+					
+					if hue.max() ?? 0 == 0 {
+						let white = EmitterMix.mixing(LightColor(red: 1, green: 1, blue: 1), emitters: target.type.emitters, mixing: .additive)
+						hue = channels.map { white[$0.attribute] }
+					}
+					
+					let reference = hue.max() ?? 0
+					guard reference > 0 else { continue }
+					
+					for (channel, share) in zip(channels, hue) {
+						set(UInt8(min(max((share * level * 255 / reference).rounded(), 0), 255)), of: channel, in: target)
+					}
+				case .none:
+					break
+				}
 			}
 		}
 	}
@@ -562,7 +536,20 @@ struct Programmer {
 	var isSubtractive: Bool { targets.contains { $0.type.mixing == .subtractive } }
 	
 	func guardedBinding(_ channel: FixtureChannel) -> Binding<Double> {
-		Binding { Double(rawValue(of: channel)) } set: { setRawValue(stepping(whole($0, of: channel), of: channel), of: channel) }
+		Binding { Double(rawValue(of: channel)) } set: { newValue in
+			let wanted = whole(newValue, of: channel)
+			
+			guard !channel.isWide, (0...255).contains(wanted), let blocked = channel.functions.first(where: { $0.requiresConfirmation && $0.contains(UInt8(wanted)) }) else {
+				setRawValue(wanted, of: channel)
+				return
+			}
+			
+			if blocked.from > 0 {
+				setRawValue(Int(blocked.from) - 1, of: channel)
+			} else {
+				setRawValue(Int(blocked.to) + 1, of: channel)
+			}
+		}
 	}
 	
 	private func whole(_ value: Double, of channel: FixtureChannel) -> Int {
@@ -570,23 +557,8 @@ struct Programmer {
 		return value < Double(channel.maximum) ? Int(value.rounded()) : channel.maximum
 	}
 	
-	private func stepping(_ value: Int, of channel: FixtureChannel) -> Int {
-		guard !channel.isWide, (0...255).contains(value) else { return value }
-		guard let blocked = channel.functions.first(where: { $0.requiresConfirmation && $0.contains(UInt8(value)) }) else { return value }
-		guard blocked.from > 0 else { return Int(blocked.to) + 1 }
-		return Int(blocked.from) - 1
-	}
-	
 	var balancesWhite: Bool {
 		targets.contains { $0.type.mixing == .additive && ($0.type.channel(.white) != nil || $0.type.channel(.amber) != nil) }
-	}
-	
-	private func macro(of target: Target) -> FixtureChannel? {
-		target.type.channel(.colorMacro) ?? target.type.channel(.colorWheel)
-	}
-	
-	func releaseBand(of channel: FixtureChannel) -> ChannelFunction? {
-		channel.functions.first { $0.purpose == .release }
 	}
 	
 	var temperatureChannel: FixtureChannel? {
@@ -599,53 +571,11 @@ struct Programmer {
 	
 	var macroOverridesMix: Bool {
 		for target in targets where target.type.mixesColor {
-			guard let macro = macro(of: target), let release = releaseBand(of: macro) else { continue }
+			guard let macro = target.type.channel(.colorMacro) ?? target.type.channel(.colorWheel), let release = macro.functions.first(where: { $0.purpose == .release }) else { continue }
 			if !release.contains(value(of: macro, in: target)) { return true }
 		}
 		
 		return false
-	}
-	
-	func releaseMix() {
-		for target in targets {
-			guard let macro = macro(of: target), let release = releaseBand(of: macro) else { continue }
-			set(release.midpoint, of: macro, in: target)
-		}
-	}
-	
-	func settings(in group: FeatureGroup) -> [FixtureChannel] {
-		guard let type else { return [] }
-		var shown: Set<Int> = []
-		
-		if type.mixesColor {
-			for channel in type.emitterChannels {
-				shown.insert(channel.offset)
-			}
-			
-			if let macro = macroChannel {
-				shown.insert(macro.offset)
-			}
-		}
-		
-		if type.movesHead {
-			for attribute in [Attribute.pan, .tilt, .panTiltSpeed] {
-				if let channel = type.channel(attribute) {
-					shown.insert(channel.offset)
-				}
-			}
-		}
-		
-		switch type.dimming {
-		case let .channel(channel): shown.insert(channel.offset)
-		case let .emitters(channels): for channel in channels { shown.insert(channel.offset) }
-		case .band, .none: break
-		}
-		
-		return type.channels(in: group).filter { !shown.contains($0.offset) }
-	}
-	
-	var settings: [FixtureChannel] {
-		FeatureGroup.allCases.flatMap { settings(in: $0) }
 	}
 	
 	func release(_ group: FeatureGroup) {
@@ -659,10 +589,6 @@ struct Programmer {
 				}
 			}
 		}
-	}
-	
-	var activeGroups: [FeatureGroup] {
-		groups.filter(isActive)
 	}
 	
 	var address: String {
@@ -708,14 +634,8 @@ struct Programmer {
 		return channel(.shutter)
 	}
 	
-	var strobeFunction: ChannelFunction? {
-		guard let channel = shutterChannel else { return nil }
-		guard let active = band(of: channel), active.purpose == nil, active.kind == .proportional else { return nil }
-		return active
-	}
-	
 	var strobeHertz: Double? {
-		guard let channel = shutterChannel, let function = strobeFunction, function.unit == .hertz else { return nil }
+		guard let channel = shutterChannel, let function = band(of: channel), function.purpose == nil, function.kind == .proportional, function.unit == .hertz else { return nil }
 		guard let from = function.physicalFrom, let to = function.physicalTo, function.to > function.from else { return nil }
 		let share = Double(value(of: channel) - function.from) / Double(function.to - function.from)
 		return from + (to - from) * share
@@ -759,10 +679,6 @@ struct Programmer {
 	
 	func rawBinding(_ channel: FixtureChannel) -> Binding<Double> {
 		Binding { Double(rawValue(of: channel)) } set: { setRawValue(whole($0, of: channel), of: channel) }
-	}
-	
-	func percent(of channel: FixtureChannel) -> Double {
-		Double(rawValue(of: channel)) / Double(channel.maximum)
 	}
 	
 	func bandLabel(of channel: FixtureChannel) -> String {
