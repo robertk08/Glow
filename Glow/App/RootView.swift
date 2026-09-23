@@ -35,7 +35,7 @@ struct RootView: View {
 			}
 		}
 		.tabViewStyle(.sidebarAdaptable)
-		.tabBarMinimizeBehavior(.onScrollDown)
+		.tabBarMinimizeBehavior(.never)
 	}
 	
 	var body: some View {
