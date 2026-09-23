@@ -53,11 +53,11 @@ void emptyFolder(const char *dir) {
     char path[PATH_LIMIT];
     snprintf(path, sizeof(path), "%s", entry.path());
     entry.close();
-    LittleFS.remove(path);
+    Flash::guarded([&] { return LittleFS.remove(path); });
     entry = folder.openNextFile();
   }
   folder.close();
-  LittleFS.rmdir(dir);
+  Flash::guarded([&] { return LittleFS.rmdir(dir); });
 }
 
 }  // namespace
@@ -152,14 +152,11 @@ bool removeShow(const char *showID) {
   char names[FOLDER_LIMIT][NAME_LIMIT];
   int count = folderNames(showID, names, FOLDER_LIMIT);
 
-  return Flash::guarded([&] {
-    for (int i = 0; i < count; i++) {
-      char dir[PATH_LIMIT];
-      if (!folderPath(dir, sizeof(dir), showID, names[i])) continue;
-      emptyFolder(dir);
-    }
-    return LittleFS.rmdir(show);
-  });
+  for (int i = 0; i < count; i++) {
+    char dir[PATH_LIMIT];
+    if (folderPath(dir, sizeof(dir), showID, names[i])) emptyFolder(dir);
+  }
+  return Flash::guarded([&] { return LittleFS.rmdir(show); });
 }
 
 size_t used() { return g_ready ? LittleFS.usedBytes() : 0; }

@@ -211,8 +211,8 @@ void tick() {
       }
     } else {
       Serial.println(F("WiFi: dropped"));
-      g_lastTry   = millis();
       g_downSince = millis();
+      if (!g_trying) startSlot(g_slot);
     }
   }
 

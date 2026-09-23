@@ -129,8 +129,9 @@ wrong password cannot displace a working network.
 **Two networks are remembered, the two most recent.** Joining a third pushes out
 the older one. On boot the controller tries the one it joined last and falls
 back to the other every ten seconds until one answers, so carrying it between
-two places needs no setup at either end. Provisioning a network it already knows
-just moves that one back to the front.
+two places needs no setup at either end. A network that drops is tried again
+straight away. Provisioning a network it already knows just moves that one back
+to the front.
 
 **Getting back to setup:** the controller raises **Glow Setup** by itself after
 a minute of finding neither stored network, and keeps it up until it joins. To

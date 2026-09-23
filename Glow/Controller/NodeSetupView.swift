@@ -64,14 +64,7 @@ private struct FindingController: View {
 					.controlSize(.large)
 				}
 			} else {
-				ContentUnavailableView {
-					Label("Joining Glow Setup", systemImage: "wifi.router")
-				} description: {
-					Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller.")
-				} actions: {
-					ProgressView()
-						.controlSize(.large)
-				}
+				Working(label: Label("Joining Glow Setup", systemImage: "wifi.router"), text: Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller."))
 			}
 		}
 		.task {
@@ -100,14 +93,7 @@ private struct ChoosingNetwork: View {
 					.controlSize(.large)
 				}
 			} else if model.networks.isEmpty {
-				ContentUnavailableView {
-					Label("Looking for Networks", systemImage: "antenna.radiowaves.left.and.right")
-				} description: {
-					Text("The controller is scanning the air around it. This takes a few seconds.")
-				} actions: {
-					ProgressView()
-						.controlSize(.large)
-				}
+				Working(label: Label("Looking for Networks", systemImage: "antenna.radiowaves.left.and.right"), text: Text("The controller is scanning the air around it. This takes a few seconds."))
 			} else {
 				List {
 					Section {
@@ -236,14 +222,7 @@ private struct Joining: View {
 					}
 				}
 			} else {
-				ContentUnavailableView {
-					Label("Joining \(model.selected?.ssid ?? "")", systemImage: "wifi.router")
-				} description: {
-					Text("The controller is joining your network and Glow is moving over with it. Keep the app open and allow the Wi-Fi connection when asked.")
-				} actions: {
-					ProgressView()
-						.controlSize(.large)
-				}
+				Working(label: Label("Joining \(model.selected?.ssid ?? "")", systemImage: "wifi.router"), text: Text("The controller is joining your network and Glow is moving over with it. Keep the app open and allow the Wi-Fi connection when asked."))
 			}
 		}
 		.task(id: model.failure == nil) {
@@ -274,5 +253,21 @@ private struct Finished: View {
 			.controlSize(.large)
 		}
 		.sensoryFeedback(.success, trigger: model.step)
+	}
+}
+
+private struct Working: View {
+	let label: Label<Text, Image>
+	let text: Text
+	
+	var body: some View {
+		ContentUnavailableView {
+			label
+		} description: {
+			text
+		} actions: {
+			ProgressView()
+				.controlSize(.large)
+		}
 	}
 }
