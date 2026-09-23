@@ -11,9 +11,50 @@ actor NodeStore {
 		case unreachable
 	}
 	
+	enum Failure: LocalizedError, Sendable {
+		case unreachable
+		case refused
+		
+		var errorDescription: String? {
+			switch self {
+			case .unreachable: "Couldn't reach the node."
+			case .refused: "The node turned those details down."
+			}
+		}
+	}
+	
+	nonisolated struct Setup: Decodable, Sendable {
+		var id = ""
+		var ip = ""
+		var name = "Glow"
+		var isProvisioned = false
+		var didRefuse = false
+		var isJoining = false
+		var ssid = ""
+		
+		private enum CodingKeys: String, CodingKey { case id, ip, name, state, join, ssid }
+		
+		func hasJoined(ssid: String) -> Bool {
+			isProvisioned && !isJoining && !didRefuse && (self.ssid.isEmpty || self.ssid == ssid)
+		}
+		
+		init(from decoder: any Decoder) throws {
+			let container = try decoder.container(keyedBy: CodingKeys.self)
+			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+			name = try container.decode(String.self, forKey: .name)
+			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
+			let join = try container.decodeIfPresent(String.self, forKey: .join)
+			didRefuse = join == "failed"
+			isJoining = join == "trying"
+			ssid = try container.decodeIfPresent(String.self, forKey: .ssid) ?? ""
+		}
+	}
+	
 	private enum Answer: Sendable {
 		case body(Data)
 		case missing
+		case refused
 		case failed
 		
 		var isWritten: Bool {
@@ -29,7 +70,8 @@ actor NodeStore {
 	init() {
 		let configuration = URLSessionConfiguration.ephemeral
 		configuration.waitsForConnectivity = false
-		configuration.timeoutIntervalForRequest = 10
+		configuration.timeoutIntervalForRequest = 8
+		configuration.allowsCellularAccess = false
 		session = URLSession(configuration: configuration)
 		decoder.dateDecodingStrategy = .iso8601
 		encoder.dateEncodingStrategy = .iso8601
@@ -41,7 +83,29 @@ actor NodeStore {
 			guard let list = try? decoder.decode(ShowList.self, from: data), !list.shows.isEmpty else { return .blank }
 			return .list(list)
 		case .missing: return .blank
-		case .failed: return .unreachable
+		case .refused, .failed: return .unreachable
+		}
+	}
+	
+	func setup(at endpoint: NodeEndpoint) async -> Setup? {
+		guard case let .body(data) = await send(endpoint, "info", method: "GET", body: nil, client: nil) else { return nil }
+		return try? decoder.decode(Setup.self, from: data)
+	}
+	
+	func networks(at endpoint: NodeEndpoint) async -> [NodeNetwork]? {
+		struct Scan: Decodable {
+			var networks: [NodeNetwork]
+		}
+		
+		guard case let .body(data) = await send(endpoint, "scan", method: "GET", body: nil, client: nil), let scan = try? decoder.decode(Scan.self, from: data) else { return nil }
+		return scan.networks.sorted { $0.rssi > $1.rssi }
+	}
+	
+	func command(_ path: String, at endpoint: NodeEndpoint, fields: [String: String] = [:]) async throws {
+		switch await send(endpoint, path, method: "POST", body: try? encoder.encode(fields), client: nil) {
+		case .body: return
+		case .missing, .refused: throw Failure.refused
+		case .failed: throw Failure.unreachable
 		}
 	}
 	
@@ -83,7 +147,7 @@ actor NodeStore {
 		guard let (data, response) = try? await session.data(for: request) else { return .failed }
 		guard let http = response as? HTTPURLResponse else { return .failed }
 		if http.statusCode == 404 { return .missing }
-		guard http.statusCode == 200 else { return .failed }
+		guard http.statusCode == 200 else { return .refused }
 		return .body(data)
 	}
 }

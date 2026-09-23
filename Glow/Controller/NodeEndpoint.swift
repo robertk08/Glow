@@ -27,6 +27,7 @@ nonisolated struct NodeEndpoint: Sendable, Hashable, Codable, Identifiable {
 	}
 	
 	static let fallback = NodeEndpoint(host: "glow.local", name: "glow.local")
+	static let setup = NodeEndpoint(host: "192.168.4.1", name: "Glow Setup")
 	
 	init(host: String, port: Int = 80, name: String, nodeID: String? = nil) {
 		self.host = host

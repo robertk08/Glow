@@ -58,12 +58,14 @@ actor NodeLink {
 	
 	
 	private func supervise(_ endpoint: NodeEndpoint) async {
-		var attempt = 0
+		var failures = 0
 		while !Task.isCancelled {
 			var target = endpoint
 			
 			if let preferred {
-				target = NodeEndpoint(host: preferred, port: endpoint.port, name: endpoint.name, nodeID: endpoint.nodeID)
+				target.host = preferred
+			} else if failures % 2 == 1 {
+				target.host = NodeEndpoint.fallback.host
 			}
 			
 			guard let url = target.socketURL else { return }
@@ -73,12 +75,12 @@ actor NodeLink {
 			if Task.isCancelled { return }
 			
 			if reachedNode {
-				attempt = 1
+				failures = 0
 			} else {
 				preferred = nil
-				attempt = min(attempt + 1, 5)
+				failures += 1
 			}
-			for remaining in stride(from: min(3, 1 << (attempt - 1)), to: 0, by: -1) {
+			for remaining in stride(from: min(3, max(1, failures)), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
 				try? await Task.sleep(for: .seconds(1))

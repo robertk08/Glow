@@ -9,7 +9,7 @@ struct ShowsView: View {
 	@State private var renaming: Show?
 	@State private var renamed = ""
 	@State private var deleting: Show?
-	@State private var exporting: ShowDocument?
+	@State private var exporting: ShowFile?
 	@State private var isImporting = false
 	
 	var body: some View {
@@ -45,7 +45,7 @@ struct ShowsView: View {
 							}
 							
 							Button("Save to Files", systemImage: "folder") {
-								exporting = ShowDocument(show: shows.exportable())
+								exporting = shows.exportable()
 							}
 						}
 					}
@@ -78,7 +78,7 @@ struct ShowsView: View {
 			guard let url = try? result.get() else { return }
 			shows.adopt(contentsOf: url)
 		}
-		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, document: exporting, contentType: .json, defaultFilename: exporting?.show.name) { _ in }
+		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, item: exporting, contentTypes: [.json], defaultFilename: exporting?.name) { _ in }
 		.alert("Delete Show?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, presenting: deleting) { show in
 			Button("Cancel", role: .cancel) {}
 			

@@ -139,4 +139,15 @@ struct FixtureTypeTests {
 		#expect(Attribute.dimmer.group == .dimmer)
 		#expect(Attribute.reset.group == .control)
 	}
+	
+	@Test func namesReadAsWordsExceptWhereTheTradeSaysOtherwise() {
+		#expect(Attribute.colorTemperature.name == "Color temperature")
+		#expect(Attribute.gobo2Rotation.name == "Gobo 2 rotation")
+		#expect(Attribute.gobo2.name == "Gobo wheel 2")
+		#expect(Attribute.uv.name == "UV")
+		#expect(Attribute.custom.name == "Channel")
+		#expect(GoboShape.fourPetals.name == "Four petals")
+		#expect(GoboShape.open.name == "Open")
+	}
 }
+

@@ -278,31 +278,21 @@ final class Console {
 	
 	@available(iOS 27.0, *)
 	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
-		let ordered = items.filter { !difference.sources.contains($0.persistentModelID) }
-		let lifted = items.filter { difference.sources.contains($0.persistentModelID) }
+		var destination = items.endIndex
 		
-		switch difference.destination.position {
-		case let .before(id): place(lifted, into: ordered, at: ordered.firstIndex { $0.persistentModelID == id } ?? ordered.endIndex, sortIndex: sortIndex)
-		case .end: place(lifted, into: ordered, at: ordered.endIndex, sortIndex: sortIndex)
+		if case let .before(id) = difference.destination.position {
+			destination = items.firstIndex { $0.persistentModelID == id } ?? items.endIndex
 		}
+		
+		move(IndexSet(items.indices.filter { difference.sources.contains(items[$0].persistentModelID) }), to: destination, among: items, sortIndex: sortIndex)
 	}
 	
 	func move<Item: PersistentModel>(_ offsets: IndexSet, to destination: Int, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
 		let lifted = offsets.map { items[$0] }
+		guard !lifted.isEmpty else { return }
 		var ordered = items
 		ordered.remove(atOffsets: offsets)
-		
-		var position = destination
-		
-		for offset in offsets where offset < destination {
-			position -= 1
-		}
-		
-		place(lifted, into: ordered, at: min(max(position, 0), ordered.count), sortIndex: sortIndex)
-	}
-	
-	private func place<Item: PersistentModel>(_ lifted: [Item], into ordered: [Item], at position: Int, sortIndex: ReferenceWritableKeyPath<Item, Double>) {
-		guard !lifted.isEmpty else { return }
+		let position = min(max(destination - offsets.count { $0 < destination }, 0), ordered.count)
 		
 		var low = 0.0
 		var step = 1.0
@@ -318,10 +308,9 @@ final class Console {
 		}
 		
 		guard step > 0 else {
-			var all = ordered
-			all.insert(contentsOf: lifted, at: position)
+			ordered.insert(contentsOf: lifted, at: position)
 			
-			for (index, item) in all.enumerated() {
+			for (index, item) in ordered.enumerated() {
 				item[keyPath: sortIndex] = Double(index)
 			}
 			return

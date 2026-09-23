@@ -216,8 +216,9 @@ that drops the cache corrupts the packet on the wire as a visible flicker. Run
 
 ## Wire protocol
 
-WebSocket at `ws://<host>/ws`, advertised over mDNS as `_glow._tcp` on port 80,
-hostname `glow.local`, TXT `v`, `id` (MAC as 12 hex digits), `name`.
+WebSocket at `ws://glow.local/ws` on port 80, the hostname the controller
+answers to over mDNS. A client that has connected before tries the address the
+controller last reported first.
 
 **The client must not offer a WebSocket subprotocol.** The node's library echoes
 one back and a strict client then rejects its own connection.
@@ -329,13 +330,13 @@ scale the head's dimmer the way they do everywhere else.
 does, along with the dimmer band, the pan and tilt inversions, the show name,
 the pairing code and the HAP port. Nothing about it is sent from the app.
 
-**Pairing:** HAP is on port 1201, advertised as `_hap._tcp` beside `_glow._tcp`
-on the same `glow.local`. Add the accessory in Home and enter **466-37-726**.
-Pair with the rig dark, because pairing writes to flash and a flash write
-corrupts the packet on the wire. Removing the accessory from Home leaves the
-controller believing it is paired, so serial `unpair` is what lets it be added
-again. Home caches the accessory database, so a firmware change that adds or
-removes a control needs the accessory removed and added back before it shows.
+**Pairing:** HAP is on port 1201, advertised as `_hap._tcp` on the same
+`glow.local`. Add the accessory in Home and enter **466-37-726**. Pair with the
+rig dark, because pairing writes to flash and a flash write corrupts the packet
+on the wire. Removing the accessory from Home leaves the controller believing it
+is paired, so serial `unpair` is what lets it be added again. Home caches the
+accessory database, so a firmware change that adds or removes a control needs
+the accessory removed and added back before it shows.
 
 ## Shows on the wire
 

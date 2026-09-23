@@ -476,22 +476,18 @@ struct Programmer {
 		return light.color
 	}
 	
-	func apply(_ light: LightColor) {
-		for target in targets where target.type.mixesColor {
-			apply(.mixing(light, emitters: target.type.emitters, mixing: target.type.mixing), to: target)
-		}
-	}
-	
 	func apply(_ preset: ColorPreset) {
 		for target in targets where target.type.mixesColor {
 			apply(preset.mix(emitters: target.type.emitters, mixing: target.type.mixing), to: target)
 		}
 	}
 	
+	func apply(_ light: LightColor) {
+		apply(ColorPreset(name: "", recipe: .colour(light)))
+	}
+	
 	func apply(kelvin: Double) {
-		for target in targets where target.type.mixesColor {
-			apply(.white(kelvin: kelvin, emitters: target.type.emitters, mixing: target.type.mixing), to: target)
-		}
+		apply(ColorPreset(name: "", recipe: .white(kelvin: kelvin)))
 	}
 	
 	var colorBinding: Binding<Color> {

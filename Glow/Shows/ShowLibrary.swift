@@ -156,20 +156,22 @@ final class ShowLibrary {
 	func activate(_ show: Show) {
 		guard show.id != activeID else { return }
 		activeID = show.id
+		let started = epoch
 		
-		switchTo(show) { list in
-			list.active = show.id
+		enqueue {
+			await self.synchronise(Self.everything)
+			
+			await self.commit { list in
+				list.active = show.id
+			}
+			
+			await self.open(show, since: started)
 		}
 	}
 	
 	func create(name: String) {
-		let show = Show(name: Self.unusedName(name, among: shows))
-		shows.append(show)
-		activeID = show.id
-		
-		switchTo(show) { list in
-			list.shows.append(show)
-			list.active = show.id
+		enqueue {
+			await self.adopt(ShowContents(), named: name)
 		}
 	}
 	
@@ -289,16 +291,6 @@ final class ShowLibrary {
 		}
 		
 		return next
-	}
-	
-	private func switchTo(_ show: Show, listing change: @escaping @MainActor (inout ShowList) -> Void) {
-		let started = epoch
-		
-		enqueue {
-			await self.synchronise(Self.everything)
-			await self.commit(change)
-			await self.open(show, since: started)
-		}
 	}
 	
 	private func startLoading() {

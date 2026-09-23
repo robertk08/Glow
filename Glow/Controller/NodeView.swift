@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NodeView: View {
 	@Environment(Console.self) private var console
-	@Environment(NodeDiscovery.self) private var discovery
 	
 	@State private var isSettingUp = false
 	@State private var isForgetting = false
@@ -37,7 +36,7 @@ struct NodeView: View {
 					Button("Forget", role: .destructive) {
 						Task {
 							do {
-								try await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).forget()
+								try await NodeStore().command("forget", at: console.endpoint)
 							} catch {
 								failure = error.localizedDescription
 							}
@@ -57,16 +56,6 @@ struct NodeView: View {
 			Button("OK", role: .cancel) { failure = nil }
 		} message: {
 			Text(failure ?? "")
-		}
-		.task {
-			discovery.start()
-		}
-		.onChange(of: discovery.endpoints) {
-			guard !console.link.isConnected, let found = discovery.endpoints.first else { return }
-			console.endpoint = found
-		}
-		.onDisappear {
-			discovery.stop()
 		}
 	}
 }

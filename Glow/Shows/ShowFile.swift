@@ -16,18 +16,14 @@ nonisolated struct ShowFile: Codable, Sendable, Transferable {
 		format == ShowFile.format && version == ShowFile.current
 	}
 	
-	var exported: Data {
-		get throws {
+	static var transferRepresentation: some TransferRepresentation {
+		DataRepresentation(exportedContentType: .json) { file in
 			let encoder = JSONEncoder()
 			encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 			encoder.dateEncodingStrategy = .iso8601
-			return try encoder.encode(self)
+			return try encoder.encode(file)
 		}
-	}
-	
-	static var transferRepresentation: some TransferRepresentation {
-		DataRepresentation(exportedContentType: .json) { try $0.exported }
-			.suggestedFileName { $0.name }
+		.suggestedFileName { $0.name }
 	}
 	
 	private enum CodingKeys: String, CodingKey { case format, version, exportedAt, name, show }

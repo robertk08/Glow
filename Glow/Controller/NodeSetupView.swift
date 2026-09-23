@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NodeSetupView: View {
 	@Environment(Console.self) private var console
-	@Environment(NodeDiscovery.self) private var discovery
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openURL
 	
@@ -197,7 +196,6 @@ private struct EnteringPassword: View {
 
 private struct Joining: View {
 	@Environment(Console.self) private var console
-	@Environment(NodeDiscovery.self) private var discovery
 	
 	let model: NodeSetupModel
 	
@@ -227,7 +225,7 @@ private struct Joining: View {
 		}
 		.task(id: model.failure == nil) {
 			guard model.failure == nil else { return }
-			await model.join(console: console, discovery: discovery)
+			await model.join(console: console)
 		}
 	}
 }

@@ -5,7 +5,6 @@ import SwiftUI
 struct GlowApp: App {
 	@State private var console = Console()
 	@State private var library = FixtureLibrary()
-	@State private var discovery = NodeDiscovery()
 	@State private var shows = ShowLibrary()
 	
 	var body: some Scene {
@@ -13,7 +12,6 @@ struct GlowApp: App {
 			RootView()
 				.environment(console)
 				.environment(library)
-				.environment(discovery)
 				.environment(shows)
 				.task {
 					console.start()

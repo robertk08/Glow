@@ -24,7 +24,7 @@ final class NodeSetupModel {
 		return selected?.enterprise != true || !user.isEmpty
 	}
 	
-	private let setup = NodeSetup()
+	private let store = NodeStore()
 	
 	func waitForController(console: Console) async {
 		failure = nil
@@ -32,7 +32,7 @@ final class NodeSetupModel {
 		if console.link.isConnected {
 			expectedNodeID = console.endpoint.nodeID
 			do {
-				try await NodeSetup(host: console.endpoint.host, port: console.endpoint.port).begin()
+				try await store.command("setup", at: console.endpoint)
 			} catch {
 				failure = "Could not open controller setup. Check the connection and update the controller firmware if needed."
 				return
@@ -54,7 +54,7 @@ final class NodeSetupModel {
 		
 		for _ in 0..<15 {
 			guard !Task.isCancelled else { return }
-			if let info = try? await setup.info() {
+			if let info = await store.setup(at: .setup) {
 				if let expectedNodeID, info.id != expectedNodeID {
 					failure = "Glow Setup belongs to a different controller. Power off other controllers being set up and try again."
 					return
@@ -79,7 +79,7 @@ final class NodeSetupModel {
 				try? await Task.sleep(for: .seconds(2))
 			}
 			
-			guard let found = try? await setup.scan(), !found.isEmpty else { continue }
+			guard let found = await store.networks(at: .setup), !found.isEmpty else { continue }
 			
 			networks = found
 			return
@@ -99,35 +99,34 @@ final class NodeSetupModel {
 		}
 	}
 	
-	func join(console: Console, discovery: NodeDiscovery) async {
+	func join(console: Console) async {
 		step = .joining
 		failure = nil
 		
 		guard let ssid = selected?.ssid else { return }
 		
 		do {
-			try await setup.join(ssid: ssid, user: user, password: password)
+			try await store.command("provision", at: .setup, fields: ["ssid": ssid, "user": user, "password": password])
 		} catch {
 			failure = error.localizedDescription
 			step = .password
 			return
 		}
 		
-		discovery.start()
 		var provisioned: NodeEndpoint?
 		
 		for _ in 0..<40 {
 			guard !Task.isCancelled else { return }
 			try? await Task.sleep(for: .seconds(2))
 			
-			if provisioned == nil, let info = try? await setup.info(), info.id == nodeID {
+			if provisioned == nil, let info = await store.setup(at: .setup), info.id == nodeID {
 				if info.didRefuse {
 					failure = "The controller could not join \(ssid). Check the network and credentials."
 					step = .password
 					return
 				}
 				
-				if info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != setup.host {
+				if info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != NodeEndpoint.setup.host {
 					provisioned = NodeEndpoint(host: info.ip, name: info.name, nodeID: info.id)
 					NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: "Glow Setup")
 					
@@ -155,7 +154,8 @@ final class NodeSetupModel {
 				}
 			}
 			
-			guard let found = provisioned ?? discovery.endpoints.first(where: { $0.nodeID == nodeID }), let info = try? await NodeSetup(host: found.host, port: found.port).info(), info.id == nodeID, info.hasJoined(ssid: ssid) else { continue }
+			let found = provisioned ?? NodeEndpoint(host: NodeEndpoint.fallback.host, name: NodeEndpoint.fallback.name, nodeID: nodeID)
+			guard let info = await store.setup(at: found), info.id == nodeID, info.hasJoined(ssid: ssid) else { continue }
 			
 			user = ""
 			password = ""
