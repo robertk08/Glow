@@ -8,8 +8,6 @@ namespace Store {
 namespace {
 
 const char *SHOWS     = "/shows.json";
-const char *PAGE      = "/web.html";
-const char *PACKED    = "/web.html.gz";
 const char *SHOWS_DIR = "/s";
 const char *UPLOAD    = "/upload.part";
 
@@ -80,10 +78,6 @@ bool ready() { return g_ready; }
 
 const char *showsPath() { return SHOWS; }
 
-const char *pagePath() { return PAGE; }
-
-const char *packedPagePath() { return PACKED; }
-
 bool showPath(char *out, size_t size, const char *showID) {
   if (!safe(showID)) return false;
   return snprintf(out, size, "%s/%s", SHOWS_DIR, showID) < (int)size;
@@ -126,9 +120,10 @@ File open(const char *path) {
 }
 
 bool write(const char *path, const uint8_t *data, size_t len) {
-  if (!g_ready || !ensureParents(path)) return false;
+  if (!g_ready) return false;
 
   return Flash::guarded([&] {
+    if (!ensureParents(path)) return false;
     File f = LittleFS.open(UPLOAD, FILE_WRITE, true);
     if (!f) return false;
     size_t written = f.write(data, len);
@@ -137,6 +132,7 @@ bool write(const char *path, const uint8_t *data, size_t len) {
       LittleFS.remove(UPLOAD);
       return false;
     }
+    if (LittleFS.rename(UPLOAD, path)) return true;
     LittleFS.remove(path);
     return LittleFS.rename(UPLOAD, path);
   });

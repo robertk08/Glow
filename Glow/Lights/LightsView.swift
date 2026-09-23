@@ -48,8 +48,9 @@ struct LightsView: View {
 	}
 	
 	@ViewBuilder private var tiles: some View {
+		let clashes = clashing
 		let items = ForEach(fixtures) { fixture in
-			LightTile(fixture: fixture, fixtures: fixtures, clashes: clashing.contains(fixture.persistentModelID), editing: $editingFixture)
+			LightTile(fixture: fixture, fixtures: fixtures, clashes: clashes.contains(fixture.persistentModelID), editing: $editingFixture)
 		}
 		let grid = LazyVGrid(columns: columns, spacing: 12) {
 			if #available(iOS 27.0, *) {

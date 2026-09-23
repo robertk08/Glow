@@ -37,11 +37,15 @@ const size_t   DMX_HEADER  = 6;
 const size_t   DOC_HEADER  = 7;
 const uint16_t SLOTS       = 512;
 
-uint8_t g_source[DMX_HEADER + SLOTS];
-bool    g_haveSource = false;
-char    g_scene[Store::NAME_LIMIT] = "";
-float   g_master = 1;
-bool    g_blackout = false;
+uint8_t      g_source[DMX_HEADER + SLOTS];
+uint8_t      g_frame[DMX_HEADER + SLOTS];
+bool         g_haveSource = false;
+int          g_changedFrom = 0;
+int          g_changedTo   = 0;
+portMUX_TYPE g_lock = portMUX_INITIALIZER_UNLOCKED;
+char         g_scene[Store::NAME_LIMIT] = "";
+float        g_master = 1;
+bool         g_blackout = false;
 
 const uint8_t NO_CLIENT = 0xFF;
 
@@ -49,7 +53,16 @@ const uint32_t WS_PING_MS    = 4000;
 const uint32_t WS_PONG_MS    = 2000;
 const uint8_t  WS_PING_TRIES = 2;
 
-char g_out[256];
+char g_out[320];
+
+void header(uint8_t *frame, int start, int length) {
+  frame[0] = OP_SOURCE;
+  frame[1] = 0;
+  frame[2] = (uint8_t)(start & 0xFF);
+  frame[3] = (uint8_t)(start >> 8);
+  frame[4] = (uint8_t)(length & 0xFF);
+  frame[5] = (uint8_t)(length >> 8);
+}
 
 void sendError(uint8_t num, const char *code, const char *message) {
   JsonDocument doc;
@@ -69,9 +82,10 @@ void sendStatus(uint8_t num) {
   doc["src"] = g_haveSource;
   doc["uptime"] = (uint32_t)(esp_timer_get_time() / 1000000LL);
   doc["client"] = num;
-  doc["doc"] = true;
-  doc["ip"] = Net::ip().toString();
+  doc["ip"] = Net::up() ? Net::ip().toString() : String();
   doc["scene"] = g_scene;
+  doc["master"] = g_master;
+  doc["blackout"] = g_blackout;
   size_t n = serializeJson(doc, g_out, sizeof(g_out));
   g_ws.sendTXT(num, g_out, n);
 }
@@ -89,7 +103,35 @@ void relayText(uint8_t from, const uint8_t *p, size_t len) {
 }
 
 void sendSource(uint8_t num) {
-  g_ws.sendBIN(num, g_source, sizeof(g_source));
+  portENTER_CRITICAL(&g_lock);
+  memcpy(g_frame, g_source, sizeof(g_source));
+  portEXIT_CRITICAL(&g_lock);
+  g_ws.sendBIN(num, g_frame, sizeof(g_frame));
+}
+
+void relayChanges() {
+  if (!g_changedTo) return;
+
+  portENTER_CRITICAL(&g_lock);
+  int start  = g_changedFrom;
+  int length = g_changedTo - g_changedFrom + 1;
+  memcpy(g_frame + DMX_HEADER, g_source + DMX_HEADER + (start - 1), length);
+  g_changedFrom = 0;
+  g_changedTo   = 0;
+  portEXIT_CRITICAL(&g_lock);
+
+  header(g_frame, start, length);
+  relayBinary(NO_CLIENT, g_frame, DMX_HEADER + length);
+}
+
+void sendWritten(uint8_t num, bool stored, const char *show, const char *folder, const char *id) {
+  JsonDocument doc;
+  doc["t"] = stored ? "wrote" : "unwritten";
+  doc["show"] = show;
+  doc["folder"] = folder;
+  doc["id"] = id;
+  size_t n = serializeJson(doc, g_out, sizeof(g_out));
+  g_ws.sendTXT(num, g_out, n);
 }
 
 void onDocument(uint8_t num, const uint8_t *p, size_t len) {
@@ -128,26 +170,10 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   cursor += idLen;
 
   char path[Store::PATH_LIMIT];
-  if (!Store::ready() || !Store::objectPath(path, sizeof(path), show, folder, id)) {
-    sendError(num, "bad_object", "the controller cannot store that object");
-    return;
-  }
-
-  bool stored = p[1] == 0 ? Store::write(path, cursor, bodyLen) : Store::remove(path);
-  if (!stored) {
-    sendError(num, "write_failed", "the controller could not store that object");
-    return;
-  }
-
-  relayBinary(num, p, len);
-
-  JsonDocument doc;
-  doc["t"] = "wrote";
-  doc["show"] = show;
-  doc["folder"] = folder;
-  doc["id"] = id;
-  size_t n = serializeJson(doc, g_out, sizeof(g_out));
-  g_ws.sendTXT(num, g_out, n);
+  bool stored = Store::ready() && Store::objectPath(path, sizeof(path), show, folder, id);
+  if (stored) stored = p[1] == 0 ? Store::write(path, cursor, bodyLen) : Store::remove(path);
+  if (stored) relayBinary(num, p, len);
+  sendWritten(num, stored, show, folder, id);
 }
 
 void onBinary(uint8_t num, const uint8_t *p, size_t len) {
@@ -189,8 +215,10 @@ void onBinary(uint8_t num, const uint8_t *p, size_t len) {
     return;
   }
 
+  portENTER_CRITICAL(&g_lock);
   memcpy(g_source + DMX_HEADER + (start - 1), p + DMX_HEADER, length);
   g_haveSource = true;
+  portEXIT_CRITICAL(&g_lock);
   relayBinary(num, p, len);
 }
 
@@ -290,12 +318,7 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
 }  // namespace
 
 void begin() {
-  g_source[0] = OP_SOURCE;
-  g_source[1] = 0;
-  g_source[2] = 1;
-  g_source[3] = 0;
-  g_source[4] = (uint8_t)(SLOTS & 0xFF);
-  g_source[5] = (uint8_t)(SLOTS >> 8);
+  header(g_source, 1, SLOTS);
 
   g_ws.begin();
   g_ws.onEvent(onEvent);
@@ -305,33 +328,32 @@ void begin() {
 }
 
 void tick() {
-  if (g_running) g_ws.loop();
+  if (!g_running) return;
+  g_ws.loop();
+  relayChanges();
 }
 
 int clients() { return g_running ? g_ws.connectedClients() : 0; }
 
 void apply(int start, const uint8_t *source, const uint8_t *output, int length) {
   if (start < 1 || length < 1 || (uint32_t)start + length - 1 > SLOTS) return;
+  int last = start + length - 1;
 
+  portENTER_CRITICAL(&g_lock);
   memcpy(g_source + DMX_HEADER + (start - 1), source, length);
   g_haveSource = true;
+  if (!g_changedTo || start < g_changedFrom) g_changedFrom = start;
+  if (last > g_changedTo) g_changedTo = last;
+  portEXIT_CRITICAL(&g_lock);
 
-  uint8_t frame[DMX_HEADER + SLOTS];
-  frame[0] = OP_SOURCE;
-  frame[1] = 0;
-  frame[2] = (uint8_t)(start & 0xFF);
-  frame[3] = (uint8_t)(start >> 8);
-  frame[4] = (uint8_t)(length & 0xFF);
-  frame[5] = (uint8_t)(length >> 8);
-  memcpy(frame + DMX_HEADER, source, length);
-
-  relayBinary(NO_CLIENT, frame, DMX_HEADER + length);
   DmxBus::writeRange(start, output, length);
 }
 
 void source(int start, uint8_t *out, int length) {
   if (start < 1 || length < 1 || (uint32_t)start + length - 1 > SLOTS) return;
+  portENTER_CRITICAL(&g_lock);
   memcpy(out, g_source + DMX_HEADER + (start - 1), length);
+  portEXIT_CRITICAL(&g_lock);
 }
 
 float master() { return g_master; }

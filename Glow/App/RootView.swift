@@ -79,10 +79,6 @@ struct RootView: View {
 		.task {
 			library.setMade(stored.map(\.definition))
 		}
-		.onChange(of: shows.activeID) { previous, _ in
-			guard !previous.isEmpty else { return }
-			console.closeShow()
-		}
 		.onChange(of: fixtures) {
 			console.applyPatch(fixtures, library: library)
 		}
@@ -94,9 +90,6 @@ struct RootView: View {
 		}
 		.onChange(of: console.node) {
 			shows.reach(console, library: library)
-		}
-		.onChange(of: console.notices) {
-			shows.receive(console.takeNotices())
 		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)

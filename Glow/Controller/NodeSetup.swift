@@ -53,13 +53,13 @@ struct NodeSetup: Sendable {
 	var host = "192.168.4.1"
 	var port = 80
 	
-	private var session: URLSession {
+	private let session: URLSession = {
 		let configuration = URLSessionConfiguration.ephemeral
 		configuration.timeoutIntervalForRequest = 5
 		configuration.waitsForConnectivity = false
 		configuration.allowsCellularAccess = false
 		return URLSession(configuration: configuration)
-	}
+	}()
 	
 	func info() async throws -> Info {
 		try await get("/api/info")

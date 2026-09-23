@@ -52,14 +52,18 @@ final class Fixture {
 	}
 	
 	@MainActor static func clashing(among fixtures: [Fixture], library: FixtureLibrary) -> Set<PersistentIdentifier> {
+		let spans = fixtures.map { ($0.persistentModelID, $0.range(library.type($0.typeID))) }.sorted { $0.1.lowerBound < $1.1.lowerBound }
 		var found: Set<PersistentIdentifier> = []
+		var widest: (id: PersistentIdentifier, reach: Int)?
 		
-		for (index, fixture) in fixtures.enumerated() {
-			let range = fixture.range(library.type(fixture.typeID))
+		for (id, span) in spans {
+			if let widest, span.lowerBound <= widest.reach {
+				found.insert(id)
+				found.insert(widest.id)
+			}
 			
-			for other in fixtures.dropFirst(index + 1) where other.range(library.type(other.typeID)).overlaps(range) {
-				found.insert(fixture.persistentModelID)
-				found.insert(other.persistentModelID)
+			if span.upperBound > widest?.reach ?? 0 {
+				widest = (id, span.upperBound)
 			}
 		}
 		

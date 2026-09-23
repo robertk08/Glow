@@ -182,7 +182,7 @@ All four board settings are required, and none are saved with the sketch:
 - Partition Scheme: **Custom**, which takes `partitions.csv` from the sketch folder
 
 The stock schemes spend only half the 8 MB and leave under a megabyte for shows.
-`partitions.csv` gives the firmware 2 MB, which is roughly twice what it uses,
+`partitions.csv` gives the firmware 2 MB, of which it uses about 1.6 MB,
 and hands the remaining **6.15 MB to shows**. Confirm it took by checking that
 `partitions.csv` appears in the build folder, because the custom scheme makes
 the compiler report the whole flash as the maximum rather than the app
@@ -247,10 +247,12 @@ bytes 7..   show, folder, id, body
 ```
 
 The controller stores the body, relays the frame untouched to every other
-client, and answers the sender with `{"t":"wrote"}`. A client folds an object
-into what it believes the controller holds only once that answer arrives, so a
-write that never lands is simply sent again with the next edit. Anything larger
-than the socket carries comfortably still goes over HTTP.
+client, and answers the sender with `{"t":"wrote"}`, or `{"t":"unwritten"}` when
+it could not store it, both naming the show, folder and id. A client folds an
+object into what it believes the controller holds only once that answer arrives,
+so a write that never lands is simply sent again with the next edit. It keeps
+one write per object in flight and sends a newer edit once the answer is in.
+Anything larger than the socket carries comfortably still goes over HTTP.
 
 **The opcode says what the frame is for.** `0x01` is the output, what the lamps
 should be doing once master and blackout are in it, and the controller clocks it
@@ -259,9 +261,10 @@ before master touches it, and the controller stores it and passes it to every
 other client without clocking it.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`. In: `status` (`fw`, `id`, `name`, `uptime` in seconds,
-`src`, `client`), `pong`, `error`, plus `blackout` and `master` relayed from
-another client, and the document notices below. Types are strict, an integer is
+`blackout`, `master`, `scene`, `span`. In: `status` (`fw`, `id`, `name`,
+`uptime` in seconds, `src`, `client`, `ip`, `scene`, `master`, `blackout`),
+`pong`, `error`, plus `blackout`, `master` and `scene` relayed from another
+client, and the document notices below. Types are strict, an integer is
 not a float and a boolean is not `1`. `status` is only sent in reply to `hello`,
 so say hello first. `client` is the slot the controller gave you, and you send
 it back as `X-Glow-Client` so your own writes are not relayed to you.
@@ -270,33 +273,6 @@ Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is
 served only on the setup network, and it starts the scan and answers straight
 away, so the app polls until the list arrives.
-
-## The browser
-
-`Web/index.html` is the same desk in a browser, one file with no build step.
-The controller serves it, so opening `http://glow.local` on any phone, tablet or
-laptop reaches the desk on the same origin, with no mixed content block and no
-CORS. It is 51 KB of source, past the 32 KB a document upload takes, so it goes
-up compressed:
-
-```
-gzip -9 -c Web/index.html | curl -X PUT --data-binary @- http://glow.local/api/web
-```
-
-`/api/web` reads the first two bytes, keeps the packed and plain forms in
-separate files, and serves whichever is there, adding `Content-Encoding: gzip`
-when it is the packed one. Uploading one form removes the other, so the page
-never goes stale behind a newer copy.
-
-It speaks the protocol below and nothing else, so it is a client like any other:
-the lights grid with its groups and gauges, the programmer with the feature
-groups a fixture actually has, scenes with the live one lit, shows, the fixture
-types the show carries and a DMX monitor. It adapts the way the app does, a tab
-bar and a sheet on a phone, a sidebar and an inspector on a laptop.
-
-It can do this because a show carries its fixture definitions, so the browser
-resolves channels and scales the master over the right dimmers without the
-app's bundle. Patching is limited to the types a show already holds.
 
 ## Apple Home
 
@@ -338,14 +314,13 @@ green and blue emitters against the white one, which is the centre of Home's
 colour wheel.
 
 **It follows the desk.** Every control reads the controller's source back and
-updates itself, so moving the head in Glow or in the browser moves the sliders
-in Home. Position, brightness and on or off come back exactly. Colour comes back
+updates itself, so moving the head in Glow moves the sliders in Home. Position, brightness and on or off come back exactly. Colour comes back
 as the nearest hue and saturation Home can show, because `EmitterMix` can reach
 mixes that one pair of values cannot describe.
 
 A change from Home enters as a source frame, the same as a change from any other
-device, so the app and the browser see the fader move and the look survives for
-the next device to connect. Master and blackout are held on the controller and
+device, so the app sees the fader move and the look survives for the next
+device to connect. Master and blackout are held on the controller and
 scale the head's dimmer the way they do everywhere else.
 
 **The head is the fourteen channels starting at address 1.** That is fixed in
@@ -376,12 +351,11 @@ runs to tens of kilobytes and the WebSocket carries only small messages.
 A show is a folder of folders. `lights`, `groups`, `made` and `scenes` today,
 and each one holds one JSON file per object named by its id. Names are letters,
 digits, hyphen and underscore, up to 39 characters, and anything else is
-refused.
+refused. One object can be up to 64 KB.
 
 **The controller does not know what a folder means.** It lists the folders it
 finds and assembles `GET /api/show/<id>` as `{"<folder>":[…],"<folder>":[…]}`,
-measuring the files to write the `Content-Length` and then splicing the bytes in
-without parsing one of them. So adding cue stacks later is a folder the app
+streaming the files in as chunks without parsing one of them. So adding cue stacks later is a folder the app
 starts writing to, and the firmware does not change. `/shows.json` is the one
 file the controller reads, and it only ever hands it back.
 
@@ -443,5 +417,6 @@ a timer.
 **Who has the look on connect is settled by `src`.** The controller keeps the
 last source it was given, across client churn and disconnects. A joining client
 reads `src` in the status: true means the controller has a look and the client
-takes it, false means there is none and the client asserts its own. On
+takes it along with the master and blackout, false means there is none and the
+client asserts its own. On
 disconnect the controller holds its last look.

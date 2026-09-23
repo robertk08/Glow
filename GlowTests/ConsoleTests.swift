@@ -124,4 +124,40 @@ struct ConsoleTests {
 		#expect(Array(console.output.prefix(3)) == [0, 0, 128])
 		#expect(Array(console.universe.values.prefix(3)) == [255, 255, 128])
 	}
+	
+	@MainActor @Test func clashesMatchAPairwiseCheck() {
+		let library = FixtureLibrary(builtIn: [])
+		let type = FixtureType(id: "four", model: "Four", channels: [FixtureChannel(offset: 1, attribute: .dimmer), FixtureChannel(offset: 4, attribute: .red)])
+		library.setMade([type])
+		let addresses = [1, 3, 20, 30, 33, 60, 40, 64, 100]
+		let fixtures = addresses.enumerated().map { Fixture(typeID: "four", name: "Light \($0.offset)", address: DMXAddress($0.element)!, sortIndex: Double($0.offset)) }
+		
+		var expected: Set<String> = []
+		
+		for first in fixtures {
+			for second in fixtures where first !== second && first.range(type).overlaps(second.range(type)) {
+				expected.insert(first.name)
+			}
+		}
+		
+		let found = Fixture.clashing(among: fixtures, library: library)
+		
+		#expect(Set(fixtures.filter { found.contains($0.persistentModelID) }.map(\.name)) == expected)
+	}
+	
+	@MainActor @Test func aSelectionLetsGoOfLightsThatAreGone() {
+		let fixtures = (0..<3).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
+		let selection = Selection()
+		
+		for fixture in fixtures {
+			selection.toggle(fixture)
+		}
+		
+		selection.keep([fixtures[0].identifier])
+		
+		#expect(selection.contains(fixtures[0]))
+		#expect(!selection.contains(fixtures[1]))
+		#expect(selection.identifiers.count == 1)
+	}
 }
+

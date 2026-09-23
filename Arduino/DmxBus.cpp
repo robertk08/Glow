@@ -13,9 +13,7 @@ uint8_t g_wire[DMX_PACKET_SIZE];
 SemaphoreHandle_t g_lock     = nullptr;
 SemaphoreHandle_t g_wireLock = nullptr;
 
-volatile int  g_hz     = DMX_REFRESH_HZ;
-volatile bool g_resync = false;
-volatile int  g_used   = DMX_MIN_SLOTS;
+volatile int g_used = DMX_MIN_SLOTS;
 
 TaskHandle_t g_task = nullptr;
 
@@ -25,13 +23,14 @@ struct Hold {
 };
 
 TickType_t periodTicks(int hz) {
-  if (hz < DMX_REFRESH_HZ_MIN) hz = DMX_REFRESH_HZ_MIN;
-  if (hz > DMX_REFRESH_HZ_MAX) hz = DMX_REFRESH_HZ_MAX;
   TickType_t ticks = pdMS_TO_TICKS((1000u + hz - 1) / hz);
   return ticks ? ticks : 1;
 }
 
 void refreshTask(void *) {
+  const TickType_t burst = periodTicks(DMX_BURST_HZ);
+  const TickType_t idle  = periodTicks(DMX_REFRESH_HZ) - burst;
+
   for (;;) {
     int used = g_used;
     if (used < DMX_MIN_SLOTS) used = DMX_MIN_SLOTS;
@@ -52,9 +51,8 @@ void refreshTask(void *) {
       xSemaphoreGive(g_wireLock);
     }
 
-    g_resync = false;
-    xTaskDelayUntil(&sent, periodTicks(DMX_BURST_HZ));
-    ulTaskNotifyTake(pdTRUE, periodTicks(g_hz));
+    xTaskDelayUntil(&sent, burst);
+    ulTaskNotifyTake(pdTRUE, idle);
   }
 }
 
@@ -97,7 +95,7 @@ bool writeRange(int start, const uint8_t *values, int length) {
   return true;
 }
 
-int refreshHz() { return g_hz; }
+int refreshHz() { return DMX_REFRESH_HZ; }
 
 void setUsed(int slots) {
   if (slots < DMX_MIN_SLOTS) slots = DMX_MIN_SLOTS;
@@ -116,7 +114,6 @@ void pause() {
 void resume() {
   if (!g_wireLock) return;
   dmx_driver_enable(DMX_PORT);
-  g_resync = true;
   xSemaphoreGive(g_wireLock);
 }
 

@@ -17,23 +17,27 @@ final class ShowLibrary {
 	private var types: FixtureLibrary?
 	private var endpoint: NodeEndpoint?
 	private var client: Int?
+	private var loadedID = ""
+	private var epoch = 0
 	private var baseline: [String: Data] = [:]
 	private var inFlight: [String: Data] = [:]
 	private var erasing: Set<String> = []
-	private var dropping: Task<Void, Never>?
+	private var deferred: Set<String> = []
+	private var waiting: Set<NodeStore.Folder> = []
+	private var lastSync = Date.distantPast
 	private var wasConnected = false
 	private var isSettled = false
+	private var queue: Task<Void, Never>?
+	private var pending: Task<Void, Never>?
+	private var loading: Task<Void, Never>?
+	private var dropping: Task<Void, Never>?
+	private var listening: Task<Void, Never>?
 	private var settling: Task<Void, Never>?
 	private var saves: Task<Void, Never>?
 	private var commits: Task<Void, Never>?
-	private var loading: Task<Void, Never>?
-	private var pending: Task<Void, Never>?
-	private var isApplying = false
-	private var missed: Set<NodeStore.Folder> = []
-	private var waiting: Set<NodeStore.Folder> = []
-	private var lastSync = Date.distantPast
 	
 	private static let nothing = Show(name: "")
+	nonisolated private static let everything = Set(NodeStore.Folder.allCases)
 	private static let frameLimit = 12000
 	private static let coalesce: TimeInterval = 0.08
 	private static let commitEvery: Duration = .milliseconds(100)
@@ -79,10 +83,23 @@ final class ShowLibrary {
 		endpoint = console.reachable
 		client = console.node?.client
 		
+		if listening == nil {
+			listening = Task { [weak self] in
+				for await notice in console.notices {
+					self?.receive(notice)
+				}
+			}
+		}
+		
 		let connected = console.link.isConnected
 		defer { wasConnected = connected }
 		
 		guard connected else {
+			inFlight = [:]
+			erasing = []
+			deferred = []
+			loading?.cancel()
+			loading = nil
 			guard !isDemo, isLoaded, dropping == nil else { return }
 			
 			dropping = Task {
@@ -101,16 +118,8 @@ final class ShowLibrary {
 			unload()
 		}
 		
-		guard isLoaded else {
-			startLoading()
-			return
-		}
-		
-		guard !wasConnected, let show = shows.first(where: { $0.id == activeID }) else { return }
-		
-		Task {
-			_ = await open(show)
-		}
+		guard !isLoaded || !wasConnected else { return }
+		startLoading()
 	}
 	
 	func startDemo() {
@@ -122,10 +131,11 @@ final class ShowLibrary {
 		let show = Show(name: file.name)
 		shows = [show]
 		activeID = show.id
+		loadedID = show.id
 		
-		Task {
-			await fill(with: file.show)
-			isLoaded = true
+		enqueue {
+			await self.fill(with: file.show)
+			self.isLoaded = true
 		}
 	}
 	
@@ -133,42 +143,32 @@ final class ShowLibrary {
 		guard isDemo else { return }
 		isDemo = false
 		unload()
+		guard console?.link.isConnected == true else { return }
 		startLoading()
 	}
 	
 	func settle(_ phase: ScenePhase) {
 		guard phase != .active, isLoaded, !isDemo else { return }
-		pending?.cancel()
-		pending = nil
-		waiting.formUnion(Set(NodeStore.Folder.allCases))
 		
-		Task {
-			await flush()
-		}
-	}
-	
-	func receive(_ notices: [Wire.Notice]) {
-		guard !isDemo, isLoaded, !notices.isEmpty else { return }
-		
-		Task {
-			for notice in notices {
-				await accept(notice)
-			}
+		enqueue {
+			await self.synchronise(Self.everything)
 		}
 	}
 	
 	func activate(_ show: Show) {
 		guard show.id != activeID else { return }
 		activeID = show.id
+		let started = epoch
 		
-		Task {
-			await commit { list in
+		enqueue {
+			await self.synchronise(Self.everything)
+			
+			await self.commit { list in
 				list.active = show.id
 			}
 			
-			guard await open(show) else {
-				unload()
-				startLoading()
+			guard await self.open(show, since: started) else {
+				self.reload()
 				return
 			}
 		}
@@ -178,30 +178,36 @@ final class ShowLibrary {
 		let show = Show(name: Self.unusedName(name, among: shows))
 		shows.append(show)
 		activeID = show.id
-		clear()
-		baseline = [:]
+		let started = epoch
 		
-		Task {
-			await commit { list in
+		enqueue {
+			await self.synchronise(Self.everything)
+			
+			await self.commit { list in
 				list.shows.append(show)
 				list.active = show.id
+			}
+			
+			guard await self.open(show, since: started) else {
+				self.reload()
+				return
 			}
 		}
 	}
 	
 	func duplicate(_ show: Show) {
-		Task {
-			guard let endpoint else { return }
+		enqueue {
+			guard let endpoint = self.endpoint else { return }
 			
 			var found: ShowContents?
-			if show.id == activeID {
-				found = contents()
+			if show.id == self.loadedID {
+				found = self.contents()
 			} else {
-				found = await store.show(show.id, at: endpoint)
+				found = await self.store.show(show.id, at: endpoint)
 			}
 			
 			guard let copy = found else { return }
-			await adopt(copy, named: show.name)
+			await self.adopt(copy, named: show.name)
 		}
 	}
 	
@@ -209,8 +215,8 @@ final class ShowLibrary {
 		guard let index = shows.firstIndex(where: { $0.id == show.id }) else { return }
 		shows[index].name = name
 		
-		Task {
-			await commit { list in
+		enqueue {
+			await self.commit { list in
 				guard let found = list.shows.firstIndex(where: { $0.id == show.id }) else { return }
 				list.shows[found].name = name
 			}
@@ -222,53 +228,55 @@ final class ShowLibrary {
 		let wasActive = show.id == activeID
 		shows.removeAll { $0.id == show.id }
 		if wasActive, let next = shows.first { activeID = next.id }
+		let started = epoch
 		
-		Task {
-			await commit { list in
+		enqueue {
+			await self.commit { list in
 				list.shows.removeAll { $0.id == show.id }
 				guard list.active == show.id else { return }
 				list.active = list.shows.first?.id ?? ""
 			}
 			
-			if let endpoint {
-				_ = await store.deleteShow(show.id, at: endpoint, client: client)
+			if let endpoint = self.endpoint {
+				_ = await self.store.deleteShow(show.id, at: endpoint, client: self.client)
 			}
 			
-			guard wasActive, let next = shows.first(where: { $0.id == activeID }) else { return }
+			guard wasActive, let next = self.shows.first(where: { $0.id == self.activeID }) else { return }
 			
-			guard await open(next) else {
-				unload()
-				startLoading()
+			guard await self.open(next, since: started) else {
+				self.reload()
 				return
 			}
 		}
 	}
 	
 	func contents() -> ShowContents {
-		contents(Set(NodeStore.Folder.allCases))
+		contents(Self.everything)
 	}
 	
-	func contents(_ folders: Set<NodeStore.Folder>) -> ShowContents {
+	func contents(_ folders: Set<NodeStore.Folder>, only identifier: String? = nil) -> ShowContents {
 		let context = container.mainContext
 		var fixtures: [Fixture] = []
 		var groups: [FixtureGroup] = []
 		var made: [StoredFixtureType] = []
 		var looks: [Look] = []
 		
-		if folders.contains(.lights) { fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		if !folders.isDisjoint(with: [.lights, .made]) { fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
 		if folders.contains(.groups) { groups = (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
 		if folders.contains(.made) { made = (try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [] }
 		if folders.contains(.scenes) { looks = (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
 		
 		var show = ShowContents()
 		
-		for group in groups {
+		for group in groups where identifier == nil || group.identifier == identifier {
 			show.groups.append(ShowContents.Group(identifier: group.identifier, name: group.name, sortIndex: group.sortIndex, symbol: group.symbolOverride, tint: group.tintName))
 		}
 		
-		for fixture in fixtures {
-			let identifiers = fixture.belongsTo.map(\.identifier)
-			show.lights.append(ShowContents.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: identifiers, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+		if folders.contains(.lights) {
+			for fixture in fixtures where identifier == nil || fixture.identifier == identifier {
+				let identifiers = fixture.belongsTo.map(\.identifier)
+				show.lights.append(ShowContents.Light(identifier: fixture.identifier, typeID: fixture.typeID, name: fixture.name, address: fixture.address, sortIndex: fixture.sortIndex, symbol: fixture.symbolOverride, groups: identifiers, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt))
+			}
 		}
 		
 		for stored in made {
@@ -285,7 +293,11 @@ final class ShowLibrary {
 			}
 		}
 		
-		for look in looks {
+		if let identifier {
+			show.made.removeAll { $0.id != identifier }
+		}
+		
+		for look in looks where identifier == nil || look.identifier == identifier {
 			show.scenes.append(ShowContents.Scene(identifier: look.identifier, name: look.name, sortIndex: look.sortIndex, levels: look.levels))
 		}
 		
@@ -296,28 +308,13 @@ final class ShowLibrary {
 		ShowFile(name: active.name, show: contents())
 	}
 	
-	func shareable() -> URL? {
-		let pretty = JSONEncoder()
-		pretty.outputFormatting = [.prettyPrinted, .sortedKeys]
-		pretty.dateEncodingStrategy = .iso8601
-		guard let data = try? pretty.encode(exportable()) else { return nil }
-		
-		let folder = URL.temporaryDirectory.appending(path: "Shared", directoryHint: .isDirectory)
-		try? FileManager.default.removeItem(at: folder)
-		try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-		
-		let url = folder.appending(path: "\(active.name).json")
-		try? data.write(to: url)
-		return url
-	}
-	
 	func adopt(contentsOf url: URL) {
-		guard url.startAccessingSecurityScopedResource() else { return }
-		defer { url.stopAccessingSecurityScopedResource() }
+		let isScoped = url.startAccessingSecurityScopedResource()
+		defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
 		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data), file.isReadable else { return }
 		
-		Task {
-			await adopt(file.show, named: file.name)
+		enqueue {
+			await self.adopt(file.show, named: file.name)
 		}
 	}
 	
@@ -333,63 +330,87 @@ final class ShowLibrary {
 		return "\(base) \(index)"
 	}
 	
-	private func load() async -> Bool {
-		guard let endpoint else { return false }
-		
-		switch await store.shows(at: endpoint) {
-		case .unreachable:
-			return false
-			
-		case .blank:
-			let first = Show(name: "Show 1")
-			shows = [first]
-			activeID = first.id
-			clear()
-			baseline = [:]
-			
-			guard await commit({ list in
-				list.shows = [first]
-				list.active = first.id
-			}) else {
-				shows = []
-				activeID = ""
-				return false
-			}
-			
-			isLoaded = true
-			return true
-			
-		case let .list(list):
-			guard let show = list.activeShow else { return false }
-			shows = list.shows
-			activeID = show.id
-			return await open(show)
+	@discardableResult private func enqueue<Result: Sendable>(_ work: @escaping @MainActor () async -> Result) -> Task<Result, Never> {
+		let previous = queue
+		let next = Task {
+			await previous?.value
+			return await work()
 		}
+		
+		queue = Task {
+			_ = await next.value
+		}
+		
+		return next
 	}
 	
 	private func startLoading() {
-		guard !isLoaded, loading == nil else { return }
+		guard loading == nil else { return }
 		
 		loading = Task {
-			while !Task.isCancelled, !isLoaded {
-				if await load() { break }
+			while !Task.isCancelled {
+				if await enqueue({ await self.load() }).value { break }
 				try? await Task.sleep(for: .seconds(2))
 			}
 			
+			guard !Task.isCancelled else { return }
 			loading = nil
 		}
 	}
 	
-	private func open(_ show: Show) async -> Bool {
-		guard let endpoint, let incoming = await store.show(show.id, at: endpoint) else { return false }
+	private func reload() {
+		unload()
+		startLoading()
+	}
+	
+	private func load() async -> Bool {
+		guard let endpoint, console?.link.isConnected == true else { return false }
+		let started = epoch
+		
+		switch await store.shows(at: endpoint) {
+		case .unreachable:
+			return false
+		case .blank:
+			let first = Show(name: "Show 1")
+			
+			guard await commit({ list in
+				list.shows = [first]
+				list.active = first.id
+			}) else { return false }
+			
+			return await open(first, since: started)
+		case let .list(list):
+			if isLoaded, list.shows.contains(where: { $0.id == loadedID }) {
+				await synchronise(Self.everything, direct: true)
+			}
+			
+			guard let show = list.activeShow else { return false }
+			shows = list.shows
+			activeID = show.id
+			return await open(show, since: started)
+		}
+	}
+	
+	private func open(_ show: Show, since started: Int) async -> Bool {
+		guard let endpoint, let incoming = await store.show(show.id, at: endpoint), started == epoch else { return false }
+		
+		if !loadedID.isEmpty, loadedID != show.id {
+			console?.closeShow()
+		}
+		
+		loadedID = show.id
 		await fill(with: incoming)
+		guard started == epoch else { return false }
+		activeID = show.id
 		isLoaded = true
-		changed(Set(NodeStore.Folder.allCases))
+		changed(Self.everything)
 		return true
 	}
 	
 	private func adopt(_ contents: ShowContents, named name: String) async {
 		guard let endpoint else { return }
+		let started = epoch
+		await synchronise(Self.everything)
 		
 		let show = Show(name: Self.unusedName(name, among: shows))
 		shows.append(show)
@@ -405,59 +426,76 @@ final class ShowLibrary {
 			list.active = show.id
 		}
 		
-		_ = await open(show)
+		guard await open(show, since: started) else {
+			reload()
+			return
+		}
+	}
+	
+	private func receive(_ notice: Wire.Notice) {
+		guard !isDemo else { return }
+		
+		enqueue {
+			await self.accept(notice)
+		}
 	}
 	
 	private func accept(_ notice: Wire.Notice) async {
-		guard let endpoint else { return }
+		guard let endpoint, isLoaded, !isDemo else { return }
 		
 		guard let name = notice.folder, let identifier = notice.id, let show = notice.show else {
 			guard case let .list(list) = await store.shows(at: endpoint) else { return }
 			shows = list.shows
-			guard list.active != activeID, let opening = list.activeShow else { return }
+			guard let opening = list.activeShow, opening.id != loadedID else { return }
 			activeID = opening.id
+			let started = epoch
+			await synchronise(Self.everything)
 			
-			guard await open(opening) else {
-				unload()
-				startLoading()
+			guard await open(opening, since: started) else {
+				reload()
 				return
 			}
 			return
 		}
 		
-		guard show == activeID, let folder = NodeStore.Folder(rawValue: name) else { return }
+		guard show == loadedID, let folder = NodeStore.Folder(rawValue: name) else { return }
 		let key = "\(name)/\(identifier)"
 		
-		guard !notice.isWrite else {
-			if let sent = inFlight.removeValue(forKey: key) {
+		if let landed = notice.landed {
+			let sent = inFlight.removeValue(forKey: key)
+			let erased = erasing.remove(key) != nil
+			
+			if landed, let sent {
 				baseline[key] = sent
-			} else if erasing.remove(key) != nil {
+			} else if landed, erased {
 				baseline.removeValue(forKey: key)
 			}
+			
+			guard deferred.remove(key) != nil else { return }
+			changed([folder])
 			return
 		}
 		
 		var data = notice.body
 		if data == nil, !notice.isDelete {
 			data = await store.object(folder, id: identifier, in: show, at: endpoint)
-			guard data != nil else { return }
+			guard data != nil, show == loadedID else { return }
 		}
 		
-		guard show == activeID else { return }
-		
-		isApplying = true
+		let related = Self.dependents(of: folder)
+		let before = Self.encoded(contents(related), folders: related)
 		apply(folder, data: data, identifier: identifier)
+		let after = Self.encoded(contents(related), folders: related)
 		
-		let refreshed = await Self.snapshot(of: contents([folder]), folders: [folder])
-		let prefix = "\(folder.rawValue)/"
+		baseline[key] = Self.encoded(contents([folder], only: identifier), folders: [folder])[key]
 		
-		for key in baseline.keys where key.hasPrefix(prefix) {
-			baseline.removeValue(forKey: key)
+		for (other, fresh) in after where before[other] != fresh {
+			baseline[other] = fresh
 		}
 		
-		baseline.merge(refreshed) { _, fresh in fresh }
-		isApplying = false
-		catchUp()
+		for other in before.keys where after[other] == nil {
+			baseline.removeValue(forKey: other)
+		}
 	}
 	
 	private func commit() {
@@ -467,19 +505,12 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func catchUp() {
-		guard !missed.isEmpty else { return }
-		let folders = missed
-		missed = []
-		changed(folders)
-	}
-	
 	private func apply(_ folder: NodeStore.Folder, data: Data?, identifier: String) {
 		let context = container.mainContext
 		
 		switch folder {
 		case .lights:
-			let found = ((try? context.fetch(FetchDescriptor<Fixture>())) ?? []).first { $0.identifier == identifier }
+			let found = try? context.fetch(FetchDescriptor<Fixture>(predicate: #Predicate { $0.identifier == identifier })).first
 			guard let data, let entry = try? decoder.decode(ShowContents.Light.self, from: data), let address = DMXAddress(entry.address) else {
 				if let found { context.delete(found) }
 				break
@@ -500,7 +531,7 @@ final class ShowLibrary {
 				fixture.belong(to: group, entry.groups.contains(group.identifier))
 			}
 		case .groups:
-			let found = ((try? context.fetch(FetchDescriptor<FixtureGroup>())) ?? []).first { $0.identifier == identifier }
+			let found = try? context.fetch(FetchDescriptor<FixtureGroup>(predicate: #Predicate { $0.identifier == identifier })).first
 			guard let data, let entry = try? decoder.decode(ShowContents.Group.self, from: data) else {
 				if let found { context.delete(found) }
 				break
@@ -514,7 +545,7 @@ final class ShowLibrary {
 			group.tintName = entry.tint
 			if found == nil { context.insert(group) }
 		case .made:
-			let found = ((try? context.fetch(FetchDescriptor<StoredFixtureType>())) ?? []).first { $0.identifier == identifier }
+			let found = try? context.fetch(FetchDescriptor<StoredFixtureType>(predicate: #Predicate { $0.identifier == identifier })).first
 			guard let data, let entry = try? decoder.decode(FixtureType.self, from: data) else {
 				if let found { context.delete(found) }
 				break
@@ -527,7 +558,7 @@ final class ShowLibrary {
 				context.insert(StoredFixtureType(entry))
 			}
 		case .scenes:
-			let found = ((try? context.fetch(FetchDescriptor<Look>())) ?? []).first { $0.identifier == identifier }
+			let found = try? context.fetch(FetchDescriptor<Look>(predicate: #Predicate { $0.identifier == identifier })).first
 			guard let data, let entry = try? decoder.decode(ShowContents.Scene.self, from: data) else {
 				if let found { context.delete(found) }
 				break
@@ -548,19 +579,21 @@ final class ShowLibrary {
 		loading?.cancel()
 		loading = nil
 		guard isLoaded else { return }
-		pending?.cancel()
+		epoch += 1
 		isLoaded = false
 		shows = []
 		activeID = ""
+		loadedID = ""
 		baseline = [:]
 		inFlight = [:]
 		erasing = []
+		deferred = []
+		waiting = []
 		clear()
+		console?.closeShow()
 	}
 	
 	private func fill(with incoming: ShowContents) async {
-		isApplying = true
-		
 		clear()
 		
 		let context = container.mainContext
@@ -604,9 +637,10 @@ final class ShowLibrary {
 		
 		try? context.save()
 		context.undoManager?.removeAllActions()
+		inFlight = [:]
+		erasing = []
+		deferred = []
 		baseline = await Self.snapshot(of: incoming)
-		isApplying = false
-		catchUp()
 	}
 	
 	@discardableResult private func commit(_ change: (inout ShowList) -> Void) async -> Bool {
@@ -628,32 +662,20 @@ final class ShowLibrary {
 	
 	private func changed(_ folders: Set<NodeStore.Folder>) {
 		guard isLoaded, !isDemo else { return }
-		
-		guard !isApplying else {
-			missed.formUnion(folders)
-			return
-		}
-		
 		waiting.formUnion(folders)
-		let since = Date().timeIntervalSince(lastSync)
-		
-		guard since < Self.coalesce else {
-			pending?.cancel()
-			pending = nil
-			
-			Task {
-				await flush()
-			}
-			return
-		}
-		
 		guard pending == nil else { return }
+		let delay = Self.coalesce - Date().timeIntervalSince(lastSync)
 		
 		pending = Task {
-			try? await Task.sleep(for: .seconds(Self.coalesce - since))
-			guard !Task.isCancelled else { return }
+			if delay > 0 {
+				try? await Task.sleep(for: .seconds(delay))
+			}
+			
 			pending = nil
-			await flush()
+			
+			enqueue {
+				await self.flush()
+			}
 		}
 	}
 	
@@ -664,45 +686,58 @@ final class ShowLibrary {
 		await synchronise(touched)
 	}
 	
-	private func synchronise(_ folders: Set<NodeStore.Folder>) async {
-		guard let endpoint, isLoaded, !folders.isEmpty else { return }
+	private func synchronise(_ folders: Set<NodeStore.Folder>, direct: Bool = false) async {
+		guard let endpoint, isLoaded, !isDemo, !folders.isEmpty else { return }
 		
-		let showID = activeID
+		let showID = loadedID
 		let current = await Self.snapshot(of: contents(folders), folders: folders)
+		let isLive = !direct && console?.link.isConnected == true
+		guard showID == loadedID else { return }
 		
 		for (key, data) in current where baseline[key] != data {
-			guard showID == activeID else { return }
-			guard inFlight[key] != data else { continue }
 			guard let folder = Self.folder(key), let identifier = Self.identifier(key) else { continue }
 			
-			if let console, console.acceptsDocuments, data.count <= Self.frameLimit {
+			guard inFlight[key] == nil, !erasing.contains(key) else {
+				deferred.insert(key)
+				continue
+			}
+			
+			if isLive, data.count <= Self.frameLimit {
 				inFlight[key] = data
-				console.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data))
+				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data))
 				continue
 			}
 			
 			guard await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client) else { continue }
+			guard showID == loadedID else { return }
 			baseline[key] = data
 		}
 		
 		for key in baseline.keys where current[key] == nil {
-			guard showID == activeID else { return }
-			guard !erasing.contains(key) else { continue }
-			guard let folder = Self.folder(key), folders.contains(folder) else { continue }
-			guard let identifier = Self.identifier(key) else { continue }
+			guard let folder = Self.folder(key), folders.contains(folder), let identifier = Self.identifier(key) else { continue }
 			
-			if let console, console.acceptsDocuments {
+			guard inFlight[key] == nil, !erasing.contains(key) else {
+				deferred.insert(key)
+				continue
+			}
+			
+			if isLive {
 				erasing.insert(key)
-				console.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: nil))
+				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: nil))
 				continue
 			}
 			
 			guard await store.delete(folder, id: identifier, in: showID, at: endpoint, client: client) else { continue }
+			guard showID == loadedID else { return }
 			baseline.removeValue(forKey: key)
 		}
 	}
 	
-	nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = Set(NodeStore.Folder.allCases)) async -> [String: Data] {
+	@concurrent nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = Set(NodeStore.Folder.allCases)) async -> [String: Data] {
+		encoded(contents, folders: folders)
+	}
+	
+	nonisolated static func encoded(_ contents: ShowContents, folders: Set<NodeStore.Folder>) -> [String: Data] {
 		let encoder = JSONEncoder()
 		encoder.outputFormatting = [.sortedKeys]
 		encoder.dateEncodingStrategy = .iso8601
@@ -740,7 +775,6 @@ final class ShowLibrary {
 	}
 	
 	nonisolated static func folders(in note: Notification) -> Set<NodeStore.Folder> {
-		let everything = Set(NodeStore.Folder.allCases)
 		guard let info = note.userInfo else { return everything }
 		
 		var found: Set<NodeStore.Folder> = []
@@ -751,21 +785,28 @@ final class ShowLibrary {
 			sawKey = true
 			
 			for id in ids {
-				guard let folder = Self.folder(entity: id.entityName) else { continue }
-				found.insert(folder)
+				found.formUnion(Self.folders(entity: id.entityName))
 			}
 		}
 		
 		return sawKey ? found : everything
 	}
 	
-	nonisolated private static func folder(entity: String) -> NodeStore.Folder? {
+	nonisolated private static func folders(entity: String) -> Set<NodeStore.Folder> {
 		switch entity {
-		case "Fixture": .lights
-		case "FixtureGroup": .groups
-		case "StoredFixtureType": .made
-		case "Look": .scenes
-		default: nil
+		case "Fixture": [.lights, .made]
+		case "FixtureGroup": [.groups]
+		case "StoredFixtureType": [.made]
+		case "Look": [.scenes]
+		default: []
+		}
+	}
+	
+	nonisolated private static func dependents(of folder: NodeStore.Folder) -> Set<NodeStore.Folder> {
+		switch folder {
+		case .groups: [.lights]
+		case .lights: [.made]
+		case .made, .scenes: []
 		}
 	}
 	

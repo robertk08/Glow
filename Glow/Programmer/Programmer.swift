@@ -24,32 +24,52 @@ struct Programmer {
 	let targets: [Target]
 	let title: String
 	let console: Console
+	let type: FixtureType?
+	let channels: [FixtureChannel]
 	
 	init(type: FixtureType, start: DMXAddress, console: Console) {
-		targets = [Target(type: type, start: start, invertsPan: type.invertsPan, invertsTilt: type.invertsTilt)]
-		title = type.model
-		self.console = console
+		self.init(targets: [Target(type: type, start: start, invertsPan: type.invertsPan, invertsTilt: type.invertsTilt)], title: type.model, console: console)
 	}
 	
 	init?(fixture: Fixture, library: FixtureLibrary, console: Console) {
 		guard let type = library.type(fixture.typeID) else { return nil }
-		targets = [Target(type: type, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)]
-		title = fixture.name
-		self.console = console
+		self.init(targets: [Target(type: type, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)], title: fixture.name, console: console)
 	}
 	
 	init(fixtures: [Fixture], library: FixtureLibrary, console: Console) {
-		targets = fixtures.compactMap { fixture in
+		let targets = fixtures.compactMap { fixture -> Target? in
 			guard let type = library.type(fixture.typeID) else { return nil }
 			return Target(type: type, start: fixture.start, invertsPan: fixture.invertsPan, invertsTilt: fixture.invertsTilt)
 		}
-		title = fixtures.count == 1 ? fixtures[0].name : "\(fixtures.count) Lights"
-		self.console = console
+		self.init(targets: targets, title: fixtures.count == 1 ? fixtures[0].name : "\(fixtures.count) Lights", console: console)
 	}
 	
-	var type: FixtureType? {
-		guard let first = targets.first, targets.allSatisfy({ $0.type.id == first.type.id }) else { return nil }
-		return first.type
+	private init(targets: [Target], title: String, console: Console) {
+		self.targets = targets
+		self.title = title
+		self.console = console
+		
+		if let first = targets.first, targets.allSatisfy({ $0.type.id == first.type.id }) {
+			type = first.type
+			channels = first.type.channels
+			return
+		}
+		
+		type = nil
+		var kinds: [FixtureType] = []
+		var shared: [FixtureChannel] = []
+		
+		for target in targets where !kinds.contains(where: { $0.id == target.type.id }) {
+			kinds.append(target.type)
+		}
+		
+		for kind in kinds {
+			for channel in kind.channels where !shared.contains(where: { $0.attribute == channel.attribute && $0.name == channel.name }) {
+				if kinds.allSatisfy({ other in other.channels.allSatisfy { $0.attribute != channel.attribute || $0.name != channel.name || $0.matches(channel) } }) { shared.append(channel) }
+			}
+		}
+		
+		channels = shared
 	}
 	
 	var symbol: String { type?.symbol ?? "lightbulb.2" }
@@ -721,24 +741,6 @@ struct Programmer {
 	func centre() {
 		setFraction(0.5, for: .pan)
 		setFraction(0.5, for: .tilt)
-	}
-	
-	var channels: [FixtureChannel] {
-		if let type { return type.channels }
-		var kinds: [FixtureType] = []
-		var shared: [FixtureChannel] = []
-		
-		for target in targets where !kinds.contains(where: { $0.id == target.type.id }) {
-			kinds.append(target.type)
-		}
-		
-		for kind in kinds {
-			for channel in kind.channels where !shared.contains(where: { $0.attribute == channel.attribute && $0.name == channel.name }) {
-				if kinds.allSatisfy({ other in other.channels.allSatisfy { $0.attribute != channel.attribute || $0.name != channel.name || $0.matches(channel) } }) { shared.append(channel) }
-			}
-		}
-		
-		return shared
 	}
 	
 	func rawValue(of channel: FixtureChannel) -> Int {

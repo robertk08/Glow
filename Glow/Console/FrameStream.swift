@@ -3,7 +3,7 @@ import Foundation
 nonisolated struct FrameStream: Sendable {
 	private var last: [UInt8] = []
 	private var needsEverything = true
-	private var reach = DmxBus.universeSlots
+	private var reach = Universe.channelCount
 	
 	mutating func cover(_ slots: Int) {
 		guard slots != reach else { return }
@@ -15,8 +15,21 @@ nonisolated struct FrameStream: Sendable {
 		needsEverything = true
 	}
 	
-	mutating func adopt(_ frame: [UInt8]) {
-		last = Array(frame.prefix(reach))
+	mutating func adopt(_ whole: [UInt8], start: DMXAddress, count: Int) {
+		let frame = Array(whole.prefix(reach))
+		let first = start.value - 1
+		let end = min(first + count, frame.count)
+		
+		guard !needsEverything, last.count == frame.count else {
+			guard first == 0, end == frame.count else { return }
+			last = frame
+			needsEverything = false
+			return
+		}
+		
+		for index in first..<max(first, end) {
+			last[index] = frame[index]
+		}
 	}
 	
 	mutating func next(_ whole: [UInt8]) -> (start: DMXAddress, values: [UInt8])? {

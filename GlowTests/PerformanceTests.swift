@@ -26,14 +26,14 @@ struct PerformanceTests {
 		let console = Console()
 		console.applyPatch([], library: FixtureLibrary(builtIn: []))
 		
-		#expect(console.span == DmxBus.minimumSlots)
+		#expect(console.span == Universe.minimumSlots)
 	}
 	
 	@Test func theSpanNeverReachesTheWholeUniverseForASmallRig() {
 		let (console, _, _) = rig(30)
 		
 		#expect(console.span == 240)
-		#expect(console.span < DmxBus.universeSlots / 2)
+		#expect(console.span < Universe.channelCount / 2)
 	}
 	
 	@Test func syncingScenesNeverEncodesFixtureDefinitions() async {

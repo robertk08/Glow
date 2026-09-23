@@ -65,9 +65,8 @@ nonisolated enum Wire {
 			}
 		}
 		
-		var json: String? {
-			guard let data = try? JSONEncoder().encode(self) else { return nil }
-			return String(data: data, encoding: .utf8)
+		var message: URLSessionWebSocketTask.Message {
+			.string(String(decoding: (try? JSONEncoder().encode(self)) ?? Data(), as: UTF8.self))
 		}
 	}
 	
@@ -77,11 +76,12 @@ nonisolated enum Wire {
 		var name = "Glow"
 		var hasSource = false
 		var client: Int?
-		var acceptsDocuments = false
 		var address = ""
 		var scene = ""
+		var master = 1.0
+		var blackout = false
 		
-		private enum CodingKeys: String, CodingKey { case fw, id, name, src, client, doc, ip, scene }
+		private enum CodingKeys: String, CodingKey { case fw, id, name, src, client, ip, scene, master, blackout }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -90,20 +90,20 @@ nonisolated enum Wire {
 			name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Glow"
 			hasSource = try container.decodeIfPresent(Bool.self, forKey: .src) ?? false
 			client = try container.decodeIfPresent(Int.self, forKey: .client)
-			acceptsDocuments = try container.decodeIfPresent(Bool.self, forKey: .doc) ?? false
 			address = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
 			scene = try container.decodeIfPresent(String.self, forKey: .scene) ?? ""
+			master = try container.decodeIfPresent(Double.self, forKey: .master) ?? 1
+			blackout = try container.decodeIfPresent(Bool.self, forKey: .blackout) ?? false
 		}
 	}
 	
 	nonisolated struct Notice: Sendable, Equatable {
-		var sequence = 0
 		var show: String?
 		var folder: String?
 		var id: String?
 		var isDelete = false
 		var body: Data?
-		var isWrite = false
+		var landed: Bool?
 	}
 	
 	static func document(show: String, folder: String, id: String, body: Data?) -> Data {
@@ -190,9 +190,9 @@ nonisolated enum Wire {
 				return .scene(identifier)
 			case "shows":
 				return .notice(Notice())
-			case "wrote":
+			case "wrote", "unwritten":
 				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
-				return .notice(Notice(show: show, folder: folder, id: id, isWrite: true))
+				return .notice(Notice(show: show, folder: folder, id: id, landed: envelope.t == "wrote"))
 			case "doc":
 				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
 				return .notice(Notice(show: show, folder: folder, id: id, isDelete: envelope.op == "delete"))

@@ -27,12 +27,12 @@ actor NodeLink {
 	private let session: URLSession = {
 		let configuration = URLSessionConfiguration.ephemeral
 		configuration.waitsForConnectivity = false
-		configuration.timeoutIntervalForRequest = 8
+		configuration.timeoutIntervalForRequest = 5
 		return URLSession(configuration: configuration)
 	}()
 	
 	init() {
-		let (stream, continuation) = AsyncStream<Event>.makeStream(bufferingPolicy: .bufferingNewest(64))
+		let (stream, continuation) = AsyncStream<Event>.makeStream()
 		events = stream
 		self.continuation = continuation
 	}
@@ -45,27 +45,16 @@ actor NodeLink {
 		}
 	}
 	
-	func send(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) async {
-		guard let socket else { return }
-		
-		try? await socket.send(.data(Wire.frame(opcode, start: start, values: values)))
-	}
-	
 	func prefer(_ host: String?) {
 		preferred = host
 	}
 	
-	func send(_ frame: Data) async {
+	func send(_ message: URLSessionWebSocketTask.Message) async {
 		guard let socket else { return }
 		
-		try? await socket.send(.data(frame))
+		try? await socket.send(message)
 	}
 	
-	func send(_ command: Wire.Command) async {
-		guard let socket, let json = command.json else { return }
-		
-		try? await socket.send(.string(json))
-	}
 	
 	private func supervise(_ endpoint: NodeEndpoint) async {
 		var attempt = 0
@@ -88,7 +77,7 @@ actor NodeLink {
 				preferred = nil
 				attempt = min(attempt + 1, 5)
 			}
-			for remaining in stride(from: min(15, 1 << (attempt - 1)), to: 0, by: -1) {
+			for remaining in stride(from: min(3, 1 << (attempt - 1)), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
 				try? await Task.sleep(for: .seconds(1))
@@ -101,7 +90,7 @@ actor NodeLink {
 		socket = task
 		task.resume()
 		
-		await send(.hello)
+		await send(Wire.Command.hello.message)
 		startHeartbeat()
 		
 		var reached = false
@@ -188,6 +177,6 @@ actor NodeLink {
 		seq += 1
 		pings[seq] = Date()
 		pings = pings.filter { Date().timeIntervalSince($0.value) < 10 }
-		await send(.ping(seq: seq))
+		await send(Wire.Command.ping(seq: seq).message)
 	}
 }

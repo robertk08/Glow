@@ -18,11 +18,13 @@ const uint32_t REQUEST_MS          = 3000;
 const uint32_t DOCUMENT_MS         = 8000;
 const size_t   REQUEST_LINE_MAX    = 256;
 const size_t   REQUEST_BODY_MAX    = 512;
-const size_t   DOCUMENT_BODY_MAX   = 32768;
+const size_t   DOCUMENT_BODY_MAX   = 65535;
 const int      REQUEST_HEADERS_MAX = 40;
-const size_t   CHUNK               = 512;
+const size_t   PACKET              = 1400;
+const size_t   CHUNK_HEAD          = 6;
 
 Net::Network g_nets[SCAN_MAX];
+uint8_t      g_packet[CHUNK_HEAD + PACKET + 2];
 
 bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
   size_t n = 0;
@@ -56,23 +58,29 @@ const char *reason(int status) {
   }
 }
 
-void sendHead(NetworkClient &c, int status, size_t len, const char *type = "application/json", bool packed = false) {
-  char head[256];
-  int n = snprintf(head, sizeof(head),
-                   "HTTP/1.1 %d %s\r\n"
-                   "Content-Type: %s\r\n"
-                   "Content-Length: %u\r\n"
-                   "%s"
-                   "Cache-Control: no-store\r\n"
-                   "Connection: close\r\n"
-                   "\r\n",
-                   status, reason(status), type, (unsigned)len,
-                   packed ? "Content-Encoding: gzip\r\n" : "");
-  c.write((const uint8_t *)head, (size_t)n);
+size_t head(int status, size_t len, bool chunked) {
+  char length[40];
+  if (chunked) snprintf(length, sizeof(length), "Transfer-Encoding: chunked\r\n");
+  else snprintf(length, sizeof(length), "Content-Length: %u\r\n", (unsigned)len);
+
+  return snprintf((char *)g_packet, sizeof(g_packet),
+                  "HTTP/1.1 %d %s\r\n"
+                  "Content-Type: application/json\r\n"
+                  "%s"
+                  "Cache-Control: no-store\r\n"
+                  "Connection: close\r\n"
+                  "\r\n",
+                  status, reason(status), length);
 }
 
 void sendJson(NetworkClient &c, int status, const char *body, size_t len) {
-  sendHead(c, status, len);
+  size_t n = head(status, len, false);
+  if (n + len <= sizeof(g_packet)) {
+    memcpy(g_packet + n, body, len);
+    c.write(g_packet, n + len);
+    return;
+  }
+  c.write(g_packet, n);
   c.write((const uint8_t *)body, len);
 }
 
@@ -89,32 +97,56 @@ void sendResult(NetworkClient &c, int status, bool ok, const char *error) {
   sendJson(c, status, out);
 }
 
-struct Emitter {
+struct Chunks {
   NetworkClient *client;
-  size_t         length;
+  size_t         held;
 
-  void put(const char *text, size_t len) {
-    length += len;
-    if (client) client->write((const uint8_t *)text, len);
+  void flush() {
+    if (!held) return;
+    char size[CHUNK_HEAD + 1];
+    snprintf(size, sizeof(size), "%04x\r\n", (unsigned)held);
+    memcpy(g_packet, size, CHUNK_HEAD);
+    g_packet[CHUNK_HEAD + held]     = '\r';
+    g_packet[CHUNK_HEAD + held + 1] = '\n';
+    client->write(g_packet, CHUNK_HEAD + held + 2);
+    held = 0;
   }
 
-  void put(const char *text) { put(text, strlen(text)); }
+  void put(const char *text) {
+    size_t len = strlen(text);
+    while (len) {
+      size_t n = PACKET - held;
+      if (n > len) n = len;
+      memcpy(g_packet + CHUNK_HEAD + held, text, n);
+      held += n;
+      text += n;
+      len -= n;
+      if (held == PACKET) flush();
+    }
+  }
 
   void append(File &file) {
-    length += file.size();
-    if (!client) return;
-
-    uint8_t chunk[CHUNK];
     while (true) {
-      int n = file.read(chunk, sizeof(chunk));
-      if (n <= 0) break;
-      client->write(chunk, (size_t)n);
-      Link::tick();
+      int n = file.read(g_packet + CHUNK_HEAD + held, PACKET - held);
+      if (n <= 0) return;
+      held += (size_t)n;
+      if (held == PACKET) flush();
     }
+  }
+
+  void finish() {
+    flush();
+    client->write((const uint8_t *)"0\r\n\r\n", 5);
   }
 };
 
-void emitShow(Emitter &out, const char *showID, char names[][Store::NAME_LIMIT], int count) {
+void sendShow(NetworkClient &c, const char *showID) {
+  char names[Store::FOLDER_LIMIT][Store::NAME_LIMIT];
+  int  count = Store::folderNames(showID, names, Store::FOLDER_LIMIT);
+
+  c.write(g_packet, head(200, 0, true));
+
+  Chunks out = {&c, 0};
   out.put("{");
 
   for (int i = 0; i < count; i++) {
@@ -136,6 +168,7 @@ void emitShow(Emitter &out, const char *showID, char names[][Store::NAME_LIMIT],
           out.append(entry);
         }
         entry.close();
+        Link::tick();
         entry = folder.openNextFile();
       }
       if (folder) folder.close();
@@ -145,36 +178,25 @@ void emitShow(Emitter &out, const char *showID, char names[][Store::NAME_LIMIT],
   }
 
   out.put("}");
+  out.finish();
 }
 
-void sendAssembled(NetworkClient &c, const char *showID) {
-  char names[Store::FOLDER_LIMIT][Store::NAME_LIMIT];
-  int  count = Store::folderNames(showID, names, Store::FOLDER_LIMIT);
-
-  Emitter counter = {nullptr, 0};
-  emitShow(counter, showID, names, count);
-
-  sendHead(c, 200, counter.length);
-
-  Emitter writer = {&c, 0};
-  emitShow(writer, showID, names, count);
-}
-
-void sendStored(NetworkClient &c, const char *path, const char *type = "application/json", bool packed = false) {
+void sendStored(NetworkClient &c, const char *path) {
   File f = Store::open(path);
   if (!f || f.isDirectory()) {
     sendResult(c, 404, false, "not_found");
     return;
   }
 
-  sendHead(c, 200, f.size(), type, packed);
-
-  uint8_t chunk[CHUNK];
+  size_t held = head(200, f.size(), false);
   while (true) {
-    int n = f.read(chunk, sizeof(chunk));
+    int n = f.read(g_packet + held, sizeof(g_packet) - held);
+    if (n > 0) held += (size_t)n;
+    if (held && (n <= 0 || held == sizeof(g_packet))) {
+      c.write(g_packet, held);
+      held = 0;
+    }
     if (n <= 0) break;
-    c.write(chunk, (size_t)n);
-    Link::tick();
   }
   f.close();
 }
@@ -329,7 +351,7 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
 
   if (!slash) {
     if (get) {
-      sendAssembled(c, showID);
+      sendShow(c, showID);
     } else if (del) {
       if (!Store::removeShow(showID)) {
         sendResult(c, 503, false, "write_failed");
@@ -393,34 +415,6 @@ void route(NetworkClient &c, const char *method, const char *path,
     return;
   }
 
-  if (!strcmp(path, "/") || !strcmp(path, "/index.html")) {
-    if (!get) {
-      sendResult(c, 405, false, "method");
-    } else if (Store::open(Store::packedPagePath())) {
-      sendStored(c, Store::packedPagePath(), "text/html; charset=utf-8", true);
-    } else {
-      sendStored(c, Store::pagePath(), "text/html; charset=utf-8");
-    }
-    return;
-  }
-
-  if (!strcmp(path, "/api/web")) {
-    if (!put) {
-      sendResult(c, 405, false, "method");
-      return;
-    }
-
-    bool packed = bodyLen > 2 && (uint8_t)body[0] == 0x1f && (uint8_t)body[1] == 0x8b;
-    Store::remove(packed ? Store::pagePath() : Store::packedPagePath());
-
-    if (!Store::write(packed ? Store::packedPagePath() : Store::pagePath(), (const uint8_t *)body, bodyLen)) {
-      sendResult(c, 503, false, "write_failed");
-    } else {
-      sendResult(c, 200, true, nullptr);
-    }
-    return;
-  }
-
   if (!strcmp(path, "/api/info")) {
     if (get) info(c);
     else sendResult(c, 405, false, "method");
@@ -480,7 +474,7 @@ void handle(NetworkClient &client) {
   }
   if (query) *query = '\0';
 
-  bool isDocument = !strncmp(target, "/api/show", 9) || !strcmp(target, "/api/web");
+  bool isDocument = !strncmp(target, "/api/show", 9);
   if (isDocument) deadline += DOCUMENT_MS - REQUEST_MS;
 
   char   header[REQUEST_LINE_MAX];

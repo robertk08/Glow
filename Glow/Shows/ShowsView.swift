@@ -40,10 +40,8 @@ struct ShowsView: View {
 						}
 						
 						if show.id == shows.activeID {
-							if let url = shows.shareable() {
-								ShareLink(item: url) {
-									Label("Share", systemImage: "square.and.arrow.up")
-								}
+							ShareLink(item: shows.exportable(), preview: SharePreview(show.name)) {
+								Label("Share", systemImage: "square.and.arrow.up")
 							}
 							
 							Button("Save to Files", systemImage: "folder") {

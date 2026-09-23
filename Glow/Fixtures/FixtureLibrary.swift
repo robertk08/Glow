@@ -69,6 +69,8 @@ final class FixtureLibrary {
 			}
 		}
 		
+		cleaned = String(cleaned.prefix(32))
+		
 		while cleaned.hasSuffix("-") {
 			cleaned.removeLast()
 		}

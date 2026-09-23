@@ -4,38 +4,24 @@ import SwiftUI
 
 @Observable @MainActor
 final class Console {
-	private(set) var universe = Universe()
+	private(set) var universe = Universe() {
+		didSet { ring() }
+	}
+	
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
-	private(set) var notices: [Wire.Notice] = []
 	private(set) var activeScene: String?
 	
 	let selection = Selection()
+	let notices: AsyncStream<Wire.Notice>
 	
 	var master: Double = 1 {
-		didSet {
-			outputFrames.startOver()
-			guard !isAdopting else { return }
-			let level = master
-			
-			Task {
-				await connection.send(.master(level))
-			}
-		}
+		didSet { ring() }
 	}
 	
 	var blackout = false {
-		didSet {
-			guard blackout != oldValue else { return }
-			outputFrames.startOver()
-			guard !isAdopting else { return }
-			let value = blackout
-			
-			Task {
-				await connection.send(.blackout(value))
-			}
-		}
+		didSet { ring() }
 	}
 	
 	var endpoint: NodeEndpoint {
@@ -51,26 +37,39 @@ final class Console {
 	private(set) var isConfigured = false
 	
 	private(set) var active: Set<Int> = []
-	private(set) var span = DmxBus.minimumSlots
+	private(set) var span = Universe.minimumSlots
 	private(set) var resets = 0
 	
 	private let connection = NodeLink()
-	private var dimmers: [Dimmer] = []
+	private let bell: AsyncStream<Void>
+	private let ringer: AsyncStream<Void>.Continuation
+	private let noticer: AsyncStream<Wire.Notice>.Continuation
+	private var dimmers: [Dimmer] = [] {
+		didSet { ring() }
+	}
+	private var outbox: [URLSessionWebSocketTask.Message] = [] {
+		didSet { ring() }
+	}
+	private var isSynced = false {
+		didSet { ring() }
+	}
 	private var loop: Task<Void, Never>?
 	private var events: Task<Void, Never>?
 	private var sourceFrames = FrameStream()
 	private var outputFrames = FrameStream()
-	private var isSynced = false
-	private var isAdopting = false
+	private var announcedMaster: Double?
+	private var announcedBlackout: Bool?
 	private var hasAdoptedSource = false
 	private var hasLoadedPatch = false
-	private var noticed = 0
 	private var patched: Set<Int> = []
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
 	
 	init() {
+		(bell, ringer) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+		(notices, noticer) = AsyncStream<Wire.Notice>.makeStream()
+		
 		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
 			endpoint = stored
 			isConfigured = true
@@ -83,61 +82,19 @@ final class Console {
 		guard events == nil else { return }
 		
 		events = Task { [weak self] in
-			guard let self else { return }
-			for await event in connection.events {
-				switch event {
-				case let .state(state):
-					link = state
-					if state == .connected {
-						isSynced = false
-						hasAdoptedSource = false
-						sourceFrames.startOver()
-						outputFrames.startOver()
-						let reach = span
-						
-						Task {
-							await connection.send(.span(reach))
-						}
-					}
-				case let .status(info):
-					node = info
-					activeScene = info.scene.isEmpty ? nil : info.scene
-					
-					if !info.address.isEmpty, info.address != UserDefaults.standard.string(forKey: Self.addressKey) {
-						UserDefaults.standard.set(info.address, forKey: Self.addressKey)
-					}
-					if !info.hasSource { isSynced = true }
-				case let .latency(value):
-					latency = value
-				case let .frame(start, values):
-					universe.set(values, at: start)
-					sourceFrames.adopt(universe.values)
-					outputFrames.adopt(output)
-					isSynced = true
-					hasAdoptedSource = true
-				case let .master(level):
-					isAdopting = true
-					master = level
-					isAdopting = false
-				case let .blackout(on):
-					isAdopting = true
-					blackout = on
-					isAdopting = false
-				case let .scene(identifier):
-					activeScene = identifier
-				case let .notice(incoming):
-					noticed += 1
-					var stamped = incoming
-					stamped.sequence = noticed
-					notices.append(stamped)
-				}
+			guard let stream = self?.connection.events else { return }
+			
+			for await event in stream {
+				self?.handle(event)
 			}
 		}
 		
 		loop = Task { [weak self] in
-			while !Task.isCancelled {
-				try? await Task.sleep(for: .seconds(1.0 / 100))
+			guard let bell = self?.bell else { return }
+			
+			for await _ in bell {
 				await self?.tick()
+				try? await Task.sleep(for: .milliseconds(10))
 			}
 		}
 		
@@ -146,8 +103,6 @@ final class Console {
 	
 	func connect() {
 		isSynced = false
-		sourceFrames.startOver()
-		outputFrames.startOver()
 		let target = endpoint
 		let known = UserDefaults.standard.string(forKey: Self.addressKey)
 		
@@ -155,6 +110,70 @@ final class Console {
 			await connection.prefer(known)
 			await connection.connect(to: target)
 		}
+	}
+	
+	private func handle(_ event: NodeLink.Event) {
+		switch event {
+		case let .state(state):
+			link = state
+			isSynced = false
+			outbox = []
+			guard state == .connected else { return }
+			hasAdoptedSource = false
+			announcedMaster = nil
+			announcedBlackout = nil
+			sourceFrames.cover(span)
+			outputFrames.cover(span)
+			sourceFrames.startOver()
+			outputFrames.startOver()
+			outbox = [Wire.Command.span(span).message]
+		case let .status(info):
+			node = info
+			activeScene = info.scene.isEmpty ? nil : info.scene
+			
+			if !info.address.isEmpty, info.address != UserDefaults.standard.string(forKey: Self.addressKey) {
+				UserDefaults.standard.set(info.address, forKey: Self.addressKey)
+			}
+			
+			if info.hasSource {
+				master = info.master
+				blackout = info.blackout
+				announcedMaster = info.master
+				announcedBlackout = info.blackout
+			} else {
+				isSynced = true
+			}
+		case let .latency(value):
+			latency = value
+		case let .frame(start, values):
+			universe.set(values, at: start)
+			sourceFrames.adopt(universe.values, start: start, count: values.count)
+			outputFrames.adopt(output, start: start, count: values.count)
+			hasAdoptedSource = true
+			isSynced = true
+		case let .master(level):
+			master = level
+			announcedMaster = level
+		case let .blackout(on):
+			blackout = on
+			announcedBlackout = on
+		case let .scene(identifier):
+			activeScene = identifier
+		case let .notice(notice):
+			noticer.yield(notice)
+		}
+	}
+	
+	private func cover(_ reach: Int) {
+		guard reach != span else { return }
+		span = reach
+		sourceFrames.cover(reach)
+		outputFrames.cover(reach)
+		outbox.append(Wire.Command.span(reach).message)
+	}
+	
+	private func ring() {
+		ringer.yield()
 	}
 	
 	func value(at address: DMXAddress) -> UInt8 {
@@ -183,25 +202,13 @@ final class Console {
 		active.remove(span.lowerBound + offset - 1)
 	}
 	
-	var acceptsDocuments: Bool {
-		link.isConnected && node?.acceptsDocuments == true
-	}
-	
 	var reachable: NodeEndpoint {
 		guard let address = node?.address, !address.isEmpty else { return endpoint }
 		return NodeEndpoint(host: address, port: endpoint.port, name: endpoint.name, nodeID: endpoint.nodeID)
 	}
 	
 	func send(document frame: Data) {
-		Task {
-			await connection.send(frame)
-		}
-	}
-	
-	func takeNotices() -> [Wire.Notice] {
-		let taken = notices
-		notices = []
-		return taken
+		outbox.append(.data(frame))
 	}
 	
 	func closeShow() {
@@ -210,14 +217,10 @@ final class Console {
 		dimmers = []
 		patched = []
 		activeScene = nil
-		span = DmxBus.minimumSlots
-		sourceFrames.cover(DmxBus.minimumSlots)
-		outputFrames.cover(DmxBus.minimumSlots)
+		cover(Universe.minimumSlots)
 		hasAdoptedSource = false
 		hasLoadedPatch = false
 		selection.clear()
-		sourceFrames.startOver()
-		outputFrames.startOver()
 	}
 	
 	func reset(among fixtures: [Fixture], library: FixtureLibrary) {
@@ -241,16 +244,12 @@ final class Console {
 			universe.set(type.defaults, at: fixture.start)
 			release(fixture.range(type))
 		}
-		
-		outputFrames.startOver()
 	}
 	
 	func remove(_ fixture: Fixture, context: ModelContext, library: FixtureLibrary) {
 		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
 		universe.set([UInt8](repeating: 0, count: width), at: fixture.start)
 		release(fixture.range(library.type(fixture.typeID)))
-		outputFrames.startOver()
-		selection.forget(fixture)
 		context.delete(fixture)
 	}
 	
@@ -370,12 +369,8 @@ final class Console {
 			universe.set([UInt8](values), at: fixture.start)
 		}
 		
-		outputFrames.startOver()
 		activeScene = identifier
-		
-		Task {
-			await connection.send(.scene(identifier))
-		}
+		outbox.append(Wire.Command.scene(identifier).message)
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
@@ -390,8 +385,6 @@ final class Console {
 					guard let type = library.type(fixture.typeID) else { continue }
 					universe.set(type.defaults, at: fixture.start)
 				}
-				
-				sourceFrames.startOver()
 			}
 		}
 		
@@ -410,22 +403,13 @@ final class Console {
 		}
 		
 		patched = covered
+		selection.keep(Set(fixtures.map(\.identifier)))
 		
-		let reach = max(covered.max() ?? 0, DmxBus.minimumSlots)
-		if reach != span {
-			span = reach
-			sourceFrames.cover(reach)
-			outputFrames.cover(reach)
-			
-			Task {
-				await connection.send(.span(reach))
-			}
-		}
+		cover(max(covered.max() ?? 0, Universe.minimumSlots))
 		
 		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
 		guard rebuilt != dimmers else { return }
 		dimmers = rebuilt
-		outputFrames.startOver()
 	}
 	
 	var output: [UInt8] {
@@ -452,14 +436,29 @@ final class Console {
 	
 	private func tick() async {
 		guard link.isConnected, isSynced else { return }
+		var messages = outbox
+		outbox = []
+		
+		if master != announcedMaster {
+			announcedMaster = master
+			messages.append(Wire.Command.master(master).message)
+		}
+		
+		if blackout != announcedBlackout {
+			announcedBlackout = blackout
+			messages.append(Wire.Command.blackout(blackout).message)
+		}
 		
 		if let frame = sourceFrames.next(universe.values) {
-			await connection.send(Wire.sourceOpcode, start: frame.start, values: frame.values)
+			messages.append(.data(Wire.frame(Wire.sourceOpcode, start: frame.start, values: frame.values)))
 		}
 		
 		if let frame = outputFrames.next(output) {
-			await connection.send(Wire.outputOpcode, start: frame.start, values: frame.values)
+			messages.append(.data(Wire.frame(Wire.outputOpcode, start: frame.start, values: frame.values)))
+		}
+		
+		for message in messages {
+			await connection.send(message)
 		}
 	}
-	
 }

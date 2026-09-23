@@ -1,6 +1,8 @@
+import CoreTransferable
 import Foundation
+import UniformTypeIdentifiers
 
-nonisolated struct ShowFile: Codable, Sendable {
+nonisolated struct ShowFile: Codable, Sendable, Transferable {
 	static let format = "glow.show"
 	static let current = "2026-09-20"
 	
@@ -12,6 +14,20 @@ nonisolated struct ShowFile: Codable, Sendable {
 	
 	var isReadable: Bool {
 		format == ShowFile.format && version == ShowFile.current
+	}
+	
+	var exported: Data {
+		get throws {
+			let encoder = JSONEncoder()
+			encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+			encoder.dateEncodingStrategy = .iso8601
+			return try encoder.encode(self)
+		}
+	}
+	
+	static var transferRepresentation: some TransferRepresentation {
+		DataRepresentation(exportedContentType: .json) { try $0.exported }
+			.suggestedFileName { $0.name }
 	}
 	
 	private enum CodingKeys: String, CodingKey { case format, version, exportedAt, name, show }

@@ -21,7 +21,7 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 	var channels: [FixtureChannel]
 	
 	var name: String { manufacturer.isEmpty ? model : "\(manufacturer) \(model)" }
-	var channelCount: Int { channels.flatMap(\.offsets).max() ?? 0 }
+	var channelCount: Int { channels.reduce(0) { max($0, $1.fineOffset ?? 0, $1.offset) } }
 	
 	func channel(_ attribute: Attribute) -> FixtureChannel? {
 		channels.first { $0.attribute == attribute }

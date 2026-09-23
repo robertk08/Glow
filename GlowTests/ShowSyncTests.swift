@@ -145,4 +145,56 @@ struct ShowSyncTests {
 		
 		#expect(!file.isReadable)
 	}
+	
+	@Test func savingALightAlsoSyncsTheDefinitionsItCarries() throws {
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let context = container.mainContext
+		let box = Box()
+		
+		let token = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { note in
+			box.folders = ShowLibrary.folders(in: note)
+		}
+		defer { NotificationCenter.default.removeObserver(token) }
+		
+		context.insert(Fixture(typeID: "par", name: "Par", address: DMXAddress(1)!, sortIndex: 0))
+		try context.save()
+		
+		#expect(box.folders == [.lights, .made])
+	}
+	
+	@Test func aWriteTheControllerCouldNotStoreSaysWhichObject() throws {
+		let reply = try #require(Wire.Reply.decode(Data(#"{"t":"unwritten","show":"s","folder":"scenes","id":"look"}"#.utf8)))
+		
+		guard case let .notice(notice) = reply else {
+			Issue.record("expected a notice")
+			return
+		}
+		
+		#expect(notice.landed == false)
+		#expect(notice.folder == "scenes")
+		#expect(notice.id == "look")
+	}
+	
+	@Test func aJoiningDeviceLearnsTheMasterAndBlackout() throws {
+		let reply = try #require(Wire.Reply.decode(Data(#"{"t":"status","src":true,"master":0.5,"blackout":true}"#.utf8)))
+		
+		guard case let .status(info) = reply else {
+			Issue.record("expected a status")
+			return
+		}
+		
+		#expect(info.hasSource)
+		#expect(info.master == 0.5)
+		#expect(info.blackout)
+	}
+	
+	@Test func aMadeIdentifierFitsTheControllersNames() {
+		let library = FixtureLibrary(builtIn: [])
+		let identifier = library.unusedIdentifier("An Extremely Long Fixture Model Name From A Manufacturer Who Loves Words")
+		
+		#expect(identifier.count < 40)
+		#expect(identifier.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") })
+		#expect(!identifier.hasSuffix("-"))
+	}
 }
+

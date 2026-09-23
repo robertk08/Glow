@@ -45,7 +45,7 @@ struct FrameStreamTests {
 		var values = [UInt8](repeating: 0, count: 512)
 		_ = stream.next(values)
 		values[4] = 99
-		stream.adopt(values)
+		stream.adopt(values, start: DMXAddress(5)!, count: 1)
 		
 		#expect(stream.next(values) == nil)
 	}
@@ -70,7 +70,7 @@ struct FrameStreamTests {
 		universe[4] = 200
 		
 		_ = stream.next(universe)
-		stream.adopt(universe)
+		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
 		
 		#expect(stream.next(universe) == nil)
 	}
@@ -81,7 +81,7 @@ struct FrameStreamTests {
 		let universe = [UInt8](repeating: 9, count: 512)
 		
 		_ = stream.next(universe)
-		stream.adopt(universe)
+		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
 		
 		#expect(stream.next(universe) == nil)
 	}
@@ -108,5 +108,36 @@ struct FrameStreamTests {
 		let after = stream.next(universe)
 		
 		#expect(after?.values.count == 120)
+	}
+	
+	@Test func adoptingAnotherDevicesSlotKeepsALocalChangeElsewherePending() {
+		var stream = FrameStream()
+		var universe = [UInt8](repeating: 0, count: 512)
+		_ = stream.next(universe)
+		universe[2] = 7
+		universe[9] = 5
+		stream.adopt(universe, start: DMXAddress(10)!, count: 1)
+		let frame = stream.next(universe)
+		
+		#expect(frame?.start.value == 3)
+		#expect(frame?.values == [7])
+	}
+	
+	@Test func aWholeUniverseAdoptedOnConnectIsNotSentBack() {
+		var stream = FrameStream()
+		stream.cover(120)
+		let universe = [UInt8](repeating: 4, count: 512)
+		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
+		
+		#expect(stream.next(universe) == nil)
+	}
+	
+	@Test func aPartialAdoptOnConnectStillSendsEverything() {
+		var stream = FrameStream()
+		stream.cover(120)
+		let universe = [UInt8](repeating: 4, count: 512)
+		stream.adopt(universe, start: DMXAddress(10)!, count: 5)
+		
+		#expect(stream.next(universe)?.values.count == 120)
 	}
 }

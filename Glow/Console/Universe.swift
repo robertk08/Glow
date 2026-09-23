@@ -2,6 +2,7 @@ import Foundation
 
 nonisolated struct Universe: Sendable, Equatable {
 	static let channelCount = 512
+	static let minimumSlots = 24
 	
 	private(set) var values = [UInt8](repeating: 0, count: Universe.channelCount)
 	

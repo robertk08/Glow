@@ -20,9 +20,6 @@ struct ShowDocument: FileDocument {
 	}
 	
 	func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-		let encoder = JSONEncoder()
-		encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-		encoder.dateEncodingStrategy = .iso8601
-		return FileWrapper(regularFileWithContents: try encoder.encode(show))
+		FileWrapper(regularFileWithContents: try show.exported)
 	}
 }
