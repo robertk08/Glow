@@ -30,9 +30,9 @@ final class NodeSetupModel {
 		failure = nil
 		
 		if console.link.isConnected {
-			expectedNodeID = console.endpoint.nodeID
+			expectedNodeID = await store.setup(at: console.reachable)?.id
 			do {
-				try await store.command("setup", at: console.endpoint)
+				try await store.command("setup", at: console.reachable)
 			} catch {
 				failure = "Could not open controller setup. Check the connection and update the controller firmware if needed."
 				return
@@ -127,7 +127,7 @@ final class NodeSetupModel {
 				}
 				
 				if info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != NodeEndpoint.setup.host {
-					provisioned = NodeEndpoint(host: info.ip, nodeID: info.id)
+					provisioned = NodeEndpoint(host: info.ip)
 					NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: "Glow Setup")
 					
 					if selected?.enterprise != true {
@@ -154,7 +154,7 @@ final class NodeSetupModel {
 				}
 			}
 			
-			let found = provisioned ?? NodeEndpoint(host: NodeEndpoint.fallback.host, nodeID: nodeID)
+			let found = provisioned ?? .fallback
 			guard let info = await store.setup(at: found), info.id == nodeID, info.hasJoined(ssid: ssid) else { continue }
 			
 			user = ""
@@ -165,6 +165,6 @@ final class NodeSetupModel {
 			return
 		}
 		
-		failure = "Glow lost sight of the controller. Put your iPhone back on \(ssid), then pick the controller in Settings."
+		failure = "Glow lost sight of the controller. Put your iPhone back on \(ssid) and Glow finds it by itself."
 	}
 }

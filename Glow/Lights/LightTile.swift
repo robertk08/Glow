@@ -82,6 +82,15 @@ struct LightTile: View {
 		.accessibilityElement(children: .combine)
 		.accessibilityAddTraits(.isButton)
 		.accessibilityAddTraits(isSelected ? .isSelected : [])
+		.accessibilityAdjustableAction { direction in
+			guard let programmer, programmer.dims else { return }
+			
+			switch direction {
+			case .increment: programmer.brightness += 0.1
+			case .decrement: programmer.brightness -= 0.1
+			@unknown default: break
+			}
+		}
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contextMenu {
 			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "lightbulb.slash" : "lightbulb.max") {

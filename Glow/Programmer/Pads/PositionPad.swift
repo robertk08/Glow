@@ -107,6 +107,15 @@ struct PositionPad: View {
 				)
 			}
 			.frame(height: 220)
+			.accessibilityRepresentation {
+				Slider(value: $pan, in: 0...1) {
+					Text("Pan")
+				}
+
+				Slider(value: $tilt, in: 0...1) {
+					Text("Tilt")
+				}
+			}
 		}
 		.sensoryFeedback(.selection, trigger: isDragging)
 	}

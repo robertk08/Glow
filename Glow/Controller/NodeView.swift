@@ -36,7 +36,7 @@ struct NodeView: View {
 					Button("Forget", role: .destructive) {
 						Task {
 							do {
-								try await NodeStore().command("forget", at: console.endpoint)
+								try await NodeStore().command("forget", at: console.reachable)
 							} catch {
 								failure = error.localizedDescription
 							}

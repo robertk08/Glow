@@ -24,6 +24,10 @@ final class Console {
 		didSet { ring() }
 	}
 	
+	var isMuted = false {
+		didSet { ring() }
+	}
+	
 	var endpoint: NodeEndpoint {
 		didSet {
 			if let data = try? JSONEncoder().encode(endpoint) {
@@ -205,21 +209,24 @@ final class Console {
 	
 	var reachable: NodeEndpoint {
 		guard let address = node?.address, !address.isEmpty else { return endpoint }
-		return NodeEndpoint(host: address, port: endpoint.port, nodeID: endpoint.nodeID)
+		return NodeEndpoint(host: address, port: endpoint.port)
 	}
 	
 	func send(document frame: Data) {
 		outbox.append(.data(frame))
 	}
 	
-	func closeShow() {
-		universe = Universe()
+	func closeShow(keepingLook: Bool = false) {
+		if !keepingLook || !hasAdoptedSource {
+			universe = Universe()
+			activeScene = nil
+			hasAdoptedSource = false
+		}
+		
 		active = []
 		dimmers = []
 		patched = []
-		activeScene = nil
 		cover(Universe.minimumSlots)
-		hasAdoptedSource = false
 		hasLoadedPatch = false
 		selection.clear()
 	}
@@ -406,6 +413,12 @@ final class Console {
 	
 	private func tick() async {
 		guard link.isConnected, isSynced else { return }
+		
+		guard !isMuted else {
+			if !outbox.isEmpty { outbox = [] }
+			return
+		}
+		
 		var messages = outbox
 		outbox = []
 		
