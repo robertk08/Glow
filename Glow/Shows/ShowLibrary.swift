@@ -25,8 +25,6 @@ final class ShowLibrary {
 	private var baseline: [String: Data] = [:]
 	private var sent: [String: Data] = [:]
 	private var deferred: Set<String> = []
-	private var stranded: [String: Data] = [:]
-	private var strandedShow = ""
 	private var waiting: Set<NodeStore.Folder> = []
 	private var lastSync = Date.distantPast
 	private var wasConnected = false
@@ -104,7 +102,7 @@ final class ShowLibrary {
 			dropping = Task {
 				try? await Task.sleep(for: .seconds(2))
 				guard !Task.isCancelled else { return }
-				unload(keepingEdits: true)
+				unload()
 			}
 			return
 		}
@@ -326,17 +324,6 @@ final class ShowLibrary {
 			
 			return await open(first, since: started, retrying: false)
 		case let .list(list):
-			if !loadedID.isEmpty, list.shows.contains(where: { $0.id == loadedID }) {
-				await synchronise(Self.everything, direct: true)
-			}
-			
-			if !list.shows.contains(where: { $0.id == strandedShow }) { stranded = [:] }
-			
-			for (key, data) in stranded {
-				guard await write(data, key: key, in: strandedShow) else { continue }
-				stranded[key] = nil
-			}
-			
 			guard let show = list.activeShow else { return false }
 			shows = list.shows
 			activeID = show.id
@@ -531,17 +518,10 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func unload(keepingEdits: Bool = false) {
+	private func unload() {
 		loading?.cancel()
 		loading = nil
 		guard isLoaded else { return }
-		
-		if keepingEdits, !isDemo {
-			let pending = changes(Self.encoded(contents(), folders: Self.everything), folders: Self.everything)
-			if strandedShow != loadedID { stranded = [:] }
-			stranded.merge(pending) { _, newer in newer }
-			strandedShow = loadedID
-		}
 		
 		epoch += 1
 		isLoaded = false
@@ -603,15 +583,21 @@ final class ShowLibrary {
 		}
 	}
 	
-	private func synchronise(_ folders: Set<NodeStore.Folder>, direct: Bool = false) async {
-		guard endpoint != nil, isLoaded, !isDemo, !folders.isEmpty else { return }
+	private func synchronise(_ folders: Set<NodeStore.Folder>) async {
+		guard endpoint != nil, isLoaded, !isDemo, !folders.isEmpty, console?.link.isConnected == true else { return }
 		
 		let showID = loadedID
 		let current = await Self.snapshot(of: contents(folders), folders: folders)
-		let isLive = !direct && console?.link.isConnected == true
-		guard showID == loadedID else { return }
+		guard showID == loadedID, console?.link.isConnected == true else { return }
 		
-		for (key, data) in changes(current, folders: folders) {
+		var changes = current.filter { baseline[$0.key] != $0.value }
+		
+		for key in baseline.keys where current[key] == nil {
+			guard let (folder, _) = Self.split(key), folders.contains(folder) else { continue }
+			changes[key] = Data()
+		}
+		
+		for (key, data) in changes {
 			guard let (folder, identifier) = Self.split(key) else { continue }
 			
 			guard sent[key] == nil else {
@@ -619,28 +605,17 @@ final class ShowLibrary {
 				continue
 			}
 			
-			if isLive, data.count <= Self.frameLimit {
+			if data.count <= Self.frameLimit {
 				sent[key] = data
 				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data.isEmpty ? nil : data))
 				continue
 			}
 			
 			let isStored = await write(data, key: key, in: showID)
-			guard showID == loadedID else { return }
+			guard showID == loadedID, console?.link.isConnected == true else { return }
 			guard isStored else { continue }
 			baseline[key] = data.isEmpty ? nil : data
 		}
-	}
-	
-	private func changes(_ current: [String: Data], folders: Set<NodeStore.Folder>) -> [String: Data] {
-		var found = current.filter { baseline[$0.key] != $0.value }
-		
-		for key in baseline.keys where current[key] == nil {
-			guard let (folder, _) = Self.split(key), folders.contains(folder) else { continue }
-			found[key] = Data()
-		}
-		
-		return found
 	}
 	
 	private func write(_ data: Data, key: String, in showID: String) async -> Bool {

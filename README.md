@@ -104,9 +104,9 @@ controller setup and a way into a demo. The demo runs the whole app on a show
 built into the app, changes go nowhere, and quitting throws it away.
 
 A controller that stops answering is noticed within about seven seconds, and
-the show gives way to the waiting screen rather than looking live. Edits made in
-the moments before that, which the controller never confirmed, are held in
-memory behind the waiting screen and sent before the show opens again.
+the show gives way to the waiting screen rather than looking live. Nothing
+edited after the link is lost reaches the controller, and the show reopens as
+the controller holds it.
 
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.

@@ -13,7 +13,6 @@ struct LightTile: View {
 	@Binding var editing: Fixture?
 	
 	@State private var isRemoving = false
-	@State private var start: CGPoint?
 	@State private var origin = 0.0
 	
 	var body: some View {
@@ -54,15 +53,6 @@ struct LightTile: View {
 				.tint(isOn ? glow : Color(.tertiarySystemFill))
 				.labelsHidden()
 				.padding(.vertical, 6)
-				.contentShape(.rect)
-				.gesture(DragGesture(minimumDistance: 4).onChanged { drag in
-					if start != drag.startLocation {
-						start = drag.startLocation
-						origin = programmer.brightness - drag.translation.width / 180
-					}
-					
-					programmer.brightness = origin + drag.translation.width / 180
-				})
 			}
 		}
 		.foregroundStyle(.primary)
@@ -70,6 +60,12 @@ struct LightTile: View {
 		.padding(14)
 		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
+		.gesture(SidewaysDrag {
+			origin = programmer?.brightness ?? 0
+		} moved: { distance in
+			guard let programmer, programmer.dims else { return }
+			programmer.brightness = origin + distance / 180
+		})
 		.onTapGesture {
 			guard programmer != nil else {
 				editing = fixture
@@ -82,15 +78,6 @@ struct LightTile: View {
 		.accessibilityElement(children: .combine)
 		.accessibilityAddTraits(.isButton)
 		.accessibilityAddTraits(isSelected ? .isSelected : [])
-		.accessibilityAdjustableAction { direction in
-			guard let programmer, programmer.dims else { return }
-			
-			switch direction {
-			case .increment: programmer.brightness += 0.1
-			case .decrement: programmer.brightness -= 0.1
-			@unknown default: break
-			}
-		}
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contextMenu {
 			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "lightbulb.slash" : "lightbulb.max") {
@@ -121,6 +108,48 @@ struct LightTile: View {
 			}
 		} message: {
 			Text("Its channels go back to zero and any scene holding it forgets it.")
+		}
+	}
+}
+
+private struct SidewaysDrag: UIGestureRecognizerRepresentable {
+	let began: () -> Void
+	let moved: (CGFloat) -> Void
+	
+	func makeUIGestureRecognizer(context: Context) -> Recognizer {
+		Recognizer()
+	}
+	
+	func handleUIGestureRecognizerAction(_ recognizer: Recognizer, context: Context) {
+		switch recognizer.state {
+		case .began:
+			recognizer.setTranslation(.zero, in: recognizer.view)
+			began()
+		case .changed: moved(recognizer.translation(in: recognizer.view).x)
+		default: break
+		}
+	}
+	
+	final class Recognizer: UIPanGestureRecognizer {
+		private var start = CGPoint.zero
+		
+		override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+			super.touchesBegan(touches, with: event)
+			start = touches.first?.location(in: view) ?? .zero
+		}
+		
+		override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+			if state == .possible, let point = touches.first?.location(in: view) {
+				let across = abs(point.x - start.x)
+				let along = abs(point.y - start.y)
+				
+				if along > across, hypot(across, along) > 6 {
+					state = .failed
+					return
+				}
+			}
+			
+			super.touchesMoved(touches, with: event)
 		}
 	}
 }

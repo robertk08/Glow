@@ -61,17 +61,9 @@ struct BeamPad: View {
 			)
 		}
 		.frame(height: 190)
-		.accessibilityRepresentation {
-			Slider(value: $zoom, in: 0...1) {
-				Text("Zoom")
-			}
-			
-			if hasFocus {
-				Slider(value: $focus, in: 0...1) {
-					Text("Focus")
-				}
-			}
-		}
+		.accessibilityElement()
+		.accessibilityLabel(hasFocus ? "Zoom and focus" : "Zoom")
+		.accessibilityValue(hasFocus ? "Zoom \(zoom.formatted(.percent.precision(.fractionLength(0)))), focus \(focus.formatted(.percent.precision(.fractionLength(0))))" : "Zoom \(zoom.formatted(.percent.precision(.fractionLength(0))))")
 		.sensoryFeedback(.selection, trigger: isDragging)
 	}
 }
