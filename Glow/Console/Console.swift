@@ -54,7 +54,6 @@ final class Console {
 	private var isSynced = false {
 		didSet { ring() }
 	}
-	private var loop: Task<Void, Never>?
 	private var events: Task<Void, Never>?
 	private var sourceFrames = FrameStream()
 	private var outputFrames = FrameStream()
@@ -89,7 +88,7 @@ final class Console {
 			}
 		}
 		
-		loop = Task { [weak self] in
+		Task { [weak self] in
 			guard let bell = self?.bell else { return }
 			
 			for await _ in bell {
@@ -206,7 +205,7 @@ final class Console {
 	
 	var reachable: NodeEndpoint {
 		guard let address = node?.address, !address.isEmpty else { return endpoint }
-		return NodeEndpoint(host: address, port: endpoint.port, name: endpoint.name, nodeID: endpoint.nodeID)
+		return NodeEndpoint(host: address, port: endpoint.port, nodeID: endpoint.nodeID)
 	}
 	
 	func send(document frame: Data) {
@@ -420,12 +419,19 @@ final class Console {
 			messages.append(Wire.Command.blackout(blackout).message)
 		}
 		
-		if let frame = sourceFrames.next(universe.values) {
-			messages.append(.data(Wire.frame(Wire.sourceOpcode, start: frame.start, values: frame.values)))
-		}
+		let source = sourceFrames.next(universe.values)
+		let lit = outputFrames.next(output)
 		
-		if let frame = outputFrames.next(output) {
-			messages.append(.data(Wire.frame(Wire.outputOpcode, start: frame.start, values: frame.values)))
+		if let source, let lit, source.start == lit.start, source.values == lit.values {
+			messages.append(.data(Wire.frame(Wire.bothOpcode, start: source.start, values: source.values)))
+		} else {
+			if let source {
+				messages.append(.data(Wire.frame(Wire.sourceOpcode, start: source.start, values: source.values)))
+			}
+			
+			if let lit {
+				messages.append(.data(Wire.frame(Wire.outputOpcode, start: lit.start, values: lit.values)))
+			}
 		}
 		
 		for message in messages {

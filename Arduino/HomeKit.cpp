@@ -13,7 +13,7 @@
 namespace HomeKit {
 namespace {
 
-const int COLOUR_FIRST  = HEAD_DIMMER;
+const int COLOUR_FIRST  = HEAD_ADDRESS + HEAD_DIMMER - 1;
 const int COLOUR_LENGTH = HEAD_WHITE - HEAD_DIMMER + 1;
 
 bool g_mine = false;
@@ -76,23 +76,23 @@ struct Head : Service::LightBulb {
     double share = saturation.getNewVal<double>() / 100.0;
     double tone = hue.getNewVal<double>();
 
-    values[HEAD_DIMMER - COLOUR_FIRST] = 0;
+    values[HEAD_DIMMER - HEAD_DIMMER] = 0;
     if (power.getNewVal<bool>()) {
       double span = HEAD_DIM_TO - HEAD_DIM_FROM;
-      values[HEAD_DIMMER - COLOUR_FIRST] =
+      values[HEAD_DIMMER - HEAD_DIMMER] =
           HEAD_DIM_FROM + (uint8_t)lround(span * level.getNewVal() / 100.0);
     }
 
-    values[HEAD_RED - COLOUR_FIRST]   = (uint8_t)lround(255 * share * component(tone, 5));
-    values[HEAD_GREEN - COLOUR_FIRST] = (uint8_t)lround(255 * share * component(tone, 3));
-    values[HEAD_BLUE - COLOUR_FIRST]  = (uint8_t)lround(255 * share * component(tone, 1));
-    values[HEAD_WHITE - COLOUR_FIRST] = (uint8_t)lround(255 * (1 - share));
+    values[HEAD_RED - HEAD_DIMMER]   = (uint8_t)lround(255 * share * component(tone, 5));
+    values[HEAD_GREEN - HEAD_DIMMER] = (uint8_t)lround(255 * share * component(tone, 3));
+    values[HEAD_BLUE - HEAD_DIMMER]  = (uint8_t)lround(255 * share * component(tone, 1));
+    values[HEAD_WHITE - HEAD_DIMMER] = (uint8_t)lround(255 * (1 - share));
 
     if (unchanged(COLOUR_FIRST, values, COLOUR_LENGTH)) return true;
 
     uint8_t wire[COLOUR_LENGTH];
     memcpy(wire, values, sizeof(values));
-    wire[HEAD_DIMMER - COLOUR_FIRST] = scaled(values[HEAD_DIMMER - COLOUR_FIRST]);
+    wire[HEAD_DIMMER - HEAD_DIMMER] = scaled(values[HEAD_DIMMER - HEAD_DIMMER]);
 
     memcpy(known, values, sizeof(values));
     Link::apply(COLOUR_FIRST, values, wire, COLOUR_LENGTH);
@@ -107,11 +107,11 @@ struct Head : Service::LightBulb {
     if (!memcmp(held, known, sizeof(held))) return;
     memcpy(known, held, sizeof(held));
 
-    uint8_t dim = held[HEAD_DIMMER - COLOUR_FIRST];
-    uint8_t red = held[HEAD_RED - COLOUR_FIRST];
-    uint8_t green = held[HEAD_GREEN - COLOUR_FIRST];
-    uint8_t blue = held[HEAD_BLUE - COLOUR_FIRST];
-    uint8_t white = held[HEAD_WHITE - COLOUR_FIRST];
+    uint8_t dim = held[HEAD_DIMMER - HEAD_DIMMER];
+    uint8_t red = held[HEAD_RED - HEAD_DIMMER];
+    uint8_t green = held[HEAD_GREEN - HEAD_DIMMER];
+    uint8_t blue = held[HEAD_BLUE - HEAD_DIMMER];
+    uint8_t white = held[HEAD_WHITE - HEAD_DIMMER];
 
     bool lit = dim >= HEAD_DIM_FROM;
     if (power.getVal<bool>() != lit) power.setVal(lit);
@@ -207,8 +207,8 @@ void begin() {
   new Characteristic::FirmwareRevision(GLOW_FW_VERSION);
 
   new Head();
-  new Axis("Pan", HEAD_PAN, HEAD_INVERTS_PAN);
-  new Axis("Tilt", HEAD_TILT, HEAD_INVERTS_TILT);
+  new Axis("Pan", HEAD_ADDRESS + HEAD_PAN - 1, HEAD_INVERTS_PAN);
+  new Axis("Tilt", HEAD_ADDRESS + HEAD_TILT - 1, HEAD_INVERTS_TILT);
 
   showChanged();
   homeSpan.autoPoll(8192, 1, 0);

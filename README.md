@@ -103,6 +103,11 @@ With no controller reachable, Glow shows a waiting screen with a way into
 controller setup and a way into a demo. The demo runs the whole app on a show
 built into the app, changes go nowhere, and quitting throws it away.
 
+A controller that stops answering is noticed within about seven seconds, and
+the show gives way to the waiting screen rather than looking live. Edits made in
+the moments before that, which the controller never confirmed, are held in
+memory behind the waiting screen and sent before the show opens again.
+
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.
 
@@ -184,7 +189,7 @@ All four board settings are required, and none are saved with the sketch:
 
 The stock schemes spend only half the 8 MB and leave under a megabyte for shows.
 `partitions.csv` gives the firmware 2 MB, of which it uses about 1.6 MB,
-and hands the remaining **6.15 MB to shows**. Confirm it took by checking that
+and hands the remaining **6.2 MB to shows**. Confirm it took by checking that
 `partitions.csv` appears in the build folder, because the custom scheme makes
 the compiler report the whole flash as the maximum rather than the app
 partition. If the binary ever passes 2 MB, `app0` is the number to raise.
@@ -226,7 +231,7 @@ one back and a strict client then rejects its own connection.
 DMX travels as binary frames:
 
 ```
-byte 0      opcode    0x01 output, 0x02 source
+byte 0      opcode    0x01 output, 0x02 source, 0x04 both
 byte 1      universe  0
 bytes 2-3   start     uint16 LE, 1-based
 bytes 4-5   length    uint16 LE
@@ -260,16 +265,19 @@ Anything larger than the socket carries comfortably still goes over HTTP.
 should be doing once master and blackout are in it, and the controller clocks it
 onto the wire and tells nobody. `0x02` is the source, what the programmer holds
 before master touches it, and the controller stores it and passes it to every
-other client without clocking it.
+other client without clocking it. `0x04` is both at once, which is what the app
+sends whenever master and blackout leave the look as it is, so a move is one
+frame rather than two. The controller clocks it and passes it on as a source.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
 `blackout`, `master`, `scene`, `span`. In: `status` (`fw`, `src`, `client`,
-`ip`, `scene`, `master`, `blackout`), `pong`, `error` (with a `code`), plus
-`blackout`, `master` and `scene` relayed from another client, and the document
-notices below. Types are strict, a fraction is not an integer and a boolean is
-not `1`. `status` is only sent in reply to `hello`, so say hello first. `client`
-is the slot the controller gave you, and you send it back as `X-Glow-Client` so
-your own writes are not relayed to you.
+`ip`, `scene`, `master`, `blackout`), `pong`, plus `blackout`, `master` and
+`scene` relayed from another client, and the document notices below. Types are
+strict, a fraction is not an integer and a boolean is not `1`. `status` is only
+sent in reply to `hello`, so say hello first. `client` is the slot the
+controller gave you, and you send it back as `X-Glow-Client` so your own writes
+are not relayed to you. Anything the controller cannot read is ignored rather
+than answered.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is
@@ -326,9 +334,9 @@ device to connect. Master and blackout are held on the controller and
 scale the head's dimmer the way they do everywhere else.
 
 **The head is the fourteen channels starting at address 1.** That is fixed in
-`Config.h`, as a block that reads the same way the fixture's own channel table
-does, along with the dimmer band, the pan and tilt inversions, the show name,
-the pairing code and the HAP port. Nothing about it is sent from the app.
+`Config.h` as `HEAD_ADDRESS` and the channels Home drives within it, along with
+the dimmer band, the pan and tilt inversions, the show name, the pairing code
+and the HAP port. Nothing about it is sent from the app.
 
 **Pairing:** HAP is on port 1201, advertised as `_hap._tcp` on the same
 `glow.local`. Add the accessory in Home and enter **466-37-726**. Pair with the

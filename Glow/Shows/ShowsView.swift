@@ -11,6 +11,7 @@ struct ShowsView: View {
 	@State private var deleting: Show?
 	@State private var exporting: ShowFile?
 	@State private var isImporting = false
+	@State private var isRefused = false
 	
 	var body: some View {
 		List {
@@ -76,9 +77,14 @@ struct ShowsView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		.fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
 			guard let url = try? result.get() else { return }
-			shows.adopt(contentsOf: url)
+			isRefused = !shows.adopt(contentsOf: url)
 		}
 		.fileExporter(isPresented: Binding { exporting != nil } set: { _ in exporting = nil }, item: exporting, contentTypes: [.json], defaultFilename: exporting?.name) { _ in }
+		.alert("Can't Import This Show", isPresented: $isRefused) {
+			Button("OK", role: .cancel) {}
+		} message: {
+			Text("It is not a Glow show, or it was written by a different version of Glow.")
+		}
 		.alert("Delete Show?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, presenting: deleting) { show in
 			Button("Cancel", role: .cancel) {}
 			

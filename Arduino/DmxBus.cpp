@@ -18,8 +18,8 @@ volatile int g_used = DMX_MIN_SLOTS;
 TaskHandle_t g_task = nullptr;
 
 struct Hold {
-  Hold() { if (g_lock) xSemaphoreTake(g_lock, portMAX_DELAY); }
-  ~Hold() { if (g_lock) xSemaphoreGive(g_lock); }
+  Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
+  ~Hold() { xSemaphoreGive(g_lock); }
 };
 
 TickType_t periodTicks(int hz) {
@@ -91,7 +91,7 @@ bool writeRange(int start, const uint8_t *values, int length) {
 
   int top = start + length - 1;
   if (top > g_used) g_used = top;
-  if (g_task) xTaskNotifyGive(g_task);
+  xTaskNotifyGive(g_task);
   return true;
 }
 
@@ -106,13 +106,11 @@ void setUsed(int slots) {
 int used() { return g_used; }
 
 void pause() {
-  if (!g_wireLock) return;
   xSemaphoreTake(g_wireLock, portMAX_DELAY);
   dmx_driver_disable(DMX_PORT);
 }
 
 void resume() {
-  if (!g_wireLock) return;
   dmx_driver_enable(DMX_PORT);
   xSemaphoreGive(g_wireLock);
 }

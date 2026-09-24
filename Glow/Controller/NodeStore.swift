@@ -26,13 +26,12 @@ actor NodeStore {
 	nonisolated struct Setup: Decodable, Sendable {
 		var id = ""
 		var ip = ""
-		var name = "Glow"
 		var isProvisioned = false
 		var didRefuse = false
 		var isJoining = false
 		var ssid = ""
 		
-		private enum CodingKeys: String, CodingKey { case id, ip, name, state, join, ssid }
+		private enum CodingKeys: String, CodingKey { case id, ip, state, join, ssid }
 		
 		func hasJoined(ssid: String) -> Bool {
 			isProvisioned && !isJoining && !didRefuse && (self.ssid.isEmpty || self.ssid == ssid)
@@ -42,7 +41,6 @@ actor NodeStore {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
 			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
 			ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
-			name = try container.decode(String.self, forKey: .name)
 			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
 			let join = try container.decodeIfPresent(String.self, forKey: .join)
 			didRefuse = join == "failed"
@@ -137,7 +135,7 @@ actor NodeStore {
 	}
 	
 	private func send(_ endpoint: NodeEndpoint, _ path: String, method: String, body: Data?, client: Int?) async -> Answer {
-		guard let url = endpoint.apiURL(path: path) else { return .failed }
+		guard let url = endpoint.url(scheme: "http", path: "/api/\(path)") else { return .failed }
 		
 		var request = URLRequest(url: url)
 		request.httpMethod = method

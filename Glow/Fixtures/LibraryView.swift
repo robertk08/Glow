@@ -109,7 +109,7 @@ private struct MadeFixtureRow: View {
 				context.delete(found)
 			}
 		} message: {
-			Text(patched.isEmpty ? "Nothing is patched from it." : "\(patched.formatted(.list(type: .and))) are patched from it and go with it.")
+			Text(patched.isEmpty ? "Nothing is patched from it." : "Lights patched from it stay and will need another fixture: \(patched.formatted(.list(type: .and))).")
 		}
 	}
 }

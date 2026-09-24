@@ -40,12 +40,12 @@ struct StorageTests {
 		#expect(scene.count / Self.lights < 60)
 	}
 	
-	@Test func aLightCostsLessThanTwoHundredBytes() async throws {
+	@Test func aLightCostsLessThanOneHundredTwentyBytes() async throws {
 		let show = Self.rig()
 		let files = await ShowLibrary.snapshot(of: show, folders: [.lights])
 		let light = try #require(files.values.max(by: { $0.count < $1.count }))
 		
-		#expect(light.count < 200)
+		#expect(light.count < 120)
 	}
 	
 	@Test func theBundledDefinitionsFitInSixtyKilobytes() async {

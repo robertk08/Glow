@@ -38,6 +38,19 @@ nonisolated struct ShowContents: Codable, Sendable {
 			invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan) ?? false
 			invertsTilt = try container.decodeIfPresent(Bool.self, forKey: .invertsTilt) ?? false
 		}
+		
+		func encode(to encoder: any Encoder) throws {
+			var container = encoder.container(keyedBy: CodingKeys.self)
+			try container.encode(identifier, forKey: .identifier)
+			try container.encode(typeID, forKey: .typeID)
+			try container.encode(name, forKey: .name)
+			try container.encode(address, forKey: .address)
+			try container.encode(sortIndex, forKey: .sortIndex)
+			try container.encodeIfPresent(symbol, forKey: .symbol)
+			if !groups.isEmpty { try container.encode(groups, forKey: .groups) }
+			if invertsPan { try container.encode(true, forKey: .invertsPan) }
+			if invertsTilt { try container.encode(true, forKey: .invertsTilt) }
+		}
 	}
 	
 	nonisolated struct Group: Codable, Sendable {

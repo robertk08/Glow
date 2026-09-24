@@ -2,7 +2,6 @@
 
 #include "Creds.h"
 
-#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <esp_eap_client.h>
 #include <esp_mac.h>
@@ -10,59 +9,151 @@
 namespace Net {
 namespace {
 
-const uint32_t COMPLAIN_MS = 30000;
+struct SetupNetwork {
+  bool     up;
+  uint32_t until;
+  bool     lost;
+  bool     confirming;
+};
 
-bool     g_sta        = false;
-bool     g_up         = false;
-bool     g_ap         = false;
-uint32_t g_apUntil    = 0;   // 0 = no expiry
-bool     g_mdns       = false;
-uint32_t g_lastTry    = 0;
-uint32_t g_complained = 0;
-char     g_id[13]     = "000000000000";
+struct Station {
+  bool     started;
+  bool     up;
+  bool     held;
+  int      slot;
+  uint32_t lastTry;
+  uint32_t downSince;
+};
 
-bool     g_trying    = false;
-uint32_t g_joinStart = 0;
-bool     g_tryLetGo  = false;
-char     g_trySsid[33] = "";
-char     g_tryUser[65] = "";
-char     g_tryPass[65] = "";
+struct Join {
+  bool     active;
+  bool     letGo;
+  bool     failed;
+  uint32_t since;
+  char     ssid[33];
+  char     user[65];
+  char     pass[65];
+};
 
-bool g_bootCleared = false;
-bool g_scanning    = false;
+SetupNetwork g_ap   = {};
+Station      g_sta  = {};
+Join         g_join = {};
+bool         g_bootCleared = false;
+bool         g_scanning    = false;
+char         g_id[13]      = "000000000000";
 
-int      g_slot      = 0;
+bool due(uint32_t since, uint32_t ms) { return millis() - since >= ms; }
 
-bool     g_apLost    = false;
-bool     g_apHeld    = false;
-bool     g_apGrace   = false;
-bool     g_apConfirm = false;
-uint32_t g_downSince = 0;
-bool     g_joinFailed = false;
+void startStation(const char *ssid, const char *user, const char *password) {
+  WiFi.mode(g_ap.up ? WIFI_AP_STA : WIFI_STA);
+  WiFi.setAutoReconnect(false);
+  WiFi.setSleep(false);
 
-void readIdentity() {
-  uint8_t mac[6] = {0};
-  esp_read_mac(mac, ESP_MAC_WIFI_STA);
-  snprintf(g_id, sizeof(g_id), "%02x%02x%02x%02x%02x%02x", mac[0], mac[1],
-           mac[2], mac[3], mac[4], mac[5]);
+  if (user[0]) {
+    WiFi.begin(ssid, WPA2_AUTH_PEAP, user, user, password);
+  } else {
+    esp_wifi_sta_enterprise_disable();
+    WiFi.begin(ssid, password);
+  }
+
+  g_sta.lastTry = millis();
+  g_sta.started = true;
+  Serial.printf("WiFi: joining \"%s\"%s\n", ssid, user[0] ? " as an enterprise network" : "");
 }
 
-void complain() {
-  g_complained = millis();
-  Serial.printf("no wifi: join \"%s\" and use the app\n", GLOW_SETUP_SSID);
+void startSlot(int slot) {
+  g_sta.slot = slot;
+  startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
 }
 
-void announce() {
-  if (g_mdns) return;
+void raiseAp(uint32_t ms) {
+  if (!(g_ap.up && g_ap.until == 0)) g_ap.until = ms ? millis() + ms : 0;
+  if (g_ap.up) return;
 
-  if (!MDNS.begin(GLOW_HOSTNAME)) {
-    Serial.println(F("mDNS: failed"));
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAPConfig(GLOW_SETUP_IP, GLOW_SETUP_IP, GLOW_SETUP_MASK);
+  if (!WiFi.softAP(GLOW_SETUP_SSID)) {
+    Serial.println(F("setup: the access point would not start"));
     return;
   }
-  g_mdns = true;
+  g_ap.up = true;
+  Serial.printf("setup: \"%s\" is up\n", GLOW_SETUP_SSID);
+}
 
-  MDNS.setInstanceName(GLOW_NODE_NAME);
-  Serial.printf("mDNS: %s.local\n", GLOW_HOSTNAME);
+void lowerAp() {
+  if (!g_ap.up) return;
+  WiFi.softAPdisconnect(true);
+  g_ap = {};
+  WiFi.mode(WIFI_STA);
+  Serial.printf("setup: \"%s\" is down\n", GLOW_SETUP_SSID);
+}
+
+void joined() {
+  Serial.printf("WiFi: %s\n", WiFi.localIP().toString().c_str());
+  if (g_ap.lost && !g_join.active) lowerAp();
+}
+
+void tickJoin(bool connected) {
+  if (!connected) g_join.letGo = true;
+
+  if (connected && g_join.letGo) {
+    g_join.active = false;
+    g_sta.slot    = 0;
+    if (Creds::save(g_join.ssid, g_join.user, g_join.pass)) Serial.printf("creds: \"%s\" stored\n", g_join.ssid);
+    else Serial.println(F("creds: NVS write failed"));
+    g_ap.lost       = false;
+    g_ap.confirming = true;
+    g_ap.until      = millis() + SETUP_DONE_MS;
+    return;
+  }
+
+  if (!due(g_join.since, JOIN_TIMEOUT_MS)) return;
+  g_join.active = false;
+  g_join.failed = true;
+  Serial.printf("WiFi: could not join \"%s\"\n", g_join.ssid);
+
+  if (Creds::have()) {
+    startSlot(0);
+    raiseAp(SETUP_AP_MS);
+  } else {
+    WiFi.disconnect();
+    g_sta.started = false;
+    raiseAp(0);
+  }
+}
+
+void tickStation(bool connected) {
+  if (!g_sta.started) return;
+  if (connected) {
+    g_sta.held = false;
+    return;
+  }
+
+  if (!g_ap.up && due(g_sta.downSince, SETUP_LOST_MS)) {
+    Serial.println(F("setup: no stored network is in reach"));
+    g_ap.lost     = true;
+    g_sta.lastTry = millis();
+    WiFi.disconnect();
+    raiseAp(0);
+  }
+
+  if (g_ap.up && WiFi.softAPgetStationNum()) {
+    if (!g_sta.held) WiFi.disconnect();
+    g_sta.held = true;
+    return;
+  }
+  g_sta.held = false;
+
+  if (!due(g_sta.lastTry, g_ap.up ? SETUP_RETRY_MS : WIFI_RETRY_MS)) return;
+  int next = g_sta.slot;
+  for (int step = 1; step <= Creds::SLOTS; step++) {
+    int slot = (g_sta.slot + step) % Creds::SLOTS;
+    if (!Creds::ssid(slot)[0]) continue;
+    next = slot;
+    break;
+  }
+  WiFi.disconnect();
+  startSlot(next);
 }
 
 bool isEnterprise(wifi_auth_mode_t mode) {
@@ -76,97 +167,15 @@ bool isEnterprise(wifi_auth_mode_t mode) {
   }
 }
 
-void startStation(const char *ssid, const char *user, const char *password) {
-  WiFi.mode(g_ap ? WIFI_AP_STA : WIFI_STA);
-  WiFi.setAutoReconnect(false);
-  WiFi.setSleep(false);
-
-  if (user && user[0]) {
-    WiFi.begin(ssid, WPA2_AUTH_PEAP, user, user, password);
-  } else {
-    esp_wifi_sta_enterprise_disable();
-    WiFi.begin(ssid, password);
-  }
-
-  g_lastTry = millis();
-  g_sta     = true;
-  Serial.printf("WiFi: joining \"%s\"%s\n", ssid,
-                user && user[0] ? " as an enterprise network" : "");
-}
-
-void startSlot(int slot) {
-  g_slot = slot;
-  startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
-}
-
-int nextSlot(int from) {
-  for (int step = 1; step <= Creds::SLOTS; step++) {
-    int slot = (from + step) % Creds::SLOTS;
-    if (Creds::ssid(slot)[0]) return slot;
-  }
-  return from;
-}
-
-void raiseAp(uint32_t ms) {
-  if (!(g_ap && g_apUntil == 0)) g_apUntil = ms ? millis() + ms : 0;
-  if (g_ap) return;
-
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAPConfig(GLOW_SETUP_IP, GLOW_SETUP_IP, GLOW_SETUP_MASK);
-  if (!WiFi.softAP(GLOW_SETUP_SSID)) {
-    Serial.println(F("setup: the access point would not start"));
-    return;
-  }
-  g_ap = true;
-  Serial.printf("setup: \"%s\" is up on %s\n", GLOW_SETUP_SSID,
-                WiFi.softAPIP().toString().c_str());
-}
-
-void lowerAp() {
-  if (!g_ap) return;
-  WiFi.softAPdisconnect(true);
-  g_ap        = false;
-  g_apUntil   = 0;
-  g_apGrace   = false;
-  g_apConfirm = false;
-  WiFi.mode(WIFI_STA);
-  Serial.printf("setup: \"%s\" is down\n", GLOW_SETUP_SSID);
-}
-
-void pollSetupPin() {
-  if (SETUP_PIN < 0) return;
-
-  static bool     seenHigh  = false;
-  static uint32_t downSince = 0;
-
-  if (digitalRead(SETUP_PIN) != LOW) {
-    seenHigh  = true;
-    downSince = 0;
-    return;
-  }
-  if (!seenHigh) return;
-  if (!downSince) {
-    downSince = millis();
-    return;
-  }
-  if (millis() - downSince < SETUP_HOLD_MS) return;
-
-  downSince = 0;
-  seenHigh  = false;
-  Serial.println(F("setup: held low"));
-  enterSetup();
-}
-
 }  // namespace
 
 void begin() {
-  readIdentity();
+  uint8_t mac[6] = {0};
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  snprintf(g_id, sizeof(g_id), "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   WiFi.persistent(false);
-
   WiFi.setHostname(GLOW_HOSTNAME);
-
-  if (SETUP_PIN >= 0) pinMode(SETUP_PIN, INPUT_PULLUP);
 
   uint8_t boots = Creds::bumpBootCount();
   bool    asked = boots >= RECOVERY_BOOTS;
@@ -176,196 +185,97 @@ void begin() {
     Serial.printf("setup: %u short boots\n", boots);
   }
 
-  if (Creds::have()) {
-    startSlot(0);
-    g_downSince = millis();
-    if (asked) raiseAp(SETUP_AP_MS);
-  } else {
+  if (!Creds::have()) {
     raiseAp(0);
-    complain();
+    return;
   }
+
+  startSlot(0);
+  g_sta.downSince = millis();
+  if (asked) raiseAp(SETUP_AP_MS);
 }
 
 void tick() {
-  pollSetupPin();
-
   if (!g_bootCleared && millis() >= RECOVERY_BOOT_MS) {
     g_bootCleared = true;
     Creds::clearBootCount();
   }
 
-  bool now = g_sta && WiFi.status() == WL_CONNECTED;
-  if (now != g_up) {
-    g_up = now;
-    if (now) {
-      Serial.printf("WiFi: %s\n", WiFi.localIP().toString().c_str());
-      announce();
-      if (g_apLost && !g_trying) {
-        g_apLost = false;
-        lowerAp();
-      }
+  bool connected = g_sta.started && WiFi.status() == WL_CONNECTED;
+  if (connected != g_sta.up) {
+    g_sta.up = connected;
+    if (connected) {
+      joined();
     } else {
       Serial.println(F("WiFi: dropped"));
-      g_downSince = millis();
-      if (!g_trying) startSlot(g_slot);
+      g_sta.downSince = millis();
+      if (!g_join.active) startSlot(g_sta.slot);
     }
   }
 
-  if (g_trying) {
-    if (!now) g_tryLetGo = true;
-
-    if (now && g_tryLetGo) {
-      g_trying = false;
-      g_slot = 0;
-      if (!Creds::save(g_trySsid, g_tryUser, g_tryPass))
-        Serial.println(F("creds: NVS write failed"));
-      else
-        Serial.printf("creds: \"%s\" stored\n", g_trySsid);
-      g_apLost  = false;
-      g_apGrace = true;
-      g_apUntil = millis() + SETUP_DONE_MS;
-      Serial.printf("setup: \"%s\" stays up so the app can confirm\n",
-                    GLOW_SETUP_SSID);
-
-    } else if (millis() - g_joinStart >= JOIN_TIMEOUT_MS) {
-      g_trying     = false;
-      g_joinFailed = true;
-      Serial.printf("WiFi: could not join \"%s\"\n", g_trySsid);
-      if (Creds::have()) {
-        startSlot(0);
-        raiseAp(SETUP_AP_MS);
-      } else {
-        WiFi.disconnect();
-        g_sta = false;
-        raiseAp(0);
-      }
-    }
-    return;
-  }
-
-  if (g_ap && g_apConfirm) lowerAp();
-  if (g_ap && g_apUntil && (int32_t)(millis() - g_apUntil) >= 0) lowerAp();
-
-  if (!g_sta) {
-    if (millis() - g_complained >= COMPLAIN_MS) complain();
-    return;
-  }
-
-  if (!now && !g_ap && millis() - g_downSince >= SETUP_LOST_MS) {
-    Serial.println(F("setup: no stored network is in reach"));
-    g_apLost  = true;
-    g_lastTry = millis();
-    WiFi.disconnect();
-    raiseAp(0);
-  }
-
-  if (g_ap && !now && WiFi.softAPgetStationNum()) {
-    if (!g_apHeld) {
-      g_apHeld = true;
-      WiFi.disconnect();
-      Serial.println(F("setup: the radio is held still while setup is open"));
-    }
-    return;
-  }
-  g_apHeld = false;
-
-  uint32_t retry = g_ap ? SETUP_RETRY_MS : WIFI_RETRY_MS;
-  if (!now && millis() - g_lastTry >= retry) {
-    WiFi.disconnect();
-    startSlot(nextSlot(g_slot));
-  }
+  if (g_join.active) return tickJoin(connected);
+  if (g_ap.up && g_ap.until && (int32_t)(millis() - g_ap.until) >= 0) lowerAp();
+  tickStation(connected);
 }
 
 void confirm() {
-  if (g_apGrace) g_apConfirm = true;
+  if (g_ap.confirming) g_ap.until = millis();
 }
 
 const char *joinState() {
-  if (g_trying) return "trying";
-  return g_joinFailed ? "failed" : "idle";
+  if (g_join.active) return "trying";
+  return g_join.failed ? "failed" : "idle";
 }
 
-bool        up()          { return g_up; }
-bool        apUp()        { return g_ap; }
+bool        up()          { return g_sta.up; }
+bool        apUp()        { return g_ap.up; }
 bool        provisioned() { return Creds::have(); }
 const char *id()          { return g_id; }
-IPAddress   ip()          { return g_up ? WiFi.localIP() : WiFi.softAPIP(); }
+IPAddress   ip()          { return g_sta.up ? WiFi.localIP() : WiFi.softAPIP(); }
 
 bool fromSetupAp(const IPAddress &peer) {
-  if (!g_ap) return false;
+  if (!g_ap.up) return false;
   IPAddress ap = WiFi.softAPIP();
   return peer[0] == ap[0] && peer[1] == ap[1] && peer[2] == ap[2];
 }
 
 int scan(Network *out, int max) {
-  if (!out || max <= 0) return SCAN_FAILED;
-
   int found = WiFi.scanComplete();
   if (found == WIFI_SCAN_RUNNING) return SCAN_RUNNING;
 
   if (found == WIFI_SCAN_FAILED) {
-    if (g_scanning) {
-      g_scanning = false;
-      Serial.println(F("scan: failed"));
-      return SCAN_FAILED;
-    }
-    if (WiFi.scanNetworks(true, false, false, SCAN_CHANNEL_MS) == WIFI_SCAN_FAILED) {
-      Serial.println(F("scan: would not start"));
-      return SCAN_FAILED;
-    }
-    g_scanning = true;
-    return SCAN_RUNNING;
+    bool failed = g_scanning || WiFi.scanNetworks(true, false, false, SCAN_CHANNEL_MS) == WIFI_SCAN_FAILED;
+    g_scanning = !failed;
+    return failed ? SCAN_FAILED : SCAN_RUNNING;
   }
 
   g_scanning = false;
-
   int n = 0;
+
   for (int i = 0; i < found; i++) {
-    String ssid = WiFi.SSID(i);
-    if (!ssid.length()) continue;
-
-    int32_t rssi = WiFi.RSSI(i);
-
-    int dup = -1;
-    for (int j = 0; j < n; j++) {
-      if (!strcmp(out[j].ssid, ssid.c_str())) {
-        dup = j;
-        break;
-      }
-    }
-    if (dup >= 0) {
-      if (rssi > out[dup].rssi) {
-        out[dup].rssi       = rssi;
-        out[dup].secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
-        out[dup].enterprise = isEnterprise(WiFi.encryptionType(i));
-      }
-      continue;
-    }
-
-    Network entry;
-    snprintf(entry.ssid, sizeof(entry.ssid), "%s", ssid.c_str());
-    entry.rssi       = rssi;
+    Network entry = {};
+    snprintf(entry.ssid, sizeof(entry.ssid), "%s", WiFi.SSID(i).c_str());
+    if (!entry.ssid[0]) continue;
+    entry.rssi       = WiFi.RSSI(i);
     entry.secure     = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
     entry.enterprise = isEnterprise(WiFi.encryptionType(i));
 
-    if (n < max) {
-      out[n++] = entry;
-      continue;
+    int same = -1;
+    for (int j = 0; j < n && same < 0; j++) {
+      if (!strcmp(out[j].ssid, entry.ssid)) same = j;
     }
-    int weakest = 0;
-    for (int j = 1; j < n; j++)
-      if (out[j].rssi < out[weakest].rssi) weakest = j;
-    if (entry.rssi > out[weakest].rssi) out[weakest] = entry;
-  }
 
-  for (int i = 1; i < n; i++) {
-    Network key = out[i];
-    int     j   = i - 1;
-    while (j >= 0 && out[j].rssi < key.rssi) {
-      out[j + 1] = out[j];
-      j--;
+    if (same >= 0) {
+      if (entry.rssi > out[same].rssi) out[same] = entry;
+    } else if (n < max) {
+      out[n++] = entry;
+    } else {
+      int weakest = 0;
+      for (int j = 1; j < n; j++) {
+        if (out[j].rssi < out[weakest].rssi) weakest = j;
+      }
+      if (entry.rssi > out[weakest].rssi) out[weakest] = entry;
     }
-    out[j + 1] = key;
   }
 
   WiFi.scanDelete();
@@ -373,18 +283,18 @@ int scan(Network *out, int max) {
 }
 
 void provision(const char *ssid, const char *user, const char *password) {
-  snprintf(g_trySsid, sizeof(g_trySsid), "%s", ssid);
-  snprintf(g_tryUser, sizeof(g_tryUser), "%s", user);
-  snprintf(g_tryPass, sizeof(g_tryPass), "%s", password);
+  snprintf(g_join.ssid, sizeof(g_join.ssid), "%s", ssid);
+  snprintf(g_join.user, sizeof(g_join.user), "%s", user);
+  snprintf(g_join.pass, sizeof(g_join.pass), "%s", password);
 
-  if (!g_ap) raiseAp(SETUP_AP_MS);
+  if (!g_ap.up) raiseAp(SETUP_AP_MS);
 
-  g_trying     = true;
-  g_tryLetGo   = false;
-  g_joinFailed = false;
-  g_joinStart  = millis();
+  g_join.active = true;
+  g_join.letGo  = false;
+  g_join.failed = false;
+  g_join.since  = millis();
   WiFi.disconnect();
-  startStation(g_trySsid, g_tryUser, g_tryPass);
+  startStation(g_join.ssid, g_join.user, g_join.pass);
 }
 
 void enterSetup() {

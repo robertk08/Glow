@@ -127,7 +127,7 @@ final class NodeSetupModel {
 				}
 				
 				if info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != NodeEndpoint.setup.host {
-					provisioned = NodeEndpoint(host: info.ip, name: info.name, nodeID: info.id)
+					provisioned = NodeEndpoint(host: info.ip, nodeID: info.id)
 					NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: "Glow Setup")
 					
 					if selected?.enterprise != true {
@@ -154,7 +154,7 @@ final class NodeSetupModel {
 				}
 			}
 			
-			let found = provisioned ?? NodeEndpoint(host: NodeEndpoint.fallback.host, name: NodeEndpoint.fallback.name, nodeID: nodeID)
+			let found = provisioned ?? NodeEndpoint(host: NodeEndpoint.fallback.host, nodeID: nodeID)
 			guard let info = await store.setup(at: found), info.id == nodeID, info.hasJoined(ssid: ssid) else { continue }
 			
 			user = ""

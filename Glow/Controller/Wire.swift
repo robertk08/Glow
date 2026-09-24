@@ -4,6 +4,7 @@ nonisolated enum Wire {
 	static let outputOpcode: UInt8 = 0x01
 	static let sourceOpcode: UInt8 = 0x02
 	static let documentOpcode: UInt8 = 0x03
+	static let bothOpcode: UInt8 = 0x04
 	static let documentHeader = 7
 	
 	static func frame(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) -> Data {

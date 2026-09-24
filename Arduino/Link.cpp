@@ -27,11 +27,10 @@ class Sockets : public WebSocketsServerCore {
 
 Sockets g_ws;
 
-bool g_running = false;
-
 const uint8_t  OP_OUTPUT   = 0x01;
 const uint8_t  OP_SOURCE   = 0x02;
 const uint8_t  OP_DOCUMENT = 0x03;
+const uint8_t  OP_BOTH     = 0x04;
 const size_t   DMX_HEADER  = 6;
 const size_t   DOC_HEADER  = 7;
 const uint16_t SLOTS       = 512;
@@ -67,13 +66,6 @@ void relay(uint8_t from, bool binary, const uint8_t *p, size_t len) {
 void reply(uint8_t num, JsonDocument &doc) {
   size_t n = serializeJson(doc, g_out, sizeof(g_out));
   g_ws.sendTXT(num, g_out, n);
-}
-
-void sendError(uint8_t num, const char *code) {
-  JsonDocument doc;
-  doc["t"] = "error";
-  doc["code"] = code;
-  reply(num, doc);
 }
 
 void sendFrame(uint8_t to, int start, int length) {
@@ -112,15 +104,15 @@ const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
 }
 
 void onDocument(uint8_t num, const uint8_t *p, size_t len) {
-  if (len < DOC_HEADER) return sendError(num, "bad_frame");
+  if (len < DOC_HEADER) return;
 
   size_t showLen   = p[2];
   size_t folderLen = p[3];
   size_t idLen     = p[4];
   size_t bodyLen   = (size_t)p[5] | ((size_t)p[6] << 8);
 
-  if (len != DOC_HEADER + showLen + folderLen + idLen + bodyLen) return sendError(num, "bad_length");
-  if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) return sendError(num, "bad_name");
+  if (len != DOC_HEADER + showLen + folderLen + idLen + bodyLen) return;
+  if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) return;
 
   char show[Store::NAME_LIMIT];
   char folder[Store::NAME_LIMIT];
@@ -140,20 +132,18 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   reply(num, doc);
 }
 
-void onBinary(uint8_t num, const uint8_t *p, size_t len) {
+void onBinary(uint8_t num, uint8_t *p, size_t len) {
   if (len >= 1 && p[0] == OP_DOCUMENT) return onDocument(num, p, len);
-  if (len < DMX_HEADER || p[1] != 0) return sendError(num, "bad_frame");
-  if (p[0] != OP_OUTPUT && p[0] != OP_SOURCE) return sendError(num, "bad_opcode");
+  if (len < DMX_HEADER || p[1] != 0 || (p[0] != OP_OUTPUT && p[0] != OP_SOURCE && p[0] != OP_BOTH)) return;
 
   int start  = p[2] | (p[3] << 8);
   int length = p[4] | (p[5] << 8);
-  if (len - DMX_HEADER != (size_t)length || !inUniverse(start, length)) return sendError(num, "bad_length");
+  if (len - DMX_HEADER != (size_t)length || !inUniverse(start, length)) return;
 
-  if (p[0] == OP_OUTPUT) {
-    DmxBus::writeRange(start, p + DMX_HEADER, length);
-    return;
-  }
+  if (p[0] != OP_SOURCE) DmxBus::writeRange(start, p + DMX_HEADER, length);
+  if (p[0] == OP_OUTPUT) return;
 
+  p[0] = OP_SOURCE;
   portENTER_CRITICAL(&g_lock);
   memcpy(g_source + DMX_HEADER + (start - 1), p + DMX_HEADER, length);
   g_haveSource = true;
@@ -163,7 +153,7 @@ void onBinary(uint8_t num, const uint8_t *p, size_t len) {
 
 void onText(uint8_t num, const uint8_t *p, size_t len) {
   JsonDocument doc;
-  if (deserializeJson(doc, p, len)) return sendError(num, "bad_json");
+  if (deserializeJson(doc, p, len)) return;
   const char *t = doc["t"] | "";
 
   if (!strcmp(t, "hello")) {
@@ -200,8 +190,6 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strcmp(t, "span") && doc["slots"].is<int>()) {
     DmxBus::setUsed(doc["slots"]);
 
-  } else {
-    sendError(num, "bad_message");
   }
 }
 
@@ -221,17 +209,15 @@ void begin() {
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, WS_PING_TRIES);
-  g_running = true;
   Serial.printf("ws: ws://%s.local%s\n", GLOW_HOSTNAME, GLOW_WS_PATH);
 }
 
 void tick() {
-  if (!g_running) return;
   g_ws.loop();
   relayChanges();
 }
 
-int clients() { return g_running ? g_ws.connectedClients() : 0; }
+int clients() { return g_ws.connectedClients(); }
 
 void apply(int start, const uint8_t *source, const uint8_t *output, int length) {
   if (!inUniverse(start, length)) return;
@@ -259,11 +245,11 @@ float master() { return g_master; }
 bool blackout() { return g_blackout; }
 
 void notify(const char *json, int except) {
-  if (g_running) relay(except < 0 ? NO_CLIENT : (uint8_t)except, false, (const uint8_t *)json, strlen(json));
+  relay(except < 0 ? NO_CLIENT : (uint8_t)except, false, (const uint8_t *)json, strlen(json));
 }
 
 bool adopt(NetworkClient &tcp, const char *url) {
-  return g_running ? g_ws.adopt(tcp, url) : false;
+  return g_ws.adopt(tcp, url);
 }
 
 }  // namespace Link

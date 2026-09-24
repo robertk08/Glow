@@ -12,7 +12,6 @@ namespace Http {
 namespace {
 
 NetworkServer g_server(GLOW_PORT);
-bool          g_running = false;
 
 const uint32_t REQUEST_MS          = 3000;
 const uint32_t DOCUMENT_MS         = 8000;
@@ -23,7 +22,6 @@ const int      REQUEST_HEADERS_MAX = 40;
 const size_t   PACKET              = 1400;
 const size_t   CHUNK_HEAD          = 6;
 
-Net::Network g_nets[SCAN_MAX];
 uint8_t      g_packet[CHUNK_HEAD + PACKET + 2];
 
 bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
@@ -88,13 +86,8 @@ void sendJson(NetworkClient &c, int status, const String &body) {
   sendJson(c, status, body.c_str(), body.length());
 }
 
-void sendResult(NetworkClient &c, int status, bool ok, const char *error) {
-  JsonDocument doc;
-  doc["ok"] = ok;
-  if (error) doc["error"] = error;
-  String out;
-  serializeJson(doc, out);
-  sendJson(c, status, out);
+void sendStatus(NetworkClient &c, int status) {
+  sendJson(c, status, "{}", 2);
 }
 
 struct Chunks {
@@ -184,7 +177,7 @@ void sendShow(NetworkClient &c, const char *showID) {
 void sendStored(NetworkClient &c, const char *path) {
   File f = Store::open(path);
   if (!f || f.isDirectory()) {
-    sendResult(c, 404, false, "not_found");
+    sendStatus(c, 404);
     return;
   }
 
@@ -204,7 +197,6 @@ void sendStored(NetworkClient &c, const char *path) {
 void info(NetworkClient &c) {
   JsonDocument doc;
   doc["id"]   = Net::id();
-  doc["name"] = GLOW_NODE_NAME;
   doc["state"] = Net::provisioned() ? "provisioned" : "unprovisioned";
   doc["join"]  = Net::joinState();
   doc["ip"]    = Net::ip().toString();
@@ -218,13 +210,14 @@ void info(NetworkClient &c) {
 
 void scan(NetworkClient &c) {
   if (!Net::fromSetupAp(c.remoteIP())) {
-    sendResult(c, 404, false, "not_on_setup_ap");
+    sendStatus(c, 404);
     return;
   }
 
-  int n = Net::scan(g_nets, SCAN_MAX);
+  Net::Network nets[SCAN_MAX];
+  int n = Net::scan(nets, SCAN_MAX);
   if (n == Net::SCAN_FAILED) {
-    sendResult(c, 503, false, "scan_failed");
+    sendStatus(c, 503);
     return;
   }
 
@@ -232,10 +225,10 @@ void scan(NetworkClient &c) {
   JsonArray    list = doc["networks"].to<JsonArray>();
   for (int i = 0; i < n; i++) {
     JsonObject o = list.add<JsonObject>();
-    o["ssid"]       = g_nets[i].ssid;
-    o["rssi"]       = g_nets[i].rssi;
-    o["secure"]     = g_nets[i].secure;
-    o["enterprise"] = g_nets[i].enterprise;
+    o["ssid"]       = nets[i].ssid;
+    o["rssi"]       = nets[i].rssi;
+    o["secure"]     = nets[i].secure;
+    o["enterprise"] = nets[i].enterprise;
   }
   String out;
   serializeJson(doc, out);
@@ -256,31 +249,31 @@ void provision(NetworkClient &c, const char *body, size_t len) {
   const char  *ssid;
   const char  *user;
   const char  *password;
-  if (deserializeJson(doc, body, len)) return sendResult(c, 400, false, "bad_json");
-  if (!text(doc, "ssid", 32, true, ssid)) return sendResult(c, 400, false, "bad_ssid");
-  if (!text(doc, "user", 64, false, user)) return sendResult(c, 400, false, "bad_user");
-  if (!text(doc, "password", user[0] ? 64 : 63, false, password)) return sendResult(c, 400, false, "bad_password");
+  if (deserializeJson(doc, body, len)) return sendStatus(c, 400);
+  if (!text(doc, "ssid", 32, true, ssid)) return sendStatus(c, 400);
+  if (!text(doc, "user", 64, false, user)) return sendStatus(c, 400);
+  if (!text(doc, "password", user[0] ? 64 : 63, false, password)) return sendStatus(c, 400);
 
-  sendResult(c, 200, true, nullptr);
+  sendStatus(c, 200);
   c.stop();
   Net::provision(ssid, user, password);
 }
 
 void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
               const char *body, size_t bodyLen, int except) {
-  if (!Store::ready()) return sendResult(c, 503, false, "no_store");
+  if (!Store::ready()) return sendStatus(c, 503);
 
   if (!strcmp(path, "/api/shows")) {
     if (get) return sendStored(c, Store::showsPath());
-    if (!put) return sendResult(c, 404, false, "not_found");
-    if (!Store::write(Store::showsPath(), (const uint8_t *)body, bodyLen)) return sendResult(c, 503, false, "write_failed");
-    sendResult(c, 200, true, nullptr);
+    if (!put) return sendStatus(c, 404);
+    if (!Store::write(Store::showsPath(), (const uint8_t *)body, bodyLen)) return sendStatus(c, 503);
+    sendStatus(c, 200);
     HomeKit::showChanged();
     return Link::notify("{\"t\":\"shows\"}", except);
   }
 
   char rest[Store::PATH_LIMIT];
-  if (strncmp(path, "/api/show/", 10) || snprintf(rest, sizeof(rest), "%s", path + 10) >= (int)sizeof(rest)) return sendResult(c, 404, false, "not_found");
+  if (strncmp(path, "/api/show/", 10) || snprintf(rest, sizeof(rest), "%s", path + 10) >= (int)sizeof(rest)) return sendStatus(c, 404);
 
   char *folder = strchr(rest, '/');
   char *objID  = folder ? strchr(folder + 1, '/') : nullptr;
@@ -289,18 +282,18 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
   char file[Store::PATH_LIMIT];
 
   if (!folder) {
-    if (!Store::showPath(file, sizeof(file), rest)) return sendResult(c, 400, false, "bad_show");
+    if (!Store::showPath(file, sizeof(file), rest)) return sendStatus(c, 400);
     if (get) return sendShow(c, rest);
-    if (!del) return sendResult(c, 404, false, "not_found");
-    if (!Store::removeShow(rest)) return sendResult(c, 503, false, "write_failed");
-    return sendResult(c, 200, true, nullptr);
+    if (!del) return sendStatus(c, 404);
+    if (!Store::removeShow(rest)) return sendStatus(c, 503);
+    return sendStatus(c, 200);
   }
 
-  if (!objID || !Store::objectPath(file, sizeof(file), rest, folder, objID)) return sendResult(c, 400, false, "bad_object");
+  if (!objID || !Store::objectPath(file, sizeof(file), rest, folder, objID)) return sendStatus(c, 400);
   if (get) return sendStored(c, file);
-  if (!put && !del) return sendResult(c, 404, false, "not_found");
-  if (!(put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file))) return sendResult(c, 503, false, "write_failed");
-  sendResult(c, 200, true, nullptr);
+  if (!put && !del) return sendStatus(c, 404);
+  if (!(put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file))) return sendStatus(c, 503);
+  sendStatus(c, 200);
 
   char notice[224];
   snprintf(notice, sizeof(notice), "{\"t\":\"doc\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\",\"op\":\"%s\"}",
@@ -327,15 +320,15 @@ void route(NetworkClient &c, const char *method, const char *path,
   } else if (!strcmp(path, "/api/provision") && post) {
     provision(c, body, bodyLen);
   } else if (!strcmp(path, "/api/setup") && post) {
-    sendResult(c, 200, true, nullptr);
+    sendStatus(c, 200);
     c.stop();
     Net::enterSetup();
   } else if (!strcmp(path, "/api/forget") && post) {
-    sendResult(c, 200, true, nullptr);
+    sendStatus(c, 200);
     c.stop();
     Net::forget();
   } else {
-    sendResult(c, 404, false, "not_found");
+    sendStatus(c, 404);
   }
 }
 
@@ -355,7 +348,7 @@ bool handle(NetworkClient &client) {
   size_t pathLen = query ? (size_t)(query - target) : strlen(target);
   if (pathLen == strlen(GLOW_WS_PATH) && !strncmp(target, GLOW_WS_PATH, pathLen)) {
     if (!strcmp(method, "GET") && Link::adopt(client, target)) return true;
-    sendResult(client, 503, false, "no_slot");
+    sendStatus(client, 503);
     return false;
   }
   if (query) *query = '\0';
@@ -374,14 +367,14 @@ bool handle(NetworkClient &client) {
   }
 
   if (contentLength > (isDocument ? DOCUMENT_BODY_MAX : REQUEST_BODY_MAX)) {
-    sendResult(client, 400, false, "too_large");
+    sendStatus(client, 400);
     return false;
   }
 
   char  stackBody[REQUEST_BODY_MAX + 1];
   char *body = contentLength > REQUEST_BODY_MAX ? (char *)malloc(contentLength + 1) : stackBody;
   if (!body) {
-    sendResult(client, 503, false, "no_memory");
+    sendStatus(client, 503);
     return false;
   }
 
@@ -408,12 +401,10 @@ bool handle(NetworkClient &client) {
 void begin() {
   g_server.begin();
   g_server.setNoDelay(true);   // after begin(), which resets it
-  g_running = true;
   Serial.printf("http: port %u - %s and /api\n", GLOW_PORT, GLOW_WS_PATH);
 }
 
 void tick() {
-  if (!g_running) return;
   NetworkClient client = g_server.accept();
   if (client && !handle(client)) client.stop();
 }

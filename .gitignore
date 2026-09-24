@@ -13,6 +13,3 @@ xcuserdata/
 *.map
 *.hex
 *.orig
-
-# WiFi credentials, HomeKit pairing codes, Cloudflare tokens
-secrets.h

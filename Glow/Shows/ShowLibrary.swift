@@ -32,9 +32,6 @@ final class ShowLibrary {
 	private var loading: Task<Void, Never>?
 	private var dropping: Task<Void, Never>?
 	private var listening: Task<Void, Never>?
-	private var settling: Task<Void, Never>?
-	private var saves: Task<Void, Never>?
-	private var commits: Task<Void, Never>?
 	
 	nonisolated static let everything = Set(NodeStore.Folder.allCases)
 	private static let nothing = Show(name: "")
@@ -45,19 +42,19 @@ final class ShowLibrary {
 	init() {
 		decoder.dateDecodingStrategy = .iso8601
 		
-		settling = Task { [weak self] in
+		Task { [weak self] in
 			try? await Task.sleep(for: .milliseconds(1500))
 			self?.isSettled = true
 		}
 		
-		commits = Task { [weak self] in
+		Task { [weak self] in
 			while !Task.isCancelled {
 				try? await Task.sleep(for: ShowLibrary.commitEvery)
 				self?.commit()
 			}
 		}
 		
-		saves = Task { [weak self] in
+		Task { [weak self] in
 			for await note in NotificationCenter.default.notifications(named: ModelContext.didSave) {
 				self?.saved(Self.folders(in: note))
 			}
@@ -103,7 +100,7 @@ final class ShowLibrary {
 			dropping = Task {
 				try? await Task.sleep(for: .seconds(2))
 				guard !Task.isCancelled else { return }
-				unload()
+				unload(keepingEdits: true)
 			}
 			return
 		}
@@ -257,14 +254,15 @@ final class ShowLibrary {
 		ShowFile(name: active.name, show: contents())
 	}
 	
-	func adopt(contentsOf url: URL) {
+	func adopt(contentsOf url: URL) -> Bool {
 		let isScoped = url.startAccessingSecurityScopedResource()
 		defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
-		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data), file.isReadable else { return }
+		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data), file.isReadable else { return false }
 		
 		enqueue {
 			await self.adopt(file.show, named: file.name)
 		}
+		return true
 	}
 	
 	static func unusedName(_ base: String, among shows: [Show]) -> String {
@@ -324,7 +322,7 @@ final class ShowLibrary {
 			
 			return await open(first, since: started, retrying: false)
 		case let .list(list):
-			if isLoaded, list.shows.contains(where: { $0.id == loadedID }) {
+			if !loadedID.isEmpty, list.shows.contains(where: { $0.id == loadedID }) {
 				await synchronise(Self.everything, direct: true)
 			}
 			
@@ -523,21 +521,25 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func unload() {
+	private func unload(keepingEdits: Bool = false) {
 		loading?.cancel()
 		loading = nil
-		guard isLoaded else { return }
-		epoch += 1
-		isLoaded = false
-		shows = []
-		activeID = ""
+		
+		if isLoaded {
+			epoch += 1
+			isLoaded = false
+			shows = []
+			activeID = ""
+			sent = [:]
+			deferred = []
+			waiting = []
+			console?.closeShow()
+		}
+		
+		guard !keepingEdits else { return }
 		loadedID = ""
 		baseline = [:]
-		sent = [:]
-		deferred = []
-		waiting = []
 		clear()
-		console?.closeShow()
 	}
 	
 	private func fill(with incoming: ShowContents) async {
@@ -588,7 +590,7 @@ final class ShowLibrary {
 	}
 	
 	private func synchronise(_ folders: Set<NodeStore.Folder>, direct: Bool = false) async {
-		guard let endpoint, isLoaded, !isDemo, !folders.isEmpty else { return }
+		guard let endpoint, !loadedID.isEmpty, !isDemo, !folders.isEmpty else { return }
 		
 		let showID = loadedID
 		let current = await Self.snapshot(of: contents(folders), folders: folders)

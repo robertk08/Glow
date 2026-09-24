@@ -29,8 +29,6 @@ static const uint32_t SETUP_DONE_MS   = 30000;
 static const int      SCAN_MAX        = 20;
 static const uint32_t SCAN_CHANNEL_MS = 120;
 
-static const int      SETUP_PIN        = 0;
-static const uint32_t SETUP_HOLD_MS    = 3000;
 static const uint8_t  RECOVERY_BOOTS   = 3;
 static const uint32_t RECOVERY_BOOT_MS = 5000;
 
@@ -52,19 +50,12 @@ static const uint16_t HOMEKIT_PORT = 1201;
 static const int HEAD_ADDRESS = 1;
 
 static const int HEAD_PAN           = 1;
-static const int HEAD_PAN_FINE      = 2;
 static const int HEAD_TILT          = 3;
-static const int HEAD_TILT_FINE     = 4;
-static const int HEAD_MOVE_SPEED    = 5;
 static const int HEAD_DIMMER        = 6;
 static const int HEAD_RED           = 7;
 static const int HEAD_GREEN         = 8;
 static const int HEAD_BLUE          = 9;
 static const int HEAD_WHITE         = 10;
-static const int HEAD_COLOR_MACRO   = 11;
-static const int HEAD_PROGRAM_SPEED = 12;
-static const int HEAD_PROGRAM       = 13;
-static const int HEAD_RESET         = 14;
 static const int HEAD_CHANNELS      = 14;
 
 static const uint8_t HEAD_DIM_FROM = 8;
