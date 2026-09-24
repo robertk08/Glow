@@ -22,8 +22,8 @@ struct NodeView: View {
 				}
 				
 				if let usage = console.usage {
-					LabeledContent("Memory", value: "\(usage.memory.formatted(.byteCount(style: .memory))) of \(usage.memoryTotal.formatted(.byteCount(style: .memory)))")
-					LabeledContent("Storage", value: "\(usage.storage.formatted(.byteCount(style: .file))) of \(usage.storageTotal.formatted(.byteCount(style: .file)))")
+					UsageRow(title: "Memory", used: usage.memory, total: usage.memoryTotal, style: .memory)
+					UsageRow(title: "Storage", used: usage.storage, total: usage.storageTotal, style: .file)
 				}
 			}
 			
@@ -62,5 +62,28 @@ struct NodeView: View {
 		} message: {
 			Text(failure ?? "")
 		}
+	}
+}
+
+private struct UsageRow: View {
+	let title: String
+	let used: Int64
+	let total: Int64
+	let style: ByteCountFormatStyle.Style
+	
+	var body: some View {
+		let share = total > 0 ? Double(used) / Double(total) : 0
+		
+		VStack(alignment: .leading, spacing: 8) {
+			LabeledContent(title, value: "\(used.formatted(.byteCount(style: style))) of \(total.formatted(.byteCount(style: style)))")
+			
+			Gauge(value: min(share, 1)) {
+				Text(title)
+			}
+			.gaugeStyle(.accessoryLinearCapacity)
+			.labelsHidden()
+			.tint(share > 0.9 ? .orange : .accentColor)
+		}
+		.accessibilityElement(children: .combine)
 	}
 }
