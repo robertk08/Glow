@@ -4,9 +4,8 @@
 #include "Guard.h"
 #include "Link.h"
 #include "Net.h"
-#include "Store.h"
+#include "Shows.h"
 
-#include <ArduinoJson.h>
 #include <HomeSpan.h>
 #include <math.h>
 
@@ -214,27 +213,7 @@ void begin() {
 }
 
 void showChanged() {
-  g_mine = false;
-
-  File file = Store::open(Store::showsPath());
-  if (!file) return;
-
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, file);
-  file.close();
-  if (err) return;
-
-  const char *active = doc["active"];
-  if (!active) return;
-
-  for (JsonObject show : doc["shows"].as<JsonArray>()) {
-    const char *name = show["name"];
-    const char *id = show["id"];
-    if (name && id && !strcmp(name, HOMEKIT_SHOW) && !strcmp(id, active)) {
-      g_mine = true;
-      return;
-    }
-  }
+  g_mine = Shows::activeNamed(HOMEKIT_SHOW);
 }
 
 void report() {

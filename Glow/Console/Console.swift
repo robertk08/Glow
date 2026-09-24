@@ -216,6 +216,10 @@ final class Console {
 		outbox.append(.data(frame))
 	}
 	
+	func send(_ command: Wire.Command) {
+		outbox.append(command.message)
+	}
+	
 	func closeShow(keepingLook: Bool = false) {
 		if !keepingLook || !hasAdoptedSource {
 			universe = Universe()

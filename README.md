@@ -196,7 +196,7 @@ partition. If the binary ever passes 2 MB, `app0` is the number to raise.
 
 Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
-table starts you with no shows.
+table starts you on an empty Show 1.
 
 Serial console at 115200: `net | setup | forget | home | unpair`. `net` also
 reports the networks it remembers and how much of the show filesystem is used,
@@ -259,7 +259,12 @@ it could not store it, both naming the show, folder and id. A client folds an
 object into what it believes the controller holds only once that answer arrives,
 so a write that never lands is simply sent again with the next edit. It keeps
 one write per object in flight and sends a newer edit once the answer is in.
-Anything larger than the socket carries comfortably still goes over HTTP.
+An edit relayed from another device for an object whose write is still in flight
+is ignored, because the controller stores the frames in the order they arrive
+and the pending write lands after it. A document for a show the controller does
+not list is refused, so a device still editing a show that was just deleted
+cannot bring its folder back. Anything larger than the socket carries
+comfortably still goes over HTTP.
 
 **The opcode says what the frame is for.** `0x01` is the output, what the lamps
 should be doing once master and blackout are in it, and the controller clocks it
@@ -270,11 +275,12 @@ sends whenever master and blackout leave the look as it is, so a move is one
 frame rather than two. The controller clocks it and passes it on as a source.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`, `scene`, `span`. In: `status` (`fw`, `src`, `client`,
-`ip`, `scene`, `master`, `blackout`), `pong`, plus `blackout`, `master` and
-`scene` relayed from another client, and the document notices below. Types are
-strict, a fraction is not an integer and a boolean is not `1`. `status` is only
-sent in reply to `hello`, so say hello first. `client` is the slot the
+`blackout`, `master`, `scene`, `span`, and the show commands below. In: `status`
+(`fw`, `src`, `client`, `ip`, `scene`, `master`, `blackout`), `shows`, `pong`,
+plus `blackout`, `master` and `scene` relayed from another client, and the
+document notices below. Types are
+strict, a fraction is not an integer and a boolean is not `1`. `status` and
+`shows` are sent in reply to `hello`, so say hello first. `client` is the slot the
 controller gave you, and you send it back as `X-Glow-Client` so your own writes
 are not relayed to you. Anything the controller cannot read is ignored rather
 than answered.
@@ -348,14 +354,23 @@ the accessory removed and added back before it shows.
 
 ## Shows on the wire
 
-Shows move over plain HTTP on the same port, because a made fixture definition
-runs to tens of kilobytes and the WebSocket carries only small messages.
+**The controller keeps the list of shows.** A device never writes the list.
+It sends `show.add` (`id`, `name`), `show.rename` (`id`, `name`), `show.remove`
+(`id`) or `show.open` (`id`) and the controller changes the list in one step,
+stores it and sends `{"t":"shows","active","shows":[{"id","name"}]}` to every
+client. A command it refuses, such as removing the last show or a name over 64
+characters, goes back to the sender alone as the unchanged list, so the device
+puts its screen back. Adding a show opens it, removing the open one opens the
+first, and every device follows the active show the moment the list arrives. A
+controller with no shows makes **Show 1** when it starts.
+
+Show contents move over plain HTTP on the same port, because a made fixture
+definition runs to tens of kilobytes and the WebSocket carries only small
+messages.
 
 | Method | Path | |
 |---|---|---|
-| GET, PUT | `/api/shows` | the list of shows and which one is active |
 | GET | `/api/show/<id>` | the whole show, assembled |
-| DELETE | `/api/show/<id>` | the show and everything in it |
 | GET, PUT, DELETE | `/api/show/<id>/<folder>/<objid>` | one object |
 
 A show is a folder of folders. `lights`, `groups`, `made` and `scenes` today,
@@ -367,16 +382,16 @@ refused. One object can be up to 64 KB.
 finds and assembles `GET /api/show/<id>` as `{"<folder>":[…],"<folder>":[…]}`,
 streaming the files in as chunks without parsing one of them. So adding cue stacks later is a folder the app
 starts writing to, and the firmware does not change. `/shows.json` is the one
-file the controller reads, and it only ever hands it back.
+file the controller reads, and it keeps it in memory.
 
 **One file per object, not one file per show.** A whole-show write would mean
 your rename wiping my new scene. Per object, both survive under the same last
 writer wins rule, and one edit sends one small file rather than the show.
 
-After a write lands, the controller sends `{"t":"doc","show","folder","id","op"}`
-to every client but the sender, or `{"t":"shows"}` when the list changed. A
-client fetches just that object and applies it, so nothing reloads the show to
-learn one name changed.
+After an HTTP write lands, the controller sends
+`{"t":"doc","show","folder","id","op"}` to every client but the sender. A client
+fetches just that object and applies it, so nothing reloads the show to learn
+one name changed.
 
 A scene is a base64 blob of raw channel bytes per light, not an array of
 numbers, which is where a show with many scenes would otherwise spend its space.

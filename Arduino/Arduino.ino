@@ -5,6 +5,7 @@
 #include "Http.h"
 #include "Link.h"
 #include "Net.h"
+#include "Shows.h"
 #include "Store.h"
 
 static void report() {
@@ -60,6 +61,7 @@ void setup() {
 
   Creds::begin();
   Store::begin();
+  Shows::begin();
   Net::begin();
   Link::begin();
   Http::begin();

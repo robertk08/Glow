@@ -1,8 +1,8 @@
 #include "Http.h"
 
-#include "HomeKit.h"
 #include "Link.h"
 #include "Net.h"
+#include "Shows.h"
 #include "Store.h"
 
 #include <ArduinoJson.h>
@@ -263,15 +263,6 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
               const char *body, size_t bodyLen, int except) {
   if (!Store::ready()) return sendStatus(c, 503);
 
-  if (!strcmp(path, "/api/shows")) {
-    if (get) return sendStored(c, Store::showsPath());
-    if (!put) return sendStatus(c, 404);
-    if (!Store::write(Store::showsPath(), (const uint8_t *)body, bodyLen)) return sendStatus(c, 503);
-    sendStatus(c, 200);
-    HomeKit::showChanged();
-    return Link::notify("{\"t\":\"shows\"}", except);
-  }
-
   char rest[Store::PATH_LIMIT];
   if (strncmp(path, "/api/show/", 10) || snprintf(rest, sizeof(rest), "%s", path + 10) >= (int)sizeof(rest)) return sendStatus(c, 404);
 
@@ -283,15 +274,14 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
 
   if (!folder) {
     if (!Store::showPath(file, sizeof(file), rest)) return sendStatus(c, 400);
-    if (get) return sendShow(c, rest);
-    if (!del) return sendStatus(c, 404);
-    if (!Store::removeShow(rest)) return sendStatus(c, 503);
-    return sendStatus(c, 200);
+    if (!get) return sendStatus(c, 404);
+    return sendShow(c, rest);
   }
 
   if (!objID || !Store::objectPath(file, sizeof(file), rest, folder, objID)) return sendStatus(c, 400);
   if (get) return sendStored(c, file);
   if (!put && !del) return sendStatus(c, 404);
+  if (!Shows::contains(rest)) return sendStatus(c, 404);
   if (!(put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file))) return sendStatus(c, 503);
   sendStatus(c, 200);
 

@@ -26,6 +26,10 @@ nonisolated enum Wire {
 		case master(Double)
 		case span(Int)
 		case scene(String)
+		case addShow(Show)
+		case renameShow(Show)
+		case removeShow(String)
+		case openShow(String)
 		
 		var message: URLSessionWebSocketTask.Message {
 			let fields: [String: Any] = switch self {
@@ -35,6 +39,10 @@ nonisolated enum Wire {
 			case let .master(level): ["t": "master", "level": level]
 			case let .span(slots): ["t": "span", "slots": slots]
 			case let .scene(identifier): ["t": "scene", "id": identifier]
+			case let .addShow(show): ["t": "show.add", "id": show.id, "name": show.name]
+			case let .renameShow(show): ["t": "show.rename", "id": show.id, "name": show.name]
+			case let .removeShow(identifier): ["t": "show.remove", "id": identifier]
+			case let .openShow(identifier): ["t": "show.open", "id": identifier]
 			}
 			
 			return .string(String(decoding: (try? JSONSerialization.data(withJSONObject: fields)) ?? Data(), as: UTF8.self))
@@ -64,13 +72,21 @@ nonisolated enum Wire {
 		}
 	}
 	
-	nonisolated struct Notice: Sendable, Equatable {
-		var show: String?
-		var folder: String?
-		var id: String?
-		var isDelete = false
-		var body: Data?
-		var landed: Bool?
+	nonisolated struct Place: Sendable, Equatable {
+		var show: String
+		var folder: String
+		var id: String
+		
+		var key: String {
+			"\(folder)/\(id)"
+		}
+	}
+	
+	nonisolated enum Notice: Sendable, Equatable {
+		case shows(ShowList)
+		case stored(Place, Data?)
+		case erased(Place)
+		case landed(Place, Bool)
 	}
 	
 	static func document(show: String, folder: String, id: String, body: Data?) -> Data {
@@ -110,8 +126,8 @@ nonisolated enum Wire {
 					cursor += length
 				}
 				
-				let isDelete = bytes[1] == 1
-				return .notice(Notice(show: String(decoding: parts[0], as: UTF8.self), folder: String(decoding: parts[1], as: UTF8.self), id: String(decoding: parts[2], as: UTF8.self), isDelete: isDelete, body: isDelete ? nil : parts[3]))
+				let place = Place(show: String(decoding: parts[0], as: UTF8.self), folder: String(decoding: parts[1], as: UTF8.self), id: String(decoding: parts[2], as: UTF8.self))
+				return .notice(bytes[1] == 1 ? .erased(place) : .stored(place, parts[3]))
 			}
 			
 			guard bytes.count > 6, bytes[0] == sourceOpcode, bytes[1] == 0, bytes.count == 6 + (Int(bytes[4]) | (Int(bytes[5]) << 8)) else { return nil }
@@ -127,6 +143,11 @@ nonisolated enum Wire {
 				var folder: String?
 				var id: String?
 				var op: String?
+				
+				var place: Place? {
+					guard let show, let folder, let id else { return nil }
+					return Place(show: show, folder: folder, id: id)
+				}
 			}
 			
 			let data = Data(text.utf8)
@@ -148,13 +169,14 @@ nonisolated enum Wire {
 				guard let identifier = envelope.id else { return nil }
 				return .scene(identifier)
 			case "shows":
-				return .notice(Notice())
+				guard let list = try? JSONDecoder().decode(ShowList.self, from: data) else { return nil }
+				return .notice(.shows(list))
 			case "wrote", "unwritten":
-				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
-				return .notice(Notice(show: show, folder: folder, id: id, landed: envelope.t == "wrote"))
+				guard let place = envelope.place else { return nil }
+				return .notice(.landed(place, envelope.t == "wrote"))
 			case "doc":
-				guard let show = envelope.show, let folder = envelope.folder, let id = envelope.id else { return nil }
-				return .notice(Notice(show: show, folder: folder, id: id, isDelete: envelope.op == "delete"))
+				guard let place = envelope.place else { return nil }
+				return .notice(envelope.op == "delete" ? .erased(place) : .stored(place, nil))
 			default:
 				return nil
 			}

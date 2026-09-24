@@ -10,6 +10,15 @@ private final class Box: @unchecked Sendable {
 
 @MainActor
 struct ShowSyncTests {
+	private func until(_ condition: () -> Bool) async throws {
+		for _ in 0..<300 {
+			if condition() { return }
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		Issue.record("timed out")
+	}
+	
 	private func show(lightNamed name: String) -> ShowContents {
 		let light = ShowContents.Light(identifier: "par", typeID: "par", name: name, address: 1, sortIndex: 0)
 		let group = ShowContents.Group(identifier: "front", name: "Front", sortIndex: 0)
@@ -165,14 +174,90 @@ struct ShowSyncTests {
 	@Test func aWriteTheControllerCouldNotStoreSaysWhichObject() throws {
 		let reply = try #require(Wire.event(.string(#"{"t":"unwritten","show":"s","folder":"scenes","id":"look"}"#)))
 		
-		guard case let .notice(notice) = reply else {
-			Issue.record("expected a notice")
+		guard case let .notice(.landed(place, isWritten)) = reply else {
+			Issue.record("expected a landed notice")
 			return
 		}
 		
-		#expect(notice.landed == false)
-		#expect(notice.folder == "scenes")
-		#expect(notice.id == "look")
+		#expect(!isWritten)
+		#expect(place == Wire.Place(show: "s", folder: "scenes", id: "look"))
+	}
+	
+	@Test func theDemoSwitchesBetweenItsOwnShowsAndKeepsTheirEdits() async throws {
+		let library = ShowLibrary()
+		library.startDemo()
+		try await until { library.isLoaded }
+		
+		let demo = library.activeID
+		let fixture = try #require(try library.container.mainContext.fetch(FetchDescriptor<Fixture>()).first)
+		fixture.name = "Kept"
+		try library.container.mainContext.save()
+		
+		library.create(name: "Rehearsal")
+		try await until { library.activeID != demo && library.contents().lights.isEmpty }
+		#expect(library.shows.count == 2)
+		
+		library.duplicate(library.shows[0])
+		try await until { library.shows.count == 3 && library.contents().lights.contains { $0.name == "Kept" } }
+		
+		library.activate(library.shows[0])
+		try await until { library.activeID == demo && library.contents().lights.contains { $0.name == "Kept" } }
+		
+		library.stopDemo()
+		#expect(!library.isLoaded)
+		#expect(library.shows.isEmpty)
+	}
+	
+	@Test func theControllersListArrivesWholeWithItsActiveShow() throws {
+		let reply = try #require(Wire.event(.string(#"{"t":"shows","active":"b","shows":[{"id":"a","name":"A"},{"id":"b","name":"B"}]}"#)))
+		
+		guard case let .notice(.shows(list)) = reply else {
+			Issue.record("expected the show list")
+			return
+		}
+		
+		#expect(list.shows.map(\.name) == ["A", "B"])
+		#expect(list.activeShow?.id == "b")
+	}
+	
+	@Test func aShowCommandNamesTheShowItActsOn() throws {
+		var show = Show(name: "Gala")
+		show.id = "gala"
+		
+		guard case let .string(text) = Wire.Command.addShow(show).message else {
+			Issue.record("expected text")
+			return
+		}
+		
+		let fields = try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: String])
+		#expect(fields == ["t": "show.add", "id": "gala", "name": "Gala"])
+	}
+	
+	@Test func aShowNameFitsTheControllersLimitWithoutSplittingACharacter() {
+		let name = Show(name: String(repeating: "é", count: 40)).name
+		
+		#expect(name.utf8.count <= 64)
+		#expect(name == String(repeating: "é", count: 32))
+		#expect(Show(name: "Gala").name == "Gala")
+	}
+	
+	@Test func theListKeepsOneShowAndMovesTheActiveOneOnDelete() {
+		let first = Show(name: "One")
+		let second = Show(name: "Two")
+		var list = ShowList(active: first.id, shows: [first])
+		
+		list.apply(.removeShow(first.id))
+		#expect(list.shows == [first])
+		
+		list.apply(.addShow(second))
+		#expect(list.active == second.id)
+		
+		list.apply(.openShow("missing"))
+		#expect(list.active == second.id)
+		
+		list.apply(.removeShow(second.id))
+		#expect(list.shows == [first])
+		#expect(list.active == first.id)
 	}
 	
 	@Test func aJoiningDeviceLearnsTheMasterAndBlackout() throws {
@@ -210,8 +295,8 @@ struct ShowSyncTests {
 			return
 		}
 		
-		#expect(put == Wire.Notice(show: "show", folder: "lights", id: "par", body: body))
-		#expect(erased == Wire.Notice(show: "show", folder: "lights", id: "par", isDelete: true))
+		#expect(put == .stored(Wire.Place(show: "show", folder: "lights", id: "par"), body))
+		#expect(erased == .erased(Wire.Place(show: "show", folder: "lights", id: "par")))
 		#expect(Wire.event(.data(Wire.document(show: "show", folder: "lights", id: "par", body: body).dropLast())) == nil)
 	}
 	

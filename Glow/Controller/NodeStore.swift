@@ -5,12 +5,6 @@ actor NodeStore {
 		case lights, groups, made, scenes
 	}
 	
-	enum Listing: Sendable {
-		case list(ShowList)
-		case blank
-		case unreachable
-	}
-	
 	enum Failure: LocalizedError, Sendable {
 		case unreachable
 		case refused
@@ -71,18 +65,6 @@ actor NodeStore {
 		configuration.timeoutIntervalForRequest = 8
 		configuration.allowsCellularAccess = false
 		session = URLSession(configuration: configuration)
-		decoder.dateDecodingStrategy = .iso8601
-		encoder.dateEncodingStrategy = .iso8601
-	}
-	
-	func shows(at endpoint: NodeEndpoint) async -> Listing {
-		switch await send(endpoint, "shows", method: "GET", body: nil, client: nil) {
-		case let .body(data):
-			guard let list = try? decoder.decode(ShowList.self, from: data), !list.shows.isEmpty else { return .blank }
-			return .list(list)
-		case .missing: return .blank
-		case .refused, .failed: return .unreachable
-		}
 	}
 	
 	func setup(at endpoint: NodeEndpoint) async -> Setup? {
@@ -107,11 +89,6 @@ actor NodeStore {
 		}
 	}
 	
-	func save(_ list: ShowList, at endpoint: NodeEndpoint, client: Int?) async -> Bool {
-		guard let body = try? encoder.encode(list) else { return false }
-		return await send(endpoint, "shows", method: "PUT", body: body, client: client).isWritten
-	}
-	
 	func show(_ showID: String, at endpoint: NodeEndpoint) async -> ShowContents? {
 		guard case let .body(data) = await send(endpoint, "show/\(showID)", method: "GET", body: nil, client: nil) else { return nil }
 		return try? decoder.decode(ShowContents.self, from: data)
@@ -128,10 +105,6 @@ actor NodeStore {
 	
 	func delete(_ folder: Folder, id: String, in showID: String, at endpoint: NodeEndpoint, client: Int?) async -> Bool {
 		await send(endpoint, "show/\(showID)/\(folder.rawValue)/\(id)", method: "DELETE", body: nil, client: client).isWritten
-	}
-	
-	func deleteShow(_ showID: String, at endpoint: NodeEndpoint, client: Int?) async -> Bool {
-		await send(endpoint, "show/\(showID)", method: "DELETE", body: nil, client: client).isWritten
 	}
 	
 	private func send(_ endpoint: NodeEndpoint, _ path: String, method: String, body: Data?, client: Int?) async -> Answer {

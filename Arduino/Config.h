@@ -8,7 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-#define GLOW_FW_VERSION "2.4.0"
+#define GLOW_FW_VERSION "2.5.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_WS_PATH    "/ws"

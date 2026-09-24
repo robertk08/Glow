@@ -1,7 +1,9 @@
 #include "Link.h"
 
 #include "DmxBus.h"
+#include "HomeKit.h"
 #include "Net.h"
+#include "Shows.h"
 #include "Store.h"
 
 #include <ArduinoJson.h>
@@ -120,7 +122,7 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   const uint8_t *body = name(name(name(p + DOC_HEADER, showLen, show), folderLen, folder), idLen, id);
 
   char path[Store::PATH_LIMIT];
-  bool stored = Store::ready() && Store::objectPath(path, sizeof(path), show, folder, id);
+  bool stored = Store::ready() && Shows::contains(show) && Store::objectPath(path, sizeof(path), show, folder, id);
   if (stored) stored = p[1] == 0 ? Store::write(path, body, bodyLen) : Store::remove(path);
   if (stored) relay(num, true, p, len);
 
@@ -167,6 +169,8 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     out["master"] = g_master;
     out["blackout"] = g_blackout;
     reply(num, out);
+    String list = Shows::message();
+    g_ws.sendTXT(num, list);
     if (g_haveSource) sendFrame(num, 1, SLOTS);
 
   } else if (!strcmp(t, "ping")) {
@@ -190,6 +194,16 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strcmp(t, "span") && doc["slots"].is<int>()) {
     DmxBus::setUsed(doc["slots"]);
 
+  } else if (!strncmp(t, "show.", 5)) {
+    char was[Store::NAME_LIMIT];
+    snprintf(was, sizeof(was), "%s", Shows::active());
+    bool done = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
+    if (strcmp(was, Shows::active())) g_scene[0] = '\0';
+    if (done) HomeKit::showChanged();
+
+    String list = Shows::message();
+    if (done) relay(NO_CLIENT, false, (const uint8_t *)list.c_str(), list.length());
+    else g_ws.sendTXT(num, list);
   }
 }
 
