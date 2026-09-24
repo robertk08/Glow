@@ -220,6 +220,48 @@ struct ShowSyncTests {
 		#expect(list.activeShow?.id == "b")
 	}
 	
+	@Test func reopeningAShowKeepsTheObjectsAnOpenScreenHolds() async throws {
+		let library = ShowLibrary()
+		library.startDemo()
+		try await until { library.isLoaded }
+		
+		let demo = library.activeID
+		let fixture = try #require(try library.container.mainContext.fetch(FetchDescriptor<Fixture>()).first)
+		fixture.name = "Edited"
+		try library.container.mainContext.save()
+		try await until { library.canUndo }
+		
+		library.duplicate(library.active)
+		try await until { library.activeID != demo && !library.canUndo }
+		
+		#expect(!fixture.isDeleted)
+		#expect(fixture.modelContext != nil)
+		#expect(fixture.name == "Edited")
+	}
+	
+	@Test func aRefusedShowCommandSaysWhy() throws {
+		let reply = try #require(Wire.event(.string(#"{"t":"refused","reason":"limit"}"#)))
+		
+		guard case .notice(.refused(.limit)) = reply else {
+			Issue.record("expected a refusal")
+			return
+		}
+		
+		#expect(Wire.event(.string(#"{"t":"refused","reason":"tired"}"#)) == nil)
+	}
+	
+	@Test func aPongCarriesTheControllersMemoryAndStorage() throws {
+		let reply = try #require(Wire.event(.string(#"{"t":"pong","seq":4,"ram":120000,"ramTotal":320000,"store":8192,"storeTotal":6225920}"#)))
+		
+		guard case let .pong(seq, usage) = reply else {
+			Issue.record("expected a pong")
+			return
+		}
+		
+		#expect(seq == 4)
+		#expect(usage == Wire.Usage(memory: 120000, memoryTotal: 320000, storage: 8192, storageTotal: 6225920))
+	}
+	
 	@Test func aShowCommandNamesTheShowItActsOn() throws {
 		var show = Show(name: "Gala")
 		show.id = "gala"

@@ -257,8 +257,9 @@ The controller stores the body, relays the frame untouched to every other
 client, and answers the sender with `{"t":"wrote"}`, or `{"t":"unwritten"}` when
 it could not store it, both naming the show, folder and id. A client folds an
 object into what it believes the controller holds only once that answer arrives,
-so a write that never lands is simply sent again with the next edit. It keeps
-one write per object in flight and sends a newer edit once the answer is in.
+and a write that never lands makes the app say so and reload the show as the
+controller holds it. It keeps one write per object in flight and sends a newer
+edit once the answer is in.
 An edit relayed from another device for an object whose write is still in flight
 is ignored, because the controller stores the frames in the order they arrive
 and the pending write lands after it. A document for a show the controller does
@@ -276,7 +277,9 @@ frame rather than two. The controller clocks it and passes it on as a source.
 
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
 `blackout`, `master`, `scene`, `span`, and the show commands below. In: `status`
-(`fw`, `src`, `client`, `ip`, `scene`, `master`, `blackout`), `shows`, `pong`,
+(`fw`, `src`, `client`, `ip`, `scene`, `master`, `blackout`), `shows`, `refused`,
+`pong` (with `ram`, `ramTotal`, `store` and `storeTotal` in bytes, which the
+Controller screen shows live),
 plus `blackout`, `master` and `scene` relayed from another client, and the
 document notices below. Types are
 strict, a fraction is not an integer and a boolean is not `1`. `status` and
@@ -360,7 +363,9 @@ It sends `show.add` (`id`, `name`), `show.rename` (`id`, `name`), `show.remove`
 stores it and sends `{"t":"shows","active","shows":[{"id","name"}]}` to every
 client. A command it refuses, such as removing the last show or a name over 64
 characters, goes back to the sender alone as the unchanged list, so the device
-puts its screen back. Adding a show opens it, removing the open one opens the
+puts its screen back. When the reason is one a person can act on, a full store
+or the limit of 64 shows, `{"t":"refused","reason":"storage"}` or `"limit"`
+comes first and the app says so. Adding a show opens it, removing the open one opens the
 first, and every device follows the active show the moment the list arrives. A
 controller with no shows makes **Show 1** when it starts.
 

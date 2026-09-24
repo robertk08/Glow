@@ -82,8 +82,16 @@ nonisolated enum Wire {
 		}
 	}
 	
+	nonisolated struct Usage: Sendable, Equatable {
+		var memory: Int64
+		var memoryTotal: Int64
+		var storage: Int64
+		var storageTotal: Int64
+	}
+	
 	nonisolated enum Notice: Sendable, Equatable {
 		case shows(ShowList)
+		case refused(Refusal)
 		case stored(Place, Data?)
 		case erased(Place)
 		case landed(Place, Bool)
@@ -143,6 +151,11 @@ nonisolated enum Wire {
 				var folder: String?
 				var id: String?
 				var op: String?
+				var reason: String?
+				var ram: Int64?
+				var ramTotal: Int64?
+				var store: Int64?
+				var storeTotal: Int64?
 				
 				var place: Place? {
 					guard let show, let folder, let id else { return nil }
@@ -158,7 +171,8 @@ nonisolated enum Wire {
 				guard let info = try? JSONDecoder().decode(NodeInfo.self, from: data) else { return nil }
 				return .status(info)
 			case "pong":
-				return .pong(envelope.seq ?? 0)
+				guard let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return .pong(envelope.seq ?? 0, nil) }
+				return .pong(envelope.seq ?? 0, Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))
 			case "master":
 				guard let level = envelope.level else { return nil }
 				return .master(level)
@@ -168,6 +182,9 @@ nonisolated enum Wire {
 			case "scene":
 				guard let identifier = envelope.id else { return nil }
 				return .scene(identifier)
+			case "refused":
+				guard let refusal = envelope.reason.flatMap(Refusal.init(rawValue:)) else { return nil }
+				return .notice(.refused(refusal))
 			case "shows":
 				guard let list = try? JSONDecoder().decode(ShowList.self, from: data) else { return nil }
 				return .notice(.shows(list))

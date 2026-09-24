@@ -20,6 +20,11 @@ struct NodeView: View {
 				if let node = console.node {
 					LabeledContent("Firmware", value: node.firmware)
 				}
+				
+				if let usage = console.usage {
+					LabeledContent("Memory", value: "\(usage.memory.formatted(.byteCount(style: .memory))) of \(usage.memoryTotal.formatted(.byteCount(style: .memory)))")
+					LabeledContent("Storage", value: "\(usage.storage.formatted(.byteCount(style: .file))) of \(usage.storageTotal.formatted(.byteCount(style: .file)))")
+				}
 			}
 			
 			Section {

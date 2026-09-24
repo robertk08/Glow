@@ -11,7 +11,11 @@ const char *SHOWS     = "/shows.json";
 const char *SHOWS_DIR = "/s";
 const char *UPLOAD    = "/upload.part";
 
-bool g_ready = false;
+const uint32_t MEASURE_MS = 5000;
+
+bool     g_ready    = false;
+size_t   g_used     = 0;
+uint32_t g_measured = 0;
 
 bool safe(const char *name) {
   if (!name || !name[0]) return false;
@@ -159,7 +163,14 @@ bool removeShow(const char *showID) {
   return Flash::guarded([&] { return LittleFS.rmdir(show); });
 }
 
-size_t used() { return g_ready ? LittleFS.usedBytes() : 0; }
+size_t used() {
+  if (!g_ready) return 0;
+  if (!g_measured || millis() - g_measured >= MEASURE_MS) {
+    g_used     = LittleFS.usedBytes();
+    g_measured = millis() | 1;
+  }
+  return g_used;
+}
 
 size_t capacity() { return g_ready ? LittleFS.totalBytes() : 0; }
 

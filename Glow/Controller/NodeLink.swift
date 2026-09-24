@@ -7,7 +7,8 @@ actor NodeLink {
 		case state(LinkState)
 		case status(Wire.NodeInfo)
 		case latency(TimeInterval)
-		case pong(Int)
+		case pong(Int, Wire.Usage?)
+		case usage(Wire.Usage)
 		case frame(start: DMXAddress, values: [UInt8])
 		case master(Double)
 		case blackout(Bool)
@@ -194,9 +195,13 @@ actor NodeLink {
 		lastHeard = Date()
 		guard let event = Wire.event(message) else { return }
 		
-		guard case let .pong(seq) = event else {
+		guard case let .pong(seq, usage) = event else {
 			continuation.yield(event)
 			return
+		}
+		
+		if let usage {
+			continuation.yield(.usage(usage))
 		}
 		
 		guard let sent = pings.removeValue(forKey: seq) else { return }

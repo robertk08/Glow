@@ -9,7 +9,7 @@ namespace Shows {
 namespace {
 
 const size_t TITLE_MAX = 64;
-const size_t LIMIT     = 64;
+const size_t COUNT_MAX = 64;
 
 JsonDocument g_list;
 
@@ -24,16 +24,16 @@ int find(JsonDocument &list, const char *id) {
 
 bool named(const char *name) { return name[0] && strlen(name) <= TITLE_MAX; }
 
-bool add(JsonDocument &list, const char *id, const char *name) {
+Outcome add(JsonDocument &list, const char *id, const char *name) {
   char path[Store::PATH_LIMIT];
-  if (!Store::showPath(path, sizeof(path), id) || !named(name)) return false;
-  if (find(list, id) >= 0 || list["shows"].size() >= LIMIT) return false;
+  if (!Store::showPath(path, sizeof(path), id) || !named(name) || find(list, id) >= 0) return INVALID;
+  if (list["shows"].size() >= COUNT_MAX) return LIMIT;
 
   JsonObject show = list["shows"].add<JsonObject>();
   show["id"]     = id;
   show["name"]   = name;
   list["active"] = id;
-  return true;
+  return DONE;
 }
 
 bool save(JsonDocument &list) {
@@ -43,11 +43,13 @@ bool save(JsonDocument &list) {
 }
 
 template <typename Fn>
-bool change(Fn edit) {
+Outcome change(Fn edit) {
   JsonDocument next = g_list;
-  if (!edit(next) || !save(next)) return false;
+  Outcome outcome = edit(next);
+  if (outcome != DONE) return outcome;
+  if (!save(next)) return STORAGE;
   g_list = std::move(next);
-  return true;
+  return DONE;
 }
 
 }  // namespace
@@ -71,36 +73,36 @@ void begin() {
   if (!save(g_list)) Serial.println(F("shows: the first show could not be stored"));
 }
 
-bool apply(const char *op, const char *id, const char *name) {
+Outcome apply(const char *op, const char *id, const char *name) {
   if (!strcmp(op, "add")) return change([&](JsonDocument &list) { return add(list, id, name); });
 
   int index = find(g_list, id);
-  if (index < 0) return false;
+  if (index < 0) return INVALID;
 
   if (!strcmp(op, "open")) {
-    if (!strcmp(active(), id)) return true;
+    if (!strcmp(active(), id)) return DONE;
     return change([&](JsonDocument &list) {
       list["active"] = id;
-      return true;
+      return DONE;
     });
   }
 
   if (!strcmp(op, "rename")) {
-    if (!named(name)) return false;
+    if (!named(name)) return INVALID;
     return change([&](JsonDocument &list) {
       list["shows"][index]["name"] = name;
-      return true;
+      return DONE;
     });
   }
 
-  if (strcmp(op, "remove") || g_list["shows"].size() < 2) return false;
+  if (strcmp(op, "remove") || g_list["shows"].size() < 2) return INVALID;
 
-  bool removed = change([&](JsonDocument &list) {
+  Outcome removed = change([&](JsonDocument &list) {
     list["shows"].remove(index);
     if (!strcmp(list["active"] | "", id)) list["active"] = list["shows"][0]["id"];
-    return true;
+    return DONE;
   });
-  if (removed) Store::removeShow(id);
+  if (removed == DONE) Store::removeShow(id);
   return removed;
 }
 

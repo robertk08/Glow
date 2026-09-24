@@ -175,8 +175,12 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
 
   } else if (!strcmp(t, "ping")) {
     JsonDocument out;
-    out["t"] = "pong";
-    out["seq"] = doc["seq"];
+    out["t"]          = "pong";
+    out["seq"]        = doc["seq"];
+    out["ram"]        = ESP.getHeapSize() - ESP.getFreeHeap();
+    out["ramTotal"]   = ESP.getHeapSize();
+    out["store"]      = Store::used();
+    out["storeTotal"] = Store::capacity();
     reply(num, out);
 
   } else if (!strcmp(t, "blackout") && doc["on"].is<bool>()) {
@@ -197,12 +201,19 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strncmp(t, "show.", 5)) {
     char was[Store::NAME_LIMIT];
     snprintf(was, sizeof(was), "%s", Shows::active());
-    bool done = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
+    Shows::Outcome outcome = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
     if (strcmp(was, Shows::active())) g_scene[0] = '\0';
-    if (done) HomeKit::showChanged();
+    if (outcome == Shows::DONE) HomeKit::showChanged();
+
+    if (outcome == Shows::LIMIT || outcome == Shows::STORAGE) {
+      JsonDocument out;
+      out["t"]      = "refused";
+      out["reason"] = outcome == Shows::LIMIT ? "limit" : "storage";
+      reply(num, out);
+    }
 
     String list = Shows::message();
-    if (done) relay(NO_CLIENT, false, (const uint8_t *)list.c_str(), list.length());
+    if (outcome == Shows::DONE) relay(NO_CLIENT, false, (const uint8_t *)list.c_str(), list.length());
     else g_ws.sendTXT(num, list);
   }
 }

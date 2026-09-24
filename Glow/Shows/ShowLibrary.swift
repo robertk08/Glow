@@ -11,6 +11,7 @@ final class ShowLibrary {
 		didSet { console?.isMuted = isDemo }
 	}
 	private(set) var canUndo = false
+	var refusal: Refusal?
 	let container = ShowLibrary.store()
 	
 	private let store = NodeStore()
@@ -320,16 +321,24 @@ final class ShowLibrary {
 	}
 	
 	private func receive(_ notice: Wire.Notice) {
-		guard case let .shows(list) = notice else {
+		switch notice {
+		case let .shows(list):
+			latest = list
+			follow()
+		case let .refused(reason):
+			refusal = reason
+		default:
 			guard !isDemo else { return }
 			
 			enqueue {
 				await self.accept(notice)
 			}
-			return
 		}
-		
-		latest = list
+	}
+	
+	private func reject() {
+		refusal = .storage
+		isCurrent = false
 		follow()
 	}
 	
@@ -337,16 +346,21 @@ final class ShowLibrary {
 		guard let endpoint else { return }
 		
 		switch notice {
-		case .shows:
+		case .shows, .refused:
 			return
 		case let .landed(place, isWritten):
 			guard isCurrent, place.show == loadedID, let folder = NodeStore.Folder(rawValue: place.folder) else { return }
+			let data = sent.removeValue(forKey: place.key)
 			
-			if isWritten, let data = sent[place.key] {
+			guard isWritten else {
+				reject()
+				return
+			}
+			
+			if let data {
 				baseline[place.key] = data.isEmpty ? nil : data
 			}
 			
-			sent[place.key] = nil
 			guard deferred.remove(place.key) != nil else { return }
 			changed([folder])
 		case let .stored(place, body):
@@ -494,8 +508,9 @@ final class ShowLibrary {
 	}
 	
 	private func fill(with incoming: ShowContents) async {
-		clear()
 		merge(incoming)
+		prune(keeping: incoming)
+		container.mainContext.undoManager?.removeAllActions()
 		sent = [:]
 		deferred = []
 		baseline = await Self.snapshot(of: incoming)
@@ -554,7 +569,12 @@ final class ShowLibrary {
 			guard let endpoint else { return }
 			let isStored = data.isEmpty ? await store.delete(folder, id: identifier, in: showID, at: endpoint, client: client) : await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client)
 			guard showID == loadedID, isCurrent else { return }
-			guard isStored else { continue }
+			
+			guard isStored else {
+				reject()
+				return
+			}
+			
 			baseline[key] = data.isEmpty ? nil : data
 		}
 	}
@@ -623,6 +643,22 @@ final class ShowLibrary {
 		let parts = key.split(separator: "/", maxSplits: 1)
 		guard parts.count == 2, let folder = NodeStore.Folder(rawValue: String(parts[0])) else { return nil }
 		return (folder, String(parts[1]))
+	}
+	
+	private func prune(keeping show: ShowContents) {
+		let context = container.mainContext
+		let lights = show.lights.map(\.identifier)
+		let groups = show.groups.map(\.identifier)
+		let made = show.made.map(\.id)
+		let scenes = show.scenes.map(\.identifier)
+		context.undoManager?.disableUndoRegistration()
+		defer { context.undoManager?.enableUndoRegistration() }
+		
+		try? context.delete(model: Fixture.self, where: #Predicate { !lights.contains($0.identifier) })
+		try? context.delete(model: FixtureGroup.self, where: #Predicate { !groups.contains($0.identifier) })
+		try? context.delete(model: StoredFixtureType.self, where: #Predicate { !made.contains($0.identifier) })
+		try? context.delete(model: Look.self, where: #Predicate { !scenes.contains($0.identifier) })
+		try? context.save()
 	}
 	
 	private func clear() {

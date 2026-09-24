@@ -11,6 +11,7 @@ final class Console {
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
+	private(set) var usage: Wire.Usage?
 	private(set) var activeScene: String?
 	
 	let selection = Selection()
@@ -121,7 +122,10 @@ final class Console {
 			link = state
 			isSynced = false
 			outbox = []
-			guard state == .connected else { return }
+			guard state == .connected else {
+				usage = nil
+				return
+			}
 			hasAdoptedSource = false
 			announcedMaster = nil
 			announcedBlackout = nil
@@ -148,6 +152,8 @@ final class Console {
 			}
 		case let .latency(value):
 			latency = value
+		case let .usage(value):
+			usage = value
 		case .pong:
 			break
 		case let .frame(start, values):

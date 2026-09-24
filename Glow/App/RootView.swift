@@ -84,5 +84,22 @@ struct RootView: View {
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)
 		}
+		.onChange(of: shows.refusal) {
+			warn()
+		}
+	}
+	
+	private func warn() {
+		guard let refusal = shows.refusal, let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene, var top = scene.keyWindow?.rootViewController else { return }
+		
+		while let next = top.presentedViewController {
+			top = next
+		}
+		
+		let alert = UIAlertController(title: refusal.title, message: refusal.message, preferredStyle: .alert)
+		alert.addAction(UIAlertAction(title: "OK", style: .cancel) { _ in
+			shows.refusal = nil
+		})
+		top.present(alert, animated: true)
 	}
 }
