@@ -100,16 +100,4 @@ final class Fixture {
 		
 		return min(candidate, Universe.channelCount)
 	}
-	
-	static func unusedName(_ base: String, among fixtures: [Fixture]) -> String {
-		let taken = Set(fixtures.map(\.name))
-		guard taken.contains(base) else { return base }
-		var index = 2
-		
-		while taken.contains("\(base) \(index)") {
-			index += 1
-		}
-		
-		return "\(base) \(index)"
-	}
 }

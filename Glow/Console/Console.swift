@@ -363,7 +363,7 @@ final class Console {
 	
 	func duplicate(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
 		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
-		let copy = Fixture(typeID: fixture.typeID, name: Fixture.unusedName(fixture.name, among: fixtures), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
+		let copy = Fixture(typeID: fixture.typeID, name: Identifier.unusedName(fixture.name, among: fixtures.map(\.name)), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
 		copy.invertsPan = fixture.invertsPan
 		copy.invertsTilt = fixture.invertsTilt
@@ -379,7 +379,7 @@ final class Console {
 		
 		for number in 0..<count {
 			guard let start = DMXAddress(next) else { break }
-			let title = count == 1 ? Fixture.unusedName(base, among: fixtures) : "\(base) \(number + 1)"
+			let title = count == 1 ? Identifier.unusedName(base, among: fixtures.map(\.name)) : "\(base) \(number + 1)"
 			let fixture = Fixture(typeID: mode.id, name: title, address: start, sortIndex: index)
 			fixture.invertsPan = mode.invertsPan
 			fixture.invertsTilt = mode.invertsTilt

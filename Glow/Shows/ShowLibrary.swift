@@ -143,7 +143,7 @@ final class ShowLibrary {
 	}
 	
 	func create(name: String) {
-		change(.addShow(Show(name: Self.unusedName(name, among: shows))))
+		change(.addShow(Show(name: Identifier.unusedName(name, among: shows.map(\.name)))))
 	}
 	
 	func duplicate(_ show: Show) {
@@ -210,18 +210,6 @@ final class ShowLibrary {
 		return true
 	}
 	
-	static func unusedName(_ base: String, among shows: [Show]) -> String {
-		let taken = Set(shows.map(\.name))
-		guard taken.contains(base) else { return base }
-		var index = 2
-		
-		while taken.contains("\(base) \(index)") {
-			index += 1
-		}
-		
-		return "\(base) \(index)"
-	}
-	
 	@discardableResult private func enqueue<Result: Sendable>(_ work: @escaping @MainActor () async -> Result) -> Task<Result, Never> {
 		let previous = queue
 		let next = Task {
@@ -252,7 +240,7 @@ final class ShowLibrary {
 	}
 	
 	private func adopt(_ contents: ShowContents, named name: String) {
-		let show = Show(name: Self.unusedName(name, among: shows))
+		let show = Show(name: Identifier.unusedName(name, among: shows.map(\.name)))
 		held[show.id] = contents
 		change(.addShow(show))
 	}

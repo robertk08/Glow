@@ -10,4 +10,16 @@ nonisolated enum Identifier {
 		
 		return text
 	}
+	
+	static func unusedName(_ base: String, among names: [String]) -> String {
+		let taken = Set(names)
+		guard taken.contains(base) else { return base }
+		var index = 2
+		
+		while taken.contains("\(base) \(index)") {
+			index += 1
+		}
+		
+		return "\(base) \(index)"
+	}
 }

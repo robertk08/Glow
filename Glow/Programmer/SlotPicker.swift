@@ -4,24 +4,12 @@ struct SlotPicker: View {
 	let programmer: Programmer
 	let channel: FixtureChannel
 	
+	@State private var chosen: Programmer.Choice?
 	@State private var pending: Programmer.Choice?
 	@State private var picks = 0
 	
 	private let columns = [GridItem(.adaptive(minimum: 72), spacing: 10)]
 	private let stopColumns = [GridItem(.adaptive(minimum: 76), spacing: 8)]
-	
-	private func choose(_ choice: Programmer.Choice) {
-		guard !choice.confirms else {
-			pending = choice
-			return
-		}
-		
-		picks += 1
-		
-		Task {
-			await programmer.send(choice, of: channel)
-		}
-	}
 	
 	@ViewBuilder private var scaleRows: some View {
 		if let scale = programmer.scale(of: channel) {
@@ -48,7 +36,7 @@ struct SlotPicker: View {
 				LazyVGrid(columns: stopColumns, spacing: 8) {
 					ForEach(stops) { stop in
 						Button(stop.label) {
-							choose(stop)
+							chosen = stop
 						}
 						.frame(maxWidth: .infinity)
 						.tint(stop.id == mode ? Color.accentColor : nil)
@@ -65,10 +53,7 @@ struct SlotPicker: View {
 		let slots = programmer.slots(of: channel)
 		let selected = programmer.selection(of: channel)
 		
-		Picker(channel.name, selection: Binding { programmer.mode(of: channel) } set: { id in
-			guard let chosen = programmer.choice(id, of: channel) else { return }
-			choose(chosen)
-		}) {
+		Picker(channel.name, selection: Binding { programmer.mode(of: channel) } set: { chosen = programmer.choice($0, of: channel) }) {
 			if programmer.band(of: channel) == nil {
 				Text("\(programmer.value(of: channel))").tag("")
 			}
@@ -82,7 +67,7 @@ struct SlotPicker: View {
 			LazyVGrid(columns: columns, spacing: 12) {
 				ForEach(slots) { slot in
 					Button {
-						choose(slot)
+						chosen = slot
 					} label: {
 						VStack(spacing: 4) {
 							if let shape = slot.shape {
@@ -104,10 +89,7 @@ struct SlotPicker: View {
 			}
 			.padding(.vertical, 4)
 		} else if !slots.isEmpty {
-			Picker("Slot", selection: Binding { selected } set: { id in
-				guard let chosen = programmer.choice(id, of: channel) else { return }
-				choose(chosen)
-			}) {
+			Picker("Slot", selection: Binding { selected } set: { chosen = programmer.choice($0, of: channel) }) {
 				ForEach(slots) { slot in
 					Text(slot.label).tag(slot.id)
 				}
@@ -130,6 +112,21 @@ struct SlotPicker: View {
 			}
 		}
 		.sensoryFeedback(.selection, trigger: picks)
+		.onChange(of: chosen) {
+			guard let choice = chosen else { return }
+			chosen = nil
+			
+			guard !choice.confirms else {
+				pending = choice
+				return
+			}
+			
+			picks += 1
+			
+			Task {
+				await programmer.send(choice, of: channel)
+			}
+		}
 		.alert("Send \(pending?.label ?? "")?", isPresented: Binding { pending != nil } set: { _ in pending = nil }, presenting: pending) { choice in
 			Button("Cancel", role: .cancel) {}
 			

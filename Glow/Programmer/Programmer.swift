@@ -141,7 +141,7 @@ struct Programmer {
 		return false
 	}
 	
-	nonisolated struct Choice: Identifiable, Sendable {
+	nonisolated struct Choice: Identifiable, Sendable, Equatable {
 		let id: String
 		let label: String
 		let value: UInt8

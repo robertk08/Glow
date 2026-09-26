@@ -12,30 +12,11 @@ struct PositionPad: View {
 	@State private var anchor: CGPoint?
 	@State private var origin = CGPoint.zero
 
-	private func reading(_ fraction: Double, over degrees: Double?) -> String {
-		guard let degrees else { return fraction.formatted(.percent.precision(.fractionLength(0))) }
-		return "\((fraction * degrees - degrees / 2).formatted(.number.precision(.fractionLength(0))))°"
-	}
-
-	private func widest(_ degrees: Double?) -> String {
-		guard let degrees else { return "100%" }
-		return "-\((degrees / 2).formatted(.number.precision(.fractionLength(0))))°"
-	}
-	
-	private func axis(_ name: String, _ fraction: Double, over degrees: Double?) -> some View {
-		Text("\(name) \(widest(degrees))")
-			.hidden()
-			.overlay(alignment: .leading) {
-				Text("\(name) \(reading(fraction, over: degrees))")
-					.contentTransition(.numericText())
-			}
-	}
-
 	var body: some View {
 		VStack(spacing: 8) {
 			HStack(spacing: 12) {
-				axis("Pan", pan, over: panDegrees)
-				axis("Tilt", tilt, over: tiltDegrees)
+				AxisReading(name: "Pan", fraction: pan, degrees: panDegrees)
+				AxisReading(name: "Tilt", fraction: tilt, degrees: tiltDegrees)
 
 				Spacer(minLength: 8)
 
@@ -109,5 +90,20 @@ struct PositionPad: View {
 			.frame(height: 220)
 		}
 		.sensoryFeedback(.selection, trigger: isDragging)
+	}
+}
+
+private struct AxisReading: View {
+	let name: String
+	let fraction: Double
+	let degrees: Double?
+	
+	var body: some View {
+		Text("\(name) \(degrees.map { PhysicalUnit.degrees.label(-$0 / 2) } ?? "100%")")
+			.hidden()
+			.overlay(alignment: .leading) {
+				Text("\(name) \(degrees.map { PhysicalUnit.degrees.label(fraction * $0 - $0 / 2) } ?? fraction.formatted(.percent.precision(.fractionLength(0))))")
+					.contentTransition(.numericText())
+			}
 	}
 }

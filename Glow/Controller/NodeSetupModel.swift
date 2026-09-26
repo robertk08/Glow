@@ -42,14 +42,9 @@ final class NodeSetupModel {
 		let configuration = NEHotspotConfiguration(ssid: "Glow Setup")
 		configuration.joinOnce = true
 		
-		do {
-			try await NEHotspotConfigurationManager.shared.apply(configuration)
-		} catch {
-			let error = error as NSError
-			if error.domain != NEHotspotConfigurationErrorDomain || error.code != NEHotspotConfigurationError.alreadyAssociated.rawValue {
-				failure = "Could not join Glow Setup. Check that the controller is powered on, then try again. You can also join Glow Setup in the Settings app."
-				return
-			}
+		guard await join(configuration) else {
+			failure = "Could not join Glow Setup. Check that the controller is powered on, then try again. You can also join Glow Setup in the Settings app."
+			return
 		}
 		
 		for _ in 0..<15 {
@@ -86,6 +81,16 @@ final class NodeSetupModel {
 		}
 		
 		failure = "The controller never sent back a list of networks. Check that your iPhone is still on Glow Setup and try again."
+	}
+	
+	private func join(_ configuration: NEHotspotConfiguration) async -> Bool {
+		do {
+			try await NEHotspotConfigurationManager.shared.apply(configuration)
+			return true
+		} catch {
+			let error = error as NSError
+			return error.domain == NEHotspotConfigurationErrorDomain && error.code == NEHotspotConfigurationError.alreadyAssociated.rawValue
+		}
 	}
 	
 	func choose(network: NodeNetwork) {
@@ -138,13 +143,8 @@ final class NodeSetupModel {
 							configuration = NEHotspotConfiguration(ssid: ssid)
 						}
 						
-						do {
-							try await NEHotspotConfigurationManager.shared.apply(configuration)
-						} catch {
-							let error = error as NSError
-							if error.domain != NEHotspotConfigurationErrorDomain || error.code != NEHotspotConfigurationError.alreadyAssociated.rawValue {
-								failure = "The controller joined \(ssid). Join that network in Settings to control it."
-							}
+						if await !join(configuration) {
+							failure = "The controller joined \(ssid). Join that network in Settings to control it."
 						}
 					}
 					
