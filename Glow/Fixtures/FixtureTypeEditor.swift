@@ -29,6 +29,11 @@ struct FixtureTypeEditor: View {
 					
 					TextField("Mode", text: $draft.mode)
 						.autocorrectionDisabled()
+				} footer: {
+					if library.isNameTaken(draft) {
+						Text("Another fixture is already called \(draft.name). Give this one its own name.")
+							.foregroundStyle(.orange)
+					}
 				}
 				
 				Section("Icon") {
@@ -111,7 +116,7 @@ struct FixtureTypeEditor: View {
 						library.adopt(draft, replacing: original, among: fixtures, stored: stored, context: context)
 						dismiss()
 					}
-					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || draft.channels.isEmpty)
+					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || draft.channels.isEmpty || library.isNameTaken(draft))
 				}
 			}
 		}

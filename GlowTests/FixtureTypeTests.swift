@@ -8,6 +8,27 @@ struct FixtureTypeTests {
 		FixtureType(id: "t", model: "T", mixing: mixing, channels: channels)
 	}
 	
+	@MainActor @Test func twoFixturesCannotShareAName() throws {
+		let library = FixtureLibrary()
+		let shipped = try #require(library.builtIn.first)
+		var shouted = shipped
+		shouted.model = "  \(shipped.model.uppercased()) "
+		var copy = shipped
+		copy.id = "copy-made"
+		copy.model = "\(shipped.model) Custom"
+		
+		#expect(library.isNameTaken(shipped))
+		#expect(library.isNameTaken(shouted))
+		#expect(!library.isNameTaken(copy))
+		
+		library.setMade([copy])
+		#expect(!library.isNameTaken(copy))
+		
+		var other = copy
+		other.id = "other-made"
+		#expect(library.isNameTaken(other))
+	}
+	
 	@Test func aDedicatedDimmerChannelIsTheDimmer() {
 		let found = type([FixtureChannel(offset: 1, attribute: .dimmer)])
 		

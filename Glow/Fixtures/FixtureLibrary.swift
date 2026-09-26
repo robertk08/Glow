@@ -58,6 +58,17 @@ final class FixtureLibrary {
 		fixtures.reduce(0) { $0 + (type($1.typeID)?.channelCount ?? 0) }
 	}
 	
+	func isNameTaken(_ draft: FixtureType) -> Bool {
+		var candidate = draft
+		candidate.manufacturer = draft.manufacturer.trimmingCharacters(in: .whitespaces)
+		candidate.model = draft.model.trimmingCharacters(in: .whitespaces)
+		let editsItself = made.contains { $0.id == draft.id }
+		
+		return types.contains { type in
+			!(editsItself && type.id == draft.id) && type.name.caseInsensitiveCompare(candidate.name) == .orderedSame
+		}
+	}
+	
 	func unusedIdentifier(_ base: String) -> String {
 		var cleaned = ""
 		

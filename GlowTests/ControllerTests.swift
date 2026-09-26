@@ -59,6 +59,11 @@ private enum Rig {
 }
 
 @MainActor
+private func inScratch() throws {
+	try #require(!Rig.scratch.isEmpty && Rig.both.allSatisfy { $0.shows.activeID == Rig.scratch }, "the scratch show is not open, so nothing is touched")
+}
+
+@MainActor
 private func eventually(within seconds: Double = 6, _ condition: () async -> Bool) async -> Double? {
 	let start = Date()
 	
@@ -95,6 +100,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aLightAddedOnOneDeviceAppearsOnTheOther() async throws {
+		try inScratch()
 		let light = Fixture(typeID: "stairville-hl-x180-8ch", name: "Probe Wash", address: DMXAddress(10)!, sortIndex: 1)
 		Rig.first.context.insert(light)
 		try Rig.first.context.save()
@@ -108,6 +114,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aRenameAndAMoveReachTheOtherDevice() async throws {
+		try inScratch()
 		let light = try #require(Rig.first.lights.first)
 		light.name = "Renamed Wash"
 		light.address = 40
@@ -119,6 +126,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aSceneReachesTheOtherDevice() async throws {
+		try inScratch()
 		let identifier = try #require(Rig.first.lights.first?.identifier)
 		let look = Look(name: "Probe Look", sortIndex: 1, levels: [identifier: Data([255, 0, 128, 7])])
 		Rig.first.context.insert(look)
@@ -130,14 +138,17 @@ struct ControllerTests {
 	}
 	
 	@Test func anEditedBuiltInFixtureIsKeptAsACopyEverywhere() async throws {
+		try inScratch()
 		let original = try #require(Rig.first.library.builtIn.first { $0.id == "stairville-bsw350-32ch" })
 		var draft = original
 		draft.symbol = "lightbulb"
+		draft.model = "\(original.model) Custom"
+		#expect(!Rig.first.library.isNameTaken(draft))
 		Rig.first.library.adopt(draft, replacing: original, among: Rig.first.lights, stored: (try? Rig.first.context.fetch(FetchDescriptor<StoredFixtureType>())) ?? [], context: Rig.first.context)
 		try Rig.first.context.save()
 		
-		#expect(await eventually { Rig.first.library.made.contains { $0.model == original.model } } != nil)
-		let copy = try #require(Rig.first.library.made.first { $0.model == original.model })
+		#expect(await eventually { Rig.first.library.made.contains { $0.model == draft.model } } != nil)
+		let copy = try #require(Rig.first.library.made.first { $0.model == draft.model })
 		#expect(copy.id != original.id)
 		
 		let took = await eventually { Rig.second.library.made.contains { $0.id == copy.id } }
@@ -148,6 +159,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aFixtureMadeFromScratchIsKeptEverywhere() async throws {
+		try inScratch()
 		var draft = FixtureType.blank
 		draft.manufacturer = "Probe"
 		draft.model = "Scratch Par"
@@ -162,6 +174,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aFixtureDeletedOnOneDeviceLeavesTheOther() async throws {
+		try inScratch()
 		let made = try #require(try Rig.first.context.fetch(FetchDescriptor<StoredFixtureType>()).first { $0.definition.model == "Scratch Par" })
 		let identifier = made.identifier
 		Rig.first.context.delete(made)
@@ -172,6 +185,7 @@ struct ControllerTests {
 	}
 	
 	@Test func bothDevicesEditingOneLightEndUpAgreeing() async throws {
+		try inScratch()
 		let identifier = try #require(Rig.first.lights.first?.identifier)
 		let mine = try #require(Rig.first.light(identifier))
 		let theirs = try #require(Rig.second.light(identifier))
@@ -190,6 +204,7 @@ struct ControllerTests {
 	}
 	
 	@Test func aLightDeletedOnOneDeviceLeavesTheOther() async throws {
+		try inScratch()
 		let light = try #require(Rig.second.lights.first)
 		let identifier = light.identifier
 		Rig.second.context.delete(light)
@@ -200,6 +215,7 @@ struct ControllerTests {
 	}
 	
 	@Test func anEditMadeWhileTheLinkIsDownNeverReachesTheController() async throws {
+		try inScratch()
 		let light = Fixture(typeID: "stairville-hl-x180-8ch", name: "Before Drop", address: DMXAddress(100)!, sortIndex: 2)
 		Rig.first.context.insert(light)
 		try Rig.first.context.save()
@@ -217,6 +233,7 @@ struct ControllerTests {
 	}
 	
 	@Test func anImportedShowArrivesWholeOnEveryDevice() async throws {
+		try inScratch()
 		let url = try #require(Bundle.main.url(forResource: "Demo", withExtension: "json"))
 		let file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
 		#expect(Rig.first.shows.adopt(contentsOf: url))
@@ -238,6 +255,7 @@ struct ControllerTests {
 	}
 	
 	@Test func deletingTheOpenShowMovesEveryoneBack() async throws {
+		try #require(!Rig.scratch.isEmpty)
 		let scratch = try #require(Rig.first.shows.shows.first { $0.id == Rig.scratch })
 		Rig.first.shows.activate(scratch)
 		#expect(await eventually { Rig.both.allSatisfy { $0.shows.activeID == Rig.scratch && $0.shows.isLoaded } } != nil)

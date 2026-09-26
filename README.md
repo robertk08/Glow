@@ -66,7 +66,8 @@ A channel can also name the channel and range it depends on, for a fixture
 whose colour channels go dead while a built-in pattern runs.
 
 Editing a fixture Glow ships keeps the original and saves yours beside it, and
-any light already patched to it moves over. Everything a bundled definition
+any light already patched to it moves over. No two fixtures share a name, so
+the copy needs its own before it saves. Everything a bundled definition
 can say, the builder can write: 16-bit pairs and their defaults, named
 functions, the slots inside them and their swatches, real units, and the
 channel a channel depends on. A test fails if a bundled definition ever uses a
