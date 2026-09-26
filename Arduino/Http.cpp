@@ -40,12 +40,23 @@ QueueHandle_t     g_visits = nullptr;
 SemaphoreHandle_t g_stored = nullptr;
 uint8_t           g_piece[PIECE];
 
+bool readable(NetworkClient &c, uint32_t deadline) {
+  int32_t left = (int32_t)(deadline - millis());
+  if (left <= 0 || !c.connected()) return false;
+
+  fd_set ready;
+  FD_ZERO(&ready);
+  FD_SET(c.fd(), &ready);
+  timeval wait = {left / 1000, (left % 1000) * 1000};
+  char    next;
+  return select(c.fd() + 1, &ready, nullptr, nullptr, &wait) > 0 && recv(c.fd(), &next, 1, MSG_PEEK | MSG_DONTWAIT) > 0;
+}
+
 bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
   size_t n = 0;
-  while ((int32_t)(millis() - deadline) < 0) {
+  for (;;) {
     if (!c.available()) {
-      if (!c.connected()) return false;
-      delay(1);
+      if (!readable(c, deadline)) return false;
       continue;
     }
     int ch = c.read();
@@ -61,16 +72,15 @@ bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
 
 bool readBody(NetworkClient &c, uint8_t *into, size_t length, uint32_t deadline) {
   size_t got = 0;
-  while (got < length && (int32_t)(millis() - deadline) < 0) {
+  while (got < length) {
     int n = c.read(into + got, length - got);
     if (n > 0) {
       got += (size_t)n;
       continue;
     }
-    if (!c.connected()) return false;
-    delay(1);
+    if (!readable(c, deadline)) return false;
   }
-  return got == length;
+  return true;
 }
 
 const char *reason(int status) {
