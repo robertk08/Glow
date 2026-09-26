@@ -11,7 +11,7 @@
 
 static void report() {
   Serial.printf("glow %s  id %s  %s  %d phone(s)  dmx %d Hz\n", GLOW_FW_VERSION, Net::id(),
-                Net::up() ? Net::ip().toString().c_str() : "offline", Link::clients(), DmxBus::refreshHz());
+                Net::up() ? Net::ip().toString().c_str() : "offline", Link::clients(), DMX_REFRESH_HZ);
   Serial.printf("memory %u KB free of %u KB, loop stack %u bytes spare\n", (unsigned)(ESP.getFreeHeap() / 1024),
                 (unsigned)(ESP.getHeapSize() / 1024), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
   Serial.printf("store %u KB of %u KB used\n", (unsigned)(Store::used() / 1024), (unsigned)(Store::capacity() / 1024));
@@ -62,7 +62,7 @@ void setup() {
     while (true) delay(1000);
   }
 
-  Serial.printf("dmx: GPIO%d at %d Hz\n", DMX_TX_PIN, DmxBus::refreshHz());
+  Serial.printf("dmx: GPIO%d at %d Hz\n", DMX_TX_PIN, DMX_REFRESH_HZ);
 
   Creds::begin();
   Access::begin();

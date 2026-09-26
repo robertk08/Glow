@@ -11,6 +11,8 @@
 namespace DmxBus {
 namespace {
 
+const int SLOT_MAX = DMX_PACKET_SIZE - 1;
+
 uint8_t g_frame[DMX_PACKET_SIZE];
 uint8_t g_wire[DMX_PACKET_SIZE];
 
@@ -37,10 +39,7 @@ void refreshTask(void *) {
   const TickType_t idle  = periodTicks(DMX_REFRESH_HZ) - burst;
 
   for (;;) {
-    int used = g_used;
-    if (used < DMX_MIN_SLOTS) used = DMX_MIN_SLOTS;
-    if (used > SLOT_MAX) used = SLOT_MAX;
-    size_t length = (size_t)used + 1;
+    size_t length = (size_t)g_used + 1;
 
     {
       Hold hold;
@@ -86,7 +85,7 @@ bool begin() {
 bool writeRange(int start, const uint8_t *values, int length) {
   if (!values) return false;
   if (length < 1 || length > SLOT_MAX) return false;
-  if (start < SLOT_MIN || start > SLOT_MAX) return false;
+  if (start < 1 || start > SLOT_MAX) return false;
   if (length > SLOT_MAX - start + 1) return false;
 
   {
@@ -100,15 +99,11 @@ bool writeRange(int start, const uint8_t *values, int length) {
   return true;
 }
 
-int refreshHz() { return DMX_REFRESH_HZ; }
-
 void setUsed(int slots) {
   if (slots < DMX_MIN_SLOTS) slots = DMX_MIN_SLOTS;
   if (slots > SLOT_MAX) slots = SLOT_MAX;
   g_used = slots;
 }
-
-int used() { return g_used; }
 
 void pause() {
   xSemaphoreTake(g_wireLock, portMAX_DELAY);

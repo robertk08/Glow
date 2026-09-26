@@ -236,23 +236,6 @@ void keeper(void *) {
   }
 }
 
-void erase(const String &at) {
-  DIR *dir = opendir(at.c_str());
-  if (!dir) {
-    Flash::guarded([&] { return ::unlink(at.c_str()) == 0; });
-    return;
-  }
-
-  std::vector<String> inside;
-  while (dirent *entry = readdir(dir)) {
-    if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) inside.push_back(at + "/" + entry->d_name);
-  }
-  closedir(dir);
-
-  for (const String &item : inside) erase(item);
-  Flash::guarded([&] { return ::rmdir(at.c_str()) == 0; });
-}
-
 }  // namespace
 
 bool begin() {
@@ -271,14 +254,12 @@ void sweep() {
   std::vector<String> strays;
   if (DIR *root = opendir(ROOT)) {
     while (dirent *entry = readdir(root)) {
-      if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..") || !strcmp(entry->d_name, "shows.json")) continue;
-      if (entry->d_type == DT_REG && Shows::contains(entry->d_name)) continue;
-      strays.push_back(String(ROOT) + "/" + entry->d_name);
+      if (entry->d_type == DT_REG && strcmp(entry->d_name, "shows.json") && !Shows::contains(entry->d_name)) strays.push_back(String(ROOT) + "/" + entry->d_name);
     }
     closedir(root);
   }
 
-  for (const String &stray : strays) erase(stray);
+  for (const String &stray : strays) Flash::guarded([&] { return ::unlink(stray.c_str()) == 0; });
   g_used = LittleFS.usedBytes();
   Serial.printf("store: %u KB of %u KB used\n", (unsigned)(g_used / 1024), (unsigned)(capacity() / 1024));
 }
