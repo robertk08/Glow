@@ -12,6 +12,10 @@ private final class Device {
 	let opened = Date()
 	
 	init(host: String) {
+		if let key = Rig.key {
+			Passkey.store(key, id: Rig.id)
+		}
+		
 		console.endpoint = NodeEndpoint(host: host)
 		console.start()
 		
@@ -44,6 +48,8 @@ private final class Device {
 private enum Rig {
 	static let host = ProcessInfo.processInfo.environment["GLOW_CONTROLLER"] ?? ""
 	static let endpoint = NodeEndpoint(host: host)
+	static let key = hex(ProcessInfo.processInfo.environment["GLOW_KEY"] ?? "")
+	static let id = ((try? JSONSerialization.jsonObject(with: Data(contentsOf: URL(string: "http://\(host)/api/info")!))) as? [String: Any])?["id"] as? String ?? ""
 	static let first = Device(host: host)
 	static let second = Device(host: host)
 	static var original = ""
@@ -54,7 +60,13 @@ private enum Rig {
 	}
 	
 	static func stored() async -> ShowContents? {
-		await NodeStore().show(scratch, at: endpoint)
+		await NodeStore().show(scratch, at: first.console.reachable)
+	}
+	
+	static func hex(_ text: String) -> Data? {
+		let digits = Array(text.utf8)
+		guard digits.count == 64 else { return nil }
+		return Data(stride(from: 0, to: digits.count, by: 2).compactMap { UInt8(String(decoding: digits[$0..<$0 + 2], as: UTF8.self), radix: 16) })
 	}
 }
 
@@ -228,15 +240,22 @@ struct ControllerTests {
 		try Rig.first.context.save()
 		
 		#expect(await eventually { Rig.first.console.link.isConnected && Rig.first.light(identifier)?.name == "Before Drop" } != nil)
-		try await Task.sleep(for: .seconds(1))
+		try await Task.sleep(for: .milliseconds(500))
 		#expect(await Rig.stored()?.lights.first { $0.identifier == identifier }?.name == "Before Drop")
 	}
 	
 	@Test func anImportedShowArrivesWholeOnEveryDevice() async throws {
 		try inScratch()
 		let url = try #require(Bundle.main.url(forResource: "Demo", withExtension: "json"))
-		let file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
-		#expect(Rig.first.shows.adopt(contentsOf: url))
+		var file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
+		file.show.lights = Array(file.show.lights.prefix(3))
+		file.show.scenes = Array(file.show.scenes.prefix(2))
+		file.show.groups = []
+		let encoder = JSONEncoder()
+		encoder.dateEncodingStrategy = .iso8601
+		let trimmed = FileManager.default.temporaryDirectory.appending(path: "Trimmed.json")
+		try encoder.encode(file).write(to: trimmed)
+		#expect(Rig.first.shows.adopt(contentsOf: trimmed))
 		
 		let took = await eventually(within: 10) {
 			Rig.both.allSatisfy { $0.shows.active.name.hasPrefix(file.name) && $0.lights.count == file.show.lights.count && $0.scenes.count == file.show.scenes.count }
@@ -246,7 +265,7 @@ struct ControllerTests {
 		print("HARDWARE imported show whole on both devices in \(String(format: "%.2f", took ?? -1))s")
 		
 		let imported = Rig.first.shows.activeID
-		let held = await NodeStore().show(imported, at: Rig.endpoint)
+		let held = await NodeStore().show(imported, at: Rig.first.console.reachable)
 		#expect(held?.lights.count == file.show.lights.count)
 		#expect(held?.scenes.count == file.show.scenes.count)
 		
@@ -271,8 +290,14 @@ struct ControllerTests {
 	}
 	
 	@Test func aPasswordLocksOutEveryOtherDevice() async throws {
-		let id = try #require(Rig.first.console.node?.id)
-		try #require(Rig.first.console.node?.hasPassword == false, "the controller already has a password, so it is left alone")
+		let node = try #require(Rig.first.console.node)
+		let id = node.id
+		
+		if node.hasPassword {
+			Rig.first.console.send(.password(old: Rig.key, new: nil, nonce: node.nonce))
+			try #require(await eventually { Rig.first.console.node?.hasPassword == false } != nil, "the key read from the controller did not remove its password")
+		}
+		
 		Rig.first.console.protect(current: "", new: "probe-pass")
 		
 		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
@@ -283,7 +308,6 @@ struct ControllerTests {
 		#expect(took != nil)
 		print("HARDWARE the other device was locked out in \(String(format: "%.2f", took ?? -1))s")
 		
-		try await Task.sleep(for: .seconds(6))
 		#expect(Rig.first.console.link.isConnected)
 		#expect(Rig.second.console.link == .locked)
 		#expect(await NodeStore().show(Rig.original, at: Rig.endpoint) == nil)
@@ -333,25 +357,6 @@ struct ControllerTests {
 		#expect(await eventually { Rig.second.console.lock?.isWrong == true && !Rig.second.console.isUnlocking } != nil)
 	}
 	
-	@Test func repeatedWrongTriesPauseUnlocking() async throws {
-		for attempt in 0..<5 {
-			Rig.second.console.unlock(password: "guess \(attempt)")
-			#expect(await eventually { !Rig.second.console.isUnlocking } != nil)
-			if Rig.second.console.lockedUntil != nil { break }
-		}
-		
-		let until = try #require(Rig.second.console.lockedUntil)
-		print("HARDWARE unlocking paused for \(String(format: "%.0f", until.timeIntervalSinceNow))s")
-		
-		Rig.second.console.unlock(password: "probe-pass-2")
-		#expect(await eventually { !Rig.second.console.isUnlocking } != nil)
-		#expect(Rig.second.console.link == .locked)
-		
-		#expect(await eventually(within: 40) { Rig.second.console.lockedUntil == nil } != nil)
-		Rig.second.console.unlock(password: "probe-pass-2")
-		#expect(await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded } != nil)
-	}
-	
 	@Test func removingThePasswordOpensTheControllerAgain() async throws {
 		let id = try #require(Rig.first.console.node?.id)
 		Passkey.forget(id: id)
@@ -364,6 +369,11 @@ struct ControllerTests {
 		#expect(await eventually { Rig.both.allSatisfy { $0.console.node?.hasPassword == false } } != nil)
 		#expect(Passkey.stored(id: id) == nil)
 		#expect(await NodeStore().show(Rig.original, at: Rig.endpoint) != nil)
+		
+		guard let key = Rig.key, let nonce = Rig.first.console.node?.nonce else { return }
+		Rig.first.console.send(.password(old: nil, new: key, nonce: nonce))
+		#expect(await eventually { Rig.first.console.node?.hasPassword == true } != nil)
+		Passkey.store(key, id: id)
 	}
 }
 

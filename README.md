@@ -225,26 +225,35 @@ Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
 table starts you on an empty Show 1.
 
-Serial console at 115200: `net | setup | forget | home | unpair | password`. The
+Serial console at 115200: `net | setup | forget | home | unpair | password | key`. The
 controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
 `home`, `setup`, `link`), and HomeSpan's own output is silenced. `net` reports
 the firmware, the address, the connected phones, free memory, how much of the
 loop's stack is spare, the show filesystem and the stored networks. `home`
 prints the HomeKit accessory database with any errors in it. `password` removes
-the controller's password.
+the controller's password and `key` prints the key it keeps for it. A line
+nobody reads is dropped rather than waited on, so a Mac holding the port open
+never stalls the controller.
 
 ## Testing against a controller
 
 `ControllerTests` runs two complete copies of the app, as two devices, against a
 real controller on the network. It covers opening, show commands, lights,
 scenes, made and edited fixtures, deletes, two devices editing one light, an
-edit made while the link is down, an import and deleting the open show. It
-creates a show named **Hardware Test**, removes it again and leaves the
-controller on the show it found. It is skipped unless it is given an address:
+edit made while the link is down, an import, deleting the open show and the
+password. It creates a show named **Hardware Test**, removes it again and
+leaves the controller on the show it found, with the password it found. It is
+skipped unless it is given an address. Run it with the controller on USB:
 
+```bash
+GlowTests/controller-tests.sh 192.168.68.55
 ```
-TEST_RUNNER_GLOW_CONTROLLER=192.168.68.55 xcodebuild test -scheme Glow -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:GlowTests/ControllerTests
-```
+
+The script asks the controller for its key over serial, so the two devices get
+in whatever password is set, and it turns off Xcode's diagnostics collection,
+which otherwise adds more than a minute after the run. It takes about 25
+seconds and the unit tests about 5. A run stopped halfway can leave a test
+password behind, which serial `password` removes.
 
 ## Toolchain
 

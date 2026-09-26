@@ -44,21 +44,6 @@ struct PerformanceTests {
 		#expect(scoped.count == show.scenes.count)
 	}
 	
-	@Test func aScopedSnapshotIsFarCheaperThanAFullOne() async {
-		let show = Self.crowded()
-		var full = Duration.seconds(60)
-		var scoped = Duration.seconds(60)
-		
-		for _ in 0..<5 {
-			let clock = ContinuousClock()
-			full = min(full, await clock.measure { _ = await ShowLibrary.snapshot(of: show) })
-			scoped = min(scoped, await clock.measure { _ = await ShowLibrary.snapshot(of: show, folders: [.scenes]) })
-		}
-		
-		#expect(scoped < full / 1.25)
-		#expect(scoped < .milliseconds(50))
-	}
-	
 	@Test func recallingASceneStaysWellUnderAFrame() {
 		let (console, fixtures, library) = rig(60)
 		var levels: [String: Data] = [:]

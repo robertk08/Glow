@@ -14,5 +14,6 @@ void     fresh(char *token);
 bool verify(const char *label, const char *nonce, const char *proof);
 bool replace(const char *nonce, const char *key);
 void forget();
+void report();
 
 }  // namespace Access

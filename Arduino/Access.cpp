@@ -131,4 +131,14 @@ void forget() {
   Serial.println(store() ? F("access: password removed") : F("access: the password could not be removed"));
 }
 
+void report() {
+  Serial.print(F("key "));
+  if (!g_guarded) {
+    Serial.println(F("none"));
+    return;
+  }
+  for (size_t i = 0; i < KEY_LENGTH; i++) Serial.printf("%02x", g_key[i]);
+  Serial.println();
+}
+
 }  // namespace Access

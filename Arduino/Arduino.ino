@@ -31,7 +31,8 @@ static void run(const char *line) {
   else if (!strcmp(line, "home"))     HomeKit::report();
   else if (!strcmp(line, "unpair"))   HomeKit::unpair();
   else if (!strcmp(line, "password")) Link::forgetPassword();
-  else Serial.println(F("commands: net | setup | forget | home | unpair | password"));
+  else if (!strcmp(line, "key"))      Access::report();
+  else Serial.println(F("commands: net | setup | forget | home | unpair | password | key"));
 }
 
 static void pollSerial() {
@@ -53,6 +54,7 @@ static void pollSerial() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.setTxTimeoutMs(0);
   Serial.printf("\nglow %s\n", GLOW_FW_VERSION);
 
   if (!DmxBus::begin()) {
@@ -71,7 +73,7 @@ void setup() {
   Http::begin();
   HomeKit::begin();
 
-  Serial.println(F("commands: net | setup | forget | home | unpair | password"));
+  Serial.println(F("commands: net | setup | forget | home | unpair | password | key"));
 }
 
 void loop() {
