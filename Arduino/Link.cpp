@@ -182,6 +182,12 @@ void greet(uint8_t num) {
   if (g_haveSource) sendFrame(num, 1, SLOTS);
 }
 
+void release() {
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (g_ws.clientIsConnected(i) && !g_admitted[i]) greet(i);
+  }
+}
+
 void challenge(uint8_t num, bool wrong) {
   JsonDocument out;
   out["t"] = "locked";
@@ -226,6 +232,7 @@ void protect(uint8_t num, const char *proof, const char *key) {
     g_admitted[i] = false;
     g_ws.disconnect(i);
   }
+  if (!Access::guarded()) release();
 
   out["set"] = Access::guarded();
   size_t n = serializeJson(out, g_out, sizeof(g_out));
@@ -367,9 +374,7 @@ bool adopt(NetworkClient &tcp, const char *url) {
 
 void forgetPassword() {
   Access::forget();
-  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (g_ws.clientIsConnected(i) && !g_admitted[i]) greet(i);
-  }
+  release();
   notify("{\"t\":\"password\",\"set\":false}", -1);
 }
 

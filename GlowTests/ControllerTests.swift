@@ -354,9 +354,13 @@ struct ControllerTests {
 	
 	@Test func removingThePasswordOpensTheControllerAgain() async throws {
 		let id = try #require(Rig.first.console.node?.id)
+		Passkey.forget(id: id)
+		Rig.second.console.connect()
+		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil } != nil)
 		Rig.first.console.protect(current: "probe-pass-2", new: "")
 		
 		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		#expect(await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded } != nil)
 		#expect(await eventually { Rig.both.allSatisfy { $0.console.node?.hasPassword == false } } != nil)
 		#expect(Passkey.stored(id: id) == nil)
 		#expect(await NodeStore().show(Rig.original, at: Rig.endpoint) != nil)
