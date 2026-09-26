@@ -17,13 +17,14 @@ namespace {
 
 class Sockets : public WebSocketsServerCore {
  public:
-  void adopt(Outlet *tcp, const char *url) {
+  int adopt(Outlet *tcp, const char *url) {
     WSclient_t *client = handleNewClient(tcp);
-    if (!client) return;
+    if (!client) return -1;
 
     String requestLine = "GET ";
     requestLine += url;
     handleHeader(client, &requestLine);
+    return client->num;
   }
 };
 
@@ -39,8 +40,9 @@ const uint8_t  NO_CLIENT   = 0xFF;
 
 const uint32_t WS_PING_MS     = 4000;
 const uint32_t WS_PONG_MS     = 2000;
-const uint8_t  WS_PING_TRIES  = 2;
+const uint32_t WS_SILENCE_MS  = 8000;
 const uint32_t WS_PATIENCE_MS = 1000;
+const uint32_t STORE_WAIT_MS  = 5000;
 
 uint8_t      g_source[DMX_HEADER + SLOTS];
 uint8_t      g_frame[DMX_HEADER + SLOTS];
@@ -57,6 +59,7 @@ bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
+uint32_t     g_heard[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
 
 bool admitted(uint8_t num) {
   return !Access::guarded() || g_admitted[num];
@@ -132,6 +135,26 @@ void answer(uint8_t num, const uint8_t *p, bool stored) {
   reply(num, doc);
 }
 
+void settle() {
+  Store::Job job;
+  while (Store::settled(job)) {
+    if (job.done && job.stored) {
+      char show[Store::NAME_LIMIT];
+      char folder[Store::NAME_LIMIT];
+      char id[Store::NAME_LIMIT];
+      names(job.frame, show, folder, id);
+      snprintf(g_out, sizeof(g_out), "{\"t\":\"doc\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\"}", show, folder, id);
+      relay(job.client < 0 ? NO_CLIENT : (uint8_t)job.client, false, (const uint8_t *)g_out, strlen(g_out));
+    } else if (!job.done) {
+      uint8_t num     = job.client & 0xFF;
+      bool    present = (job.client >> 8) == g_arrival[num];
+      if (job.stored) relay(present ? num : NO_CLIENT, true, job.frame, job.length);
+      if (present) answer(num, job.frame, job.stored);
+    }
+    free(job.frame);
+  }
+}
+
 void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   if (len < Store::DOC_HEADER || p[1] > 1) return;
 
@@ -152,29 +175,13 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   uint8_t   *frame = (uint8_t *)malloc(len);
   Store::Job job   = {frame, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
   if (frame) memcpy(frame, p, len);
-  if (frame && Store::submit(job)) return;
+
+  for (uint32_t since = millis(); frame && millis() - since < STORE_WAIT_MS; delay(1)) {
+    if (Store::submit(job)) return;
+    settle();
+  }
   free(frame);
   answer(num, p, false);
-}
-
-void settle() {
-  Store::Job job;
-  while (Store::settled(job)) {
-    if (job.done && job.stored) {
-      char show[Store::NAME_LIMIT];
-      char folder[Store::NAME_LIMIT];
-      char id[Store::NAME_LIMIT];
-      names(job.frame, show, folder, id);
-      snprintf(g_out, sizeof(g_out), "{\"t\":\"doc\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\"}", show, folder, id);
-      relay(job.client < 0 ? NO_CLIENT : (uint8_t)job.client, false, (const uint8_t *)g_out, strlen(g_out));
-    } else if (!job.done) {
-      uint8_t num     = job.client & 0xFF;
-      bool    present = (job.client >> 8) == g_arrival[num];
-      if (job.stored) relay(present ? num : NO_CLIENT, true, job.frame, job.length);
-      if (present) answer(num, job.frame, job.stored);
-    }
-    free(job.frame);
-  }
 }
 
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
@@ -359,6 +366,7 @@ void leave(uint8_t num) {
 }
 
 void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
+  g_heard[num] = millis();
   switch (type) {
     case WStype_CONNECTED:    arrive(num); break;
     case WStype_DISCONNECTED: leave(num); break;
@@ -373,13 +381,17 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
 void begin() {
   g_ws.begin();
   g_ws.onEvent(onEvent);
-  g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, WS_PING_TRIES);
+  g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, 0);
 }
 
 void tick() {
   g_ws.loop();
   relayChanges();
   settle();
+
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (g_ws.clientIsConnected(i) && millis() - g_heard[i] > WS_SILENCE_MS) g_ws.disconnect(i);
+  }
 }
 
 int clients() { return g_ws.connectedClients(); }
@@ -411,7 +423,8 @@ bool blackout() { return g_blackout; }
 
 void adopt(Outlet *tcp, const char *url) {
   tcp->patience = WS_PATIENCE_MS;
-  g_ws.adopt(tcp, url);
+  int num = g_ws.adopt(tcp, url);
+  if (num >= 0) g_heard[num] = millis();
 }
 
 void forgetPassword() {

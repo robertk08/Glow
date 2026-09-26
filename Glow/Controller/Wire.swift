@@ -156,9 +156,9 @@ nonisolated enum Wire {
 		return data
 	}
 	
-	static func gathered(_ log: Data) -> Data {
+	static func objects(in log: Data) -> [(folder: String, body: Data)] {
 		let bytes = [UInt8](log)
-		var latest: [String: (folder: String, body: ArraySlice<UInt8>)] = [:]
+		var latest: [String: (folder: String, body: Data)] = [:]
 		var cursor = 0
 		
 		while cursor + recordHeader <= bytes.count {
@@ -171,7 +171,7 @@ nonisolated enum Wire {
 			let key = "\(folder)/\(String(decoding: bytes[idStart..<bodyStart], as: UTF8.self))"
 			
 			if bytes[cursor] == 0 {
-				latest[key] = (folder, bytes[bodyStart..<end])
+				latest[key] = (folder, Data(bytes[bodyStart..<end]))
 			} else {
 				latest[key] = nil
 			}
@@ -179,28 +179,7 @@ nonisolated enum Wire {
 			cursor = end
 		}
 		
-		var folders: [String: [ArraySlice<UInt8>]] = [:]
-		
-		for (folder, body) in latest.values {
-			folders[folder, default: []].append(body)
-		}
-		
-		var json = Data("{".utf8)
-		
-		for (folder, bodies) in folders {
-			if json.count > 1 { json.append(UInt8(ascii: ",")) }
-			json.append(Data("\"\(folder)\":[".utf8))
-			
-			for (index, body) in bodies.enumerated() {
-				if index > 0 { json.append(UInt8(ascii: ",")) }
-				json.append(contentsOf: body)
-			}
-			
-			json.append(UInt8(ascii: "]"))
-		}
-		
-		json.append(UInt8(ascii: "}"))
-		return json
+		return Array(latest.values)
 	}
 	
 	static func event(_ message: URLSessionWebSocketTask.Message) -> NodeLink.Event? {

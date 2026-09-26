@@ -342,6 +342,29 @@ struct ShowSyncTests {
 		#expect(Wire.event(.data(Wire.document(show: "show", folder: "lights", id: "par", body: body).dropLast())) == nil)
 	}
 	
+	@Test func aShowFileKeepsTheNewestRecordOfEachObjectAndSkipsBrokenOnes() {
+		let records: [(folder: String, id: String, body: String?)] = [
+			("lights", "par", #"{"identifier":"par","typeID":"par","name":"Old","address":1}"#),
+			("lights", "par", #"{"identifier":"par","typeID":"par","name":"New","address":1}"#),
+			("lights", "wash", #"{"name":"Broken"}"#),
+			("scenes", "look", #"{"identifier":"look","name":"Look"}"#),
+			("scenes", "look", nil),
+		]
+		var log = Data()
+		
+		for record in records {
+			let body = Data((record.body ?? "").utf8)
+			log.append(contentsOf: [record.body == nil ? 1 : 0, UInt8(record.folder.utf8.count), UInt8(record.id.utf8.count), UInt8(body.count & 0xFF), UInt8(body.count >> 8)])
+			log.append(Data(record.folder.utf8) + Data(record.id.utf8) + body)
+		}
+		
+		log.append(contentsOf: [0, 6, 4, 200])
+		let show = ShowContents(objects: Wire.objects(in: log))
+		
+		#expect(show.lights.map(\.name) == ["New"])
+		#expect(show.scenes.isEmpty)
+	}
+	
 	@Test func aSourceFrameReadsBackAsWritten() throws {
 		guard case let .frame(start, values) = try #require(Wire.event(.data(Wire.frame(Wire.sourceOpcode, start: DMXAddress(510)!, values: [1, 2, 3])))) else {
 			Issue.record("expected a frame")

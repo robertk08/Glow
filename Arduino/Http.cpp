@@ -144,7 +144,7 @@ void document(Outlet &c, const char *method, char *path, size_t length, int exce
 
   bool       stored = false;
   Store::Job job    = {frame, front + length, except, false, g_stored, &stored};
-  if (!readBody(c, frame + front, length, deadline) || !Store::submit(job)) {
+  if (!readBody(c, frame + front, length, deadline) || !Store::submit(job, pdMS_TO_TICKS(5000))) {
     free(frame);
     return answer(c, 503);
   }

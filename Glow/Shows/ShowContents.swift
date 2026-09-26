@@ -118,6 +118,20 @@ nonisolated struct ShowContents: Codable, Sendable {
 		self.scenes = scenes
 	}
 	
+	init(objects: [(folder: String, body: Data)]) {
+		let decoder = JSONDecoder()
+		
+		for (folder, body) in objects {
+			switch NodeStore.Folder(rawValue: folder) {
+			case .lights: if let light = try? decoder.decode(Light.self, from: body) { lights.append(light) }
+			case .groups: if let group = try? decoder.decode(Group.self, from: body) { groups.append(group) }
+			case .made: if let type = try? decoder.decode(FixtureType.self, from: body) { made.append(type) }
+			case .scenes: if let scene = try? decoder.decode(Scene.self, from: body) { scenes.append(scene) }
+			case nil: break
+			}
+		}
+	}
+	
 	init(from decoder: any Decoder) throws {
 		let container = try decoder.container(keyedBy: CodingKeys.self)
 		lights = try container.decodeIfPresent([Light].self, forKey: .lights) ?? []

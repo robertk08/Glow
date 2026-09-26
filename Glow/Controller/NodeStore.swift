@@ -91,7 +91,7 @@ actor NodeStore {
 	
 	func show(_ showID: String, at endpoint: NodeEndpoint) async -> ShowContents? {
 		guard case let .body(data) = await send(endpoint, "show/\(showID)", method: "GET", body: nil, client: nil) else { return nil }
-		return try? decoder.decode(ShowContents.self, from: Wire.gathered(data))
+		return ShowContents(objects: Wire.objects(in: data))
 	}
 	
 	func object(_ folder: Folder, id: String, in showID: String, at endpoint: NodeEndpoint) async -> Data? {

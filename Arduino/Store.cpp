@@ -26,7 +26,7 @@ const size_t   HEAD         = 5;
 const uint32_t REVIEW_FROM  = 32768;
 const uint32_t REVIEW_EVERY = 16384;
 const uint32_t MEASURE_MS   = 500;
-const int      JOBS_WAITING = 16;
+const int      JOBS_WAITING = 8;
 const int      KEEPER_STACK = 4096;
 const size_t   PIECE        = 1024;
 
@@ -99,13 +99,29 @@ bool record(int fd, uint32_t at, uint32_t size, Record &r) {
   return true;
 }
 
-bool append(const char *file, const uint8_t *head, const uint8_t *rest, size_t length, uint32_t &before) {
+size_t showLength(const Job &job) { return job.frame[2]; }
+
+bool sameShow(const Job &a, const Job &b) {
+  return b.frame[1] != DROP && showLength(a) == showLength(b) && !memcmp(a.frame + DOC_HEADER, b.frame + DOC_HEADER, showLength(a));
+}
+
+bool append(const char *file, Job *jobs, int count, uint32_t &before, uint32_t &after) {
   Hold hold;
   return Flash::guarded([&] {
     int fd = ::open(file, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) return false;
     before = sizeOf(fd);
-    bool written = ::write(fd, head, HEAD) == (ssize_t)HEAD && ::write(fd, rest, length) == (ssize_t)length;
+    after  = before;
+
+    bool written = true;
+    for (int i = 0; i < count && written; i++) {
+      const uint8_t *p          = jobs[i].frame;
+      uint8_t        head[HEAD] = {p[1], p[3], p[4], p[5], p[6]};
+      size_t         skip       = DOC_HEADER + showLength(jobs[i]);
+      size_t         length     = jobs[i].length - skip;
+      written = ::write(fd, head, HEAD) == (ssize_t)HEAD && ::write(fd, p + skip, length) == (ssize_t)length;
+      after += HEAD + length;
+    }
     if (!written) ftruncate(fd, before);
     return ::close(fd) == 0 && written;
   });
@@ -164,56 +180,59 @@ bool review(const char *show, bool always) {
   return copied;
 }
 
-void perform(Job &job) {
-  const uint8_t *p          = job.frame;
-  size_t         showLength = p[2];
-  char           show[NAME_LIMIT];
-  memcpy(show, p + DOC_HEADER, showLength);
-  show[showLength] = '\0';
+void perform(Job *jobs, int count) {
+  char show[NAME_LIMIT];
+  memcpy(show, jobs[0].frame + DOC_HEADER, showLength(jobs[0]));
+  show[showLength(jobs[0])] = '\0';
 
   char file[PATH_LIMIT];
   bool named = path(file, show, "");
 
-  if (p[1] == DROP) {
+  if (jobs[0].frame[1] == DROP) {
     if (named) {
       Hold hold;
       Flash::guarded([&] { return ::unlink(file) == 0; });
       g_generation++;
     }
-    free(job.frame);
+    free(jobs[0].frame);
     return;
   }
 
-  uint8_t        head[HEAD] = {p[1], p[3], p[4], p[5], p[6]};
-  const uint8_t *rest       = p + DOC_HEADER + showLength;
-  size_t         length     = job.length - DOC_HEADER - showLength;
-  uint32_t       before     = 0;
+  uint32_t before = 0;
+  uint32_t after  = 0;
+  bool     listed = named && Shows::contains(show);
+  bool     stored = listed && append(file, jobs, count, before, after);
+  if (listed && !stored && review(show, true)) stored = append(file, jobs, count, before, after);
 
-  bool listed = named && Shows::contains(show);
-  job.stored  = listed && append(file, head, rest, length, before);
-  if (listed && !job.stored && review(show, true)) job.stored = append(file, head, rest, length, before);
-
-  if (job.done) {
-    *job.outcome = job.stored;
-    xSemaphoreGive(job.done);
+  for (int i = 0; i < count; i++) {
+    jobs[i].stored = stored;
+    if (jobs[i].done) {
+      *jobs[i].outcome = stored;
+      xSemaphoreGive(jobs[i].done);
+    }
+    xQueueSend(g_settled, &jobs[i], portMAX_DELAY);
   }
-  xQueueSend(g_settled, &job, portMAX_DELAY);
 
-  uint32_t after = before + HEAD + length;
-  if (job.stored && after >= REVIEW_FROM && before / REVIEW_EVERY != after / REVIEW_EVERY) review(show, false);
+  if (stored && after >= REVIEW_FROM && before / REVIEW_EVERY != after / REVIEW_EVERY) review(show, false);
 }
 
 void keeper(void *) {
-  Job  job;
+  Job  jobs[JOBS_WAITING];
   bool changed = true;
   for (;;) {
-    if (xQueueReceive(g_jobs, &job, changed ? pdMS_TO_TICKS(MEASURE_MS) : portMAX_DELAY) == pdTRUE) {
-      perform(job);
-      changed = true;
+    if (xQueueReceive(g_jobs, &jobs[0], changed ? pdMS_TO_TICKS(MEASURE_MS) : portMAX_DELAY) != pdTRUE) {
+      g_used  = LittleFS.usedBytes();
+      changed = false;
       continue;
     }
-    g_used  = LittleFS.usedBytes();
-    changed = false;
+
+    int count = 1;
+    while (count < JOBS_WAITING && jobs[0].frame[1] != DROP && xQueuePeek(g_jobs, &jobs[count], 0) == pdTRUE && sameShow(jobs[0], jobs[count])) {
+      xQueueReceive(g_jobs, &jobs[count], 0);
+      count++;
+    }
+    perform(jobs, count);
+    changed = true;
   }
 }
 
@@ -239,7 +258,7 @@ void erase(const String &at) {
 bool begin() {
   g_lock    = xSemaphoreCreateMutex();
   g_jobs    = xQueueCreate(JOBS_WAITING, sizeof(Job));
-  g_settled = xQueueCreate(JOBS_WAITING, sizeof(Job));
+  g_settled = xQueueCreate(JOBS_WAITING * 2, sizeof(Job));
   g_ready   = g_lock && g_jobs && g_settled && LittleFS.begin(true) &&
             xTaskCreatePinnedToCore(keeper, "store", KEEPER_STACK, nullptr, 1, nullptr, 0) == pdPASS;
   if (!g_ready) Serial.println(F("store: LittleFS unavailable, shows cannot be stored"));
@@ -302,8 +321,8 @@ bool writeList(const String &text) {
   });
 }
 
-bool submit(const Job &job) {
-  return g_ready && xQueueSend(g_jobs, &job, 0) == pdTRUE;
+bool submit(const Job &job, TickType_t wait) {
+  return g_ready && xQueueSend(g_jobs, &job, wait) == pdTRUE;
 }
 
 bool settled(Job &job) {

@@ -32,7 +32,7 @@ bool safe(const char *name);
 bool readList(String &text);
 bool writeList(const String &text);
 
-bool submit(const Job &job);
+bool submit(const Job &job, TickType_t wait = 0);
 bool settled(Job &job);
 void drop(const char *show);
 
