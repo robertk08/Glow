@@ -18,4 +18,4 @@ if [[ -n $port ]]; then
 fi
 
 [[ $key == none ]] && key=""
-TEST_RUNNER_GLOW_CONTROLLER=$host TEST_RUNNER_GLOW_KEY=$key exec xcodebuild test -scheme Glow -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:GlowTests/ControllerTests -collect-test-diagnostics never
+TEST_RUNNER_GLOW_CONTROLLER=$host TEST_RUNNER_GLOW_KEY=$key exec xcodebuild test -quiet -scheme Glow -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:GlowTests/ControllerTests -collect-test-diagnostics never
