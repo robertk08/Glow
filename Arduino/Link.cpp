@@ -1,5 +1,6 @@
 #include "Link.h"
 
+#include "Access.h"
 #include "DmxBus.h"
 #include "HomeKit.h"
 #include "Net.h"
@@ -51,7 +52,14 @@ portMUX_TYPE g_lock        = portMUX_INITIALIZER_UNLOCKED;
 char         g_scene[Store::NAME_LIMIT] = "";
 float        g_master   = 1;
 bool         g_blackout = false;
-char         g_out[256];
+char         g_out[512];
+bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
+char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
+char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
+
+bool admitted(uint8_t num) {
+  return !Access::guarded() || g_admitted[num];
+}
 
 bool inUniverse(int start, int length) {
   return start >= 1 && length >= 1 && start + length - 1 <= SLOTS;
@@ -59,7 +67,7 @@ bool inUniverse(int start, int length) {
 
 void relay(uint8_t from, bool binary, const uint8_t *p, size_t len) {
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (i == from) continue;
+    if (i == from || !admitted(i)) continue;
     if (binary) g_ws.sendBIN(i, const_cast<uint8_t *>(p), len);
     else g_ws.sendTXT(i, const_cast<uint8_t *>(p), len);
   }
@@ -135,6 +143,7 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
 }
 
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
+  if (!admitted(num)) return;
   if (len >= 1 && p[0] == OP_DOCUMENT) return onDocument(num, p, len);
   if (len < DMX_HEADER || p[1] != 0 || (p[0] != OP_OUTPUT && p[0] != OP_SOURCE && p[0] != OP_BOTH)) return;
 
@@ -153,25 +162,92 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
   relay(num, true, p, len);
 }
 
+void greet(uint8_t num) {
+  JsonDocument out;
+  out["t"] = "status";
+  out["fw"] = GLOW_FW_VERSION;
+  out["src"] = g_haveSource;
+  out["client"] = num;
+  out["ip"] = Net::up() ? Net::ip().toString() : String();
+  out["scene"] = g_scene;
+  out["master"] = g_master;
+  out["blackout"] = g_blackout;
+  out["id"] = Net::id();
+  out["password"] = Access::guarded();
+  out["nonce"] = g_nonce[num];
+  out["session"] = g_session[num];
+  reply(num, out);
+  String list = Shows::message();
+  g_ws.sendTXT(num, list);
+  if (g_haveSource) sendFrame(num, 1, SLOTS);
+}
+
+void challenge(uint8_t num, bool wrong) {
+  JsonDocument out;
+  out["t"] = "locked";
+  out["id"] = Net::id();
+  out["nonce"] = g_nonce[num];
+  out["wrong"] = wrong;
+  out["wait"] = Access::waiting();
+  reply(num, out);
+}
+
+void unlock(uint8_t num, const char *proof) {
+  if (!Access::verify("unlock", g_nonce[num], proof)) {
+    Access::fresh(g_nonce[num]);
+    return challenge(num, true);
+  }
+
+  g_admitted[num] = true;
+  Serial.printf("link: phone %u unlocked\n", num);
+  greet(num);
+}
+
+void protect(uint8_t num, const char *proof, const char *key) {
+  JsonDocument out;
+  out["t"] = "password";
+
+  if (!Access::verify("change", g_nonce[num], proof)) {
+    out["refused"] = "wrong";
+    out["wait"] = Access::waiting();
+    return reply(num, out);
+  }
+
+  if (!Access::replace(g_nonce[num], key)) {
+    out["refused"] = "storage";
+    return reply(num, out);
+  }
+
+  g_admitted[num] = true;
+  Serial.printf("link: phone %u %s the password\n", num, Access::guarded() ? "set" : "removed");
+
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (i == num || !Access::guarded()) continue;
+    g_admitted[i] = false;
+    g_ws.disconnect(i);
+  }
+
+  out["set"] = Access::guarded();
+  size_t n = serializeJson(out, g_out, sizeof(g_out));
+  relay(NO_CLIENT, false, (const uint8_t *)g_out, n);
+}
+
 void onText(uint8_t num, const uint8_t *p, size_t len) {
   JsonDocument doc;
   if (deserializeJson(doc, p, len)) return;
   const char *t = doc["t"] | "";
 
+  if (!admitted(num)) {
+    if (!strcmp(t, "hello")) challenge(num, false);
+    if (!strcmp(t, "unlock")) unlock(num, doc["proof"] | "");
+    return;
+  }
+
   if (!strcmp(t, "hello")) {
-    JsonDocument out;
-    out["t"] = "status";
-    out["fw"] = GLOW_FW_VERSION;
-    out["src"] = g_haveSource;
-    out["client"] = num;
-    out["ip"] = Net::up() ? Net::ip().toString() : String();
-    out["scene"] = g_scene;
-    out["master"] = g_master;
-    out["blackout"] = g_blackout;
-    reply(num, out);
-    String list = Shows::message();
-    g_ws.sendTXT(num, list);
-    if (g_haveSource) sendFrame(num, 1, SLOTS);
+    greet(num);
+
+  } else if (!strcmp(t, "password")) {
+    protect(num, doc["proof"] | "", doc["key"] | "");
 
   } else if (!strcmp(t, "ping")) {
     JsonDocument out;
@@ -218,10 +294,23 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   }
 }
 
+void arrive(uint8_t num) {
+  g_admitted[num] = false;
+  Access::fresh(g_nonce[num]);
+  Access::fresh(g_session[num]);
+  Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str());
+}
+
+void leave(uint8_t num) {
+  g_admitted[num] = false;
+  g_session[num][0] = '\0';
+  Serial.printf("link: phone %u left\n", num);
+}
+
 void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
-    case WStype_CONNECTED:    Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str()); break;
-    case WStype_DISCONNECTED: Serial.printf("link: phone %u left\n", num); break;
+    case WStype_CONNECTED:    arrive(num); break;
+    case WStype_DISCONNECTED: leave(num); break;
     case WStype_TEXT:         onText(num, payload, length); break;
     case WStype_BIN:          onBinary(num, payload, length); break;
     default:                  break;
@@ -274,6 +363,22 @@ void notify(const char *json, int except) {
 
 bool adopt(NetworkClient &tcp, const char *url) {
   return g_ws.adopt(tcp, url);
+}
+
+void forgetPassword() {
+  Access::forget();
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (g_ws.clientIsConnected(i) && !g_admitted[i]) greet(i);
+  }
+  notify("{\"t\":\"password\",\"set\":false}", -1);
+}
+
+bool admits(const char *session) {
+  if (!Access::guarded()) return true;
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (g_admitted[i] && session[0] && !strcmp(g_session[i], session)) return true;
+  }
+  return false;
 }
 
 }  // namespace Link

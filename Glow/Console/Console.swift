@@ -13,6 +13,10 @@ final class Console {
 	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
 	private(set) var activeScene: String?
+	private(set) var lock: Wire.Lock?
+	private(set) var lockedUntil: Date?
+	private(set) var isUnlocking = false
+	var passwordOutcome: PasswordOutcome?
 	
 	let selection = Selection()
 	let notices: AsyncStream<Wire.Notice>
@@ -66,6 +70,9 @@ final class Console {
 	private var announcedBlackout: Bool?
 	private var hasAdoptedSource = false
 	private var hasLoadedPatch = false
+	private var offered: Data?
+	private var proposed: Data?
+	private var pause: Task<Void, Never>?
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -150,6 +157,58 @@ final class Console {
 			} else {
 				isSynced = true
 			}
+			
+			if let offered, let lock {
+				Passkey.store(offered, id: lock.id)
+			}
+			
+			offered = nil
+			lock = nil
+			lockedUntil = nil
+			isUnlocking = false
+			pause?.cancel()
+		case .locked(var challenge):
+			if challenge.isWrong, offered == Passkey.stored(id: challenge.id) {
+				Passkey.forget(id: challenge.id)
+				challenge.isWrong = false
+			}
+			
+			lock = challenge
+			offered = nil
+			isUnlocking = false
+			lockedUntil = nil
+			pause?.cancel()
+			
+			guard challenge.wait == 0 else {
+				lockedUntil = Date().addingTimeInterval(TimeInterval(challenge.wait))
+				pause = Task { [weak self] in
+					try? await Task.sleep(for: .seconds(challenge.wait))
+					guard !Task.isCancelled, let self else { return }
+					lockedUntil = nil
+					guard let key = Passkey.stored(id: challenge.id) else { return }
+					offer(key)
+				}
+				return
+			}
+			
+			guard !challenge.isWrong, let key = Passkey.stored(id: challenge.id) else { return }
+			offer(key)
+		case let .password(isSet):
+			node?.hasPassword = isSet
+			
+			let id = node?.id ?? ""
+			
+			if let proposed {
+				Passkey.store(proposed, id: id)
+			} else {
+				Passkey.forget(id: id)
+			}
+			
+			proposed = nil
+			if passwordOutcome == .saving { passwordOutcome = .saved }
+		case let .passwordRefused(outcome):
+			proposed = nil
+			passwordOutcome = outcome
 		case let .latency(value):
 			latency = value
 		case let .usage(value):
@@ -172,6 +231,47 @@ final class Console {
 			activeScene = identifier
 		case let .notice(notice):
 			noticer.yield(notice)
+		}
+	}
+	
+	func unlock(password: String) {
+		guard let lock, !isUnlocking else { return }
+		isUnlocking = true
+		
+		Task {
+			offer(await Passkey.derive(password, id: lock.id))
+		}
+	}
+	
+	func protect(current: String, new: String) {
+		guard let node else { return }
+		passwordOutcome = .saving
+		
+		Task {
+			var old: Data?
+			var fresh: Data?
+			
+			if node.hasPassword {
+				old = await Passkey.derive(current, id: node.id)
+			}
+			
+			if !new.isEmpty {
+				fresh = await Passkey.derive(new, id: node.id)
+			}
+			
+			proposed = fresh
+			send(.password(old: old, new: fresh, nonce: node.nonce))
+		}
+	}
+	
+	private func offer(_ key: Data) {
+		guard let lock else { return }
+		isUnlocking = true
+		offered = key
+		let message = Wire.Command.unlock(key: key, nonce: lock.nonce).message
+		
+		Task {
+			await connection.send(message)
 		}
 	}
 	
@@ -214,8 +314,11 @@ final class Console {
 	}
 	
 	var reachable: NodeEndpoint {
-		guard let address = node?.address, !address.isEmpty else { return endpoint }
-		return NodeEndpoint(host: address, port: endpoint.port)
+		var target = endpoint
+		target.session = node?.session
+		guard let address = node?.address, !address.isEmpty else { return target }
+		target.host = address
+		return target
 	}
 	
 	func send(document frame: Data) {

@@ -74,7 +74,8 @@ final class ShowLibrary {
 	var standby: Standby {
 		guard !isLoaded else { return .ready }
 		guard isSettled, let console else { return .starting }
-		guard !console.link.isConnected else { return .opening }
+		guard !console.link.isConnected else { return .starting }
+		guard console.link != .locked else { return .locked }
 		guard console.isConfigured else { return .welcome }
 		return .searching
 	}

@@ -1,5 +1,6 @@
 #include "Net.h"
 
+#include "Access.h"
 #include "Creds.h"
 
 #include <WiFi.h>
@@ -220,6 +221,7 @@ void begin() {
     Creds::clearBootCount();
     g_bootCleared = true;
     Serial.printf("setup: %u short boots\n", boots);
+    Access::forget();
   }
 
   if (!Creds::have()) {

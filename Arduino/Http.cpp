@@ -1,5 +1,6 @@
 #include "Http.h"
 
+#include "Access.h"
 #include "Link.h"
 #include "Net.h"
 #include "Shows.h"
@@ -61,6 +62,7 @@ const char *reason(int status) {
   switch (status) {
     case 200: return "OK";
     case 400: return "Bad Request";
+    case 403: return "Forbidden";
     case 404: return "Not Found";
     case 405: return "Method Not Allowed";
     case 503: return "Service Unavailable";
@@ -310,11 +312,14 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
 }
 
 void route(NetworkClient &c, const char *method, const char *path,
-           const char *body, size_t bodyLen, int except) {
+           const char *body, size_t bodyLen, int except, const char *session) {
   bool get  = !strcmp(method, "GET");
   bool post = !strcmp(method, "POST");
   bool put  = !strcmp(method, "PUT");
   bool del  = !strcmp(method, "DELETE");
+
+  bool open = !strcmp(path, "/api/info") || !strcmp(path, "/api/scan") || (!strcmp(path, "/api/provision") && Net::fromSetupAp(c.remoteIP()));
+  if (!open && !Link::admits(session)) return sendStatus(c, 403);
 
   if (!strncmp(path, "/api/show", 9)) {
     document(c, path, get, put, del, body, bodyLen, except);
@@ -367,11 +372,13 @@ bool handle(NetworkClient &client) {
   char   header[REQUEST_LINE_MAX];
   size_t contentLength = 0;
   int    except        = -1;
+  char   session[Access::TOKEN_SIZE] = "";
   for (int i = 0;; i++) {
     if (i == REQUEST_HEADERS_MAX || !readLine(client, header, sizeof(header), deadline)) return false;
     if (!header[0]) break;
     if (!strncasecmp(header, "Content-Length:", 15)) contentLength = strtoul(header + 15, nullptr, 10);
     if (!strncasecmp(header, "X-Glow-Client:", 14)) except = (int)strtol(header + 14, nullptr, 10);
+    if (!strncasecmp(header, "X-Glow-Session:", 15)) snprintf(session, sizeof(session), "%s", header + 15 + strspn(header + 15, " "));
   }
 
   if (contentLength > (isDocument ? DOCUMENT_BODY_MAX : REQUEST_BODY_MAX)) {
@@ -398,7 +405,7 @@ bool handle(NetworkClient &client) {
   }
   body[bodyLen] = '\0';
 
-  if (bodyLen == contentLength) route(client, method, target, body, bodyLen, except);
+  if (bodyLen == contentLength) route(client, method, target, body, bodyLen, except, session);
   if (body != stackBody) free(body);
   return false;
 }

@@ -114,6 +114,7 @@ actor NodeStore {
 		request.httpMethod = method
 		request.httpBody = body
 		if let client { request.setValue("\(client)", forHTTPHeaderField: "X-Glow-Client") }
+		if let session = endpoint.session { request.setValue(session, forHTTPHeaderField: "X-Glow-Session") }
 		
 		guard let (data, response) = try? await session.data(for: request) else { return .failed }
 		guard let http = response as? HTTPURLResponse else { return .failed }

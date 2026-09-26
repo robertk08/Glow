@@ -269,6 +269,98 @@ struct ControllerTests {
 		
 		#expect(await eventually { Rig.both.allSatisfy { $0.shows.activeID == Rig.original && $0.shows.isLoaded } } != nil)
 	}
+	
+	@Test func aPasswordLocksOutEveryOtherDevice() async throws {
+		let id = try #require(Rig.first.console.node?.id)
+		try #require(Rig.first.console.node?.hasPassword == false, "the controller already has a password, so it is left alone")
+		Rig.first.console.protect(current: "", new: "probe-pass")
+		
+		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		Passkey.forget(id: id)
+		#expect(Rig.first.console.node?.hasPassword == true)
+		
+		let took = await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil }
+		#expect(took != nil)
+		print("HARDWARE the other device was locked out in \(String(format: "%.2f", took ?? -1))s")
+		
+		try await Task.sleep(for: .seconds(6))
+		#expect(Rig.first.console.link.isConnected)
+		#expect(Rig.second.console.link == .locked)
+		#expect(await NodeStore().show(Rig.original, at: Rig.endpoint) == nil)
+		#expect(await NodeStore().show(Rig.original, at: Rig.first.console.reachable) != nil)
+	}
+	
+	@Test func aWrongPasswordIsTurnedDown() async throws {
+		try #require(Rig.second.console.link == .locked)
+		Rig.second.console.unlock(password: "not it")
+		
+		#expect(await eventually { Rig.second.console.lock?.isWrong == true && !Rig.second.console.isUnlocking } != nil)
+		#expect(Rig.second.console.link == .locked)
+	}
+	
+	@Test func theRightPasswordIsAskedForOncePerDevice() async throws {
+		let id = try #require(Rig.first.console.node?.id)
+		Rig.second.console.unlock(password: "probe-pass")
+		
+		let took = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded }
+		#expect(took != nil)
+		#expect(Passkey.stored(id: id) != nil)
+		print("HARDWARE unlocked and loaded in \(String(format: "%.2f", took ?? -1))s")
+		
+		Rig.second.console.connect()
+		#expect(await eventually { !Rig.second.console.link.isConnected } != nil)
+		let again = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded }
+		#expect(again != nil)
+		print("HARDWARE reconnected without asking in \(String(format: "%.2f", again ?? -1))s")
+	}
+	
+	@Test func changingThePasswordNeedsTheCurrentOne() async throws {
+		Rig.first.console.protect(current: "not it", new: "probe-pass-2")
+		
+		#expect(await eventually { Rig.first.console.passwordOutcome == .wrong(wait: 0) } != nil)
+		#expect(Rig.second.console.link.isConnected)
+	}
+	
+	@Test func aChangedPasswordLocksTheOthersOutAgain() async throws {
+		let id = try #require(Rig.first.console.node?.id)
+		Rig.first.console.protect(current: "probe-pass", new: "probe-pass-2")
+		
+		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		Passkey.forget(id: id)
+		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil } != nil)
+		
+		Rig.second.console.unlock(password: "probe-pass")
+		#expect(await eventually { Rig.second.console.lock?.isWrong == true && !Rig.second.console.isUnlocking } != nil)
+	}
+	
+	@Test func repeatedWrongTriesPauseUnlocking() async throws {
+		for attempt in 0..<5 {
+			Rig.second.console.unlock(password: "guess \(attempt)")
+			#expect(await eventually { !Rig.second.console.isUnlocking } != nil)
+			if Rig.second.console.lockedUntil != nil { break }
+		}
+		
+		let until = try #require(Rig.second.console.lockedUntil)
+		print("HARDWARE unlocking paused for \(String(format: "%.0f", until.timeIntervalSinceNow))s")
+		
+		Rig.second.console.unlock(password: "probe-pass-2")
+		#expect(await eventually { !Rig.second.console.isUnlocking } != nil)
+		#expect(Rig.second.console.link == .locked)
+		
+		#expect(await eventually(within: 40) { Rig.second.console.lockedUntil == nil } != nil)
+		Rig.second.console.unlock(password: "probe-pass-2")
+		#expect(await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded } != nil)
+	}
+	
+	@Test func removingThePasswordOpensTheControllerAgain() async throws {
+		let id = try #require(Rig.first.console.node?.id)
+		Rig.first.console.protect(current: "probe-pass-2", new: "")
+		
+		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		#expect(await eventually { Rig.both.allSatisfy { $0.console.node?.hasPassword == false } } != nil)
+		#expect(Passkey.stored(id: id) == nil)
+		#expect(await NodeStore().show(Rig.original, at: Rig.endpoint) != nil)
+	}
 }
 
 private extension JSONDecoder {

@@ -6,6 +6,9 @@ actor NodeLink {
 	enum Event: Sendable {
 		case state(LinkState)
 		case status(Wire.NodeInfo)
+		case locked(Wire.Lock)
+		case password(isSet: Bool)
+		case passwordRefused(PasswordOutcome)
 		case latency(TimeInterval)
 		case pong(Int, Wire.Usage?)
 		case usage(Wire.Usage)
@@ -106,12 +109,24 @@ actor NodeLink {
 		startHeartbeat()
 		
 		var reached = false
+		var state = LinkState.connecting
 		while !Task.isCancelled, let message = await message(from: link) {
-			if !reached {
-				reached = true
-				continuation.yield(.state(.connected))
+			reached = true
+			let event = Wire.event(message)
+			var arrived = state
+			
+			switch event {
+			case .locked: arrived = .locked
+			case .some: arrived = .connected
+			case nil: break
 			}
-			receive(message)
+			
+			if arrived != state {
+				state = arrived
+				continuation.yield(.state(arrived))
+			}
+			
+			receive(event)
 		}
 		
 		if connection === link { close() }
@@ -215,9 +230,9 @@ actor NodeLink {
 		pings.removeAll()
 	}
 	
-	private func receive(_ message: URLSessionWebSocketTask.Message) {
+	private func receive(_ event: Event?) {
 		lastHeard = Date()
-		guard let event = Wire.event(message) else { return }
+		guard let event else { return }
 		
 		guard case let .pong(seq, usage) = event else {
 			continuation.yield(event)

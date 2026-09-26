@@ -17,5 +17,7 @@ bool  blackout();
 void notify(const char *json, int except);
 
 bool adopt(NetworkClient &tcp, const char *url);
+bool admits(const char *session);
+void forgetPassword();
 
 }  // namespace Link

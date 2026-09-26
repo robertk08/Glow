@@ -3,6 +3,7 @@ import Foundation
 nonisolated struct NodeEndpoint: Sendable, Hashable, Codable {
 	var host: String
 	var port = 80
+	var session: String?
 	
 	static let fallback = NodeEndpoint(host: "glow.local")
 	static let setup = NodeEndpoint(host: "192.168.4.1")

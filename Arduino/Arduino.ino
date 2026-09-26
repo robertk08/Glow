@@ -1,3 +1,4 @@
+#include "Access.h"
 #include "Config.h"
 #include "Creds.h"
 #include "DmxBus.h"
@@ -14,6 +15,7 @@ static void report() {
   Serial.printf("memory %u KB free of %u KB, loop stack %u bytes spare\n", (unsigned)(ESP.getFreeHeap() / 1024),
                 (unsigned)(ESP.getHeapSize() / 1024), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
   Serial.printf("store %u KB of %u KB used\n", (unsigned)(Store::used() / 1024), (unsigned)(Store::capacity() / 1024));
+  Serial.println(Access::guarded() ? F("password set") : F("no password"));
   Serial.print(Net::provisioned() ? F("wifi stored") : F("wifi none stored"));
   for (int slot = 0; slot < Creds::SLOTS; slot++) {
     if (Creds::ssid(slot)[0]) Serial.printf("%s \"%s\"", slot ? "," : "", Creds::ssid(slot));
@@ -23,12 +25,13 @@ static void report() {
 }
 
 static void run(const char *line) {
-  if      (!strcmp(line, "net"))    report();
-  else if (!strcmp(line, "setup"))  Net::enterSetup();
-  else if (!strcmp(line, "forget")) Net::forget();
-  else if (!strcmp(line, "home"))   HomeKit::report();
-  else if (!strcmp(line, "unpair")) HomeKit::unpair();
-  else Serial.println(F("commands: net | setup | forget | home | unpair"));
+  if      (!strcmp(line, "net"))      report();
+  else if (!strcmp(line, "setup"))    Net::enterSetup();
+  else if (!strcmp(line, "forget"))   Net::forget();
+  else if (!strcmp(line, "home"))     HomeKit::report();
+  else if (!strcmp(line, "unpair"))   HomeKit::unpair();
+  else if (!strcmp(line, "password")) Link::forgetPassword();
+  else Serial.println(F("commands: net | setup | forget | home | unpair | password"));
 }
 
 static void pollSerial() {
@@ -60,6 +63,7 @@ void setup() {
   Serial.printf("dmx: GPIO%d at %d Hz\n", DMX_TX_PIN, DmxBus::refreshHz());
 
   Creds::begin();
+  Access::begin();
   Store::begin();
   Shows::begin();
   Net::begin();
@@ -67,7 +71,7 @@ void setup() {
   Http::begin();
   HomeKit::begin();
 
-  Serial.println(F("commands: net | setup | forget | home | unpair"));
+  Serial.println(F("commands: net | setup | forget | home | unpair | password"));
 }
 
 void loop() {

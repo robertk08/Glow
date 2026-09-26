@@ -5,6 +5,7 @@ struct NodeView: View {
 	
 	@State private var isSettingUp = false
 	@State private var isForgetting = false
+	@State private var isProtecting = false
 	@State private var failure: String?
 	
 	var body: some View {
@@ -24,6 +25,16 @@ struct NodeView: View {
 				if let usage = console.usage {
 					UsageRow(title: "Memory", used: usage.memory, total: usage.memoryTotal, style: .memory)
 					UsageRow(title: "Storage", used: usage.storage, total: usage.storageTotal, style: .file)
+				}
+			}
+			
+			if let node = console.node {
+				Section {
+					Button(node.passwordAction, systemImage: "lock") {
+						console.passwordOutcome = nil
+						isProtecting = true
+					}
+					.disabled(!console.link.isConnected)
 				}
 			}
 			
@@ -56,6 +67,9 @@ struct NodeView: View {
 		.navigationBarTitleDisplayMode(.inline)
 		.sheet(isPresented: $isSettingUp) {
 			NodeSetupView()
+		}
+		.sheet(isPresented: $isProtecting) {
+			PasswordView()
 		}
 		.alert("Could Not Forget Network", isPresented: Binding { failure != nil } set: { _ in failure = nil }) {
 			Button("OK", role: .cancel) { failure = nil }

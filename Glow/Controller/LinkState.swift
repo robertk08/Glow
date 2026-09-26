@@ -1,9 +1,10 @@
 import SwiftUI
 
-enum LinkState: Sendable, Equatable {
+nonisolated enum LinkState: Sendable, Equatable {
 	case offline
 	case connecting
 	case connected
+	case locked
 	case retrying(seconds: Int)
 	
 	var isConnected: Bool { self == .connected }
@@ -13,6 +14,7 @@ enum LinkState: Sendable, Equatable {
 		case .offline: "Not connected"
 		case .connecting: "Connecting"
 		case .connected: "Connected"
+		case .locked: "Locked"
 		case let .retrying(seconds): "Reconnecting in \(seconds)s"
 		}
 	}
@@ -27,6 +29,7 @@ enum LinkState: Sendable, Equatable {
 		case .offline: "wifi.slash"
 		case .connecting: "wifi"
 		case .connected: "wifi"
+		case .locked: "lock.fill"
 		case .retrying: "wifi.exclamationmark"
 		}
 	}
@@ -36,6 +39,7 @@ enum LinkState: Sendable, Equatable {
 		case .offline: .secondary
 		case .connecting: .orange
 		case .connected: .green
+		case .locked: .orange
 		case .retrying: .orange
 		}
 	}

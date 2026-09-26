@@ -21,6 +21,8 @@ nonisolated enum Wire {
 	
 	nonisolated enum Command: Sendable {
 		case hello
+		case unlock(key: Data, nonce: String)
+		case password(old: Data?, new: Data?, nonce: String)
 		case ping(seq: Int)
 		case blackout(Bool)
 		case master(Double)
@@ -34,6 +36,8 @@ nonisolated enum Wire {
 		var message: URLSessionWebSocketTask.Message {
 			let fields: [String: Any] = switch self {
 			case .hello: ["t": "hello"]
+			case let .unlock(key, nonce): ["t": "unlock", "proof": Passkey.proof("unlock", nonce: nonce, key: key)]
+			case let .password(old, new, nonce): ["t": "password", "proof": Passkey.proof("change", nonce: nonce, key: old), "key": Passkey.wrap(new, nonce: nonce, key: old)]
 			case let .ping(seq): ["t": "ping", "seq": seq]
 			case let .blackout(on): ["t": "blackout", "on": on]
 			case let .master(level): ["t": "master", "level": level]
@@ -57,8 +61,16 @@ nonisolated enum Wire {
 		var scene = ""
 		var master = 1.0
 		var blackout = false
+		var id = ""
+		var hasPassword = false
+		var nonce = ""
+		var session = ""
 		
-		private enum CodingKeys: String, CodingKey { case fw, src, client, ip, scene, master, blackout }
+		var passwordAction: String {
+			hasPassword ? "Change Password" : "Set Password"
+		}
+		
+		private enum CodingKeys: String, CodingKey { case fw, src, client, ip, scene, master, blackout, id, password, nonce, session }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -69,6 +81,31 @@ nonisolated enum Wire {
 			scene = try container.decodeIfPresent(String.self, forKey: .scene) ?? ""
 			master = try container.decodeIfPresent(Double.self, forKey: .master) ?? 1
 			blackout = try container.decodeIfPresent(Bool.self, forKey: .blackout) ?? false
+			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			hasPassword = try container.decodeIfPresent(Bool.self, forKey: .password) ?? false
+			nonce = try container.decodeIfPresent(String.self, forKey: .nonce) ?? ""
+			session = try container.decodeIfPresent(String.self, forKey: .session) ?? ""
+		}
+	}
+	
+	nonisolated struct Lock: Decodable, Sendable, Equatable {
+		var id = ""
+		var nonce = ""
+		var isWrong = false
+		var wait = 0
+		
+		var message: String {
+			isWrong ? "That password is wrong." : "This controller has a password."
+		}
+		
+		private enum CodingKeys: String, CodingKey { case id, nonce, wrong, wait }
+		
+		init(from decoder: any Decoder) throws {
+			let container = try decoder.container(keyedBy: CodingKeys.self)
+			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+			nonce = try container.decodeIfPresent(String.self, forKey: .nonce) ?? ""
+			isWrong = try container.decodeIfPresent(Bool.self, forKey: .wrong) ?? false
+			wait = try container.decodeIfPresent(Int.self, forKey: .wait) ?? 0
 		}
 	}
 	
@@ -152,6 +189,9 @@ nonisolated enum Wire {
 				var id: String?
 				var op: String?
 				var reason: String?
+				var set: Bool?
+				var refused: String?
+				var wait: Int?
 				var ram: Int64?
 				var ramTotal: Int64?
 				var store: Int64?
@@ -170,6 +210,12 @@ nonisolated enum Wire {
 			case "status":
 				guard let info = try? JSONDecoder().decode(NodeInfo.self, from: data) else { return nil }
 				return .status(info)
+			case "locked":
+				guard let lock = try? JSONDecoder().decode(Lock.self, from: data) else { return nil }
+				return .locked(lock)
+			case "password":
+				if let set = envelope.set { return .password(isSet: set) }
+				return .passwordRefused(envelope.refused == "wrong" ? .wrong(wait: envelope.wait ?? 0) : .failed)
 			case "pong":
 				guard let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return .pong(envelope.seq ?? 0, nil) }
 				return .pong(envelope.seq ?? 0, Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))

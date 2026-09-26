@@ -118,6 +118,30 @@ Glow ships the four fixtures here, and their channel tables come from the [Cameo
 and, for the unbranded head, the [Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),
 which is the same 7 by 10 W RGBW platform channel for channel.
 
+## Password
+
+**One password guards the whole controller**, every show and every channel,
+and HomeKit keeps its own pairing code. There is none until someone sets one in
+Settings › Controller. From then on a device that has not given it sees a
+password field instead of the rig, and the controller answers it nothing else:
+no frames, no shows, no commands, no HTTP.
+
+**Each device asks once.** The app turns the password into a key with
+PBKDF2-SHA256 (100,000 rounds, salted with the controller's id) and keeps that
+key in the Keychain for that controller, so every later connection unlocks by
+itself. Neither the password nor the key crosses the network to unlock. The
+controller keeps only the key, in NVS, never the password.
+
+Changing or removing it asks for the current one. A change drops every other
+device, and each one asks for the new password. Five wrong answers in a row
+pause unlocking for 30 seconds, and each further miss doubles the pause, up to
+16 minutes. When everyone has forgotten it, serial `password` or three quick
+restarts remove it.
+
+It keeps out anyone with Glow who does not know the password. It does not
+encrypt the traffic, so someone capturing packets on the same Wi-Fi could still
+take over a connection that is already unlocked.
+
 ## Setting up a controller
 
 Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored
@@ -144,8 +168,9 @@ to the front.
 a minute of finding neither stored network, and keeps it up until it joins. To
 ask for it while a stored network is fine, use Change Wi-Fi Network in Glow,
 or power the controller off and on three times leaving it on for less than five
-seconds each time, which raises the setup network for five minutes. Neither
-erases anything. Serial `forget`, or the app's forget button, is what erases.
+seconds each time, which raises the setup network for five minutes. The three
+quick restarts also remove the controller's password, and otherwise nothing is
+erased. Serial `forget`, or the app's forget button, is what erases networks.
 Reflashing does not, because credentials live in NVS.
 
 Only 2.4 GHz: the ESP32-S3 has no 5 GHz radio, so a 5 GHz-only network never
@@ -200,12 +225,13 @@ Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
 table starts you on an empty Show 1.
 
-Serial console at 115200: `net | setup | forget | home | unpair`. The
+Serial console at 115200: `net | setup | forget | home | unpair | password`. The
 controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
 `home`, `setup`, `link`), and HomeSpan's own output is silenced. `net` reports
 the firmware, the address, the connected phones, free memory, how much of the
 loop's stack is spare, the show filesystem and the stored networks. `home`
-prints the HomeKit accessory database with any errors in it.
+prints the HomeKit accessory database with any errors in it. `password` removes
+the controller's password.
 
 ## Testing against a controller
 
@@ -309,7 +335,22 @@ Controller screen shows live),
 plus `blackout`, `master` and `scene` relayed from another client, and the
 document notices below. Types are
 strict, a fraction is not an integer and a boolean is not `1`. `status` and
-`shows` are sent in reply to `hello`, so say hello first. `client` is the slot the
+`shows` are sent in reply to `hello`, so say hello first. `status` also carries
+`id`, `password` (whether one is set), `nonce` and `session`.
+
+**A controller with a password answers `hello` with `locked`** (`id`, `nonce`,
+`wrong`, `wait` in seconds) and ignores everything else until the client sends
+`{"t":"unlock","proof"}`. The proof is HMAC-SHA256 of `"unlock"` followed by the
+nonce, keyed with the password key and written in hex. A right proof gets the
+usual `status`, `shows` and frame. A wrong one gets a new `locked` with a fresh
+nonce. `{"t":"password","proof","key"}` sets, changes or removes it: the proof
+signs `"change"` and the nonce with the current key, and the new key travels
+XORed with the HMAC of `"wrap"` and the nonce, or bare when there was none. An
+empty `key` removes it. Every device then gets `{"t":"password","set"}`, and a
+refusal goes to the sender alone as `{"t":"password","refused":"wrong"}` with
+`wait`, or `"storage"`. HTTP requests carry the session as `X-Glow-Session`,
+and without a live one everything but `/api/info`, `/api/scan` and provisioning
+on the setup network answers 403. A session lasts as long as its WebSocket. `client` is the slot the
 controller gave you, and you send it back as `X-Glow-Client` so your own writes
 are not relayed to you. Anything the controller cannot read is ignored rather
 than answered.
