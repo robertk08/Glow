@@ -7,7 +7,6 @@
 
 #include <HomeSpan.h>
 #include <math.h>
-#include <nvs.h>
 
 namespace HomeKit {
 namespace {
@@ -185,13 +184,6 @@ struct Axis : Service::WindowCovering {
 }  // namespace
 
 void begin() {
-  nvs_handle_t wifiNvs;
-  if (nvs_open("WIFI", NVS_READWRITE, &wifiNvs) == ESP_OK) {
-    nvs_erase_key(wifiNvs, "WIFIDATA");
-    nvs_commit(wifiNvs);
-    nvs_close(wifiNvs);
-  }
-
   homeSpan.setLogLevel(-1);
   homeSpan.setPortNum(HOMEKIT_PORT);
   homeSpan.setHostNameSuffix("");

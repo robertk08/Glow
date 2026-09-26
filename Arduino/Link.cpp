@@ -127,12 +127,8 @@ void answer(uint8_t num, const uint8_t *p, bool stored) {
   char id[Store::NAME_LIMIT];
   names(p, show, folder, id);
 
-  JsonDocument doc;
-  doc["t"]      = stored ? "wrote" : "unwritten";
-  doc["show"]   = show;
-  doc["folder"] = folder;
-  doc["id"]     = id;
-  reply(num, doc);
+  int n = snprintf(g_out, sizeof(g_out), "{\"t\":\"%s\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\"}", stored ? "wrote" : "unwritten", show, folder, id);
+  g_ws.sendTXT(num, g_out, n);
 }
 
 void settle() {

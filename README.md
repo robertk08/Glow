@@ -222,12 +222,8 @@ the compiler report the whole flash as the maximum rather than the app
 partition. If the binary ever passes 2 MB, `app0` is the number to raise.
 
 Shows live in that partition, mounted as LittleFS and formatted on first boot.
-Coming from an older layout moves every partition, so the first flash with this
-table starts you on an empty Show 1. At every boot the controller deletes any
-file there that is not the show list or a listed show. Firmware 2.7 does not
-read shows kept by earlier firmware, so export them first, flash with
-**Erase All Flash Before Sketch Upload** enabled, and import them afterwards.
-Erasing also clears the stored networks, the password and the HomeKit pairing.
+At every boot the controller deletes any file there that is not the show list
+or a listed show.
 
 Serial console at 115200: `net | setup | forget | home | unpair | password | key`. The
 controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
