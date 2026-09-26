@@ -118,8 +118,7 @@ final class Console {
 		let known = UserDefaults.standard.string(forKey: Self.addressKey)
 		
 		Task {
-			await connection.prefer(known)
-			await connection.connect(to: target)
+			await connection.connect(to: target, preferring: known)
 		}
 	}
 	

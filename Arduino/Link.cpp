@@ -4,6 +4,7 @@
 #include "DmxBus.h"
 #include "HomeKit.h"
 #include "Net.h"
+#include "Outlet.h"
 #include "Shows.h"
 #include "Store.h"
 
@@ -16,15 +17,13 @@ namespace {
 
 class Sockets : public WebSocketsServerCore {
  public:
-  bool adopt(NetworkClient &tcp, const char *url) {
-    WEBSOCKETS_NETWORK_CLASS *held = new WEBSOCKETS_NETWORK_CLASS(tcp);
-    WSclient_t *client = handleNewClient(held);
-    if (!client) return false;   // it closed and deleted held itself
+  void adopt(Outlet *tcp, const char *url) {
+    WSclient_t *client = handleNewClient(tcp);
+    if (!client) return;
 
     String requestLine = "GET ";
     requestLine += url;
     handleHeader(client, &requestLine);
-    return true;
   }
 };
 
@@ -35,13 +34,13 @@ const uint8_t  OP_SOURCE   = 0x02;
 const uint8_t  OP_DOCUMENT = 0x03;
 const uint8_t  OP_BOTH     = 0x04;
 const size_t   DMX_HEADER  = 6;
-const size_t   DOC_HEADER  = 7;
 const uint16_t SLOTS       = 512;
 const uint8_t  NO_CLIENT   = 0xFF;
 
-const uint32_t WS_PING_MS    = 4000;
-const uint32_t WS_PONG_MS    = 2000;
-const uint8_t  WS_PING_TRIES = 2;
+const uint32_t WS_PING_MS     = 4000;
+const uint32_t WS_PONG_MS     = 2000;
+const uint8_t  WS_PING_TRIES  = 2;
+const uint32_t WS_PATIENCE_MS = 1000;
 
 uint8_t      g_source[DMX_HEADER + SLOTS];
 uint8_t      g_frame[DMX_HEADER + SLOTS];
@@ -49,6 +48,7 @@ bool         g_haveSource  = false;
 int          g_changedFrom = 0;
 int          g_changedTo   = 0;
 portMUX_TYPE g_lock        = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE g_sessions    = portMUX_INITIALIZER_UNLOCKED;
 char         g_scene[Store::NAME_LIMIT] = "";
 float        g_master   = 1;
 bool         g_blackout = false;
@@ -56,6 +56,7 @@ char         g_out[512];
 bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
+uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 
 bool admitted(uint8_t num) {
   return !Access::guarded() || g_admitted[num];
@@ -113,33 +114,67 @@ const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
   return cursor + len;
 }
 
+void names(const uint8_t *p, char *show, char *folder, char *id) {
+  name(name(name(p + Store::DOC_HEADER, p[2], show), p[3], folder), p[4], id);
+}
+
+void answer(uint8_t num, const uint8_t *p, bool stored) {
+  char show[Store::NAME_LIMIT];
+  char folder[Store::NAME_LIMIT];
+  char id[Store::NAME_LIMIT];
+  names(p, show, folder, id);
+
+  JsonDocument doc;
+  doc["t"]      = stored ? "wrote" : "unwritten";
+  doc["show"]   = show;
+  doc["folder"] = folder;
+  doc["id"]     = id;
+  reply(num, doc);
+}
+
 void onDocument(uint8_t num, const uint8_t *p, size_t len) {
-  if (len < DOC_HEADER) return;
+  if (len < Store::DOC_HEADER || p[1] > 1) return;
 
   size_t showLen   = p[2];
   size_t folderLen = p[3];
   size_t idLen     = p[4];
   size_t bodyLen   = (size_t)p[5] | ((size_t)p[6] << 8);
 
-  if (len != DOC_HEADER + showLen + folderLen + idLen + bodyLen) return;
-  if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) return;
+  if (len != Store::DOC_HEADER + showLen + folderLen + idLen + bodyLen) return;
 
   char show[Store::NAME_LIMIT];
   char folder[Store::NAME_LIMIT];
   char id[Store::NAME_LIMIT];
-  const uint8_t *body = name(name(name(p + DOC_HEADER, showLen, show), folderLen, folder), idLen, id);
+  if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) return;
+  names(p, show, folder, id);
+  if (!Store::safe(show) || !Store::safe(folder) || !Store::safe(id)) return answer(num, p, false);
 
-  char path[Store::PATH_LIMIT];
-  bool stored = Store::ready() && Shows::contains(show) && Store::objectPath(path, sizeof(path), show, folder, id);
-  if (stored) stored = p[1] == 0 ? Store::write(path, body, bodyLen) : Store::remove(path);
-  if (stored) relay(num, true, p, len);
+  uint8_t   *frame = (uint8_t *)malloc(len);
+  Store::Job job   = {frame, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
+  if (frame) memcpy(frame, p, len);
+  if (frame && Store::submit(job)) return;
+  free(frame);
+  answer(num, p, false);
+}
 
-  JsonDocument doc;
-  doc["t"] = stored ? "wrote" : "unwritten";
-  doc["show"] = show;
-  doc["folder"] = folder;
-  doc["id"] = id;
-  reply(num, doc);
+void settle() {
+  Store::Job job;
+  while (Store::settled(job)) {
+    if (job.done && job.stored) {
+      char show[Store::NAME_LIMIT];
+      char folder[Store::NAME_LIMIT];
+      char id[Store::NAME_LIMIT];
+      names(job.frame, show, folder, id);
+      snprintf(g_out, sizeof(g_out), "{\"t\":\"doc\",\"show\":\"%s\",\"folder\":\"%s\",\"id\":\"%s\"}", show, folder, id);
+      relay(job.client < 0 ? NO_CLIENT : (uint8_t)job.client, false, (const uint8_t *)g_out, strlen(g_out));
+    } else if (!job.done) {
+      uint8_t num     = job.client & 0xFF;
+      bool    present = (job.client >> 8) == g_arrival[num];
+      if (job.stored) relay(present ? num : NO_CLIENT, true, job.frame, job.length);
+      if (present) answer(num, job.frame, job.stored);
+    }
+    free(job.frame);
+  }
 }
 
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
@@ -204,7 +239,9 @@ void unlock(uint8_t num, const char *proof) {
     return challenge(num, true);
   }
 
+  portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = true;
+  portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u unlocked\n", num);
   greet(num);
 }
@@ -224,13 +261,13 @@ void protect(uint8_t num, const char *proof, const char *key) {
     return reply(num, out);
   }
 
-  g_admitted[num] = true;
+  portENTER_CRITICAL(&g_sessions);
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) g_admitted[i] = i == num || (g_admitted[i] && !Access::guarded());
+  portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u %s the password\n", num, Access::guarded() ? "set" : "removed");
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (i == num || !Access::guarded()) continue;
-    g_admitted[i] = false;
-    g_ws.disconnect(i);
+    if (i != num && Access::guarded()) g_ws.disconnect(i);
   }
   if (!Access::guarded()) release();
 
@@ -302,15 +339,22 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
 }
 
 void arrive(uint8_t num) {
-  g_admitted[num] = false;
+  char session[Access::TOKEN_SIZE];
   Access::fresh(g_nonce[num]);
-  Access::fresh(g_session[num]);
+  Access::fresh(session);
+  g_arrival[num]++;
+  portENTER_CRITICAL(&g_sessions);
+  g_admitted[num] = false;
+  memcpy(g_session[num], session, sizeof(session));
+  portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str());
 }
 
 void leave(uint8_t num) {
+  portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = false;
   g_session[num][0] = '\0';
+  portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u left\n", num);
 }
 
@@ -335,6 +379,7 @@ void begin() {
 void tick() {
   g_ws.loop();
   relayChanges();
+  settle();
 }
 
 int clients() { return g_ws.connectedClients(); }
@@ -364,26 +409,27 @@ float master() { return g_master; }
 
 bool blackout() { return g_blackout; }
 
-void notify(const char *json, int except) {
-  relay(except < 0 ? NO_CLIENT : (uint8_t)except, false, (const uint8_t *)json, strlen(json));
-}
-
-bool adopt(NetworkClient &tcp, const char *url) {
-  return g_ws.adopt(tcp, url);
+void adopt(Outlet *tcp, const char *url) {
+  tcp->patience = WS_PATIENCE_MS;
+  g_ws.adopt(tcp, url);
 }
 
 void forgetPassword() {
   Access::forget();
   release();
-  notify("{\"t\":\"password\",\"set\":false}", -1);
+  const char *cleared = "{\"t\":\"password\",\"set\":false}";
+  relay(NO_CLIENT, false, (const uint8_t *)cleared, strlen(cleared));
 }
 
 bool admits(const char *session) {
   if (!Access::guarded()) return true;
-  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (g_admitted[i] && session[0] && !strcmp(g_session[i], session)) return true;
+  bool found = false;
+  portENTER_CRITICAL(&g_sessions);
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX && !found; i++) {
+    found = g_admitted[i] && session[0] && !strcmp(g_session[i], session);
   }
-  return false;
+  portEXIT_CRITICAL(&g_sessions);
+  return found;
 }
 
 }  // namespace Link

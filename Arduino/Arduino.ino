@@ -68,6 +68,7 @@ void setup() {
   Access::begin();
   Store::begin();
   Shows::begin();
+  Store::sweep();
   Net::begin();
   Link::begin();
   Http::begin();

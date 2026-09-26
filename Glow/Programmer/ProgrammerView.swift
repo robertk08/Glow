@@ -227,7 +227,7 @@ private struct BeamRows: View {
 		if let shutter {
 			if shutter.functions.contains(where: { $0.unit == .hertz }) {
 				Section("Shutter") {
-					StrobePad(glow: programmer.glow, hertz: programmer.strobeHertz, isRunning: programmer.strobeHertz != nil)
+					StrobePad(glow: programmer.glow, hertz: programmer.strobeHertz)
 						.listRowBackground(Color.clear)
 						.listRowSeparator(.hidden)
 						.listRowInsets(.init(top: 4, leading: 0, bottom: 4, trailing: 0))

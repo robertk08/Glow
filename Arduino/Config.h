@@ -8,7 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-#define GLOW_FW_VERSION "2.6.1"
+#define GLOW_FW_VERSION "2.7.0"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_WS_PATH    "/ws"
@@ -39,14 +39,13 @@ static const int DMX_MIN_SLOTS  = 24;
 
 static const int DMX_TASK_CORE     = 1;
 static const int DMX_TASK_PRIORITY = 5;
-static const int DMX_TASK_STACK    = 3072;
+static const int DMX_TASK_STACK    = 2048;
 
 static const uint16_t HOMEKIT_PORT = 1201;
 
 #define HOMEKIT_NAME          "Moving Head"
 #define HOMEKIT_POSITION_NAME "Pan and Tilt"
 #define HOMEKIT_MODEL         "Mini LED Moving Head"
-#define HOMEKIT_PAIRING_CODE  "46637726"
 #define HOMEKIT_SHOW          "Home"
 
 static const int HEAD_ADDRESS = 1;

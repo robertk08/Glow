@@ -561,22 +561,21 @@ final class ShowLibrary {
 				continue
 			}
 			
+			sent[key] = data
+			
 			if data.count <= Self.frameLimit {
-				sent[key] = data
 				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data.isEmpty ? nil : data))
 				continue
 			}
 			
-			guard let endpoint else { return }
-			let isStored = data.isEmpty ? await store.delete(folder, id: identifier, in: showID, at: endpoint, client: client) : await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client)
-			guard showID == loadedID, isCurrent else { return }
+			guard let endpoint else { continue }
+			let place = Wire.Place(show: showID, folder: folder.rawValue, id: identifier)
+			let client = client
 			
-			guard isStored else {
-				reject()
-				return
+			Task {
+				let isStored = await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client)
+				receive(.landed(place, isStored))
 			}
-			
-			baseline[key] = data.isEmpty ? nil : data
 		}
 	}
 	

@@ -39,16 +39,13 @@ actor NodeLink {
 		self.continuation = continuation
 	}
 	
-	func connect(to endpoint: NodeEndpoint) {
+	func connect(to endpoint: NodeEndpoint, preferring host: String?) {
+		preferred = host
 		supervisor?.cancel()
 		close()
 		supervisor = Task { [weak self] in
 			await self?.supervise(endpoint)
 		}
-	}
-	
-	func prefer(_ host: String?) {
-		preferred = host
 	}
 	
 	func send(_ message: URLSessionWebSocketTask.Message) async {
@@ -94,7 +91,7 @@ actor NodeLink {
 			if Task.isCancelled { return }
 			
 			failures = reachedNode ? 0 : failures + 1
-			for remaining in stride(from: min(3, max(1, failures)), to: 0, by: -1) {
+			for remaining in stride(from: min(3, failures), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
 				try? await Task.sleep(for: .seconds(1))

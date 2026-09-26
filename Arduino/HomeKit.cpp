@@ -1,7 +1,6 @@
 #include "HomeKit.h"
 
 #include "Config.h"
-#include "Guard.h"
 #include "Link.h"
 #include "Net.h"
 #include "Shows.h"
@@ -199,11 +198,6 @@ void begin() {
   homeSpan.setSerialInputDisable(true);
   homeSpan.begin(Category::Bridges, GLOW_NODE_NAME, GLOW_HOSTNAME, HOMEKIT_MODEL);
 
-  Flash::guarded([] {
-    homeSpan.setPairingCode(HOMEKIT_PAIRING_CODE);
-    return true;
-  });
-
   new SpanAccessory();
   new Service::AccessoryInformation();
   new Characteristic::Identify();
@@ -228,7 +222,7 @@ void begin() {
 
   showChanged();
   homeSpan.autoPoll(8192, 1, 0);
-  Serial.printf("home: HomeKit on port %u, pairing code %s\n", HOMEKIT_PORT, HOMEKIT_PAIRING_CODE);
+  Serial.printf("home: HomeKit on port %u, pairing code %s\n", HOMEKIT_PORT, DEFAULT_SETUP_CODE);
 }
 
 void showChanged() {

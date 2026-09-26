@@ -1,225 +1,377 @@
 #include "Store.h"
 
 #include "Guard.h"
+#include "Shows.h"
 
 #include <LittleFS.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <algorithm>
+#include <dirent.h>
+#include <fcntl.h>
+#include <freertos/queue.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
 
 namespace Store {
 namespace {
 
-const char *SHOWS     = "/shows.json";
-const char *SHOWS_DIR = "/s";
-const char *UPLOAD    = "/upload.part";
+const char    *ROOT         = "/littlefs";
+const char    *LIST         = "/littlefs/shows.json";
+const char    *LIST_SPARE   = "/littlefs/shows.json.tmp";
+const size_t   PATH_LIMIT   = 64;
+const uint8_t  PUT          = 0;
+const uint8_t  ERASE        = 1;
+const uint8_t  DROP         = 2;
+const size_t   HEAD         = 5;
+const uint32_t REVIEW_FROM  = 32768;
+const uint32_t REVIEW_EVERY = 16384;
+const uint32_t MEASURE_MS   = 500;
+const int      JOBS_WAITING = 16;
+const int      KEEPER_STACK = 4096;
+const size_t   PIECE        = 1024;
 
-const uint32_t MEASURE_MS = 5000;
-
-bool     g_ready    = false;
-size_t   g_used     = 0;
-uint32_t g_measured = 0;
-
-SemaphoreHandle_t g_lock = nullptr;
+bool              g_ready      = false;
+volatile size_t   g_used       = 0;
+volatile uint32_t g_generation = 0;
+SemaphoreHandle_t g_lock       = nullptr;
+QueueHandle_t     g_jobs       = nullptr;
+QueueHandle_t     g_settled    = nullptr;
+uint8_t           g_piece[PIECE];
 
 struct Hold {
   Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
   ~Hold() { xSemaphoreGive(g_lock); }
 };
 
-bool safe(const char *name) {
-  if (!name || !name[0]) return false;
-  size_t n = 0;
-  for (const char *p = name; *p; p++) {
-    if (++n >= NAME_LIMIT) return false;
-    bool ok = (*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-              (*p >= '0' && *p <= '9') || *p == '-' || *p == '_';
-    if (!ok) return false;
-  }
+struct Record {
+  uint8_t  op;
+  uint32_t at;
+  uint32_t body;
+  uint32_t next;
+  char     folder[NAME_LIMIT];
+  char     id[NAME_LIMIT];
+};
+
+struct Entry {
+  uint64_t key;
+  uint32_t at;
+  uint32_t length;
+  bool     put;
+};
+
+bool path(char *out, const char *show, const char *suffix) {
+  return safe(show) && snprintf(out, PATH_LIMIT, "%s/%s%s", ROOT, show, suffix) < (int)PATH_LIMIT;
+}
+
+uint64_t hash(uint64_t h, const char *text) {
+  for (const char *p = text; *p; p++) h = (h ^ (uint8_t)*p) * 1099511628211ULL;
+  return h;
+}
+
+uint64_t key(const Record &r) {
+  return hash(hash(hash(1469598103934665603ULL, r.folder), "/"), r.id);
+}
+
+uint32_t sizeOf(int fd) {
+  struct stat st;
+  return fstat(fd, &st) ? 0 : (uint32_t)st.st_size;
+}
+
+bool record(int fd, uint32_t at, uint32_t size, Record &r) {
+  uint8_t head[HEAD];
+  if (at + HEAD > size || ::pread(fd, head, HEAD, at) != (ssize_t)HEAD) return false;
+
+  size_t folderLength = head[1];
+  size_t idLength     = head[2];
+  if (head[0] > ERASE || folderLength >= NAME_LIMIT || idLength >= NAME_LIMIT) return false;
+
+  r.op   = head[0];
+  r.at   = at;
+  r.body = at + HEAD + folderLength + idLength;
+  r.next = r.body + (head[3] | (head[4] << 8));
+  if (r.next > size) return false;
+  if (::pread(fd, r.folder, folderLength, at + HEAD) != (ssize_t)folderLength) return false;
+  if (::pread(fd, r.id, idLength, at + HEAD + folderLength) != (ssize_t)idLength) return false;
+
+  r.folder[folderLength] = '\0';
+  r.id[idLength]         = '\0';
   return true;
 }
 
-bool ensure(const char *dir) {
-  if (LittleFS.exists(dir)) return true;
-  return LittleFS.mkdir(dir);
+bool append(const char *file, const uint8_t *head, const uint8_t *rest, size_t length, uint32_t &before) {
+  Hold hold;
+  return Flash::guarded([&] {
+    int fd = ::open(file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return false;
+    before = sizeOf(fd);
+    bool written = ::write(fd, head, HEAD) == (ssize_t)HEAD && ::write(fd, rest, length) == (ssize_t)length;
+    if (!written) ftruncate(fd, before);
+    return ::close(fd) == 0 && written;
+  });
 }
 
-bool ensureParents(const char *path) {
-  char dir[PATH_LIMIT];
-  if (snprintf(dir, sizeof(dir), "%s", path) >= (int)sizeof(dir)) return false;
+bool review(const char *show, bool always) {
+  char file[PATH_LIMIT];
+  char spare[PATH_LIMIT];
+  if (!path(file, show, "") || !path(spare, show, ".tmp")) return false;
 
-  for (char *p = dir + 1; *p; p++) {
-    if (*p != '/') continue;
-    *p = '\0';
-    bool made = ensure(dir);
-    *p = '/';
-    if (!made) return false;
+  Hold hold;
+  int from = ::open(file, O_RDONLY);
+  if (from < 0) return false;
+  uint32_t size = sizeOf(from);
+
+  std::vector<Entry> entries;
+  Record r;
+  for (uint32_t at = 0; at < size && record(from, at, size, r); at = r.next) {
+    entries.push_back({key(r), r.at, r.next - r.at, r.op == PUT});
   }
-  return true;
+
+  std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) { return a.key != b.key ? a.key < b.key : a.at < b.at; });
+
+  std::vector<Entry> kept;
+  uint32_t           holding = 0;
+  for (size_t i = 0; i < entries.size(); i++) {
+    if ((i + 1 < entries.size() && entries[i + 1].key == entries[i].key) || !entries[i].put) continue;
+    kept.push_back(entries[i]);
+    holding += entries[i].length;
+  }
+  std::vector<Entry>().swap(entries);
+
+  if (!always && holding * 2 > size) {
+    ::close(from);
+    return false;
+  }
+
+  std::sort(kept.begin(), kept.end(), [](const Entry &a, const Entry &b) { return a.at < b.at; });
+
+  int  to     = ::open(spare, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  bool copied = to >= 0;
+  for (const Entry &entry : kept) {
+    for (uint32_t done = 0; copied && done < entry.length;) {
+      size_t n = std::min(PIECE, (size_t)(entry.length - done));
+      copied   = ::pread(from, g_piece, n, entry.at + done) == (ssize_t)n && Flash::guarded([&] { return ::write(to, g_piece, n) == (ssize_t)n; });
+      done += n;
+    }
+  }
+  ::close(from);
+
+  if (to >= 0) copied = Flash::guarded([&] { return ::close(to) == 0; }) && copied;
+  if (copied) copied = Flash::guarded([&] { return ::rename(spare, file) == 0; });
+  if (!copied) Flash::guarded([&] { return ::unlink(spare) == 0; });
+  if (copied) g_generation++;
+  return copied;
 }
 
-void emptyFolder(const char *dir) {
-  File folder = LittleFS.open(dir);
-  if (!folder) return;
+void perform(Job &job) {
+  const uint8_t *p          = job.frame;
+  size_t         showLength = p[2];
+  char           show[NAME_LIMIT];
+  memcpy(show, p + DOC_HEADER, showLength);
+  show[showLength] = '\0';
 
-  File entry = folder.openNextFile();
-  while (entry) {
-    char path[PATH_LIMIT];
-    snprintf(path, sizeof(path), "%s", entry.path());
-    entry.close();
-    Flash::guarded([&] { return LittleFS.remove(path); });
-    entry = folder.openNextFile();
+  char file[PATH_LIMIT];
+  bool named = path(file, show, "");
+
+  if (p[1] == DROP) {
+    if (named) {
+      Hold hold;
+      Flash::guarded([&] { return ::unlink(file) == 0; });
+      g_generation++;
+    }
+    free(job.frame);
+    return;
   }
-  folder.close();
-  Flash::guarded([&] { return LittleFS.rmdir(dir); });
+
+  uint8_t        head[HEAD] = {p[1], p[3], p[4], p[5], p[6]};
+  const uint8_t *rest       = p + DOC_HEADER + showLength;
+  size_t         length     = job.length - DOC_HEADER - showLength;
+  uint32_t       before     = 0;
+
+  bool listed = named && Shows::contains(show);
+  job.stored  = listed && append(file, head, rest, length, before);
+  if (listed && !job.stored && review(show, true)) job.stored = append(file, head, rest, length, before);
+
+  if (job.done) {
+    *job.outcome = job.stored;
+    xSemaphoreGive(job.done);
+  }
+  xQueueSend(g_settled, &job, portMAX_DELAY);
+
+  uint32_t after = before + HEAD + length;
+  if (job.stored && after >= REVIEW_FROM && before / REVIEW_EVERY != after / REVIEW_EVERY) review(show, false);
+}
+
+void keeper(void *) {
+  Job  job;
+  bool changed = true;
+  for (;;) {
+    if (xQueueReceive(g_jobs, &job, changed ? pdMS_TO_TICKS(MEASURE_MS) : portMAX_DELAY) == pdTRUE) {
+      perform(job);
+      changed = true;
+      continue;
+    }
+    g_used  = LittleFS.usedBytes();
+    changed = false;
+  }
+}
+
+void erase(const String &at) {
+  DIR *dir = opendir(at.c_str());
+  if (!dir) {
+    Flash::guarded([&] { return ::unlink(at.c_str()) == 0; });
+    return;
+  }
+
+  std::vector<String> inside;
+  while (dirent *entry = readdir(dir)) {
+    if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) inside.push_back(at + "/" + entry->d_name);
+  }
+  closedir(dir);
+
+  for (const String &item : inside) erase(item);
+  Flash::guarded([&] { return ::rmdir(at.c_str()) == 0; });
 }
 
 }  // namespace
 
 bool begin() {
-  g_lock = xSemaphoreCreateMutex();
-  g_ready = g_lock && LittleFS.begin(true);
-  if (!g_ready) {
-    Serial.println(F("store: LittleFS unavailable, shows cannot be stored"));
-    return false;
+  g_lock    = xSemaphoreCreateMutex();
+  g_jobs    = xQueueCreate(JOBS_WAITING, sizeof(Job));
+  g_settled = xQueueCreate(JOBS_WAITING, sizeof(Job));
+  g_ready   = g_lock && g_jobs && g_settled && LittleFS.begin(true) &&
+            xTaskCreatePinnedToCore(keeper, "store", KEEPER_STACK, nullptr, 1, nullptr, 0) == pdPASS;
+  if (!g_ready) Serial.println(F("store: LittleFS unavailable, shows cannot be stored"));
+  return g_ready;
+}
+
+void sweep() {
+  if (!g_ready) return;
+
+  std::vector<String> strays;
+  if (DIR *root = opendir(ROOT)) {
+    while (dirent *entry = readdir(root)) {
+      if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..") || !strcmp(entry->d_name, "shows.json")) continue;
+      if (entry->d_type == DT_REG && Shows::contains(entry->d_name)) continue;
+      strays.push_back(String(ROOT) + "/" + entry->d_name);
+    }
+    closedir(root);
   }
 
-  LittleFS.remove(UPLOAD);
-  Serial.printf("store: %u KB of %u KB used\n", (unsigned)(used() / 1024), (unsigned)(capacity() / 1024));
-  return true;
+  for (const String &stray : strays) erase(stray);
+  g_used = LittleFS.usedBytes();
+  Serial.printf("store: %u KB of %u KB used\n", (unsigned)(g_used / 1024), (unsigned)(capacity() / 1024));
 }
 
 bool ready() { return g_ready; }
 
-const char *showsPath() { return SHOWS; }
-
-bool showPath(char *out, size_t size, const char *showID) {
-  if (!safe(showID)) return false;
-  return snprintf(out, size, "%s/%s", SHOWS_DIR, showID) < (int)size;
-}
-
-bool folderPath(char *out, size_t size, const char *showID, const char *folder) {
-  if (!safe(showID) || !safe(folder)) return false;
-  return snprintf(out, size, "%s/%s/%s", SHOWS_DIR, showID, folder) < (int)size;
-}
-
-bool objectPath(char *out, size_t size, const char *showID, const char *folder, const char *objID) {
-  if (!safe(showID) || !safe(folder) || !safe(objID)) return false;
-  return snprintf(out, size, "%s/%s/%s/%s.json", SHOWS_DIR, showID, folder, objID) < (int)size;
-}
-
-int folderNames(const char *showID, char names[][NAME_LIMIT], int max) {
-  char show[PATH_LIMIT];
-  if (!g_ready || !showPath(show, sizeof(show), showID)) return 0;
-
-  File root = LittleFS.open(show);
-  if (!root) return 0;
-
-  int found = 0;
-  File entry = root.openNextFile();
-  while (entry && found < max) {
-    if (entry.isDirectory()) {
-      snprintf(names[found], NAME_LIMIT, "%s", entry.name());
-      found++;
-    }
-    entry.close();
-    entry = root.openNextFile();
+bool safe(const char *name) {
+  if (!name || !name[0]) return false;
+  size_t n = 0;
+  for (const char *p = name; *p; p++) {
+    if (++n >= NAME_LIMIT) return false;
+    bool ok = (*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '-' || *p == '_';
+    if (!ok) return false;
   }
-  root.close();
-  return found;
+  return true;
 }
 
-std::vector<String> files(const char *dir) {
-  std::vector<String> paths;
-  if (!g_ready) return paths;
+bool readList(String &text) {
+  text = "";
+  if (!g_ready) return false;
+
   Hold hold;
-  File folder = LittleFS.open(dir);
-  if (!folder) return paths;
-  bool   isDir = false;
-  String path  = folder.getNextFileName(&isDir);
-  while (path.length()) {
-    if (!isDir) paths.push_back(path);
-    path = folder.getNextFileName(&isDir);
-  }
-  folder.close();
-  return paths;
+  int fd = ::open(LIST, O_RDONLY);
+  if (fd < 0) return false;
+  ssize_t n;
+  while ((n = ::read(fd, g_piece, PIECE)) > 0) text.concat((const char *)g_piece, n);
+  ::close(fd);
+  return n == 0;
 }
 
-File open(const char *path) {
-  if (!g_ready) return File();
-  return LittleFS.open(path);
-}
-
-bool exists(const char *path) {
-  return g_ready && LittleFS.exists(path);
-}
-
-long load(const char *path, uint8_t *&data) {
-  data = nullptr;
-  if (!g_ready) return -1;
-  Hold hold;
-  File f = LittleFS.open(path);
-  if (!f || f.isDirectory()) return -1;
-  size_t len = f.size();
-  data = (uint8_t *)malloc(len + 1);
-  if (data && f.read(data, len) != len) {
-    free(data);
-    data = nullptr;
-  }
-  f.close();
-  return (long)len;
-}
-
-bool write(const char *path, const uint8_t *data, size_t len) {
+bool writeList(const String &text) {
   if (!g_ready) return false;
 
   Hold hold;
   return Flash::guarded([&] {
-    if (!ensureParents(path)) return false;
-    File f = LittleFS.open(UPLOAD, FILE_WRITE, true);
-    if (!f) return false;
-    size_t written = f.write(data, len);
-    f.close();
-    if (written != len) {
-      LittleFS.remove(UPLOAD);
-      return false;
-    }
-    if (LittleFS.rename(UPLOAD, path)) return true;
-    LittleFS.remove(path);
-    return LittleFS.rename(UPLOAD, path);
+    int fd = ::open(LIST_SPARE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return false;
+    bool written = ::write(fd, text.c_str(), text.length()) == (ssize_t)text.length();
+    return ::close(fd) == 0 && written && ::rename(LIST_SPARE, LIST) == 0;
   });
 }
 
-bool remove(const char *path) {
-  if (!g_ready) return false;
+bool submit(const Job &job) {
+  return g_ready && xQueueSend(g_jobs, &job, 0) == pdTRUE;
+}
+
+bool settled(Job &job) {
+  return g_settled && xQueueReceive(g_settled, &job, 0) == pdTRUE;
+}
+
+void drop(const char *show) {
+  size_t   length = strlen(show);
+  uint8_t *frame  = (uint8_t *)malloc(DOC_HEADER + length);
+  if (!frame) return;
+
+  const uint8_t head[DOC_HEADER] = {0x03, DROP, (uint8_t)length, 0, 0, 0, 0};
+  memcpy(frame, head, DOC_HEADER);
+  memcpy(frame + DOC_HEADER, show, length);
+
+  Job job = {frame, DOC_HEADER + length, -1, false, nullptr, nullptr};
+  if (!submit(job)) free(frame);
+}
+
+bool whole(const char *show, Span &span) {
+  char file[PATH_LIMIT];
+  if (!path(file, show, "")) return false;
+
+  Hold        hold;
+  struct stat st;
+  span = {0, stat(file, &st) ? 0 : (uint32_t)st.st_size, g_generation};
+  return true;
+}
+
+bool locate(const char *show, const char *folder, const char *id, Span &span) {
+  char file[PATH_LIMIT];
+  span = {0, 0, 0};
+  if (!path(file, show, "")) return false;
+
   Hold hold;
-  if (!LittleFS.exists(path)) return true;
-  return Flash::guarded([&] { return LittleFS.remove(path); });
+  int  fd = ::open(file, O_RDONLY);
+  if (fd < 0) return false;
+
+  uint32_t size  = sizeOf(fd);
+  bool     found = false;
+  Record   r;
+  for (uint32_t at = 0; at < size && record(fd, at, size, r); at = r.next) {
+    if (strcmp(r.folder, folder) || strcmp(r.id, id)) continue;
+    found = r.op == PUT;
+    span  = {r.body, r.next, g_generation};
+  }
+  ::close(fd);
+  return found;
 }
 
-bool removeShow(const char *showID) {
-  char show[PATH_LIMIT];
-  if (!g_ready || !showPath(show, sizeof(show), showID)) return false;
+long read(const char *show, Span &span, uint8_t *into, size_t max) {
+  char file[PATH_LIMIT];
+  if (!path(file, show, "")) return -1;
+
+  size_t want = span.to - span.from;
+  if (want > max) want = max;
+  if (!want) return 0;
+
   Hold hold;
-  if (!LittleFS.exists(show)) return true;
-
-  char names[FOLDER_LIMIT][NAME_LIMIT];
-  int count = folderNames(showID, names, FOLDER_LIMIT);
-
-  for (int i = 0; i < count; i++) {
-    char dir[PATH_LIMIT];
-    if (folderPath(dir, sizeof(dir), showID, names[i])) emptyFolder(dir);
-  }
-  return Flash::guarded([&] { return LittleFS.rmdir(show); });
+  if (span.generation != g_generation) return -1;
+  int fd = ::open(file, O_RDONLY);
+  if (fd < 0) return -1;
+  ssize_t n = ::pread(fd, into, want, span.from);
+  ::close(fd);
+  if (n <= 0) return -1;
+  span.from += n;
+  return n;
 }
 
-size_t used() {
-  if (!g_ready) return 0;
-  if (!g_measured || millis() - g_measured >= MEASURE_MS) {
-    g_used     = LittleFS.usedBytes();
-    g_measured = millis() | 1;
-  }
-  return g_used;
-}
+size_t used() { return g_used; }
 
 size_t capacity() { return g_ready ? LittleFS.totalBytes() : 0; }
 

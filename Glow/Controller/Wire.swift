@@ -6,6 +6,7 @@ nonisolated enum Wire {
 	static let documentOpcode: UInt8 = 0x03
 	static let bothOpcode: UInt8 = 0x04
 	static let documentHeader = 7
+	static let recordHeader = 5
 	
 	static func frame(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) -> Data {
 		var data = Data(capacity: values.count + 6)
@@ -155,6 +156,53 @@ nonisolated enum Wire {
 		return data
 	}
 	
+	static func gathered(_ log: Data) -> Data {
+		let bytes = [UInt8](log)
+		var latest: [String: (folder: String, body: ArraySlice<UInt8>)] = [:]
+		var cursor = 0
+		
+		while cursor + recordHeader <= bytes.count {
+			let folderStart = cursor + recordHeader
+			let idStart = folderStart + Int(bytes[cursor + 1])
+			let bodyStart = idStart + Int(bytes[cursor + 2])
+			let end = bodyStart + (Int(bytes[cursor + 3]) | (Int(bytes[cursor + 4]) << 8))
+			guard end <= bytes.count else { break }
+			let folder = String(decoding: bytes[folderStart..<idStart], as: UTF8.self)
+			let key = "\(folder)/\(String(decoding: bytes[idStart..<bodyStart], as: UTF8.self))"
+			
+			if bytes[cursor] == 0 {
+				latest[key] = (folder, bytes[bodyStart..<end])
+			} else {
+				latest[key] = nil
+			}
+			
+			cursor = end
+		}
+		
+		var folders: [String: [ArraySlice<UInt8>]] = [:]
+		
+		for (folder, body) in latest.values {
+			folders[folder, default: []].append(body)
+		}
+		
+		var json = Data("{".utf8)
+		
+		for (folder, bodies) in folders {
+			if json.count > 1 { json.append(UInt8(ascii: ",")) }
+			json.append(Data("\"\(folder)\":[".utf8))
+			
+			for (index, body) in bodies.enumerated() {
+				if index > 0 { json.append(UInt8(ascii: ",")) }
+				json.append(contentsOf: body)
+			}
+			
+			json.append(UInt8(ascii: "]"))
+		}
+		
+		json.append(UInt8(ascii: "}"))
+		return json
+	}
+	
 	static func event(_ message: URLSessionWebSocketTask.Message) -> NodeLink.Event? {
 		switch message {
 		case let .data(data):
@@ -187,7 +235,6 @@ nonisolated enum Wire {
 				var show: String?
 				var folder: String?
 				var id: String?
-				var op: String?
 				var reason: String?
 				var set: Bool?
 				var refused: String?
@@ -239,7 +286,7 @@ nonisolated enum Wire {
 				return .notice(.landed(place, envelope.t == "wrote"))
 			case "doc":
 				guard let place = envelope.place else { return nil }
-				return .notice(envelope.op == "delete" ? .erased(place) : .stored(place, nil))
+				return .notice(.stored(place, nil))
 			default:
 				return nil
 			}

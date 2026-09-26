@@ -3,20 +3,17 @@ import SwiftUI
 struct StrobePad: View {
 	let glow: Color
 	let hertz: Double?
-	let isRunning: Bool
 	
 	@State private var isLit = false
 	
 	var body: some View {
-		let period = max(0.05, 1 / max(0.5, hertz ?? 1))
-		
-		return ZStack {
+		ZStack {
 			Stage()
 			
 			Circle()
 				.fill(glow)
 				.frame(width: 54)
-				.opacity(isRunning ? (isLit ? 1 : 0.1) : 0.2)
+				.opacity(hertz == nil ? 0.2 : isLit ? 1 : 0.1)
 			
 			VStack {
 				Spacer()
@@ -28,16 +25,13 @@ struct StrobePad: View {
 			}
 		}
 		.frame(height: 110)
-		.task(id: period) {
-			guard isRunning else { return }
+		.task(id: hertz) {
+			guard let hertz else { return }
 			
 			while !Task.isCancelled {
 				isLit.toggle()
-				try? await Task.sleep(for: .seconds(period / 2))
+				try? await Task.sleep(for: .seconds(max(0.05, 1 / max(0.5, hertz)) / 2))
 			}
-		}
-		.onChange(of: isRunning) {
-			isLit = false
 		}
 		.accessibilityElement()
 		.accessibilityLabel("Strobe")

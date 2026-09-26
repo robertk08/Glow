@@ -46,16 +46,16 @@ char         g_id[13]      = "000000000000";
 
 bool due(uint32_t since, uint32_t ms) { return millis() - since >= ms; }
 
-void startStation(const char *ssid, const char *user, const char *password) {
+void startStation(const char *ssid, const char *user, const char *password, int32_t channel = 0, const uint8_t *bssid = nullptr) {
   WiFi.mode(g_ap.up ? WIFI_AP_STA : WIFI_STA);
   WiFi.setAutoReconnect(false);
   WiFi.setSleep(false);
 
   if (user[0]) {
-    WiFi.begin(ssid, WPA2_AUTH_PEAP, user, user, password);
+    WiFi.begin(ssid, WPA2_AUTH_PEAP, user, user, password, nullptr, nullptr, nullptr, -1, channel, bssid);
   } else {
     esp_wifi_sta_enterprise_disable();
-    WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password, channel, bssid);
   }
 
   g_sta.lastTry = millis();
@@ -63,12 +63,14 @@ void startStation(const char *ssid, const char *user, const char *password) {
   Serial.printf("wifi: joining \"%s\"\n", ssid);
 }
 
-void startSlot(int slot) {
+void startSlot(int slot, int32_t channel = 0, const uint8_t *bssid = nullptr) {
   g_sta.slot = slot;
-  startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
+  startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot), channel, bssid);
 }
 
 void choose() {
+  if (!Creds::ssid(1)[0]) return startSlot(0);
+
   WiFi.mode(g_ap.up ? WIFI_AP_STA : WIFI_STA);
   WiFi.disconnect();
   WiFi.scanDelete();
@@ -80,21 +82,25 @@ void choose() {
 }
 
 void chosen() {
-  int     found = WiFi.scanComplete();
-  int     best  = -1;
-  int32_t rssi  = -1000;
+  int     found   = WiFi.scanComplete();
+  int     best    = -1;
+  int32_t rssi    = -1000;
+  int32_t channel = 0;
+  uint8_t bssid[6];
 
   for (int i = 0; i < found; i++) {
     for (int slot = 0; slot < Creds::SLOTS; slot++) {
       if (!Creds::ssid(slot)[0] || WiFi.SSID(i) != Creds::ssid(slot) || WiFi.RSSI(i) <= rssi) continue;
-      best = slot;
-      rssi = WiFi.RSSI(i);
+      best    = slot;
+      rssi    = WiFi.RSSI(i);
+      channel = WiFi.channel(i);
+      memcpy(bssid, WiFi.BSSID(i), sizeof(bssid));
     }
   }
 
   WiFi.scanDelete();
   g_sta.choosing = false;
-  if (best >= 0) return startSlot(best);
+  if (best >= 0) return startSlot(best, channel, bssid);
 
   int next = g_sta.slot;
   for (int step = 1; step <= Creds::SLOTS; step++) {

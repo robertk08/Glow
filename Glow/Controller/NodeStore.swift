@@ -91,7 +91,7 @@ actor NodeStore {
 	
 	func show(_ showID: String, at endpoint: NodeEndpoint) async -> ShowContents? {
 		guard case let .body(data) = await send(endpoint, "show/\(showID)", method: "GET", body: nil, client: nil) else { return nil }
-		return try? decoder.decode(ShowContents.self, from: data)
+		return try? decoder.decode(ShowContents.self, from: Wire.gathered(data))
 	}
 	
 	func object(_ folder: Folder, id: String, in showID: String, at endpoint: NodeEndpoint) async -> Data? {
@@ -101,10 +101,6 @@ actor NodeStore {
 	
 	func put(_ body: Data, folder: Folder, id: String, in showID: String, at endpoint: NodeEndpoint, client: Int?) async -> Bool {
 		await send(endpoint, "show/\(showID)/\(folder.rawValue)/\(id)", method: "PUT", body: body, client: client).isWritten
-	}
-	
-	func delete(_ folder: Folder, id: String, in showID: String, at endpoint: NodeEndpoint, client: Int?) async -> Bool {
-		await send(endpoint, "show/\(showID)/\(folder.rawValue)/\(id)", method: "DELETE", body: nil, client: client).isWritten
 	}
 	
 	private func send(_ endpoint: NodeEndpoint, _ path: String, method: String, body: Data?, client: Int?) async -> Answer {

@@ -1,7 +1,7 @@
 #pragma once
 #include "Config.h"
 
-class NetworkClient;
+class Outlet;
 
 namespace Link {
 
@@ -14,9 +14,7 @@ void  source(int start, uint8_t *out, int length);
 float master();
 bool  blackout();
 
-void notify(const char *json, int except);
-
-bool adopt(NetworkClient &tcp, const char *url);
+void adopt(Outlet *tcp, const char *url);
 bool admits(const char *session);
 void forgetPassword();
 

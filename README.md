@@ -87,8 +87,8 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
-A show is a folder on the controller, holding one patch, its groups, the
-fixtures built here and its scenes, one file per object. Switching show swaps
+A show is one file on the controller, holding one patch, its groups, the
+fixtures built here and its scenes, one record per change. Switching show swaps
 the store underneath the app without moving you off the screen you are on, and
 switches it on every other device too. A show stores no DMX values, so every
 light comes back on its defaults. The controller you send to belongs to the
@@ -223,7 +223,10 @@ partition. If the binary ever passes 2 MB, `app0` is the number to raise.
 
 Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
-table starts you on an empty Show 1.
+table starts you on an empty Show 1. At every boot the controller clears
+anything in that partition that is not the show list or a listed show, so shows
+kept by firmware before 2.7 are gone after the update. Export them first and
+import them afterwards.
 
 Serial console at 115200: `net | setup | forget | home | unpair | password | key`. The
 controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
@@ -421,11 +424,12 @@ scale the head's dimmer the way they do everywhere else.
 
 **The head is the fourteen channels starting at address 1.** That is fixed in
 `Config.h` as `HEAD_ADDRESS` and the channels Home drives within it, along with
-the dimmer band, the pan and tilt inversions, the show name, the pairing code
-and the HAP port. Nothing about it is sent from the app.
+the dimmer band, the pan and tilt inversions, the show name and the HAP port.
+Nothing about it is sent from the app.
 
 **Pairing:** HAP is on port 1201, advertised as `_hap._tcp` on the same
-`glow.local`. Add Glow in Home and enter **466-37-726**. Pair with the
+`glow.local`. Add Glow in Home and enter **466-37-726**, HomeSpan's default
+code. Pair with the
 rig dark, because pairing writes to flash and a flash write corrupts the packet
 on the wire. Removing the bridge from Home leaves the controller believing it
 is paired, so serial `unpair` is what lets it be added again. Home caches the
@@ -450,37 +454,51 @@ Show contents move over plain HTTP on the same port, because a made fixture
 definition runs to tens of kilobytes and the WebSocket carries only small
 messages.
 
-**A download is sent from its own task**, so the controller keeps answering
-every phone while one of them loads a show. The ESP32 keeps a packet in its
-Wi-Fi receive buffers until the program reads it. When the main loop sent a
-show itself, a few busy phones filled every buffer, and the controller stopped
-hearing the acknowledgements the download was waiting for, for minutes at a
-time. The sender lists a folder under the store's lock and reads each file
-whole, never keeping one open, because LittleFS will not replace an open file
-and a directory being written can skip entries while it is listed.
+**Nothing on the main loop waits on flash or on a slow client.** HTTP has its
+own task and every show write goes through a store task, so the controller
+keeps answering every phone while one of them loads a show or the store is
+busy. The ESP32 keeps a packet in its Wi-Fi receive buffers until the program
+reads it. When the main loop sent a show itself, a few busy phones filled every
+buffer, and the controller stopped hearing the acknowledgements the download
+was waiting for, for minutes at a time. A phone that takes nothing for a second
+is dropped rather than waited on, and reconnects. A download reads the show in
+pieces under the store's lock and never keeps the file open, because LittleFS
+will not replace an open file.
 
 | Method | Path | |
 |---|---|---|
-| GET | `/api/show/<id>` | the whole show, assembled |
-| GET, PUT, DELETE | `/api/show/<id>/<folder>/<objid>` | one object |
+| GET | `/api/show/<id>` | the show file, as stored |
+| GET, PUT | `/api/show/<id>/<folder>/<objid>` | one object |
 
-A show is a folder of folders. `lights`, `groups`, `made` and `scenes` today,
-and each one holds one JSON file per object named by its id. Names are letters,
-digits, hyphen and underscore, up to 39 characters, and anything else is
-refused. One object can be up to 64 KB.
+A show is one file named by its id, and every write appends one record to it:
 
-**The controller does not know what a folder means.** It lists the folders it
-finds and assembles `GET /api/show/<id>` as `{"<folder>":[…],"<folder>":[…]}`,
-streaming the files in as chunks without parsing one of them. So adding cue stacks later is a folder the app
-starts writing to, and the firmware does not change. `/shows.json` is the one
-file the controller reads, and it keeps it in memory.
+```
+byte 0      0 put, 1 delete
+byte 1      folder name length
+byte 2      object id length
+bytes 3-4   body length, uint16 LE
+bytes 5..   folder, id, body
+```
 
-**One file per object, not one file per show.** A whole-show write would mean
-your rename wiping my new scene. Per object, both survive under the same last
-writer wins rule, and one edit sends one small file rather than the show.
+The newest record for a folder and id is the object, and a delete record
+removes it. `lights`, `groups`, `made` and `scenes` are the folders today.
+Names are letters, digits, hyphen and underscore, up to 39 characters, and
+anything else is refused. One object can be up to 64 KB. Once a file has grown
+past twice what its newest records hold, the store task rewrites it with only
+those, so a show costs about what it holds and deleting one removes one file.
+
+**The controller does not know what a folder means.** It stores and returns
+records without parsing a body, `GET /api/show/<id>` sends the file as it is,
+and the app keeps the newest record per folder and id. So adding cue stacks
+later is a folder the app starts writing to, and the firmware does not change.
+`/shows.json` is the one file the controller reads, and it keeps it in memory.
+
+**One record per object, not one write per show.** A whole-show write would
+mean your rename wiping my new scene. Per object, both survive under the same
+last writer wins rule, and one edit sends one small record rather than the show.
 
 After an HTTP write lands, the controller sends
-`{"t":"doc","show","folder","id","op"}` to every client but the sender. A client
+`{"t":"doc","show","folder","id"}` to every client but the sender. A client
 fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
