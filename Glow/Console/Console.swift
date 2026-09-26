@@ -235,7 +235,7 @@ final class Console {
 	}
 	
 	func unlock(password: String) {
-		guard let lock, !isUnlocking else { return }
+		guard let lock, !isUnlocking, lockedUntil == nil else { return }
 		isUnlocking = true
 		
 		Task {

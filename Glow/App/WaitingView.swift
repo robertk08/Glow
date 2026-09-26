@@ -29,13 +29,14 @@ struct WaitingView: View {
 				.padding(.top, 20)
 				.padding(.bottom, 2)
 				
-				if !isTyping {
+				Group {
 					FeatureRow(systemImage: "rectangle.stack", title: "Shows Live on the Controller", description: "The patch, the groups and the scenes are kept on the controller, so this device holds nothing of its own.")
 					
 					FeatureRow(systemImage: "arrow.triangle.2.circlepath", title: "Every Device in Step", description: "Phones and iPads on one controller see the same rig, and a scene saved on any of them appears on the rest.")
 					
 					FeatureRow(systemImage: "bolt", title: "Straight Down the Line", description: "What you change reaches the lights over DMX as you touch it, with no round trip to wait for.")
 				}
+				.opacity(isTyping ? 0 : 1)
 			}
 			.frame(maxWidth: 700)
 			.animation(.smooth(duration: 0.35), value: isTyping)
@@ -79,8 +80,9 @@ struct WaitingView: View {
 							.font(.headline)
 							.controlSize(.large)
 							.buttonSizing(.flexible)
-							.disabled(password.isEmpty || console.isUnlocking)
+							.disabled(password.isEmpty || console.isUnlocking || console.lockedUntil != nil)
 						}
+						.padding(.top)
 						.transition(.opacity)
 					}
 					

@@ -30,8 +30,6 @@ struct PasswordView: View {
 					if let message = console.passwordOutcome?.message {
 						Text(message)
 							.foregroundStyle(.red)
-					} else {
-						Text("Every other phone and iPad is disconnected until it enters the new password.")
 					}
 				}
 				
@@ -41,8 +39,6 @@ struct PasswordView: View {
 							console.protect(current: current, new: "")
 						}
 						.disabled(current.isEmpty || console.passwordOutcome == .saving)
-					} footer: {
-						Text("Anyone on this network with Glow can then control the lights.")
 					}
 				}
 			}
