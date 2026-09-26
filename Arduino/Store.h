@@ -39,6 +39,7 @@ void drop(const char *show);
 bool whole(const char *show, Span &span);
 bool locate(const char *show, const char *folder, const char *id, Span &span);
 long read(const char *show, Span &span, uint8_t *into, size_t max);
+void finish();
 
 size_t used();
 size_t capacity();

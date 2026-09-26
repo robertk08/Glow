@@ -16,7 +16,7 @@
 namespace Http {
 namespace {
 
-const uint32_t REQUEST_MS     = 3000;
+const uint32_t REQUEST_MS     = 1500;
 const uint32_t DOCUMENT_MS    = 8000;
 const uint32_t PATIENCE_MS    = 3000;
 const size_t   REQUEST_LINE_MAX       = 256;
@@ -101,8 +101,9 @@ void pour(NetworkClient &c, const char *show, Store::Span &span, const char *typ
   head(c, 200, type, span.to - span.from);
   while (span.from < span.to && c.connected()) {
     long n = Store::read(show, span, g_piece, sizeof(g_piece));
-    if (n <= 0 || c.write(g_piece, n) != (size_t)n) return;
+    if (n <= 0 || c.write(g_piece, n) != (size_t)n) break;
   }
+  Store::finish();
 }
 
 void document(Outlet &c, const char *method, char *path, size_t length, int except, uint32_t deadline) {

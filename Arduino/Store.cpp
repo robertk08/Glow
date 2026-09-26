@@ -33,6 +33,7 @@ const size_t   PIECE        = 1024;
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
 volatile uint32_t g_generation = 0;
+int               g_readers    = 0;
 SemaphoreHandle_t g_lock       = nullptr;
 QueueHandle_t     g_jobs       = nullptr;
 QueueHandle_t     g_settled    = nullptr;
@@ -116,6 +117,7 @@ bool review(const char *show, bool always) {
   if (!path(file, show, "") || !path(spare, show, ".tmp")) return false;
 
   Hold hold;
+  if (!always && g_readers) return false;
   int from = ::open(file, O_RDONLY);
   if (from < 0) return false;
   uint32_t size = sizeOf(from);
@@ -328,6 +330,7 @@ bool whole(const char *show, Span &span) {
   Hold        hold;
   struct stat st;
   span = {0, stat(file, &st) ? 0 : (uint32_t)st.st_size, g_generation};
+  g_readers++;
   return true;
 }
 
@@ -349,6 +352,7 @@ bool locate(const char *show, const char *folder, const char *id, Span &span) {
     span  = {r.body, r.next, g_generation};
   }
   ::close(fd);
+  if (found) g_readers++;
   return found;
 }
 
@@ -369,6 +373,11 @@ long read(const char *show, Span &span, uint8_t *into, size_t max) {
   if (n <= 0) return -1;
   span.from += n;
   return n;
+}
+
+void finish() {
+  Hold hold;
+  g_readers--;
 }
 
 size_t used() { return g_used; }
