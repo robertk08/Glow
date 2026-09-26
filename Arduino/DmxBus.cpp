@@ -13,7 +13,8 @@ uint8_t g_wire[DMX_PACKET_SIZE];
 SemaphoreHandle_t g_lock     = nullptr;
 SemaphoreHandle_t g_wireLock = nullptr;
 
-volatile int g_used = DMX_MIN_SLOTS;
+volatile int g_used   = DMX_MIN_SLOTS;
+bool         g_paused = false;
 
 TaskHandle_t g_task = nullptr;
 
@@ -107,11 +108,17 @@ int used() { return g_used; }
 
 void pause() {
   xSemaphoreTake(g_wireLock, portMAX_DELAY);
-  dmx_driver_disable(DMX_PORT);
+  dmx_wait_sent(DMX_PORT, DMX_TIMEOUT_TICK);
+  g_paused = dmx_driver_disable(DMX_PORT);
+  for (int tries = 0; !g_paused && tries < 10; tries++) {
+    vTaskDelay(1);
+    g_paused = dmx_driver_disable(DMX_PORT);
+  }
 }
 
 void resume() {
-  dmx_driver_enable(DMX_PORT);
+  if (g_paused) dmx_driver_enable(DMX_PORT);
+  g_paused = false;
   xSemaphoreGive(g_wireLock);
 }
 

@@ -51,7 +51,7 @@ bool store(int slot) {
 bool begin() {
   g_open = g_nvs.begin(NS, false);
   if (!g_open) {
-    Serial.println(F("NVS: unavailable - credentials cannot be stored"));
+    Serial.println(F("wifi: NVS unavailable, networks cannot be stored"));
     return false;
   }
 
@@ -61,14 +61,11 @@ bool begin() {
     g_nvs.getString(KEY_PASS[slot], g_net[slot].pass, sizeof(g_net[slot].pass));
   }
 
-  if (!have()) {
-    Serial.println(F("creds: none"));
-    return true;
-  }
-
+  Serial.print(have() ? F("wifi: stored") : F("wifi: no network stored"));
   for (int slot = 0; slot < SLOTS; slot++) {
-    if (g_net[slot].ssid[0]) Serial.printf("creds: \"%s\" from NVS\n", g_net[slot].ssid);
+    if (g_net[slot].ssid[0]) Serial.printf("%s \"%s\"", slot ? "," : "", g_net[slot].ssid);
   }
+  Serial.println();
   return true;
 }
 

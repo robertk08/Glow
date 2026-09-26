@@ -1,11 +1,12 @@
 import Foundation
+import SwiftData
 import Testing
 
 @testable import Glow
 
 @MainActor
 struct StorageTests {
-	private static let filesystem = 0x5E0000
+	private static let filesystem = 0x5F0000
 	private static let block = 4096
 	private static let lights = 50
 	private static let channels = 20
@@ -30,6 +31,21 @@ struct StorageTests {
 		
 		show.scenes = [ShowContents.Scene(identifier: Identifier.fresh(), name: "Look", sortIndex: 0, levels: levels)]
 		return show
+	}
+	
+	@Test func everyFixtureDefinitionComesBackFromStorage() throws {
+		var blank = FixtureType.blank
+		blank.id = "scratch-made"
+		blank.model = "Scratch"
+		
+		for definition in FixtureLibrary().builtIn + [blank] {
+			let container = try ModelContainer(for: StoredFixtureType.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+			container.mainContext.insert(StoredFixtureType(definition))
+			try container.mainContext.save()
+			
+			let stored = try ModelContext(container).fetch(FetchDescriptor<StoredFixtureType>())
+			#expect(stored.map(\.definition) == [definition])
+		}
 	}
 	
 	@Test func aSceneCostsLessThanSixtyBytesPerLight() async throws {

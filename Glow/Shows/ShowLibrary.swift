@@ -479,10 +479,10 @@ final class ShowLibrary {
 		defer { context.undoManager?.enableUndoRegistration() }
 		
 		switch folder {
-		case .lights: try? context.delete(model: Fixture.self, where: #Predicate { $0.identifier == identifier })
-		case .groups: try? context.delete(model: FixtureGroup.self, where: #Predicate { $0.identifier == identifier })
-		case .made: try? context.delete(model: StoredFixtureType.self, where: #Predicate { $0.identifier == identifier })
-		case .scenes: try? context.delete(model: Look.self, where: #Predicate { $0.identifier == identifier })
+		case .lights: discard(#Predicate<Fixture> { $0.identifier == identifier })
+		case .groups: discard(#Predicate<FixtureGroup> { $0.identifier == identifier })
+		case .made: discard(#Predicate<StoredFixtureType> { $0.identifier == identifier })
+		case .scenes: discard(#Predicate<Look> { $0.identifier == identifier })
 		}
 		
 		try? context.save()
@@ -654,21 +654,24 @@ final class ShowLibrary {
 		context.undoManager?.disableUndoRegistration()
 		defer { context.undoManager?.enableUndoRegistration() }
 		
-		try? context.delete(model: Fixture.self, where: #Predicate { !lights.contains($0.identifier) })
-		try? context.delete(model: FixtureGroup.self, where: #Predicate { !groups.contains($0.identifier) })
-		try? context.delete(model: StoredFixtureType.self, where: #Predicate { !made.contains($0.identifier) })
-		try? context.delete(model: Look.self, where: #Predicate { !scenes.contains($0.identifier) })
+		discard(#Predicate<Fixture> { !lights.contains($0.identifier) })
+		discard(#Predicate<FixtureGroup> { !groups.contains($0.identifier) })
+		discard(#Predicate<StoredFixtureType> { !made.contains($0.identifier) })
+		discard(#Predicate<Look> { !scenes.contains($0.identifier) })
 		try? context.save()
 	}
 	
-	private func clear() {
+	private func discard<Model: PersistentModel>(_ predicate: Predicate<Model>) {
 		let context = container.mainContext
-		try? context.delete(model: Fixture.self)
-		try? context.delete(model: FixtureGroup.self)
-		try? context.delete(model: StoredFixtureType.self)
-		try? context.delete(model: Look.self)
-		try? context.save()
-		context.undoManager?.removeAllActions()
+		
+		for model in (try? context.fetch(FetchDescriptor(predicate: predicate))) ?? [] {
+			context.delete(model)
+		}
+	}
+	
+	private func clear() {
+		prune(keeping: ShowContents())
+		container.mainContext.undoManager?.removeAllActions()
 	}
 	
 	private static func store() -> ModelContainer {

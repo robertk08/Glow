@@ -132,10 +132,11 @@ reporting Ready. Credentials are written only after the join succeeds, so a
 wrong password cannot displace a working network.
 
 **Two networks are remembered, the two most recent.** Joining a third pushes out
-the older one. On boot the controller tries the one it joined last and falls
-back to the other every ten seconds until one answers, so carrying it between
-two places needs no setup at either end. A network that drops is tried again
-straight away. Provisioning a network it already knows just moves that one back
+the older one. On boot the controller scans once and joins the stronger of the
+two it can see, so carrying it between two places needs no setup at either end
+and no time goes on a network that is not there. A hidden network never shows
+in a scan, so when neither is seen it tries them in turn, every ten seconds. A
+network that drops is tried again straight away. Provisioning a network it already knows just moves that one back
 to the front.
 
 **Getting back to setup:** the controller raises **Glow Setup** by itself after
@@ -198,13 +199,29 @@ Shows live in that partition, mounted as LittleFS and formatted on first boot.
 Coming from an older layout moves every partition, so the first flash with this
 table starts you on an empty Show 1.
 
-Serial console at 115200: `net | setup | forget | home | unpair`. `net` also
-reports the networks it remembers and how much of the show filesystem is used,
-and `home` prints the HomeKit accessory database with any errors in it.
+Serial console at 115200: `net | setup | forget | home | unpair`. The
+controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
+`home`, `setup`, `link`), and HomeSpan's own output is silenced. `net` reports
+the firmware, the address, the connected phones, free memory, how much of the
+loop's stack is spare, the show filesystem and the stored networks. `home`
+prints the HomeKit accessory database with any errors in it.
+
+## Testing against a controller
+
+`ControllerTests` runs two complete copies of the app, as two devices, against a
+real controller on the network. It covers opening, show commands, lights,
+scenes, made and edited fixtures, deletes, two devices editing one light, an
+edit made while the link is down, an import and deleting the open show. It
+creates a show named **Hardware Test**, removes it again and leaves the
+controller on the show it found. It is skipped unless it is given an address:
+
+```
+TEST_RUNNER_GLOW_CONTROLLER=192.168.68.55 xcodebuild test -scheme Glow -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:GlowTests/ControllerTests
+```
 
 ## Toolchain
 
-arduino-esp32 core 3.3.11 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
+arduino-esp32 core 3.3.12 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
 ArduinoJson 7.4.3 · HomeSpan 2.1.8
 
 **esp_dmx needs patching, twice.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
@@ -222,8 +239,9 @@ that drops the cache corrupts the packet on the wire as a visible flicker. Run
 ## Wire protocol
 
 WebSocket at `ws://glow.local/ws` on port 80, the hostname the controller
-answers to over mDNS. A client that has connected before tries the address the
-controller last reported first.
+answers to over mDNS. A client that has connected before also tries the address
+the controller last reported, at the same time, and keeps whichever answers
+first, so a changed address costs nothing.
 
 **The client must not offer a WebSocket subprotocol.** The node's library echoes
 one back and a strict client then rejects its own connection.

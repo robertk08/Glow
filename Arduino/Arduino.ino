@@ -9,13 +9,14 @@
 #include "Store.h"
 
 static void report() {
-  Serial.printf("id %s  %s  %d client(s)  %dHz\n", Net::id(),
-                Net::up() ? Net::ip().toString().c_str() : "offline",
-                Link::clients(), DmxBus::refreshHz());
-  Serial.printf("   store %u of %u bytes\n", (unsigned)Store::used(), (unsigned)Store::capacity());
-  Serial.printf("   %s", Net::provisioned() ? "provisioned" : "unprovisioned");
+  Serial.printf("glow %s  id %s  %s  %d phone(s)  dmx %d Hz\n", GLOW_FW_VERSION, Net::id(),
+                Net::up() ? Net::ip().toString().c_str() : "offline", Link::clients(), DmxBus::refreshHz());
+  Serial.printf("memory %u KB free of %u KB, loop stack %u bytes spare\n", (unsigned)(ESP.getFreeHeap() / 1024),
+                (unsigned)(ESP.getHeapSize() / 1024), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
+  Serial.printf("store %u KB of %u KB used\n", (unsigned)(Store::used() / 1024), (unsigned)(Store::capacity() / 1024));
+  Serial.print(Net::provisioned() ? F("wifi stored") : F("wifi none stored"));
   for (int slot = 0; slot < Creds::SLOTS; slot++) {
-    if (Creds::ssid(slot)[0]) Serial.printf(", \"%s\"", Creds::ssid(slot));
+    if (Creds::ssid(slot)[0]) Serial.printf("%s \"%s\"", slot ? "," : "", Creds::ssid(slot));
   }
   if (Net::apUp()) Serial.printf(", \"%s\" is up", GLOW_SETUP_SSID);
   Serial.println();
@@ -27,7 +28,7 @@ static void run(const char *line) {
   else if (!strcmp(line, "forget")) Net::forget();
   else if (!strcmp(line, "home"))   HomeKit::report();
   else if (!strcmp(line, "unpair")) HomeKit::unpair();
-  else Serial.println(F("type: net | setup | forget | home | unpair"));
+  else Serial.println(F("commands: net | setup | forget | home | unpair"));
 }
 
 static void pollSerial() {
@@ -49,15 +50,14 @@ static void pollSerial() {
 
 void setup() {
   Serial.begin(115200);
-  unsigned long t0 = millis();
-  while (!Serial && millis() - t0 < 3000) delay(10);
+  Serial.printf("\nglow %s\n", GLOW_FW_VERSION);
 
   if (!DmxBus::begin()) {
-    Serial.println(F("FATAL: could not start the DMX driver."));
+    Serial.println(F("dmx: the driver would not start, halting"));
     while (true) delay(1000);
   }
 
-  Serial.printf("\nDMX on GPIO%d at %dHz\n", DMX_TX_PIN, DmxBus::refreshHz());
+  Serial.printf("dmx: GPIO%d at %d Hz\n", DMX_TX_PIN, DmxBus::refreshHz());
 
   Creds::begin();
   Store::begin();
@@ -67,7 +67,7 @@ void setup() {
   Http::begin();
   HomeKit::begin();
 
-  Serial.println(F("type: net | setup | forget | home | unpair"));
+  Serial.println(F("commands: net | setup | forget | home | unpair"));
 }
 
 void loop() {

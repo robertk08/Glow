@@ -69,12 +69,12 @@ void emptyFolder(const char *dir) {
 bool begin() {
   g_ready = LittleFS.begin(true);
   if (!g_ready) {
-    Serial.println(F("store: LittleFS unavailable - shows cannot be stored"));
+    Serial.println(F("store: LittleFS unavailable, shows cannot be stored"));
     return false;
   }
 
   LittleFS.remove(UPLOAD);
-  Serial.printf("store: %u of %u bytes used\n", (unsigned)used(), (unsigned)capacity());
+  Serial.printf("store: %u KB of %u KB used\n", (unsigned)(used() / 1024), (unsigned)(capacity() / 1024));
   return true;
 }
 

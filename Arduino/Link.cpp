@@ -220,8 +220,8 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
 
 void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
-    case WStype_CONNECTED:    Serial.printf("ws[%u]: connected\n", num); break;
-    case WStype_DISCONNECTED: Serial.printf("ws[%u]: gone\n", num); break;
+    case WStype_CONNECTED:    Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str()); break;
+    case WStype_DISCONNECTED: Serial.printf("link: phone %u left\n", num); break;
     case WStype_TEXT:         onText(num, payload, length); break;
     case WStype_BIN:          onBinary(num, payload, length); break;
     default:                  break;
@@ -234,7 +234,6 @@ void begin() {
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, WS_PING_TRIES);
-  Serial.printf("ws: ws://%s.local%s\n", GLOW_HOSTNAME, GLOW_WS_PATH);
 }
 
 void tick() {

@@ -29,7 +29,6 @@ bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
   while ((int32_t)(millis() - deadline) < 0) {
     if (!c.available()) {
       if (!c.connected()) return false;
-      Link::tick();
       delay(1);
       continue;
     }
@@ -161,7 +160,6 @@ void sendShow(NetworkClient &c, const char *showID) {
           out.append(entry);
         }
         entry.close();
-        Link::tick();
         entry = folder.openNextFile();
       }
       if (folder) folder.close();
@@ -376,7 +374,6 @@ bool handle(NetworkClient &client) {
       continue;
     }
     if (!client.connected()) break;
-    Link::tick();
     delay(1);
   }
   body[bodyLen] = '\0';
@@ -391,7 +388,6 @@ bool handle(NetworkClient &client) {
 void begin() {
   g_server.begin();
   g_server.setNoDelay(true);   // after begin(), which resets it
-  Serial.printf("http: port %u - %s and /api\n", GLOW_PORT, GLOW_WS_PATH);
 }
 
 void tick() {

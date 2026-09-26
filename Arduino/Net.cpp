@@ -20,6 +20,7 @@ struct Station {
   bool     started;
   bool     up;
   bool     held;
+  bool     choosing;
   int      slot;
   uint32_t lastTry;
   uint32_t downSince;
@@ -58,12 +59,51 @@ void startStation(const char *ssid, const char *user, const char *password) {
 
   g_sta.lastTry = millis();
   g_sta.started = true;
-  Serial.printf("WiFi: joining \"%s\"%s\n", ssid, user[0] ? " as an enterprise network" : "");
+  Serial.printf("wifi: joining \"%s\"\n", ssid);
 }
 
 void startSlot(int slot) {
   g_sta.slot = slot;
   startStation(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
+}
+
+void choose() {
+  WiFi.mode(g_ap.up ? WIFI_AP_STA : WIFI_STA);
+  WiFi.disconnect();
+  WiFi.scanDelete();
+  g_scanning = false;
+  g_sta.started = true;
+  g_sta.lastTry = millis();
+  g_sta.choosing = WiFi.scanNetworks(true, false, false, SCAN_CHANNEL_MS) != WIFI_SCAN_FAILED;
+  if (!g_sta.choosing) startSlot(g_sta.slot);
+}
+
+void chosen() {
+  int     found = WiFi.scanComplete();
+  int     best  = -1;
+  int32_t rssi  = -1000;
+
+  for (int i = 0; i < found; i++) {
+    for (int slot = 0; slot < Creds::SLOTS; slot++) {
+      if (!Creds::ssid(slot)[0] || WiFi.SSID(i) != Creds::ssid(slot) || WiFi.RSSI(i) <= rssi) continue;
+      best = slot;
+      rssi = WiFi.RSSI(i);
+    }
+  }
+
+  WiFi.scanDelete();
+  g_sta.choosing = false;
+  if (best >= 0) return startSlot(best);
+
+  int next = g_sta.slot;
+  for (int step = 1; step <= Creds::SLOTS; step++) {
+    int slot = (g_sta.slot + step) % Creds::SLOTS;
+    if (!Creds::ssid(slot)[0]) continue;
+    next = slot;
+    break;
+  }
+  Serial.println(F("wifi: no stored network in sight, trying the next one blind"));
+  startSlot(next);
 }
 
 void raiseAp(uint32_t ms) {
@@ -89,7 +129,7 @@ void lowerAp() {
 }
 
 void joined() {
-  Serial.printf("WiFi: %s\n", WiFi.localIP().toString().c_str());
+  Serial.printf("wifi: %s on \"%s\" at %d dBm, %s.local\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str(), (int)WiFi.RSSI(), GLOW_HOSTNAME);
   if (g_ap.lost && !g_join.active) lowerAp();
 }
 
@@ -99,8 +139,8 @@ void tickJoin(bool connected) {
   if (connected && g_join.letGo) {
     g_join.active = false;
     g_sta.slot    = 0;
-    if (Creds::save(g_join.ssid, g_join.user, g_join.pass)) Serial.printf("creds: \"%s\" stored\n", g_join.ssid);
-    else Serial.println(F("creds: NVS write failed"));
+    if (Creds::save(g_join.ssid, g_join.user, g_join.pass)) Serial.printf("wifi: \"%s\" stored\n", g_join.ssid);
+    else Serial.println(F("wifi: the network could not be stored"));
     g_ap.lost       = false;
     g_ap.confirming = true;
     g_ap.until      = millis() + SETUP_DONE_MS;
@@ -110,10 +150,10 @@ void tickJoin(bool connected) {
   if (!due(g_join.since, JOIN_TIMEOUT_MS)) return;
   g_join.active = false;
   g_join.failed = true;
-  Serial.printf("WiFi: could not join \"%s\"\n", g_join.ssid);
+  Serial.printf("wifi: could not join \"%s\"\n", g_join.ssid);
 
   if (Creds::have()) {
-    startSlot(0);
+    choose();
     raiseAp(SETUP_AP_MS);
   } else {
     WiFi.disconnect();
@@ -127,6 +167,11 @@ void tickStation(bool connected) {
   if (connected) {
     g_sta.held = false;
     return;
+  }
+
+  if (g_sta.choosing) {
+    if (WiFi.scanComplete() == WIFI_SCAN_RUNNING && !due(g_sta.lastTry, CHOOSE_MS)) return;
+    return chosen();
   }
 
   if (!g_ap.up && due(g_sta.downSince, SETUP_LOST_MS)) {
@@ -145,15 +190,7 @@ void tickStation(bool connected) {
   g_sta.held = false;
 
   if (!due(g_sta.lastTry, g_ap.up ? SETUP_RETRY_MS : WIFI_RETRY_MS)) return;
-  int next = g_sta.slot;
-  for (int step = 1; step <= Creds::SLOTS; step++) {
-    int slot = (g_sta.slot + step) % Creds::SLOTS;
-    if (!Creds::ssid(slot)[0]) continue;
-    next = slot;
-    break;
-  }
-  WiFi.disconnect();
-  startSlot(next);
+  choose();
 }
 
 bool isEnterprise(wifi_auth_mode_t mode) {
@@ -190,7 +227,7 @@ void begin() {
     return;
   }
 
-  startSlot(0);
+  choose();
   g_sta.downSince = millis();
   if (asked) raiseAp(SETUP_AP_MS);
 }
@@ -207,7 +244,7 @@ void tick() {
     if (connected) {
       joined();
     } else {
-      Serial.println(F("WiFi: dropped"));
+      Serial.println(F("wifi: dropped, rejoining"));
       g_sta.downSince = millis();
       if (!g_join.active) startSlot(g_sta.slot);
     }
@@ -240,6 +277,7 @@ bool fromSetupAp(const IPAddress &peer) {
 }
 
 int scan(Network *out, int max) {
+  if (g_sta.choosing) return SCAN_RUNNING;
   int found = WiFi.scanComplete();
   if (found == WIFI_SCAN_RUNNING) return SCAN_RUNNING;
 
@@ -303,7 +341,7 @@ void enterSetup() {
 
 void forget() {
   Creds::forget();
-  Serial.println(F("creds: erased"));
+  Serial.println(F("wifi: stored networks erased, restarting"));
   Serial.flush();
   delay(200);   // let the reply's FIN leave before the radio stops
   ESP.restart();

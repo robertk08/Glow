@@ -8,6 +8,7 @@
 
 #include <HomeSpan.h>
 #include <math.h>
+#include <nvs.h>
 
 namespace HomeKit {
 namespace {
@@ -185,6 +186,14 @@ struct Axis : Service::WindowCovering {
 }  // namespace
 
 void begin() {
+  nvs_handle_t wifiNvs;
+  if (nvs_open("WIFI", NVS_READWRITE, &wifiNvs) == ESP_OK) {
+    nvs_erase_key(wifiNvs, "WIFIDATA");
+    nvs_commit(wifiNvs);
+    nvs_close(wifiNvs);
+  }
+
+  homeSpan.setLogLevel(-1);
   homeSpan.setPortNum(HOMEKIT_PORT);
   homeSpan.setHostNameSuffix("");
   homeSpan.setSerialInputDisable(true);
@@ -210,6 +219,7 @@ void begin() {
 
   showChanged();
   homeSpan.autoPoll(8192, 1, 0);
+  Serial.printf("home: HomeKit on port %u, pairing code %s\n", HOMEKIT_PORT, HOMEKIT_PAIRING_CODE);
 }
 
 void showChanged() {
@@ -217,10 +227,13 @@ void showChanged() {
 }
 
 void report() {
+  homeSpan.setLogLevel(0);
   homeSpan.processSerialCommand("i");
+  homeSpan.setLogLevel(-1);
 }
 
 void unpair() {
+  homeSpan.setLogLevel(0);
   homeSpan.processSerialCommand("H");
 }
 

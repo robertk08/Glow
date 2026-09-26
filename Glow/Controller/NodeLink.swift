@@ -73,26 +73,24 @@ actor NodeLink {
 	private func supervise(_ endpoint: NodeEndpoint) async {
 		var failures = 0
 		while !Task.isCancelled {
-			var target = endpoint
+			var hosts: [String] = []
 			
-			if let preferred {
-				target.host = preferred
-			} else if failures % 2 == 1 {
-				target.host = NodeEndpoint.fallback.host
+			for host in [preferred, endpoint.host, NodeEndpoint.fallback.host] {
+				guard let host, !hosts.contains(host) else { continue }
+				hosts.append(host)
 			}
 			
-			guard let url = target.url(scheme: "ws", path: "/ws") else { return }
+			let urls = hosts.compactMap { host in
+				var target = endpoint
+				target.host = host
+				return target.url(scheme: "ws", path: "/ws")
+			}
 			
 			continuation.yield(.state(.connecting))
-			let reachedNode = await run(url)
+			let reachedNode = await run(urls)
 			if Task.isCancelled { return }
 			
-			if reachedNode {
-				failures = 0
-			} else {
-				preferred = nil
-				failures += 1
-			}
+			failures = reachedNode ? 0 : failures + 1
 			for remaining in stride(from: min(3, max(1, failures)), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
@@ -101,24 +99,9 @@ actor NodeLink {
 		}
 	}
 	
-	private func run(_ url: URL) async -> Bool {
-		let parameters = NWParameters.tcp
-		let websocket = NWProtocolWebSocket.Options()
-		websocket.autoReplyPing = true
-		parameters.defaultProtocolStack.applicationProtocols.insert(websocket, at: 0)
-		
-		if let tcp = parameters.defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options {
-			tcp.noDelay = true
-			tcp.connectionTimeout = 5
-		}
-		
-		let link = NWConnection(to: .url(url), using: parameters)
+	private func run(_ urls: [URL]) async -> Bool {
+		guard let link = await first(of: urls.map { NWConnection(to: .url($0), using: Self.parameters()) }), !Task.isCancelled else { return false }
 		connection = link
-		guard await opened(link) else {
-			if connection === link { close() }
-			return false
-		}
-		
 		await send(Wire.Command.hello.message)
 		startHeartbeat()
 		
@@ -135,30 +118,71 @@ actor NodeLink {
 		return reached
 	}
 	
-	private func opened(_ link: NWConnection) async -> Bool {
-		let answered = OSAllocatedUnfairLock(initialState: false)
+	private static func parameters() -> NWParameters {
+		let parameters = NWParameters.tcp
+		let websocket = NWProtocolWebSocket.Options()
+		websocket.autoReplyPing = true
+		parameters.defaultProtocolStack.applicationProtocols.insert(websocket, at: 0)
 		
-		return await withCheckedContinuation { (done: CheckedContinuation<Bool, Never>) in
-			link.stateUpdateHandler = { state in
-				var outcome: Bool?
-				
-				switch state {
-				case .ready: outcome = true
-				case .failed, .cancelled, .waiting: outcome = false
-				default: break
+		if let tcp = parameters.defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options {
+			tcp.noDelay = true
+			tcp.connectionTimeout = 5
+		}
+		
+		return parameters
+	}
+	
+	private func first(of links: [NWConnection]) async -> NWConnection? {
+		let race = OSAllocatedUnfairLock(initialState: (isOver: false, failed: Set<ObjectIdentifier>()))
+		
+		return await withTaskCancellationHandler {
+			await withCheckedContinuation { (done: CheckedContinuation<NWConnection?, Never>) in
+				for link in links {
+					link.stateUpdateHandler = { state in
+						let isReady: Bool
+						
+						switch state {
+						case .ready: isReady = true
+						case .failed, .cancelled, .waiting: isReady = false
+						default: return
+						}
+						
+						let winner: NWConnection?? = race.withLock { race in
+							guard !race.isOver else { return nil }
+							
+							if isReady {
+								race.isOver = true
+								return .some(link)
+							}
+							
+							race.failed.insert(ObjectIdentifier(link))
+							guard race.failed.count == links.count else { return nil }
+							race.isOver = true
+							return .some(nil)
+						}
+						
+						guard let winner else { return }
+						
+						for other in links where other !== winner {
+							other.cancel()
+						}
+						
+						done.resume(returning: winner)
+					}
+					
+					link.start(queue: queue)
 				}
 				
-				guard let outcome, answered.withLock({ wasAnswered in
-					defer { wasAnswered = true }
-					return !wasAnswered
-				}) else { return }
-				done.resume(returning: outcome)
+				queue.asyncAfter(deadline: .now() + 5) {
+					guard !race.withLock({ $0.isOver }) else { return }
+					
+					for link in links {
+						link.cancel()
+					}
+				}
 			}
-			
-			link.start(queue: queue)
-			
-			queue.asyncAfter(deadline: .now() + 5) {
-				guard !answered.withLock({ $0 }) else { return }
+		} onCancel: {
+			for link in links {
 				link.cancel()
 			}
 		}
@@ -169,15 +193,15 @@ actor NodeLink {
 			link.receiveMessage { content, context, _, error in
 				let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata
 				
-				guard error == nil, let content, let metadata, metadata.opcode != .close else {
+				guard error == nil, let metadata, metadata.opcode != .close else {
 					done.resume(returning: nil)
 					return
 				}
 				
 				if metadata.opcode == .text {
-					done.resume(returning: .string(String(decoding: content, as: UTF8.self)))
+					done.resume(returning: .string(String(decoding: content ?? Data(), as: UTF8.self)))
 				} else {
-					done.resume(returning: .data(content))
+					done.resume(returning: .data(content ?? Data()))
 				}
 			}
 		}

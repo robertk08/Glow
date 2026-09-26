@@ -8,7 +8,7 @@ static const int DMX_ENABLE_PIN = -1;
 
 static const dmx_port_t DMX_PORT = DMX_NUM_1;
 
-#define GLOW_FW_VERSION "2.5.0"
+#define GLOW_FW_VERSION "2.5.1"
 #define GLOW_NODE_NAME  "Glow"
 #define GLOW_HOSTNAME   "glow"
 #define GLOW_WS_PATH    "/ws"
@@ -28,6 +28,7 @@ static const uint32_t SETUP_RETRY_MS  = 60000;
 static const uint32_t SETUP_DONE_MS   = 30000;
 static const int      SCAN_MAX        = 20;
 static const uint32_t SCAN_CHANNEL_MS = 120;
+static const uint32_t CHOOSE_MS       = 4000;
 
 static const uint8_t  RECOVERY_BOOTS   = 3;
 static const uint32_t RECOVERY_BOOT_MS = 5000;
