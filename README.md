@@ -399,6 +399,15 @@ Show contents move over plain HTTP on the same port, because a made fixture
 definition runs to tens of kilobytes and the WebSocket carries only small
 messages.
 
+**A download is sent from its own task**, so the controller keeps answering
+every phone while one of them loads a show. The ESP32 keeps a packet in its
+Wi-Fi receive buffers until the program reads it. When the main loop sent a
+show itself, a few busy phones filled every buffer, and the controller stopped
+hearing the acknowledgements the download was waiting for, for minutes at a
+time. The sender lists a folder under the store's lock and reads each file
+whole, never keeping one open, because LittleFS will not replace an open file
+and a directory being written can skip entries while it is listed.
+
 | Method | Path | |
 |---|---|---|
 | GET | `/api/show/<id>` | the whole show, assembled |

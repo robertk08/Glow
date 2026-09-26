@@ -2,6 +2,7 @@
 #include "Config.h"
 
 #include <FS.h>
+#include <vector>
 
 namespace Store {
 
@@ -18,8 +19,11 @@ bool folderPath(char *out, size_t size, const char *showID, const char *folder);
 bool objectPath(char *out, size_t size, const char *showID, const char *folder, const char *objID);
 
 int folderNames(const char *showID, char names[][NAME_LIMIT], int max);
+std::vector<String> files(const char *dir);
 
 File open(const char *path);
+bool exists(const char *path);
+long load(const char *path, uint8_t *&data);
 bool write(const char *path, const uint8_t *data, size_t len);
 bool remove(const char *path);
 bool removeShow(const char *showID);

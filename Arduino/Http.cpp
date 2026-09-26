@@ -7,6 +7,8 @@
 
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
 namespace Http {
 namespace {
@@ -21,8 +23,19 @@ const size_t   DOCUMENT_BODY_MAX   = 65535;
 const int      REQUEST_HEADERS_MAX = 40;
 const size_t   PACKET              = 1400;
 const size_t   CHUNK_HEAD          = 6;
+const int      SENDS_WAITING       = 4;
+const int      SENDER_STACK        = 6144;
 
 uint8_t      g_packet[CHUNK_HEAD + PACKET + 2];
+uint8_t      g_stream[CHUNK_HEAD + PACKET + 2];
+
+struct Send {
+  NetworkClient *client;
+  char           show[Store::NAME_LIMIT];
+  char           file[Store::PATH_LIMIT];
+};
+
+QueueHandle_t g_sends = nullptr;
 
 bool readLine(NetworkClient &c, char *buf, size_t size, uint32_t deadline) {
   size_t n = 0;
@@ -55,12 +68,12 @@ const char *reason(int status) {
   }
 }
 
-size_t head(int status, size_t len, bool chunked) {
+size_t head(uint8_t *out, int status, size_t len, bool chunked) {
   char length[40];
   if (chunked) snprintf(length, sizeof(length), "Transfer-Encoding: chunked\r\n");
   else snprintf(length, sizeof(length), "Content-Length: %u\r\n", (unsigned)len);
 
-  return snprintf((char *)g_packet, sizeof(g_packet),
+  return snprintf((char *)out, sizeof(g_packet),
                   "HTTP/1.1 %d %s\r\n"
                   "Content-Type: application/json\r\n"
                   "%s"
@@ -71,7 +84,7 @@ size_t head(int status, size_t len, bool chunked) {
 }
 
 void sendJson(NetworkClient &c, int status, const char *body, size_t len) {
-  size_t n = head(status, len, false);
+  size_t n = head(g_packet, status, len, false);
   if (n + len <= sizeof(g_packet)) {
     memcpy(g_packet + n, body, len);
     c.write(g_packet, n + len);
@@ -97,33 +110,41 @@ struct Chunks {
     if (!held) return;
     char size[CHUNK_HEAD + 1];
     snprintf(size, sizeof(size), "%04x\r\n", (unsigned)held);
-    memcpy(g_packet, size, CHUNK_HEAD);
-    g_packet[CHUNK_HEAD + held]     = '\r';
-    g_packet[CHUNK_HEAD + held + 1] = '\n';
-    client->write(g_packet, CHUNK_HEAD + held + 2);
+    memcpy(g_stream, size, CHUNK_HEAD);
+    g_stream[CHUNK_HEAD + held]     = '\r';
+    g_stream[CHUNK_HEAD + held + 1] = '\n';
+    if (client->write(g_stream, CHUNK_HEAD + held + 2) != CHUNK_HEAD + held + 2) client->stop();
     held = 0;
   }
 
-  void put(const char *text) {
-    size_t len = strlen(text);
+  void put(const uint8_t *bytes, size_t len) {
     while (len) {
       size_t n = PACKET - held;
       if (n > len) n = len;
-      memcpy(g_packet + CHUNK_HEAD + held, text, n);
+      memcpy(g_stream + CHUNK_HEAD + held, bytes, n);
       held += n;
-      text += n;
+      bytes += n;
       len -= n;
       if (held == PACKET) flush();
     }
   }
 
-  void append(File &file) {
-    while (true) {
-      int n = file.read(g_packet + CHUNK_HEAD + held, PACKET - held);
-      if (n <= 0) return;
-      held += (size_t)n;
-      if (held == PACKET) flush();
+  void put(const char *text) {
+    put((const uint8_t *)text, strlen(text));
+  }
+
+  bool append(const char *path, bool comma) {
+    uint8_t *data = nullptr;
+    long     len  = Store::load(path, data);
+    if (len < 0) return false;
+    if (!data) {
+      client->stop();
+      return false;
     }
+    if (comma) put(",");
+    put(data, (size_t)len);
+    free(data);
+    return true;
   }
 
   void finish() {
@@ -136,7 +157,7 @@ void sendShow(NetworkClient &c, const char *showID) {
   char names[Store::FOLDER_LIMIT][Store::NAME_LIMIT];
   int  count = Store::folderNames(showID, names, Store::FOLDER_LIMIT);
 
-  c.write(g_packet, head(200, 0, true));
+  c.write(g_stream, head(g_stream, 200, 0, true));
 
   Chunks out = {&c, 0};
   out.put("{");
@@ -149,20 +170,10 @@ void sendShow(NetworkClient &c, const char *showID) {
 
     char dir[Store::PATH_LIMIT];
     if (Store::folderPath(dir, sizeof(dir), showID, names[i])) {
-      File folder = Store::open(dir);
       bool first = true;
-      File entry = folder ? folder.openNextFile() : File();
-
-      while (entry) {
-        if (!entry.isDirectory()) {
-          if (!first) out.put(",");
-          first = false;
-          out.append(entry);
-        }
-        entry.close();
-        entry = folder.openNextFile();
+      for (const String &path : Store::files(dir)) {
+        if (out.append(path.c_str(), !first)) first = false;
       }
-      if (folder) folder.close();
     }
 
     out.put("]");
@@ -173,23 +184,31 @@ void sendShow(NetworkClient &c, const char *showID) {
 }
 
 void sendStored(NetworkClient &c, const char *path) {
-  File f = Store::open(path);
-  if (!f || f.isDirectory()) {
-    sendStatus(c, 404);
-    return;
-  }
+  c.write(g_stream, head(g_stream, 200, 0, true));
+  Chunks out = {&c, 0};
+  if (out.append(path, false)) out.finish();
+}
 
-  size_t held = head(200, f.size(), false);
-  while (true) {
-    int n = f.read(g_packet + held, sizeof(g_packet) - held);
-    if (n > 0) held += (size_t)n;
-    if (held && (n <= 0 || held == sizeof(g_packet))) {
-      c.write(g_packet, held);
-      held = 0;
-    }
-    if (n <= 0) break;
+void sender(void *) {
+  Send job;
+  for (;;) {
+    if (xQueueReceive(g_sends, &job, portMAX_DELAY) != pdTRUE) continue;
+    if (job.show[0]) sendShow(*job.client, job.show);
+    else sendStored(*job.client, job.file);
+    job.client->stop();
+    delete job.client;
   }
-  f.close();
+}
+
+void queue(NetworkClient &c, const char *show, const char *file) {
+  Send job = {new NetworkClient(c), "", ""};
+  snprintf(job.show, sizeof(job.show), "%s", show);
+  snprintf(job.file, sizeof(job.file), "%s", file);
+  if (xQueueSend(g_sends, &job, 0) != pdTRUE) {
+    delete job.client;
+    return sendStatus(c, 503);
+  }
+  c = NetworkClient();
 }
 
 void info(NetworkClient &c) {
@@ -273,11 +292,12 @@ void document(NetworkClient &c, const char *path, bool get, bool put, bool del,
   if (!folder) {
     if (!Store::showPath(file, sizeof(file), rest)) return sendStatus(c, 400);
     if (!get) return sendStatus(c, 404);
-    return sendShow(c, rest);
+    return queue(c, rest, "");
   }
 
   if (!objID || !Store::objectPath(file, sizeof(file), rest, folder, objID)) return sendStatus(c, 400);
-  if (get) return sendStored(c, file);
+  if (get && !Store::exists(file)) return sendStatus(c, 404);
+  if (get) return queue(c, "", file);
   if (!put && !del) return sendStatus(c, 404);
   if (!Shows::contains(rest)) return sendStatus(c, 404);
   if (!(put ? Store::write(file, (const uint8_t *)body, bodyLen) : Store::remove(file))) return sendStatus(c, 503);
@@ -386,6 +406,8 @@ bool handle(NetworkClient &client) {
 }  // namespace
 
 void begin() {
+  g_sends = xQueueCreate(SENDS_WAITING, sizeof(Send));
+  xTaskCreatePinnedToCore(sender, "http", SENDER_STACK, nullptr, 1, nullptr, 0);
   g_server.begin();
   g_server.setNoDelay(true);   // after begin(), which resets it
 }
