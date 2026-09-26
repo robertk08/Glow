@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 nonisolated struct ShowFile: Codable, Sendable, Transferable {
 	static let format = "glow.show"
-	static let current = "2026-09-20"
+	static let current = "2026-09-26"
 	
 	var format = ShowFile.format
 	var version = ShowFile.current

@@ -69,6 +69,44 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 	
 	var dims: Bool { dimming != .none }
 	
+	func level(in values: [UInt8]) -> Double {
+		switch dimming {
+		case let .channel(channel):
+			return fraction(of: channel, in: values)
+		case let .band(channel, from, to, _):
+			let value = values[channel.offset - 1]
+			if value > to { return 1 }
+			if value < from { return 0 }
+			return Double(value - from) / Double(max(1, to - from))
+		case let .emitters(channels):
+			return channels.map { fraction(of: $0, in: values) }.max() ?? 0
+		case .none:
+			return 1
+		}
+	}
+	
+	func light(in values: [UInt8]) -> LightColor {
+		guard mixesColor else { return LightColor(red: 1, green: 1, blue: 1) }
+		var mix = EmitterMix()
+		
+		for channel in emitterChannels {
+			mix[channel.attribute] = fraction(of: channel, in: values)
+		}
+		
+		return mix.light(mixing).normalised
+	}
+	
+	private func fraction(of channel: FixtureChannel, in values: [UInt8]) -> Double {
+		guard channel.offset <= values.count else { return 0 }
+		var raw = Int(values[channel.offset - 1])
+		
+		if let fine = channel.fineOffset, fine <= values.count {
+			raw = raw * 256 + Int(values[fine - 1])
+		}
+		
+		return Double(raw) / Double(channel.maximum)
+	}
+	
 	mutating func renumber() {
 		var next = 1
 		

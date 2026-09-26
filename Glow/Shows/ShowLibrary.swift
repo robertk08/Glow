@@ -180,6 +180,7 @@ final class ShowLibrary {
 		if folders.contains(.lights) { show.lights = fixtures.map(\.entry) }
 		if folders.contains(.groups) { show.groups = ((try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
 		if folders.contains(.scenes) { show.scenes = ((try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
+		if folders.contains(.cues) { show.cues = ((try? context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.number)]))) ?? []).map(\.entry) }
 		
 		if folders.contains(.made) {
 			show.made = ((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition)
@@ -195,6 +196,7 @@ final class ShowLibrary {
 		show.groups.removeAll { $0.identifier != identifier }
 		show.made.removeAll { $0.id != identifier }
 		show.scenes.removeAll { $0.identifier != identifier }
+		show.cues.removeAll { $0.identifier != identifier }
 		return show
 	}
 	
@@ -377,15 +379,13 @@ final class ShowLibrary {
 		let related: Set<NodeStore.Folder> = switch folder {
 		case .groups: [.lights]
 		case .lights: [.made]
-		case .made, .scenes: []
+		case .made, .scenes, .cues: []
 		}
 		let before = Self.encoded(contents(related), folders: related)
 		
 		if let data {
-			var wrapped = Data("{\"\(place.folder)\":[".utf8)
-			wrapped.append(data)
-			wrapped.append(Data("]}".utf8))
-			guard let single = try? decoder.decode(ShowContents.self, from: wrapped) else { return }
+			let single = ShowContents(objects: [(place.folder, place.id, data)])
+			guard single.unreadable.isEmpty else { return }
 			merge(single)
 		} else {
 			remove(folder, identifier: place.id)
@@ -431,6 +431,7 @@ final class ShowLibrary {
 		let fixtures = Dictionary(((try? context.fetch(FetchDescriptor<Fixture>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let made = Dictionary(((try? context.fetch(FetchDescriptor<StoredFixtureType>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let looks = Dictionary(((try? context.fetch(FetchDescriptor<Look>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let cues = Dictionary(((try? context.fetch(FetchDescriptor<Cue>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let shipped = Set((types?.builtIn ?? []).map(\.id))
 		
 		for entry in incoming.groups {
@@ -454,9 +455,15 @@ final class ShowLibrary {
 		}
 		
 		for entry in incoming.scenes {
-			let look = looks[entry.identifier] ?? Look(name: entry.name, sortIndex: entry.sortIndex, levels: entry.levels)
+			let look = looks[entry.identifier] ?? Look(name: entry.name, sortIndex: entry.sortIndex)
 			if look.modelContext == nil { context.insert(look) }
 			look.take(entry)
+		}
+		
+		for entry in incoming.cues {
+			let cue = cues[entry.identifier] ?? Cue(lookID: entry.scene, number: entry.number, fade: entry.fade, levels: Levels())
+			if cue.modelContext == nil { context.insert(cue) }
+			cue.take(entry)
 		}
 		
 		try? context.save()
@@ -472,6 +479,7 @@ final class ShowLibrary {
 		case .groups: discard(#Predicate<FixtureGroup> { $0.identifier == identifier })
 		case .made: discard(#Predicate<StoredFixtureType> { $0.identifier == identifier })
 		case .scenes: discard(#Predicate<Look> { $0.identifier == identifier })
+		case .cues: discard(#Predicate<Cue> { $0.identifier == identifier })
 		}
 		
 		try? context.save()
@@ -503,6 +511,10 @@ final class ShowLibrary {
 		sent = [:]
 		deferred = []
 		baseline = await Self.snapshot(of: incoming)
+		
+		for key in incoming.unreadable {
+			baseline[key] = Data()
+		}
 	}
 	
 	private func changed(_ folders: Set<NodeStore.Folder>) {
@@ -596,7 +608,13 @@ final class ShowLibrary {
 		
 		if folders.contains(.scenes) {
 			for scene in contents.scenes {
-				out["\(NodeStore.Folder.scenes.rawValue)/\(scene.identifier)"] = try? encoder.encode(scene)
+				out["\(NodeStore.Folder.scenes.rawValue)/\(scene.identifier)"] = scene.body
+			}
+		}
+		
+		if folders.contains(.cues) {
+			for cue in contents.cues {
+				out["\(NodeStore.Folder.cues.rawValue)/\(cue.identifier)"] = cue.body
 			}
 		}
 		
@@ -619,6 +637,7 @@ final class ShowLibrary {
 				case "FixtureGroup": found.insert(.groups)
 				case "StoredFixtureType": found.insert(.made)
 				case "Look": found.insert(.scenes)
+				case "Cue": found.insert(.cues)
 				default: break
 				}
 			}
@@ -639,6 +658,7 @@ final class ShowLibrary {
 		let groups = show.groups.map(\.identifier)
 		let made = show.made.map(\.id)
 		let scenes = show.scenes.map(\.identifier)
+		let cues = show.cues.map(\.identifier)
 		context.undoManager?.disableUndoRegistration()
 		defer { context.undoManager?.enableUndoRegistration() }
 		
@@ -646,6 +666,7 @@ final class ShowLibrary {
 		discard(#Predicate<FixtureGroup> { !groups.contains($0.identifier) })
 		discard(#Predicate<StoredFixtureType> { !made.contains($0.identifier) })
 		discard(#Predicate<Look> { !scenes.contains($0.identifier) })
+		discard(#Predicate<Cue> { !cues.contains($0.identifier) })
 		try? context.save()
 	}
 	
@@ -664,7 +685,7 @@ final class ShowLibrary {
 	
 	private static func store() -> ModelContainer {
 		let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-		let container = try! ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: configuration)
+		let container = try! ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: configuration)
 		container.mainContext.undoManager = UndoManager()
 		container.mainContext.autosaveEnabled = true
 		return container

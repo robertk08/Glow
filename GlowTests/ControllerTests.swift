@@ -35,8 +35,12 @@ private final class Device {
 		(try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
 	}
 	
-	var scenes: [Look] {
+	var looks: [Look] {
 		(try? context.fetch(FetchDescriptor<Look>())) ?? []
+	}
+	
+	var cues: [Cue] {
+		(try? context.fetch(FetchDescriptor<Cue>())) ?? []
 	}
 	
 	func light(_ identifier: String) -> Fixture? {
@@ -137,16 +141,61 @@ struct ControllerTests {
 		#expect(await eventually { await Rig.stored()?.lights.first?.address == 40 } != nil)
 	}
 	
-	@Test func aSceneReachesTheOtherDevice() async throws {
+	@Test func aSceneAndItsCuesReachTheOtherDevice() async throws {
 		try inScratch()
 		let identifier = try #require(Rig.first.lights.first?.identifier)
-		let look = Look(name: "Probe Look", sortIndex: 1, levels: [identifier: Data([255, 0, 128, 7])])
+		let look = Look(name: "Probe Scene", sortIndex: 1)
+		var opening = Levels()
+		opening.set(255, slot: 8, of: identifier)
+		opening.set(128, slot: 1, of: identifier)
+		var closing = Levels()
+		closing.set(40, slot: 8, of: identifier)
+		let second = Cue(lookID: look.identifier, number: 2000, fade: 0.3, levels: closing)
 		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, number: 1000, fade: 0, levels: opening))
+		Rig.first.context.insert(second)
 		try Rig.first.context.save()
 		let scene = look.identifier
+		let cue = second.identifier
 		
-		#expect(await eventually { Rig.second.scenes.first { $0.identifier == scene }?.levels[identifier] == Data([255, 0, 128, 7]) } != nil)
-		#expect(await eventually { await Rig.stored()?.scenes.count == 1 } != nil)
+		let took = await eventually { Rig.second.looks.contains { $0.identifier == scene } && Rig.second.cues.first { $0.identifier == cue }?.levels == closing }
+		#expect(took != nil)
+		print("HARDWARE scene and cues reached the other device in \(String(format: "%.2f", took ?? -1))s")
+		
+		#expect(await eventually {
+			let held = await Rig.stored()
+			return held?.scenes.count == 1 && held?.cues.count == 2 && held?.unreadable.isEmpty == true
+		} != nil)
+	}
+	
+	@Test func goOnOneDeviceMovesTheOtherToTheSameCue() async throws {
+		try inScratch()
+		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library)
+		try #require(list.cues.count == 2)
+		
+		Rig.first.console.go(list)
+		#expect(await eventually { Rig.second.console.activeCue == list.cues[0].identifier && Rig.second.console.value(at: dimmer) == 255 } != nil)
+		
+		Rig.first.console.go(list)
+		let took = await eventually { Rig.second.console.activeCue == list.cues[1].identifier && Rig.second.console.value(at: dimmer) == 40 }
+		#expect(took != nil)
+		print("HARDWARE a 0.3 s fade on one device finished on the other in \(String(format: "%.2f", took ?? -1))s")
+	}
+	
+	@Test func aSceneInTheOldFormatIsErasedWhenItsShowOpens() async throws {
+		try inScratch()
+		let old = Data(#"{"identifier":"0908ef53afc76309","levels":{},"name":"Open White","sortIndex":0}"#.utf8)
+		#expect(await NodeStore().put(old, folder: .scenes, id: "0908ef53afc76309", in: Rig.scratch, at: Rig.first.console.reachable, client: nil))
+		#expect(await eventually { await Rig.stored()?.unreadable == ["scenes/0908ef53afc76309"] } != nil)
+		
+		Rig.first.console.connect()
+		let took = await eventually(within: 10) { await Rig.stored()?.unreadable.isEmpty == true }
+		#expect(took != nil)
+		#expect(Rig.both.allSatisfy { device in !device.looks.contains { $0.identifier == "0908ef53afc76309" } })
+		print("HARDWARE an old scene was erased \(String(format: "%.2f", took ?? -1))s after its show reopened")
 	}
 	
 	@Test func anEditedBuiltInFixtureIsKeptAsACopyEverywhere() async throws {
@@ -249,7 +298,8 @@ struct ControllerTests {
 		let url = try #require(Bundle.main.url(forResource: "Demo", withExtension: "json"))
 		var file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
 		file.show.lights = Array(file.show.lights.prefix(3))
-		file.show.scenes = Array(file.show.scenes.prefix(2))
+		file.show.scenes = Array(file.show.scenes.prefix(4))
+		file.show.cues = file.show.cues.filter { cue in file.show.scenes.contains { $0.identifier == cue.scene } }
 		file.show.groups = []
 		let encoder = JSONEncoder()
 		encoder.dateEncodingStrategy = .iso8601
@@ -258,7 +308,7 @@ struct ControllerTests {
 		#expect(Rig.first.shows.adopt(contentsOf: trimmed))
 		
 		let took = await eventually(within: 10) {
-			Rig.both.allSatisfy { $0.shows.active.name.hasPrefix(file.name) && $0.lights.count == file.show.lights.count && $0.scenes.count == file.show.scenes.count }
+			Rig.both.allSatisfy { $0.shows.active.name.hasPrefix(file.name) && $0.lights.count == file.show.lights.count && $0.looks.count == file.show.scenes.count && $0.cues.count == file.show.cues.count }
 		}
 		
 		#expect(took != nil)
@@ -268,6 +318,7 @@ struct ControllerTests {
 		let held = await NodeStore().show(imported, at: Rig.first.console.reachable)
 		#expect(held?.lights.count == file.show.lights.count)
 		#expect(held?.scenes.count == file.show.scenes.count)
+		#expect(held?.cues.count == file.show.cues.count)
 		
 		Rig.second.shows.delete(Rig.first.shows.active)
 		#expect(await eventually { Rig.both.allSatisfy { !$0.shows.shows.contains { $0.id == imported } } } != nil)

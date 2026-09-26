@@ -2,7 +2,7 @@ import Foundation
 
 actor NodeStore {
 	enum Folder: String, Sendable, CaseIterable {
-		case lights, groups, made, scenes
+		case lights, groups, made, scenes, cues
 	}
 	
 	enum Failure: LocalizedError, Sendable {

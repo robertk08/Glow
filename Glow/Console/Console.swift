@@ -12,7 +12,8 @@ final class Console {
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
-	private(set) var activeScene: String?
+	private(set) var activeCue: String?
+	private(set) var cueStarted = Date.distantPast
 	private(set) var lock: Wire.Lock?
 	private(set) var lockedUntil: Date?
 	private(set) var isUnlocking = false
@@ -73,6 +74,7 @@ final class Console {
 	private var offered: Data?
 	private var proposed: Data?
 	private var pause: Task<Void, Never>?
+	private var running: Task<Void, Never>?
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -142,7 +144,8 @@ final class Console {
 			outbox = [Wire.Command.span(span).message]
 		case let .status(info):
 			node = info
-			activeScene = info.scene.isEmpty ? nil : info.scene
+			activeCue = info.scene.isEmpty ? nil : info.scene
+			cueStarted = .distantPast
 			
 			if !info.address.isEmpty, info.address != UserDefaults.standard.string(forKey: Self.addressKey) {
 				UserDefaults.standard.set(info.address, forKey: Self.addressKey)
@@ -227,7 +230,9 @@ final class Console {
 			blackout = on
 			announcedBlackout = on
 		case let .scene(identifier):
-			activeScene = identifier
+			stop()
+			activeCue = identifier
+			cueStarted = .now
 		case let .notice(notice):
 			noticer.yield(notice)
 		}
@@ -329,9 +334,11 @@ final class Console {
 	}
 	
 	func closeShow(keepingLook: Bool = false) {
+		stop()
+		
 		if !keepingLook || !hasAdoptedSource {
 			universe = Universe()
-			activeScene = nil
+			activeCue = nil
 			hasAdoptedSource = false
 		}
 		
@@ -439,29 +446,94 @@ final class Console {
 		}
 	}
 	
-	func levels(among fixtures: [Fixture], library: FixtureLibrary) -> [String: Data] {
-		var levels: [String: Data] = [:]
-		
-		for fixture in fixtures {
-			guard let type = library.type(fixture.typeID) else { continue }
-			let first = fixture.start.value - 1
-			levels[fixture.identifier] = Data(universe.values[first..<min(first + type.channelCount, Universe.channelCount)])
-		}
-		
-		return levels
+	var isRunning: Bool { running != nil }
+	
+	func go(_ list: CueList) {
+		guard let index = list.upcoming(after: list.index(of: activeCue)) else { return }
+		play(list, at: index)
 	}
 	
-	func recall(_ look: Look, among fixtures: [Fixture]) {
-		let levels = look.levels
-		let identifier = look.identifier
+	func back(_ list: CueList) {
+		guard let current = list.index(of: activeCue), let index = list.previous(before: current) else { return }
+		play(list, at: index)
+	}
+	
+	func play(_ list: CueList, at index: Int) {
+		running?.cancel()
 		
-		for fixture in fixtures {
-			guard let values = levels[fixture.identifier] else { continue }
-			universe.set([UInt8](values), at: fixture.start)
+		running = Task { [weak self] in
+			await self?.run(list, from: index)
+		}
+	}
+	
+	func stop() {
+		running?.cancel()
+		running = nil
+	}
+	
+	func arrive(at cue: String) {
+		stop()
+		activeCue = cue
+		cueStarted = .distantPast
+		outbox.append(Wire.Command.scene(cue).message)
+	}
+	
+	private func run(_ list: CueList, from index: Int) async {
+		var current = index
+		
+		while !Task.isCancelled {
+			let cue = list.cues[current]
+			let next = list.follower(of: current)
+			activeCue = cue.identifier
+			cueStarted = .now
+			outbox.append(Wire.Command.scene(cue.identifier).message)
+			
+			var hold: Double?
+			
+			if let next, list.cues[next].trigger == .wait {
+				hold = list.cues[next].wait
+			}
+			
+			await glide(list.ramps(at: current), delay: cue.delay, length: cue.fade, until: hold)
+			guard let next, !Task.isCancelled else { break }
+			try? await Task.sleep(for: .milliseconds(20))
+			current = next
 		}
 		
-		activeScene = identifier
-		outbox.append(Wire.Command.scene(identifier).message)
+		guard !Task.isCancelled else { return }
+		running = nil
+	}
+	
+	private func glide(_ ramps: [Ramp], delay: Double, length: Double, until hold: Double?) async {
+		let clock = ContinuousClock()
+		let started = clock.now
+		let end = hold ?? delay + length
+		var moving = ramps.map { (ramp: $0, from: $0.level(in: universe), written: $0.level(in: universe)) }
+		
+		while !Task.isCancelled {
+			let elapsed = (clock.now - started) / .seconds(1)
+			
+			if elapsed >= delay, !moving.isEmpty {
+				let progress = length > 0 ? min((elapsed - delay) / length, 1) : 1
+				var next = universe
+				
+				for index in moving.indices.reversed() {
+					guard moving[index].ramp.level(in: next) == moving[index].written else {
+						moving.remove(at: index)
+						continue
+					}
+					
+					moving[index].written = moving[index].ramp.value(from: moving[index].from, at: progress)
+					moving[index].ramp.write(moving[index].written, into: &next)
+				}
+				
+				universe = next
+				if progress >= 1 { moving = [] }
+			}
+			
+			guard elapsed < end else { return }
+			try? await Task.sleep(for: .seconds(moving.isEmpty && elapsed >= delay ? end - elapsed : 0.02))
+		}
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {

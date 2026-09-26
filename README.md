@@ -87,6 +87,32 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
+A scene is a cue list, the way a grandMA sequence is. Most scenes hold one cue
+and are a tile you tap to bring the look back. Store a second cue into one and
+it becomes a list you run with Go and Back, or tap any cue to jump to it. Each
+cue carries a fade, a delay and how it starts: on Go, right after the cue
+before it has finished, or a set time after that cue began. A list can loop,
+which with timed cues makes it a chase. Values track: a cue keeps only what
+changed, and what it leaves alone stays as the cues before set it. Going to a
+cue, back or forward, puts every channel the scene touches where that cue
+leaves it, and a channel no cue up to there has set goes back to its default.
+
+Storing is a sheet, not a list. The lights are tiles to tap in or out, with
+shortcuts for all of them, the ones you changed, the selection and each group.
+It keeps only the channels you changed since they were last stored, or
+everything the chosen lights are doing, and you can leave out intensity,
+colour, position, gobo, beam or control. Storing into an existing cue merges
+unless you ask it to replace, and Update folds whatever you changed into the
+cue on stage. What was stored stops counting as changed.
+
+A fade runs on the device that pressed Go and reaches the others as ordinary
+frames, so every device shows the same cue with its progress. Intensity,
+colour mixing, position, zoom, focus, iris and frost glide, a 16-bit channel
+glides as one value, and a dimmer that shares its channel with a strobe fades
+only inside its dimming band. Everything else snaps at the start of the fade.
+Touch a channel while it fades and the fade lets go of it. On an iPad with a
+keyboard, the space bar is Go.
+
 A show is one file on the controller, holding one patch, its groups, the
 fixtures built here and its scenes, one record per change. Switching show swaps
 the store underneath the app without moving you off the screen you are on, and
@@ -239,8 +265,9 @@ never stalls the controller.
 
 `ControllerTests` runs two complete copies of the app, as two devices, against a
 real controller on the network. It covers opening, show commands, lights,
-scenes, made and edited fixtures, deletes, two devices editing one light, an
-edit made while the link is down, an import, deleting the open show and the
+scenes and cues, Go on one device moving the other, a scene in the old format
+being erased, made and edited fixtures, deletes, two devices editing one light,
+an edit made while the link is down, an import, deleting the open show and the
 password. It creates a show named **Hardware Test**, removes it again and
 leaves the controller on the show it found, with the password it found. It is
 skipped unless it is given an address. Run it with the controller on USB:
@@ -342,7 +369,9 @@ Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
 `pong` (with `ram`, `ramTotal`, `store` and `storeTotal` in bytes, which the
 Controller screen shows live),
 plus `blackout`, `master` and `scene` relayed from another client, and the
-document notices below. Types are
+document notices below. `scene` names the cue now on stage by its id, and the
+controller keeps it for `status`, so a device that joins mid-show knows where
+the list stands. Types are
 strict, a fraction is not an integer and a boolean is not `1`. `status` and
 `shows` are sent in reply to `hello`, so say hello first. `status` also carries
 `id`, `password` (whether one is set), `nonce` and `session`.
@@ -478,7 +507,7 @@ bytes 5..   folder, id, body
 ```
 
 The newest record for a folder and id is the object, and a delete record
-removes it. `lights`, `groups`, `made` and `scenes` are the folders today.
+removes it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders today.
 Names are letters, digits, hyphen and underscore, up to 39 characters, and
 anything else is refused. One object can be up to 64 KB. Once a file has grown
 past twice what its newest records hold, the store task rewrites it with only
@@ -486,8 +515,8 @@ those, so a show costs about what it holds and deleting one removes one file.
 
 **The controller does not know what a folder means.** It stores and returns
 records without parsing a body, `GET /api/show/<id>` sends the file as it is,
-and the app keeps the newest record per folder and id. So adding cue stacks
-later is a folder the app starts writing to, and the firmware does not change.
+and the app keeps the newest record per folder and id. So a new kind of object
+is a folder the app starts writing to, and the firmware does not change.
 `/shows.json` is the one file the controller reads, and it keeps it in memory.
 
 **One record per object, not one write per show.** A whole-show write would
@@ -499,13 +528,29 @@ After an HTTP write lands, the controller sends
 fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
-A scene is a base64 blob of raw channel bytes per light, not an array of
-numbers, which is where a show with many scenes would otherwise spend its space.
-It still records lights rather than addresses, so re-addressing later does not
-point a scene at whatever now sits on those channels.
+Scenes and cues are binary, because they are what a show holds most of. A
+scene is a format byte (1), a flags byte (1 loops), its order as a little
+endian double and its name. A cue is one cue per object, so editing one cue
+writes one small record however long the list is:
 
-An id is sixteen hex characters, not a UUID. A scene names every light it holds,
-so the id is most of what a scene weighs, and the odds of two devices minting
+```
+byte 0      1 plain, 2 the rest is raw DEFLATE, whichever is smaller
+then        scene id, number in thousandths, fade, delay in tenths of a second,
+            trigger (0 on Go, 1 after the previous, 2 timed), wait in tenths,
+            name, then the lights to the end
+per light   header, id, channel mask, one byte per channel the mask sets
+```
+
+Numbers are unsigned LEB128. An id is written as `header << 1` then its eight
+bytes when it is sixteen hex digits, or as `header << 1 | 1` then a length and
+the text. The header of a light is the length of its mask in bytes, and of the
+scene id in a cue it is 0. A cue stores only the channels it holds, so a cue
+that changes four lights' dimmers is about fifty bytes. It still records
+lights rather than addresses, so re-addressing later does not point a cue at
+whatever now sits on those channels.
+
+An id is sixteen hex characters, not a UUID. A cue names every light it holds,
+so the id is most of what a cue weighs, and the odds of two devices minting
 the same one are still far past never.
 
 **Order is a fraction, not a position.** Dragging a light to a new place gives
@@ -516,7 +561,9 @@ divide, that list renumbers itself once and carries on.
 
 Every field is read with a fallback rather than a requirement, so a folder or a
 field that is not there yet reads as empty instead of failing the whole show.
-That is what makes adding to the format safe.
+That is what makes adding to the format safe. An object the app cannot read at
+all, in a folder it knows, is erased from the controller the next time its show
+opens, so nothing unreadable stays on the controller.
 
 A show exports as one file carrying `format`, `version`, the date it was written
 and the show itself. Glow reads a file only when both the format and the version

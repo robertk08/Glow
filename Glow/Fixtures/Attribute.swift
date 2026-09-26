@@ -61,5 +61,13 @@ nonisolated enum Attribute: String, Codable, Sendable, CaseIterable, Identifiabl
 		}
 	}
 	
+	var fades: Bool {
+		switch self {
+		case .dimmer, .red, .green, .blue, .white, .amber, .uv, .lime, .cyan, .magenta, .yellow: true
+		case .hue, .saturation, .colorTemperature, .tint, .pan, .tilt, .focus, .zoom, .iris, .frost: true
+		default: false
+		}
+	}
+	
 	var color: Color? { Emitter.light(of: self)?.color }
 }

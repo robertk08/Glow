@@ -22,14 +22,17 @@ struct ShowSyncTests {
 	private func show(lightNamed name: String) -> ShowContents {
 		let light = ShowContents.Light(identifier: "par", typeID: "par", name: name, address: 1, sortIndex: 0)
 		let group = ShowContents.Group(identifier: "front", name: "Front", sortIndex: 0)
-		let scene = ShowContents.Scene(identifier: "look", name: "Look", sortIndex: 0, levels: ["par": Data([1, 2, 3])])
-		return ShowContents(lights: [light], groups: [group], scenes: [scene])
+		let scene = ShowContents.Scene(identifier: "look", name: "Look", sortIndex: 0)
+		var levels = Levels()
+		levels.set(255, slot: 1, of: "par")
+		let cue = ShowContents.Cue(identifier: "cue", scene: "look", number: 1000, levels: levels.data)
+		return ShowContents(lights: [light], groups: [group], scenes: [scene], cues: [cue])
 	}
 	
 	@Test func everyObjectIsKeyedByItsFolderAndIdentifier() async {
 		let keys = Set(await ShowLibrary.snapshot(of: show(lightNamed: "Par")).keys)
 		
-		#expect(keys == ["lights/par", "groups/front", "scenes/look"])
+		#expect(keys == ["lights/par", "groups/front", "scenes/look", "cues/cue"])
 	}
 	
 	@Test func renamingOneLightTouchesOnlyThatLightsKey() async {
@@ -71,14 +74,90 @@ struct ShowSyncTests {
 		}
 	}
 	
-	@Test func aSceneStoresOneBlobOfBytesPerLight() throws {
-		let scene = ShowContents.Scene(identifier: "look", name: "Look", sortIndex: 0, levels: ["par": Data([0, 128, 255])])
-		let text = try #require(String(data: try JSONEncoder().encode(scene), encoding: .utf8))
+	@Test func aSceneAndACueReadBackAsWritten() throws {
+		var levels = Levels()
+		levels.set(255, slot: 1, of: "0123456789abcdef")
+		levels.set(7, slot: 14, of: "0123456789abcdef")
+		levels.set(128, slot: 3, of: "par")
+		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, loops: true)
+		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", number: 2500, name: "Sunrise", fade: 3.5, delay: 1, trigger: .wait, wait: 12.3, levels: levels.data)
 		
-		#expect(text.contains("\"par\":\"AID\\/\""))
+		let readScene = try #require(ShowContents.Scene(identifier: "look", body: scene.body))
+		let readCue = try #require(ShowContents.Cue(identifier: "cue", body: cue.body))
 		
-		let decoded = try JSONDecoder().decode(ShowContents.Scene.self, from: try JSONEncoder().encode(scene))
-		#expect(decoded.levels["par"] == Data([0, 128, 255]))
+		#expect(readScene.name == "Évening")
+		#expect(readScene.sortIndex == 2.5)
+		#expect(readScene.loops)
+		#expect(readCue.scene == "0123456789abcdef")
+		#expect(readCue.number == 2500)
+		#expect(readCue.name == "Sunrise")
+		#expect(readCue.fade == 3.5)
+		#expect(readCue.delay == 1)
+		#expect(readCue.trigger == .wait)
+		#expect(readCue.wait == 12.3)
+		#expect(Levels(readCue.levels) == levels)
+	}
+	
+	@Test func aCueHoldsOnlyTheChannelsItStores() {
+		var levels = Levels()
+		levels.set(255, slot: 6, of: "0123456789abcdef")
+		
+		#expect(levels.data.count == 11)
+		#expect(Levels(levels.data)?.lights["0123456789abcdef"] == [6: 255])
+	}
+	
+	@Test func aLargeCueIsKeptSqueezed() throws {
+		var levels = Levels()
+		
+		for _ in 0..<40 {
+			let light = Identifier.fresh()
+			
+			for slot in 1...16 {
+				levels.set(UInt8(slot * 8), slot: slot, of: light)
+			}
+		}
+		
+		let cue = ShowContents.Cue(identifier: "cue", scene: "look", number: 1000, levels: levels.data)
+		
+		#expect(cue.body.first == 2)
+		#expect(cue.body.count < levels.data.count * 2 / 3)
+		#expect(try #require(ShowContents.Cue(identifier: "cue", body: cue.body)).levels == levels.data)
+	}
+	
+	@Test func levelsMergeWithTheNewerValuesWinning() {
+		var older = Levels()
+		older.set(10, slot: 1, of: "a")
+		older.set(20, slot: 2, of: "a")
+		var newer = Levels()
+		newer.set(99, slot: 2, of: "a")
+		newer.set(5, slot: 1, of: "b")
+		let merged = older.merging(newer)
+		
+		#expect(merged.lights["a"] == [1: 10, 2: 99])
+		#expect(merged.lights["b"] == [1: 5])
+		#expect(merged.removing("a").lights.keys.sorted() == ["b"])
+	}
+	
+	@Test func aBrokenBodyIsNeverReadAsACue() {
+		#expect(ShowContents.Cue(identifier: "cue", body: Data(#"{"identifier":"look","name":"Look","levels":{}}"#.utf8)) == nil)
+		#expect(ShowContents.Scene(identifier: "look", body: Data(#"{"identifier":"look","name":"Look","sortIndex":0}"#.utf8)) == nil)
+		#expect(ShowContents.Cue(identifier: "cue", body: Data([1, 0])) == nil)
+		#expect(ShowContents.Cue(identifier: "cue", body: Data()) == nil)
+	}
+	
+	@Test func cueNumbersFallBetweenTheirNeighbours() {
+		#expect(Cue.number(after: nil, before: nil) == 1000)
+		#expect(Cue.number(after: 3000, before: nil) == 4000)
+		#expect(Cue.number(after: 2500, before: nil) == 3000)
+		#expect(Cue.number(after: 1000, before: 2000) == 1500)
+		#expect(Cue.number(after: 1500, before: 2000) == 1700)
+		#expect(Cue.number(after: nil, before: 1000) == 500)
+		#expect(Cue.number(after: 1000, before: 1001) == nil)
+		#expect(Cue.text(2500) == "2.5")
+		#expect(Cue.text(3000) == "3")
+		#expect(Cue.text(1025) == "1.025")
+		#expect(Cue.number("2,5") == 2500)
+		#expect(Cue.number("zero") == nil)
 	}
 	
 	@Test func theDemoShowPatchesAgainstTheBundledFixtures() throws {
@@ -91,6 +170,8 @@ struct ShowSyncTests {
 		#expect(file.isReadable)
 		#expect(!file.show.lights.isEmpty)
 		#expect(!file.show.scenes.isEmpty)
+		#expect(file.show.cues.contains { $0.trigger != .go })
+		#expect(file.show.scenes.contains { $0.loops })
 		
 		var used: Set<Int> = []
 		
@@ -106,12 +187,15 @@ struct ShowSyncTests {
 			}
 		}
 		
-		for scene in file.show.scenes {
-			#expect(scene.levels.count == file.show.lights.count)
+		for cue in file.show.cues {
+			let levels = try #require(Levels(cue.levels))
+			#expect(!levels.isEmpty)
+			#expect(file.show.scenes.contains { $0.identifier == cue.scene })
 			
-			for light in file.show.lights {
+			for (identifier, slots) in levels.lights {
+				let light = try #require(file.show.lights.first { $0.identifier == identifier })
 				let type = try #require(library.type(light.typeID))
-				#expect(scene.levels[light.identifier]?.count == type.channelCount)
+				#expect(slots.keys.allSatisfy { $0 <= type.channelCount })
 			}
 		}
 	}
@@ -123,17 +207,18 @@ struct ShowSyncTests {
 		#expect(empty.groups.isEmpty)
 		#expect(empty.made.isEmpty)
 		#expect(empty.scenes.isEmpty)
+		#expect(empty.cues.isEmpty)
 	}
 	
 	@Test func aFolderTheAppDoesNotKnowYetIsIgnored() throws {
-		let text = #"{"lights":[],"cues":[{"anything":1}]}"#
+		let text = #"{"lights":[],"effects":[{"anything":1}]}"#
 		let decoded = try JSONDecoder().decode(ShowContents.self, from: Data(text.utf8))
 		
 		#expect(decoded.lights.isEmpty)
 	}
 	
 	@Test func savingASceneMarksOnlyTheScenesFolder() throws {
-		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
 		let context = container.mainContext
 		let box = Box()
 		
@@ -142,10 +227,15 @@ struct ShowSyncTests {
 		}
 		defer { NotificationCenter.default.removeObserver(token) }
 		
-		context.insert(Look(name: "Look", sortIndex: 0, levels: [:]))
+		context.insert(Look(name: "Look", sortIndex: 0))
 		try context.save()
 		
 		#expect(box.folders == [.scenes])
+		
+		context.insert(Cue(lookID: "look", number: 1000, fade: 0, levels: Levels()))
+		try context.save()
+		
+		#expect(box.folders == [.cues])
 	}
 	
 	@Test func anExportFromAnotherFormatIsRefused() {
@@ -156,7 +246,7 @@ struct ShowSyncTests {
 	}
 	
 	@Test func savingALightAlsoSyncsTheDefinitionsItCarries() throws {
-		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
 		let context = container.mainContext
 		let box = Box()
 		
@@ -363,6 +453,15 @@ struct ShowSyncTests {
 		
 		#expect(show.lights.map(\.name) == ["New"])
 		#expect(show.scenes.isEmpty)
+		#expect(show.unreadable == ["lights/wash"])
+	}
+	
+	@Test func aSceneStoredBeforeCuesIsUnreadableSoItsShowErasesIt() {
+		let old = Data(#"{"identifier":"look","name":"Look","sortIndex":0,"levels":{"par":"AID/"}}"#.utf8)
+		let show = ShowContents(objects: [("scenes", "look", old), ("elsewhere", "thing", old)])
+		
+		#expect(show.scenes.isEmpty)
+		#expect(show.unreadable == ["scenes/look"])
 	}
 	
 	@Test func aSourceFrameReadsBackAsWritten() throws {

@@ -36,33 +36,41 @@ struct PerformanceTests {
 		#expect(console.span < Universe.channelCount / 2)
 	}
 	
-	@Test func syncingScenesNeverEncodesFixtureDefinitions() async {
+	@Test func syncingCuesNeverEncodesFixtureDefinitions() async {
 		let show = Self.crowded()
-		let scoped = await ShowLibrary.snapshot(of: show, folders: [.scenes])
+		let scoped = await ShowLibrary.snapshot(of: show, folders: [.cues])
 		
-		#expect(scoped.keys.allSatisfy { $0.hasPrefix("scenes/") })
-		#expect(scoped.count == show.scenes.count)
+		#expect(scoped.keys.allSatisfy { $0.hasPrefix("cues/") })
+		#expect(scoped.count == show.cues.count)
 	}
 	
-	@Test func recallingASceneStaysWellUnderAFrame() {
-		let (console, fixtures, library) = rig(60)
-		var levels: [String: Data] = [:]
+	@Test func planningTheLastOfFortyCuesFitsInAFrame() {
+		let (_, fixtures, library) = rig(60)
+		let look = Look(name: "Look", sortIndex: 0)
+		var cues: [Cue] = []
 		
-		for fixture in fixtures {
-			levels[fixture.identifier] = Data(repeating: 128, count: 8)
+		for index in 0..<40 {
+			var levels = Levels()
+			
+			for fixture in fixtures {
+				levels.set(UInt8(index), slot: 1, of: fixture.identifier)
+				levels.set(128, slot: 8, of: fixture.identifier)
+			}
+			
+			cues.append(Cue(lookID: look.identifier, number: (index + 1) * 1000, fade: 0, levels: levels))
 		}
 		
-		let look = Look(name: "Look", sortIndex: 0, levels: levels)
 		let clock = ContinuousClock()
 		var best = Duration.seconds(60)
+		var ramps: [Ramp] = []
 		
 		for _ in 0..<5 {
-			best = min(best, clock.measure { console.recall(look, among: fixtures) })
+			best = min(best, clock.measure { ramps = CueList(look, cues: cues, fixtures: fixtures, library: library).ramps(at: 39) })
 		}
 		
-		#expect(best < .milliseconds(10))
-		#expect(console.universe[DMXAddress(1)!] == 128)
-		#expect(library.types.count == 1)
+		#expect(best < .milliseconds(16))
+		#expect(ramps.count == 120)
+		#expect(ramps.contains { $0.target == 39 })
 	}
 	
 	@Test func aFullSnapshotOfACrowdedShowStaysUnderAFrame() async {
@@ -87,13 +95,16 @@ struct PerformanceTests {
 		}
 		
 		for index in 0..<40 {
-			var levels: [String: Data] = [:]
+			var levels = Levels()
 			
 			for light in show.lights {
-				levels[light.identifier] = Data(repeating: UInt8(index % 256), count: 32)
+				for slot in 1...32 {
+					levels.set(UInt8((index + slot) % 256), slot: slot, of: light.identifier)
+				}
 			}
 			
-			show.scenes.append(ShowContents.Scene(identifier: Identifier.fresh(), name: "Scene \(index)", sortIndex: Double(index), levels: levels))
+			show.scenes.append(ShowContents.Scene(identifier: Identifier.fresh(), name: "Scene \(index)", sortIndex: Double(index)))
+			show.cues.append(ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[index].identifier, number: 1000, levels: levels.data))
 		}
 		
 		return show

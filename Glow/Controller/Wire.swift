@@ -156,9 +156,9 @@ nonisolated enum Wire {
 		return data
 	}
 	
-	static func objects(in log: Data) -> [(folder: String, body: Data)] {
+	static func objects(in log: Data) -> [(folder: String, id: String, body: Data)] {
 		let bytes = [UInt8](log)
-		var latest: [String: (folder: String, body: Data)] = [:]
+		var latest: [String: (folder: String, id: String, body: Data)] = [:]
 		var cursor = 0
 		
 		while cursor + recordHeader <= bytes.count {
@@ -168,10 +168,11 @@ nonisolated enum Wire {
 			let end = bodyStart + (Int(bytes[cursor + 3]) | (Int(bytes[cursor + 4]) << 8))
 			guard end <= bytes.count else { break }
 			let folder = String(decoding: bytes[folderStart..<idStart], as: UTF8.self)
-			let key = "\(folder)/\(String(decoding: bytes[idStart..<bodyStart], as: UTF8.self))"
+			let id = String(decoding: bytes[idStart..<bodyStart], as: UTF8.self)
+			let key = "\(folder)/\(id)"
 			
 			if bytes[cursor] == 0 {
-				latest[key] = (folder, Data(bytes[bodyStart..<end]))
+				latest[key] = (folder, id, Data(bytes[bodyStart..<end]))
 			} else {
 				latest[key] = nil
 			}
