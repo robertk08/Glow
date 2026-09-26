@@ -4,6 +4,10 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#if GLOW_ESP_DMX_PATCHED != 3
+#error "esp_dmx is not patched, run Arduino/patch_esp_dmx.sh"
+#endif
+
 namespace DmxBus {
 namespace {
 

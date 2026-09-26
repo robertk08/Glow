@@ -84,4 +84,34 @@ PY
   echo "forced into IRAM: $f"
 done
 
+TIMER_C="$SRC/dmx/hal/timer.c"
+
+python3 - "$TIMER_C" <<'PY'
+import os, shutil, sys
+path = sys.argv[1]
+old = ('    if (driver->dmx.progress == DMX_PROGRESS_IN_BREAK) {\n'
+       '      dmx_uart_invert_tx(dmx_num, 0);\n')
+new = ('    if (driver->dmx.progress == DMX_PROGRESS_IN_BREAK) {\n'
+       '      dmx_uart_invert_tx(dmx_num, 0);\n'
+       '      dmx_timer_set_counter(dmx_num, 0);\n')
+src = open(path).read()
+if new in src:
+    print(f"already timing the mark after break from the end of the break: {path}")
+elif old not in src:
+    sys.exit(f"break handler not found, library version changed? {path}")
+else:
+    if not os.path.exists(path + '.orig'):
+        shutil.copy(path, path + '.orig')
+    open(path, 'w').write(src.replace(old, new))
+    print(f"timing the mark after break from the end of the break: {path}")
+PY
+
+python3 - "$SRC/esp_dmx.h" <<'PY'
+import re, sys
+path = sys.argv[1]
+src = re.sub(r'\n#define GLOW_ESP_DMX_PATCHED \d+\n', '\n', open(path).read())
+open(path, 'w').write(src.rstrip('\n') + '\n#define GLOW_ESP_DMX_PATCHED 3\n')
+print(f"marked as patched: {path}")
+PY
+
 echo "backups end in .orig, restore them to undo"

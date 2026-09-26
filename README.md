@@ -225,13 +225,20 @@ TEST_RUNNER_GLOW_CONTROLLER=192.168.68.55 xcodebuild test -scheme Glow -destinat
 arduino-esp32 core 3.3.12 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
 ArduinoJson 7.4.3 · HomeSpan 2.1.8
 
-**esp_dmx needs patching, twice.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
+**esp_dmx needs patching, three times.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
 which removed `.module` from `uart_signal_conn_t`. And its ISR only goes into
 IRAM when `CONFIG_DMX_ISR_IN_IRAM` is set, which Kconfig does under ESP-IDF but
 cannot under Arduino, so by default the ISR sits in flash and any flash access
-that drops the cache corrupts the packet on the wire as a visible flicker. Run
+that drops the cache corrupts the packet on the wire as a visible flicker. And
+it times the mark after break from when the break was due to end rather than
+when it did, so an interrupt that arrives late eats into the mark. Read back off
+the wire, the mark fell under the 8 µs a receiver must accept about once a
+second, and cheap LED fixtures dropped that packet all at once while moving
+heads read it fine. Patched, the mark never measured under 15 µs. Run
 `./patch_esp_dmx.sh` after installing from Library Manager. Idempotent, keeps
-`.orig` backups.
+`.orig` backups. It marks the library once every patch is in, and the sketch
+refuses to build without that mark, so a fresh machine or a library update
+cannot quietly bring the flicker back.
 
 **Use `DMX_NUM_1`.** Port 0 is the console UART, and `DMX_NUM_2` crashes in
 `dmx_driver_install()`, because esp_dmx drops the third UART's context entry
