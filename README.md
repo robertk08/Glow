@@ -251,8 +251,8 @@ GlowTests/controller-tests.sh 192.168.68.55
 
 The script asks the controller for its key over serial, so the two devices get
 in whatever password is set, and it turns off Xcode's diagnostics collection,
-which otherwise adds more than a minute after the run. It takes about 25
-seconds and the unit tests about 5. A run stopped halfway can leave a test
+which otherwise adds more than a minute after the run. It takes about 10 to
+15 seconds and the unit tests about 5. A run stopped halfway can leave a test
 password behind, which serial `password` removes.
 
 ## Toolchain
