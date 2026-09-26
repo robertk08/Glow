@@ -12,7 +12,8 @@
       "offset": 1,
       "attribute": "pan",
       "fineOffset": 2,
-      "defaultValue": 128,
+      "defaultValue": 170,
+      "fineDefaultValue": 170,
       "functions": [
         {
           "from": 0,
@@ -72,41 +73,36 @@
         {
           "from": 6,
           "to": 10,
-          "label": "Open"
-        },
-        {
-          "from": 11,
-          "to": 33,
           "label": "Closed",
           "purpose": "closed"
         },
         {
+          "from": 11,
+          "to": 33,
+          "label": "Random pulse, slow to fast",
+          "kind": "proportional"
+        },
+        {
           "from": 34,
           "to": 56,
-          "label": "Random pulse, slow to fast",
+          "label": "Random ramp up, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 57,
           "to": 79,
-          "label": "Random ramp up, slow to fast",
+          "label": "Random ramp down, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 80,
           "to": 102,
-          "label": "Random ramp down, slow to fast",
+          "label": "Random strobe, slow to fast",
           "kind": "proportional"
         },
         {
           "from": 103,
           "to": 127,
-          "label": "Random strobe, slow to fast",
-          "kind": "proportional"
-        },
-        {
-          "from": 128,
-          "to": 250,
           "label": "Burst with break, 5 s to 1 s",
           "kind": "proportional",
           "unit": "seconds",
@@ -114,13 +110,18 @@
           "physicalTo": 1
         },
         {
-          "from": 251,
-          "to": 255,
+          "from": 128,
+          "to": 250,
           "label": "Strobe, slow to fast",
           "kind": "proportional",
           "unit": "hertz",
           "physicalFrom": 1,
           "physicalTo": 20
+        },
+        {
+          "from": 251,
+          "to": 255,
+          "label": "Open, top of the range"
         }
       ]
     },

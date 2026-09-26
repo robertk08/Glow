@@ -151,6 +151,17 @@ struct BuiltInFixtureTests {
 		#expect(macro.functions.first?.purpose == .release)
 	}
 	
+	@Test func theBigHeadStrobesAcrossTheUpperShutterAndRestsAQuarterTurnRound() throws {
+		let mode = try #require(library.type("stairville-bsw350-32ch"))
+		let shutter = try #require(mode.channel(.shutter))
+		let pan = try #require(mode.channel(.pan))
+		
+		#expect(shutter.function(containing: 200)?.unit == .hertz)
+		#expect(shutter.function(containing: 8)?.purpose == .closed)
+		#expect(Set(shutter.functions.map(\.label)).count == shutter.functions.count)
+		#expect(pan.neutral == 43690)
+	}
+	
 	@Test func aStrobeReadsInHertzWhereTheManualGivesOne() {
 		guard let mode = library.type("cameo-f2-fc-16ch"), let shutter = mode.channel(.shutter) else {
 			Issue.record("missing the shutter")
