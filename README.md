@@ -321,24 +321,25 @@ away, so the app polls until the list arrives.
 
 ## Apple Home
 
-The controller is a HomeKit accessory as well as a desk. It serves HAP itself,
-so Siri and the Home app reach the rig with no phone, no hub and no bridge in
-between.
+The controller is a HomeKit bridge as well as a desk. It serves HAP itself,
+so Siri and the Home app reach the rig with no phone, no hub and no other
+bridge in between.
 
-**Apple Home belongs to one show.** The accessory is live only while the show
+**Apple Home belongs to one show.** The accessories are live only while the show
 named **Home** is the active one, because channel 1 is this head in that show
 and something else entirely in the others. Switch to another show and Home's
 controls refuse the write and report a failure rather than moving a stranger's
 fixture. Switch back and they pick the light up again. The binding is by name,
 so renaming the show in Glow moves it.
 
-The head is one accessory carrying three controls:
+The head arrives in Home as two accessories, so its light and its position
+sit on separate tiles:
 
-| Control | What it drives | Channels |
-|---|---|---|
-| Moving Head | on, brightness, hue and saturation | 6 to 10 |
-| Pan | 0 to 100 percent across 540 degrees | 1 and 2 |
-| Tilt | 0 to 100 percent across 270 degrees | 3 and 4 |
+| Accessory | Control | What it drives | Channels |
+|---|---|---|---|
+| Moving Head | Moving Head | on, brightness, hue and saturation | 6 to 10 |
+| Pan and Tilt | Pan | 0 to 100 percent across 540 degrees | 1 and 2 |
+| Pan and Tilt | Tilt | 0 to 100 percent across 270 degrees | 3 and 4 |
 
 Home has no control for an axis, so Pan and Tilt borrow the window covering
 service and read as a percentage rather than in degrees. They carry shade icons
@@ -374,12 +375,12 @@ the dimmer band, the pan and tilt inversions, the show name, the pairing code
 and the HAP port. Nothing about it is sent from the app.
 
 **Pairing:** HAP is on port 1201, advertised as `_hap._tcp` on the same
-`glow.local`. Add the accessory in Home and enter **466-37-726**. Pair with the
+`glow.local`. Add Glow in Home and enter **466-37-726**. Pair with the
 rig dark, because pairing writes to flash and a flash write corrupts the packet
-on the wire. Removing the accessory from Home leaves the controller believing it
+on the wire. Removing the bridge from Home leaves the controller believing it
 is paired, so serial `unpair` is what lets it be added again. Home caches the
-accessory database, so a firmware change that adds or removes a control needs
-the accessory removed and added back before it shows.
+accessory database, so a firmware change that adds or removes a control or an
+accessory needs the bridge removed and added back before it shows.
 
 ## Shows on the wire
 

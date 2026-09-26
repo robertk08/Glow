@@ -197,7 +197,7 @@ void begin() {
   homeSpan.setPortNum(HOMEKIT_PORT);
   homeSpan.setHostNameSuffix("");
   homeSpan.setSerialInputDisable(true);
-  homeSpan.begin(Category::Lighting, HOMEKIT_NAME, GLOW_HOSTNAME, HOMEKIT_MODEL);
+  homeSpan.begin(Category::Bridges, GLOW_NODE_NAME, GLOW_HOSTNAME, HOMEKIT_MODEL);
 
   Flash::guarded([] {
     homeSpan.setPairingCode(HOMEKIT_PAIRING_CODE);
@@ -207,13 +207,22 @@ void begin() {
   new SpanAccessory();
   new Service::AccessoryInformation();
   new Characteristic::Identify();
-  new Characteristic::Name(HOMEKIT_NAME);
+  new Characteristic::Name(GLOW_NODE_NAME);
   new Characteristic::Manufacturer(GLOW_NODE_NAME);
   new Characteristic::Model(HOMEKIT_MODEL);
   new Characteristic::SerialNumber(Net::id());
   new Characteristic::FirmwareRevision(GLOW_FW_VERSION);
 
+  new SpanAccessory();
+  new Service::AccessoryInformation();
+  new Characteristic::Identify();
+  new Characteristic::Name(HOMEKIT_NAME);
   new Head();
+
+  new SpanAccessory();
+  new Service::AccessoryInformation();
+  new Characteristic::Identify();
+  new Characteristic::Name(HOMEKIT_POSITION_NAME);
   new Axis("Pan", HEAD_ADDRESS + HEAD_PAN - 1, HEAD_INVERTS_PAN);
   new Axis("Tilt", HEAD_ADDRESS + HEAD_TILT - 1, HEAD_INVERTS_TILT);
 
