@@ -87,45 +87,51 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
-A scene is a tile like a light. Every scene can do the same things: turn on, where every
-light it holds takes the values it stored, turn off, where those lights go back
-to whatever they were doing before, flash, which is on only while a finger
-holds it, and step through its cues. What differs is what a tap on the tile
-does, turn on and off, flash or run the next cue, and which buttons sit on the
-tile: Back, Next, On and Off, Flash and Update. Both are chosen per scene with
-the tile shown above them, a tile with buttons is twice as wide and shows them
-whether the scene is on or off, so no tile moves while you play, and everything
-else is in the tile's menu. A scene gets its second cue and its tap
-starts running cues, with Back and On and Off on the tile, until you choose
-otherwise. Scenes can be on together, and the one turned on last wins a light
-they share.
+A scene is a tile like a light, and it works like an executor on a desk. Every
+scene can do the same things: turn on, where every light it holds takes the
+values it stored, turn off, where those lights go back to whatever they were
+doing before, flash, which is on only while a finger holds it, and step through
+its cues. What differs is what a tap on the tile does, run the next cue, turn on
+and off or flash, and which buttons sit on the tile: up to three of Next, Back,
+On and Off, Flash and Update, in an order you choose. A tile with buttons is
+twice as wide, like a medium widget beside small ones, and every tile is the
+same height, so the grid packs without holes and nothing moves while you play.
+A tap never does anything but the scene's own action. The corner button opens
+the scene, like a shortcut in the Shortcuts app, and a long press opens the
+menu, except on a scene that flashes, where a long press is the flash. A new
+scene gets a colour of its own. A scene gets its second cue and its tap starts
+running cues, with Back and On and Off on the tile, until you choose otherwise.
+Scenes can be on together, and the one turned on last wins a light they share.
 
 The first Next starts a scene at cue 1, and after the last cue the next one
 starts again at the first, so a reading can go dark, full stage, one light and
-round again. The menu also jumps to any cue. On iPad the cues and the tile
-settings sit in a sidebar on the right, beside the scenes as the programmer
-sits beside the lights, and the arrow keys or a presentation clicker step
-through the cues while it is open. On iPhone the menu opens them as a sheet. A
-cue has a name or a short description, a fade, a delay before it starts, and
-can run the next cue by itself once it has faded in. Cues can be reordered,
-deleted and added after any cue. Values carry through: a cue holds only the
-lights and aspects stored into it, and everything else keeps what the cues
-before it set. Going back undoes what the later cues changed. Update folds what
-you changed on the lights into the cue on stage.
+round again. A scene opens as a cue list in its own colour with one transport
+at the bottom, Back, Next Cue and Off, and one menu for its settings, adding,
+reordering, duplicating and deleting. Tap a cue to jump to it, swipe it to
+update or delete it. On iPad the scene sits in the sidebar on the right, beside
+the scenes as the programmer sits beside the lights, and stays there until you
+open another, and the arrow keys or a presentation clicker step through its
+cues. On iPhone it opens as a sheet, and the bar above the tabs shows the scene
+on stage with its cue, Back, Next and Off, like the mini player in Music. A cue
+has a name or a short description, a fade, a delay before it starts, and can
+run the next cue by itself once it has faded in. Values carry through: a cue
+holds only the lights and aspects stored into it, and everything else keeps
+what the cues before it set. Going back undoes what the later cues changed.
 
-A scene is built on the Lights page. New Scene, or Build Cues on any scene,
+A scene is built on the Lights page. New Scene, or Add Cues on any scene,
 switches there and pins a bar under the lights with the scene's cues and one
-Store Cue button. Set the lights, store, change them, store the next: each cue
-takes the lights you changed since the last one, or all of them for a first cue
-nothing was changed for. Store puts the new cue right after the one on stage,
-or at the end, and the stage is then on it without a light moving, so the next
-Store follows it and Update refines it. Tap a cue in the bar to go back to it,
-and Update folds what you changed into it. Options chooses the
-lights, the aspects (intensity, colour, position, gobo, beam or control), a
-name and the fade, and a cue's menu adds one after it. Done leaves the bar, and
-Cancel on a scene without cues removes it. Storing into a cue replaces only
-what you chose and keeps the rest, and what was stored stops counting as
-changed. All Off on the Scenes page turns every scene off.
+Store Cue button. A cue takes the lights you selected and the lights you
+changed, so selecting a light that already looks right adds it as it is, and a
+first cue with nothing selected or changed takes every light. Store puts the
+new cue right after the one on stage, or at the end, and the stage is then on
+it without a light moving, so the next Store follows it and Update refines it.
+Update puts the same lights into the cue on stage. After either, the selection
+clears and nothing counts as changed, as the programmer empties after a store
+on a desk. Tap a cue in the bar to go back to it. Options chooses the lights,
+the aspects (intensity, colour, position, gobo, beam or control), a name and
+the fade. Done leaves the bar, and Cancel on a scene without cues removes it.
+Storing into a cue replaces only what you chose and keeps the rest. All Off on
+the Scenes page turns every scene off.
 
 A fade runs on the device that started it and reaches the others as ordinary
 frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a

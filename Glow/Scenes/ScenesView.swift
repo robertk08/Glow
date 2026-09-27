@@ -176,9 +176,6 @@ struct SceneTile: View {
 					console.flash(list, among: lists, isHeld: isHeld)
 				})
 				.accessibilityHint(look.tap.tapName)
-				.contextMenu(look.tap == .flash ? nil : ContextMenu {
-					SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
-				})
 				
 				if !look.buttons.isEmpty {
 					TileButtons(look: look, list: list, lists: lists)
@@ -226,6 +223,9 @@ struct SceneTile: View {
 		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.contextMenu(look.tap == .flash || look.buttons.contains(.flash) ? nil : ContextMenu {
+			SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+		})
 		.animation(.snappy, value: index)
 		.sensoryFeedback(.impact(weight: .medium), trigger: index)
 		.layoutValue(key: TileSpan.self, value: look.buttons.isEmpty ? 1 : 2)
