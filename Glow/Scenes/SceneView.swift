@@ -16,7 +16,6 @@ struct SceneView: View {
 	
 	@State private var recording: Recording?
 	@State private var editing: Cue?
-	@State private var isDeleting = false
 	
 	var body: some View {
 		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
@@ -81,13 +80,19 @@ struct SceneView: View {
 									.foregroundStyle(position == index ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
 									.frame(minWidth: 22, alignment: .leading)
 								
-								VStack(alignment: .leading, spacing: 1) {
+								VStack(alignment: .leading, spacing: 4) {
 									Text(cue.title(at: position))
+										.fontWeight(position == index ? .semibold : .regular)
 										.lineLimit(2)
 									
 									Text(cue.timing)
 										.font(.caption)
 										.foregroundStyle(.secondary)
+									
+									if position == index, let fade = console.fades[look.identifier] {
+										FadeBar(fade: fade, tint: look.tint.color ?? .accentColor)
+											.padding(.vertical, 2)
+									}
 								}
 								
 								Spacer()
@@ -100,6 +105,7 @@ struct SceneView: View {
 							.contentShape(.rect)
 						}
 						.buttonStyle(.plain)
+						.listRowBackground(position == index ? (look.tint.color ?? .accentColor).opacity(0.14) : nil)
 						.accessibilityAddTraits(position == index ? .isSelected : [])
 						.swipeActions(edge: .leading) {
 							Button("Edit", systemImage: "slider.horizontal.3") {
@@ -147,45 +153,13 @@ struct SceneView: View {
 				}
 				
 				Section {
-					Picker("A Tap", selection: $look.tap) {
-						ForEach(SceneAction.taps) { action in
-							Text(action.tapName)
-								.tag(action)
-						}
+					NavigationLink {
+						SceneSettings(look: look)
+					} label: {
+						Label("Scene Settings", systemImage: "slider.horizontal.3")
 					}
-					
-					ForEach(SceneAction.allCases) { action in
-						Toggle(isOn: Binding { look.buttons.contains(action) } set: { look.shows(action, $0) }) {
-							Label(action.name, systemImage: action.symbol)
-						}
-					}
-				} header: {
-					Text("On the Tile")
 				} footer: {
-					Text("Choose what a tap on the tile does and which buttons sit on it. Everything else is in its menu.")
-				}
-				
-				Section("Name") {
-					TextField("Name", text: $look.name)
-						.autocorrectionDisabled()
-				}
-				
-				Section("Icon") {
-					AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
-				}
-				
-				Section {
-					Button("Delete Scene", role: .destructive) {
-						isDeleting = true
-					}
-					.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
-						Button("Delete Scene", role: .destructive) {
-							look.remove(with: cues, context: context)
-							dismiss()
-						}
-					} message: {
-						Text("The lights stay as they are.")
-					}
+					Text("Name, icon and colour, what a tap on the tile does and which buttons sit on it.")
 				}
 			}
 			.navigationTitle(look.name)
@@ -209,6 +183,67 @@ struct SceneView: View {
 				CueEditView(cue: cue, position: held.firstIndex { $0.identifier == cue.identifier } ?? 0)
 			}
 			.sensoryFeedback(.selection, trigger: console.playback)
+			.onChange(of: looks.contains { $0.identifier == look.identifier }) {
+				dismiss()
+			}
 		}
+	}
+}
+
+private struct SceneSettings: View {
+	@Environment(\.modelContext) private var context
+	@Environment(\.dismiss) private var dismiss
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
+	
+	@Bindable var look: Look
+	
+	@State private var isDeleting = false
+	
+	var body: some View {
+		Form {
+			Section {
+				TextField("Name", text: $look.name)
+					.autocorrectionDisabled()
+			}
+			
+			Section {
+				Picker("A Tap", selection: $look.tap) {
+					ForEach(SceneAction.taps) { action in
+						Text(action.tapName)
+							.tag(action)
+					}
+				}
+				
+				ForEach(SceneAction.allCases) { action in
+					Toggle(isOn: Binding { look.buttons.contains(action) } set: { look.shows(action, $0) }) {
+						Label(action.name, systemImage: action.symbol)
+					}
+				}
+			} header: {
+				Text("On the Tile")
+			} footer: {
+				Text("Everything else is in the tile's menu.")
+			}
+			
+			Section("Icon") {
+				AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+			}
+			
+			Section {
+				Button("Delete Scene", role: .destructive) {
+					isDeleting = true
+				}
+				.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+					Button("Delete Scene", role: .destructive) {
+						look.remove(with: cues, context: context)
+						dismiss()
+					}
+				} message: {
+					Text("The lights stay as they are.")
+				}
+			}
+		}
+		.navigationTitle("Scene Settings")
+		.navigationBarTitleDisplayMode(.inline)
 	}
 }

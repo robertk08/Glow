@@ -21,7 +21,15 @@ struct StoreView: View {
 				Section {
 					ForEach(fixtures) { fixture in
 						Toggle(isOn: Binding { recording.lights.contains(fixture.identifier) } set: { _ in recording.toggle(fixture) }) {
-							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
+							Label {
+								Text(fixture.name)
+								
+								if recording.changed.contains(fixture.identifier) {
+									Text("Changed")
+								}
+							} icon: {
+								Image(systemName: fixture.symbol(library.type(fixture.typeID)))
+							}
 						}
 					}
 				} header: {
@@ -58,6 +66,7 @@ struct StoreView: View {
 				}
 			}
 			.navigationTitle(recording.title)
+			.navigationSubtitle(recording.place)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {

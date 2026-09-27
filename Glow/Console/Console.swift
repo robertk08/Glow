@@ -13,6 +13,7 @@ final class Console {
 	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
 	private(set) var playback = Playback()
+	private(set) var fades: [String: Fade] = [:]
 	private(set) var lock: Wire.Lock?
 	private(set) var lockedUntil: Date?
 	private(set) var isUnlocking = false
@@ -230,6 +231,7 @@ final class Console {
 			announcedBlackout = on
 		case let .playback(state):
 			playback = Playback(state) ?? Playback()
+			fades = [:]
 		case let .notice(notice):
 			noticer.yield(notice)
 		}
@@ -332,6 +334,7 @@ final class Console {
 	
 	func closeShow(keepingLook: Bool = false) {
 		playback = Playback()
+		fades = [:]
 		motions = [:]
 		gliding?.cancel()
 		gliding = nil
@@ -498,6 +501,7 @@ final class Console {
 		
 		playback.play(cue.identifier, of: list.scene)
 		glide(list.ramps(at: index, holding: playback.held), over: snapping ? 0 : cue.fade, after: snapping ? 0 : cue.delay)
+		fade(list.scene, over: snapping ? 0 : cue.fade, after: snapping ? 0 : cue.delay)
 		outbox.append(.data(Wire.playback(playback.data)))
 		followers[list.scene]?.cancel()
 		followers[list.scene] = nil
@@ -514,6 +518,7 @@ final class Console {
 	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
 		guard let current = list.index(of: playback.cue(of: list.scene)) else { return }
 		playback.stop(list.scene)
+		fades[list.scene] = nil
 		followers[list.scene]?.cancel()
 		followers[list.scene] = nil
 		
@@ -540,6 +545,23 @@ final class Console {
 		
 		glide(ramps, over: snapping ? 0 : list.cues[current].fade, after: 0)
 		outbox.append(.data(Wire.playback(playback.data)))
+	}
+	
+	private func fade(_ scene: String, over length: Double, after delay: Double) {
+		guard length + delay > 0 else {
+			fades[scene] = nil
+			return
+		}
+		
+		let start = Date.now.addingTimeInterval(delay)
+		let fade = Fade(start: start, end: start.addingTimeInterval(length))
+		fades[scene] = fade
+		
+		Task { [weak self] in
+			try? await Task.sleep(for: .seconds(delay + length))
+			guard let self, fades[scene] == fade else { return }
+			fades[scene] = nil
+		}
 	}
 	
 	private func glide(_ ramps: [Ramp], over length: Double, after delay: Double) {

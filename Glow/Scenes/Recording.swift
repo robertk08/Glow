@@ -59,6 +59,19 @@ final class Recording: Identifiable {
 		}
 	}
 	
+	var place: String {
+		switch destination {
+		case .scene: return ""
+		case let .cue(look, after):
+			let held = look.cues(among: cues)
+			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), position + 1 < held.count else { return "At the end of \(look.name)" }
+			return "In \(look.name), after \(after.title(at: position))"
+		case let .into(cue):
+			let position = looks.first { $0.identifier == cue.lookID }?.cues(among: cues).firstIndex { $0.identifier == cue.identifier } ?? 0
+			return cue.title(at: position)
+		}
+	}
+	
 	var isScene: Bool {
 		if case .scene = destination { return true }
 		return false

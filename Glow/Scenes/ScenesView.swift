@@ -189,19 +189,23 @@ private struct SceneTile: View {
 				} label: {
 					Image(systemName: "ellipsis")
 						.font(.body.weight(.semibold))
-						.frame(width: 36, height: 36)
+						.foregroundStyle(.secondary)
+						.frame(width: 44, height: 44)
+						.contentShape(.rect)
 				}
-				.buttonStyle(.glass)
-				.buttonBorderShape(.circle)
 				.accessibilityLabel("\(look.name) Actions")
 			}
 			
 			if hasCues {
 				HStack(spacing: 4) {
 					ForEach(list.cues.indices, id: \.self) { position in
-						Capsule()
-							.fill(index.map { position <= $0 } == true ? tint : Color(.tertiarySystemFill))
-							.frame(height: 6)
+						if position == index {
+							FadeBar(fade: console.fades[look.identifier], tint: tint)
+						} else {
+							Capsule()
+								.fill(index.map { position < $0 } == true ? tint : Color(.tertiarySystemFill))
+								.frame(height: 6)
+						}
 					}
 				}
 				.accessibilityHidden(true)
