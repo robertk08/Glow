@@ -132,6 +132,7 @@ final class Recording: Identifiable {
 	func store(context: ModelContext) {
 		let levels = levels
 		let label = label.trimmingCharacters(in: .whitespaces)
+		var stored: (cue: String, scene: String)?
 		
 		switch destination {
 		case let .cue(look, after):
@@ -145,6 +146,7 @@ final class Recording: Identifiable {
 			let cue = Cue(lookID: look.identifier, sortIndex: sortIndex, fade: fade, levels: levels)
 			cue.label = label
 			context.insert(cue)
+			stored = (cue.identifier, look.identifier)
 			
 			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {
 				look.tap = .next
@@ -157,6 +159,7 @@ final class Recording: Identifiable {
 		}
 		
 		try? context.save()
+		var addresses: Set<Int> = []
 		
 		for fixture in fixtures {
 			guard let slots = levels.lights[fixture.identifier] else { continue }
@@ -164,7 +167,12 @@ final class Recording: Identifiable {
 			for slot in slots.keys {
 				guard let address = fixture.start.offset(by: slot - 1) else { continue }
 				console.release(address.value...address.value)
+				addresses.insert(address.value)
 			}
+		}
+		
+		if let stored {
+			console.land(on: stored.cue, of: stored.scene, holding: addresses)
 		}
 	}
 }

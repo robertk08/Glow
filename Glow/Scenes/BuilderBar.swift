@@ -21,7 +21,7 @@ struct BuilderBar: View {
 			let held = look.cues(among: cues)
 			let index = list.index(of: console.playback.cue(of: look.identifier))
 			let current = index.map { held[$0] }
-			let next = Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let tint = look.tint.color ?? .accentColor
 			
 			VStack(alignment: .leading, spacing: 12) {
@@ -120,9 +120,9 @@ struct BuilderBar: View {
 							}
 						}
 						.scrollIndicators(.hidden)
-						.onChange(of: held.count) {
+						.onChange(of: current?.identifier) {
 							withAnimation {
-								proxy.scrollTo(held.last?.identifier, anchor: .trailing)
+								proxy.scrollTo(current?.identifier, anchor: .center)
 							}
 						}
 					}
@@ -151,7 +151,7 @@ struct BuilderBar: View {
 					.disabled(!next.isReady)
 					
 					Button {
-						recording = Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+						recording = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 					} label: {
 						Label("Options", systemImage: "slider.horizontal.3")
 							.labelStyle(.iconOnly)

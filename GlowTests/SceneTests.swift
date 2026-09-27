@@ -308,6 +308,23 @@ struct SceneTests {
 		#expect(held[0].title(at: 0) == "Cue 1")
 	}
 	
+	@Test func aStoredCueIsOnStageWithoutMovingTheLights() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		rig.add(2, [(0, 1, 20)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		rig.console.set(55, at: DMXAddress(1)!)
+		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[1].identifier)
+		#expect(rig.value(1) == 55)
+		
+		rig.console.go(rig.list)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[2].identifier)
+	}
+	
 	@Test func aSecondCueMakesTheTileStepThroughCuesUntilChosenOtherwise() throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 1)])

@@ -530,6 +530,22 @@ final class Console {
 		}
 	}
 	
+	func land(on cue: String, of scene: String, holding addresses: Set<Int>) {
+		for address in addresses where playback.held[address] == nil {
+			playback.held[address] = universe.values[address - 1]
+		}
+		
+		for address in addresses {
+			motions[address] = nil
+		}
+		
+		playback.play(cue, of: scene)
+		fades[scene] = nil
+		followers[scene]?.cancel()
+		followers[scene] = nil
+		outbox.append(.data(Wire.playback(playback.data)))
+	}
+	
 	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
 		guard playback.cue(of: list.scene) != nil else { return }
 		let current = list.index(of: playback.cue(of: list.scene))

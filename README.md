@@ -117,8 +117,10 @@ A scene is built on the Lights page. New Scene, or Build Cues on any scene,
 switches there and pins a bar under the lights with the scene's cues and one
 Store Cue button. Set the lights, store, change them, store the next: each cue
 takes the lights you changed since the last one, or all of them for a first cue
-nothing was changed for. Store always adds at the end. Tap a cue in the bar to
-go back to it, and Update folds what you changed into it. Options chooses the
+nothing was changed for. Store puts the new cue right after the one on stage,
+or at the end, and the stage is then on it without a light moving, so the next
+Store follows it and Update refines it. Tap a cue in the bar to go back to it,
+and Update folds what you changed into it. Options chooses the
 lights, the aspects (intensity, colour, position, gobo, beam or control), a
 name and the fade, and a cue's menu adds one after it. Done leaves the bar, and
 Cancel on a scene without cues removes it. Storing into a cue replaces only
