@@ -5,7 +5,6 @@ import SwiftUI
 @Observable @MainActor
 final class Recording: Identifiable {
 	enum Destination {
-		case scene
 		case cue(Look, after: Cue?)
 		case into(Cue)
 	}
@@ -34,12 +33,9 @@ final class Recording: Identifiable {
 		let everyone = Set(fixtures.map(\.identifier))
 		let selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
 		changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
-		lights = selected.isEmpty ? (changed.isEmpty ? everyone : changed) : selected
+		lights = changed.isEmpty ? (selected.isEmpty ? everyone : selected) : changed
 		
 		switch destination {
-		case .scene:
-			label = Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name))
-			fade = 0
 		case let .cue(look, _):
 			label = ""
 			fade = look.cues(among: cues).last?.fade ?? 0
@@ -53,15 +49,26 @@ final class Recording: Identifiable {
 	
 	var title: String {
 		switch destination {
-		case .scene: "New Scene"
-		case .cue: "New Cue"
+		case .cue: "Cue \(number)"
 		case .into: "Store into Cue"
 		}
 	}
 	
+	var number: Int {
+		guard case let .cue(look, after) = destination else { return 0 }
+		let held = look.cues(among: cues)
+		guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }) else { return held.count + 1 }
+		return position + 2
+	}
+	
+	var hint: String {
+		let count = lights.count == 1 ? "1 light" : "\(lights.count) lights"
+		guard changed.isEmpty else { return "\(count) changed for cue \(number)" }
+		return number == 1 && lights.count == fixtures.count ? "Set the lights, then store cue 1" : "\(count) for cue \(number)"
+	}
+	
 	var place: String {
 		switch destination {
-		case .scene: return ""
 		case let .cue(look, after):
 			let held = look.cues(among: cues)
 			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), position + 1 < held.count else { return "At the end of \(look.name)" }
@@ -72,13 +79,8 @@ final class Recording: Identifiable {
 		}
 	}
 	
-	var isScene: Bool {
-		if case .scene = destination { return true }
-		return false
-	}
-	
 	var isReady: Bool {
-		!levels.isEmpty && (!isScene || !label.trimmingCharacters(in: .whitespaces).isEmpty)
+		!levels.isEmpty
 	}
 	
 	var summary: String {
@@ -132,10 +134,6 @@ final class Recording: Identifiable {
 		let label = label.trimmingCharacters(in: .whitespaces)
 		
 		switch destination {
-		case .scene:
-			let look = Look(name: label, sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
-			context.insert(look)
-			context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: fade, levels: levels))
 		case let .cue(look, after):
 			let held = look.cues(among: cues)
 			var sortIndex = Console.nextSortIndex(held, sortIndex: \.sortIndex)

@@ -271,8 +271,12 @@ struct SceneTests {
 		let rig = try rig()
 		rig.console.set(255, at: DMXAddress(1)!)
 		rig.console.set(90, at: DMXAddress(13)!)
-		let recording = rig.recording(.scene)
+		let fresh = Look.fresh(among: rig.looks, context: rig.context)
+		let recording = rig.recording(.cue(fresh, after: nil))
 		
+		#expect(fresh.name == "Scene 2")
+		#expect(recording.number == 1)
+		#expect(recording.hint == "2 lights changed for cue 1")
 		#expect(recording.lights == [rig.fixtures[0].identifier, rig.fixtures[1].identifier])
 		
 		recording.lights = [rig.fixtures[0].identifier]
@@ -283,7 +287,7 @@ struct SceneTests {
 		recording.store(context: rig.context)
 		
 		#expect(rig.looks.count == 2)
-		#expect(rig.cues.count == 1)
+		#expect(fresh.cues(among: rig.cues).count == 1)
 		#expect(!rig.console.isActive(DMXAddress(1)!))
 	}
 	
@@ -331,6 +335,35 @@ struct SceneTests {
 		
 		#expect(cue.levels.lights[rig.fixtures[0].identifier] == [1: 9])
 		#expect(cue.levels.lights[rig.fixtures[1].identifier] == [1: 255])
+	}
+	
+	@Test func allOffPutsBackEveryScene() async throws {
+		let rig = try rig()
+		let other = Look(name: "Other", sortIndex: 1)
+		rig.context.insert(other)
+		rig.add(1, [(0, 1, 100)])
+		rig.add(1, to: other, [(1, 1, 200)])
+		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list(of: other), among: rig.lists)
+		try await until { rig.value(1) == 100 && rig.value(11) == 200 }
+		
+		rig.console.stopAll(among: rig.lists)
+		try await until { rig.value(1) == 0 && rig.value(11) == 0 }
+		#expect(rig.console.playback.playing.isEmpty)
+		#expect(rig.console.playback.held.isEmpty)
+	}
+	
+	@Test func deletingTheCueOnStageLeavesTheSceneAbleToStartAgain() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 100)])
+		rig.console.toggle(rig.list, among: rig.lists)
+		try await until { rig.value(1) == 100 }
+		rig.context.delete(first)
+		try rig.context.save()
+		let second = rig.add(2, [(0, 1, 50)])
+		
+		rig.console.toggle(rig.list, among: rig.lists)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier && rig.value(1) == 50 }
 	}
 	
 	@Test func whatIsPlayingReadsBackAsWritten() {

@@ -13,7 +13,7 @@ struct StoreView: View {
 		NavigationStack {
 			Form {
 				Section {
-					TextField(recording.isScene ? "Name" : "Name or short description", text: $recording.label, axis: .vertical)
+					TextField("Name or short description", text: $recording.label, axis: .vertical)
 						.lineLimit(1...3)
 						.autocorrectionDisabled()
 				}

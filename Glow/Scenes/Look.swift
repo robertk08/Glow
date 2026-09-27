@@ -58,6 +58,13 @@ final class Look {
 		cues.filter { $0.lookID == identifier }.sorted { ($0.sortIndex, $0.identifier) < ($1.sortIndex, $1.identifier) }
 	}
 	
+	@MainActor static func fresh(among looks: [Look], context: ModelContext) -> Look {
+		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
+		context.insert(look)
+		try? context.save()
+		return look
+	}
+	
 	func remove(with cues: [Cue], context: ModelContext) {
 		for cue in self.cues(among: cues) {
 			context.delete(cue)

@@ -50,10 +50,10 @@ struct ScenesView: View {
 				ContentUnavailableView {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
-					Text(fixtures.isEmpty ? "Patch a light first, set it how you want it, then store the look here." : "Set the lights how you want them, then store them as a scene. A tap turns it on and another turns it off again.")
+					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "A new scene opens on the lights. Set them, store a cue, change them and store the next.")
 				} actions: {
 					Button("New Scene", systemImage: "plus") {
-						recording = Recording(.scene, console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+						console.selection.building = Look.fresh(among: looks, context: context).identifier
 					}
 					.font(.headline)
 					.buttonStyle(.glassProminent)
@@ -73,6 +73,16 @@ struct ScenesView: View {
 			
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			
+			if !console.playback.playing.isEmpty {
+				ToolbarItem(placement: .topBarTrailing) {
+					Button("All Off", systemImage: "power") {
+						console.stopAll(among: looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) })
+					}
+				}
+				
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
+			}
+			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("Reorder", systemImage: "arrow.up.arrow.down") {
 					isOrdering = true
@@ -84,7 +94,7 @@ struct ScenesView: View {
 			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("New Scene", systemImage: "plus") {
-					recording = Recording(.scene, console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+					console.selection.building = Look.fresh(among: looks, context: context).identifier
 				}
 				.disabled(fixtures.isEmpty)
 			}
@@ -147,7 +157,12 @@ private struct SceneTile: View {
 			HStack(alignment: .top, spacing: 10) {
 				Button {
 					console.selection.scene = look.identifier
-					console.run(look.tap, on: list, among: lists)
+					
+					if list.cues.isEmpty {
+						console.selection.building = look.identifier
+					} else {
+						console.run(look.tap, on: list, among: lists)
+					}
 				} label: {
 					HStack(spacing: 14) {
 						Image(systemName: look.symbol)
@@ -253,7 +268,7 @@ private struct TileButtons: View {
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
 		HStack(spacing: 8) {
-			ForEach(look.buttons) { action in
+			ForEach(look.buttons.filter { index != nil || ($0 != .back && $0 != .update) }) { action in
 				switch action {
 				case .flash:
 					Button {} label: {
@@ -371,8 +386,8 @@ private struct SceneActions: View {
 			if sizeClass != .regular { showing = look }
 		}
 		
-		Button("Add Cue", systemImage: "plus.rectangle.on.rectangle") {
-			recording = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+		Button("Build Cues", systemImage: "plus.rectangle.on.rectangle") {
+			console.selection.building = look.identifier
 		}
 		
 		if let current {

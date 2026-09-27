@@ -111,10 +111,17 @@ lights and aspects stored into it, and everything else keeps what the cues
 before it set. Going back undoes what the later cues changed. Update folds what
 you changed on the lights into the cue on stage.
 
-Storing takes the lights and the aspects you choose: intensity, colour,
-position, gobo, beam or control. It starts from the selection, or else the
-lights you changed. Storing into a cue replaces only what you chose and keeps
-the rest, and what was stored stops counting as changed.
+A scene is built on the Lights page. New Scene, or Build Cues on any scene,
+switches there and pins a bar under the lights with the scene's cues and one
+Store Cue button. Set the lights, store, change them, store the next: each cue
+takes the lights you changed since the last one, or all of them for a first cue
+nothing was changed for. Store always adds at the end. Tap a cue in the bar to
+go back to it, and Update folds what you changed into it. Options chooses the
+lights, the aspects (intensity, colour, position, gobo, beam or control), a
+name and the fade, and a cue's menu adds one after it. Done leaves the bar, and
+Cancel on a scene without cues removes it. Storing into a cue replaces only
+what you chose and keeps the rest, and what was stored stops counting as
+changed. All Off on the Scenes page turns every scene off.
 
 A fade runs on the device that started it and reaches the others as ordinary
 frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a

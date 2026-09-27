@@ -118,6 +118,9 @@ struct LightsView: View {
 				grid
 			}
 		}
+		.safeAreaBar(edge: .bottom) {
+			BuilderBar()
+		}
 		.navigationTitle("Lights")
 		.navigationSubtitle(shows.active.name)
 		.toolbar {

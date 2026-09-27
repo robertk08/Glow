@@ -85,6 +85,9 @@ struct RootView: View {
 		.onChange(of: console.node) {
 			shows.reach(console, library: library)
 		}
+		.onChange(of: console.selection.building) {
+			if console.selection.building != nil { section = "lights" }
+		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)
 		}

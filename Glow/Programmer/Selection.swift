@@ -6,6 +6,7 @@ final class Selection {
 	private(set) var identifiers: Set<String> = []
 	var isProgrammerOpen = false
 	var scene: String?
+	var building: String?
 	
 	var isEmpty: Bool { identifiers.isEmpty }
 	

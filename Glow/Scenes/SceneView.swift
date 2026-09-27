@@ -22,7 +22,6 @@ struct SceneView: View {
 		let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
 		let held = look.cues(among: cues)
 		let index = list.index(of: console.playback.cue(of: look.identifier))
-		let current = index.map { held[$0] }
 		
 		return NavigationStack {
 			List {
@@ -143,8 +142,9 @@ struct SceneView: View {
 					}
 					.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
 					
-					Button("Add Cue", systemImage: "plus") {
-						recording = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+					Button("Build Cues", systemImage: "plus") {
+						console.selection.building = look.identifier
+						dismiss()
 					}
 				} header: {
 					Text("Cues")

@@ -464,12 +464,23 @@ final class Console {
 	}
 	
 	func toggle(_ list: CueList, among lists: [CueList]) {
-		guard playback.cue(of: list.scene) == nil else {
+		guard list.index(of: playback.cue(of: list.scene)) == nil else {
 			stop(list, among: lists)
 			return
 		}
 		
 		go(list)
+	}
+	
+	func stopAll(among lists: [CueList]) {
+		for entry in playback.playing.reversed() {
+			guard let list = lists.first(where: { $0.scene == entry.scene }) else {
+				playback.stop(entry.scene)
+				continue
+			}
+			
+			stop(list, among: lists)
+		}
 	}
 	
 	func flash(_ list: CueList, among lists: [CueList], isHeld: Bool) {
@@ -516,7 +527,8 @@ final class Console {
 	}
 	
 	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
-		guard let current = list.index(of: playback.cue(of: list.scene)) else { return }
+		guard playback.cue(of: list.scene) != nil else { return }
+		let current = list.index(of: playback.cue(of: list.scene))
 		playback.stop(list.scene)
 		fades[list.scene] = nil
 		followers[list.scene]?.cancel()
@@ -543,7 +555,11 @@ final class Console {
 			playback.held[address] = nil
 		}
 		
-		glide(ramps, over: snapping ? 0 : list.cues[current].fade, after: 0)
+		if playback.playing.isEmpty {
+			playback.held = [:]
+		}
+		
+		glide(ramps, over: snapping ? 0 : current.map { list.cues[$0].fade } ?? 0, after: 0)
 		outbox.append(.data(Wire.playback(playback.data)))
 	}
 	

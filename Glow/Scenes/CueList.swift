@@ -59,9 +59,10 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	func status(at index: Int?) -> String {
+		guard !cues.isEmpty else { return "No cues yet, tap to build" }
 		guard cues.count > 1 else { return index == nil ? (tap == .flash ? "Hold to flash" : "Off") : "On" }
 		guard let index else { return "\(cues.count) cues, tap to start" }
-		return "\(index + 1) · \(title(at: index))"
+		return cues[index].label.isEmpty ? "Cue \(index + 1) of \(cues.count)" : "\(index + 1) · \(cues[index].label)"
 	}
 	
 	var addresses: Set<Int> {
