@@ -129,8 +129,11 @@ with the scene's cues and one Store Cue button. A cue takes the lights you
 selected and the lights you changed, so selecting a light that already looks
 right adds it as it is. With nothing selected or changed it takes the stage as
 it is, and if every light is dark it stores them all dark, which is a blackout
-cue. The line under the scene's name says which it will be, and tapping it
-opens the options. Store puts the
+cue. Once the scene itself is on stage, Store waits for a change, so a second
+tap cannot store the same cue twice. The line under the scene's name says which
+it will be, and tapping it opens the options. Done goes back to the page you
+started from, and deleting the cue on stage moves the stage to the cue before
+it, or turns the scene off if it was the last. Store puts the
 new cue right after the one on stage, or at the end, and the stage is then on
 it without a light moving, so the next Store follows it and Update refines it.
 Update puts the same lights into the cue on stage. After either, the selection
