@@ -5,16 +5,13 @@ struct ScenesView: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(ShowLibrary.self) private var shows
-	@Environment(\.modelContext) private var context
 	@Environment(\.dynamicTypeSize) private var typeSize
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.number) private var cues: [Cue]
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var recording: Recording?
-	@State private var renaming: Look?
-	@State private var renamed = ""
-	@State private var deleting: Look?
+	@State private var showing: Look?
 	@State private var isOrdering = false
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
@@ -23,8 +20,9 @@ struct ScenesView: View {
 	}
 	
 	@ViewBuilder private var tiles: some View {
-		let items = ForEach(looks) { look in
-			SceneTile(look: look, list: CueList(look, cues: cues, fixtures: fixtures, library: library), recording: $recording, renaming: $renaming, renamed: $renamed, deleting: $deleting)
+		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
+		let items = ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
+			SceneTile(look: look, list: list, lists: lists, recording: $recording, showing: $showing)
 		}
 		let grid = LazyVGrid(columns: columns, spacing: 12) {
 			if #available(iOS 27.0, *) {
@@ -34,7 +32,6 @@ struct ScenesView: View {
 			}
 		}
 		.padding(.horizontal)
-		.padding(.bottom, 24)
 		
 		if #available(iOS 27.0, *) {
 			grid.reorderContainer(for: Look.self) { difference in
@@ -46,15 +43,12 @@ struct ScenesView: View {
 	}
 	
 	var body: some View {
-		let playing = cues.first { $0.identifier == console.activeCue }
-		let stage = looks.first { $0.identifier == playing?.lookID }
-		
 		Group {
 			if looks.isEmpty {
 				ContentUnavailableView {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
-					Text(fixtures.isEmpty ? "Patch a light first, set it how you want it, then store the look here." : "Set the rig how you want it, then store it. One tap brings a scene back. Add cues to it and it becomes a cue list you run with Go.")
+					Text(fixtures.isEmpty ? "Patch a light first, set it how you want it, then store the look here." : "Set the lights how you want them, then store them as a scene. A tap turns it on and another turns it off again.")
 				} actions: {
 					Button("New Scene", systemImage: "plus") {
 						recording = Recording(.scene, console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
@@ -70,16 +64,8 @@ struct ScenesView: View {
 				}
 			}
 		}
-		.safeAreaBar(edge: .bottom) {
-			if let stage, stage.cues(among: cues).count > 1 {
-				PlaybackDeck(look: stage)
-			}
-		}
 		.navigationTitle("Scenes")
 		.navigationSubtitle(shows.active.name)
-		.navigationDestination(for: Look.self) { look in
-			CueListView(look: look)
-		}
 		.toolbar {
 			LinkStatusButton()
 			
@@ -104,11 +90,15 @@ struct ScenesView: View {
 		.sheet(item: $recording) { recording in
 			StoreView(recording: recording)
 		}
+		.sheet(item: $showing) { look in
+			SceneView(look: look, isSheet: true)
+				.presentationDetents([.medium, .large])
+		}
 		.sheet(isPresented: $isOrdering) {
 			NavigationStack {
 				List {
 					ForEach(looks) { look in
-						Label(look.name, systemImage: look.cues(among: cues).count > 1 ? "list.number" : "theatermasks")
+						Label(look.name, systemImage: look.symbol)
 					}
 					.onMove { console.move($0, to: $1, among: looks, sortIndex: \.sortIndex) }
 				}
@@ -122,25 +112,7 @@ struct ScenesView: View {
 				}
 			}
 		}
-		.alert("Rename Scene", isPresented: Binding { renaming != nil } set: { _ in renaming = nil }, presenting: renaming) { look in
-			TextField("Name", text: $renamed)
-				.autocorrectionDisabled()
-			
-			Button("Cancel", role: .cancel) {}
-			
-			Button("Rename") {
-				look.name = renamed.trimmingCharacters(in: .whitespaces)
-			}
-			.disabled(renamed.trimmingCharacters(in: .whitespaces).isEmpty)
-		}
-		.confirmationDialog("Delete \(deleting?.name ?? "Scene")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible, presenting: deleting) { look in
-			Button("Delete Scene", role: .destructive) {
-				look.remove(with: cues, context: context)
-			}
-		} message: { look in
-			Text(look.cues(among: cues).count > 1 ? "Its \(look.cues(among: cues).count) cues go with it. The lights stay as they are." : "The lights stay as they are.")
-		}
-		.sensoryFeedback(.success, trigger: console.activeCue)
+		.sensoryFeedback(.selection, trigger: console.playback)
 	}
 }
 
@@ -148,37 +120,36 @@ private struct SceneTile: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.number) private var cues: [Cue]
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
 	let look: Look
 	let list: CueList
+	let lists: [CueList]
 	
 	@Binding var recording: Recording?
-	@Binding var renaming: Look?
-	@Binding var renamed: String
-	@Binding var deleting: Look?
+	@Binding var showing: Look?
+	
+	@State private var isDeleting = false
 	
 	var body: some View {
-		let index = list.index(of: console.activeCue)
-		let current = cues.first { $0.identifier == console.activeCue && $0.lookID == look.identifier }
+		let index = list.index(of: console.playback.cue(of: look.identifier))
+		let isOn = index != nil
+		let tint = look.tint.color ?? .accentColor
+		let isShown = sizeClass == .regular && console.selection.scene == look.identifier
+		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
-		VStack(alignment: .leading, spacing: 10) {
-			HStack(alignment: .top, spacing: 8) {
-				SpotStrip(spots: list.spots(at: index ?? 0), size: 18, limit: 7)
-					.frame(height: 32)
+		return VStack(alignment: .leading, spacing: 8) {
+			HStack(spacing: 8) {
+				Image(systemName: look.symbol)
+					.font(.title3)
+					.foregroundStyle(isOn ? Color.white : Color.secondary)
+					.frame(width: 38, height: 38)
+					.background(isOn ? tint : Color(.tertiarySystemFill), in: .circle)
 				
-				Spacer(minLength: 0)
-				
-				NavigationLink(value: look) {
-					Image(systemName: list.cues.count > 1 ? "list.number" : "slider.horizontal.3")
-						.font(.subheadline.weight(.semibold))
-						.frame(width: 32, height: 32)
-				}
-				.buttonStyle(.glass)
-				.buttonBorderShape(.circle)
-				.accessibilityLabel("Cues")
+				Spacer()
 			}
 			
 			VStack(alignment: .leading, spacing: 1) {
@@ -186,51 +157,81 @@ private struct SceneTile: View {
 					.font(.headline)
 					.lineLimit(1)
 				
-				Text(list.summary(at: index))
+				Text(list.status(at: index))
 					.font(.caption2)
 					.foregroundStyle(.secondary)
+					.monospacedDigit()
 					.lineLimit(1)
 			}
 			
-			if let index {
-				CueProgress(cue: list.cues[index])
+			Gauge(value: Double(index.map { $0 + 1 } ?? 0), in: 0...Double(max(1, list.cues.count))) {
+				Text(look.name)
 			}
+			.gaugeStyle(.accessoryLinearCapacity)
+			.tint(isOn ? tint : Color(.tertiarySystemFill))
+			.labelsHidden()
+			.padding(.vertical, 6)
 		}
 		.foregroundStyle(.primary)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.padding(14)
-		.glassEffect(.regular.tint(index != nil ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
+		.glassEffect(.regular.tint(isShown ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.onTapGesture {
-			console.go(list)
+			console.selection.scene = look.identifier
+			
+			if list.cues.count > 1, isOn {
+				console.go(list)
+			} else {
+				console.toggle(list, among: lists)
+			}
 		}
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.accessibilityElement(children: .combine)
 		.accessibilityAddTraits(.isButton)
-		.accessibilityAddTraits(index != nil ? .isSelected : [])
-		.accessibilityHint(list.cues.count > 1 ? "Runs the next cue." : "Brings the scene back.")
+		.accessibilityAddTraits(isOn ? .isSelected : [])
+		.accessibilityHint(list.cues.count > 1 && isOn ? "Runs the next cue." : isOn ? "Turns the scene off." : "Turns the scene on.")
 		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contextMenu {
-			Button("Add Cue", systemImage: "plus.rectangle.on.rectangle") {
-				recording = Recording(.cue(look), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
-			}
-			
-			if let current {
-				Button("Update Cue \(current.numberText)", systemImage: "square.and.arrow.down") {
-					Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+			if list.cues.count > 1, let index {
+				Button("Next Cue", systemImage: "forward.end") {
+					console.go(list)
 				}
-				.disabled(console.active.isEmpty)
+				.disabled(list.next(after: index) == nil)
+				
+				Button("Previous Cue", systemImage: "backward.end") {
+					console.back(list)
+				}
+				.disabled(list.previous(before: index) == nil)
+				
+				Menu("Go to Cue", systemImage: "list.number") {
+					ForEach(list.cues.indices, id: \.self) { position in
+						Button("\(position + 1)  \(list.title(at: position))") {
+							console.play(list, at: position)
+						}
+					}
+				}
 			}
 			
-			if list.cues.count > 1 {
-				Toggle("Loop", systemImage: "repeat", isOn: Bindable(look).loops)
+			Button(isOn ? "Turn Off" : "Turn On", systemImage: isOn ? "stop.circle" : "play.circle") {
+				console.toggle(list, among: lists)
 			}
 			
 			Divider()
 			
-			Button("Rename", systemImage: "pencil") {
-				renamed = look.name
-				renaming = look
+			Button("Cues", systemImage: "slider.horizontal.3") {
+				console.selection.scene = look.identifier
+				if sizeClass != .regular { showing = look }
+			}
+			
+			Button("Add Cue", systemImage: "plus.rectangle.on.rectangle") {
+				recording = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+			}
+			
+			if let current {
+				Button("Store into Cue", systemImage: "square.and.arrow.down") {
+					recording = Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+				}
 			}
 			
 			Button("Duplicate", systemImage: "plus.square.on.square") {
@@ -238,8 +239,15 @@ private struct SceneTile: View {
 			}
 			
 			Button("Delete Scene", systemImage: "trash", role: .destructive) {
-				deleting = look
+				isDeleting = true
 			}
+		}
+		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+			Button("Delete Scene", role: .destructive) {
+				look.remove(with: cues, context: context)
+			}
+		} message: {
+			Text("The lights stay as they are.")
 		}
 	}
 }

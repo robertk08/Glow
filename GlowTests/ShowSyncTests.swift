@@ -25,7 +25,7 @@ struct ShowSyncTests {
 		let scene = ShowContents.Scene(identifier: "look", name: "Look", sortIndex: 0)
 		var levels = Levels()
 		levels.set(255, slot: 1, of: "par")
-		let cue = ShowContents.Cue(identifier: "cue", scene: "look", number: 1000, levels: levels.data)
+		let cue = ShowContents.Cue(identifier: "cue", scene: "look", sortIndex: 1, levels: levels.data)
 		return ShowContents(lights: [light], groups: [group], scenes: [scene], cues: [cue])
 	}
 	
@@ -79,22 +79,20 @@ struct ShowSyncTests {
 		levels.set(255, slot: 1, of: "0123456789abcdef")
 		levels.set(7, slot: 14, of: "0123456789abcdef")
 		levels.set(128, slot: 3, of: "par")
-		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, loops: true)
-		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", number: 2500, name: "Sunrise", fade: 3.5, delay: 1, trigger: .wait, wait: 12.3, levels: levels.data)
+		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, symbol: "sun.max", tint: "orange")
+		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", sortIndex: 1.5, label: "The sun comes up over the hill", fade: 3.5, levels: levels.data)
 		
 		let readScene = try #require(ShowContents.Scene(identifier: "look", body: scene.body))
 		let readCue = try #require(ShowContents.Cue(identifier: "cue", body: cue.body))
 		
 		#expect(readScene.name == "Évening")
 		#expect(readScene.sortIndex == 2.5)
-		#expect(readScene.loops)
+		#expect(readScene.symbol == "sun.max")
+		#expect(readScene.tint == "orange")
 		#expect(readCue.scene == "0123456789abcdef")
-		#expect(readCue.number == 2500)
-		#expect(readCue.name == "Sunrise")
+		#expect(readCue.sortIndex == 1.5)
+		#expect(readCue.label == "The sun comes up over the hill")
 		#expect(readCue.fade == 3.5)
-		#expect(readCue.delay == 1)
-		#expect(readCue.trigger == .wait)
-		#expect(readCue.wait == 12.3)
 		#expect(Levels(readCue.levels) == levels)
 	}
 	
@@ -117,9 +115,9 @@ struct ShowSyncTests {
 			}
 		}
 		
-		let cue = ShowContents.Cue(identifier: "cue", scene: "look", number: 1000, levels: levels.data)
+		let cue = ShowContents.Cue(identifier: "cue", scene: "look", sortIndex: 1, levels: levels.data)
 		
-		#expect(cue.body.first == 2)
+		#expect(cue.body.first == 4)
 		#expect(cue.body.count < levels.data.count * 2 / 3)
 		#expect(try #require(ShowContents.Cue(identifier: "cue", body: cue.body)).levels == levels.data)
 	}
@@ -141,23 +139,8 @@ struct ShowSyncTests {
 	@Test func aBrokenBodyIsNeverReadAsACue() {
 		#expect(ShowContents.Cue(identifier: "cue", body: Data(#"{"identifier":"look","name":"Look","levels":{}}"#.utf8)) == nil)
 		#expect(ShowContents.Scene(identifier: "look", body: Data(#"{"identifier":"look","name":"Look","sortIndex":0}"#.utf8)) == nil)
-		#expect(ShowContents.Cue(identifier: "cue", body: Data([1, 0])) == nil)
+		#expect(ShowContents.Cue(identifier: "cue", body: Data([3, 0])) == nil)
 		#expect(ShowContents.Cue(identifier: "cue", body: Data()) == nil)
-	}
-	
-	@Test func cueNumbersFallBetweenTheirNeighbours() {
-		#expect(Cue.number(after: nil, before: nil) == 1000)
-		#expect(Cue.number(after: 3000, before: nil) == 4000)
-		#expect(Cue.number(after: 2500, before: nil) == 3000)
-		#expect(Cue.number(after: 1000, before: 2000) == 1500)
-		#expect(Cue.number(after: 1500, before: 2000) == 1700)
-		#expect(Cue.number(after: nil, before: 1000) == 500)
-		#expect(Cue.number(after: 1000, before: 1001) == nil)
-		#expect(Cue.text(2500) == "2.5")
-		#expect(Cue.text(3000) == "3")
-		#expect(Cue.text(1025) == "1.025")
-		#expect(Cue.number("2,5") == 2500)
-		#expect(Cue.number("zero") == nil)
 	}
 	
 	@Test func theDemoShowPatchesAgainstTheBundledFixtures() throws {
@@ -170,8 +153,7 @@ struct ShowSyncTests {
 		#expect(file.isReadable)
 		#expect(!file.show.lights.isEmpty)
 		#expect(!file.show.scenes.isEmpty)
-		#expect(file.show.cues.contains { $0.trigger != .go })
-		#expect(file.show.scenes.contains { $0.loops })
+		#expect(file.show.cues.contains { !$0.label.isEmpty })
 		
 		var used: Set<Int> = []
 		
@@ -232,7 +214,7 @@ struct ShowSyncTests {
 		
 		#expect(box.folders == [.scenes])
 		
-		context.insert(Cue(lookID: "look", number: 1000, fade: 0, levels: Levels()))
+		context.insert(Cue(lookID: "look", sortIndex: 1, fade: 0, levels: Levels()))
 		try context.save()
 		
 		#expect(box.folders == [.cues])

@@ -12,8 +12,7 @@ final class Console {
 	private(set) var node: Wire.NodeInfo?
 	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
-	private(set) var activeCue: String?
-	private(set) var cueStarted = Date.distantPast
+	private(set) var playback = Playback()
 	private(set) var lock: Wire.Lock?
 	private(set) var lockedUntil: Date?
 	private(set) var isUnlocking = false
@@ -74,7 +73,8 @@ final class Console {
 	private var offered: Data?
 	private var proposed: Data?
 	private var pause: Task<Void, Never>?
-	private var running: Task<Void, Never>?
+	private var motions: [Int: (ramp: Ramp, from: Int, written: Int, started: ContinuousClock.Instant, length: Double)] = [:]
+	private var gliding: Task<Void, Never>?
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -144,8 +144,6 @@ final class Console {
 			outbox = [Wire.Command.span(span).message]
 		case let .status(info):
 			node = info
-			activeCue = info.scene.isEmpty ? nil : info.scene
-			cueStarted = .distantPast
 			
 			if !info.address.isEmpty, info.address != UserDefaults.standard.string(forKey: Self.addressKey) {
 				UserDefaults.standard.set(info.address, forKey: Self.addressKey)
@@ -229,10 +227,8 @@ final class Console {
 		case let .blackout(on):
 			blackout = on
 			announcedBlackout = on
-		case let .scene(identifier):
-			stop()
-			activeCue = identifier
-			cueStarted = .now
+		case let .playback(state):
+			playback = Playback(state) ?? Playback()
 		case let .notice(notice):
 			noticer.yield(notice)
 		}
@@ -334,11 +330,13 @@ final class Console {
 	}
 	
 	func closeShow(keepingLook: Bool = false) {
-		stop()
+		playback = Playback()
+		motions = [:]
+		gliding?.cancel()
+		gliding = nil
 		
 		if !keepingLook || !hasAdoptedSource {
 			universe = Universe()
-			activeCue = nil
 			hasAdoptedSource = false
 		}
 		
@@ -446,93 +444,99 @@ final class Console {
 		}
 	}
 	
-	var isRunning: Bool { running != nil }
+	func toggle(_ list: CueList, among lists: [CueList]) {
+		guard playback.cue(of: list.scene) == nil else {
+			stop(list, among: lists)
+			return
+		}
+		
+		go(list)
+	}
 	
 	func go(_ list: CueList) {
-		guard let index = list.upcoming(after: list.index(of: activeCue)) else { return }
+		guard let index = list.next(after: list.index(of: playback.cue(of: list.scene))) else { return }
 		play(list, at: index)
 	}
 	
 	func back(_ list: CueList) {
-		guard let current = list.index(of: activeCue), let index = list.previous(before: current) else { return }
+		guard let current = list.index(of: playback.cue(of: list.scene)), let index = list.previous(before: current) else { return }
 		play(list, at: index)
 	}
 	
 	func play(_ list: CueList, at index: Int) {
-		running?.cancel()
+		guard list.cues.indices.contains(index) else { return }
 		
-		running = Task { [weak self] in
-			await self?.run(list, from: index)
+		for address in list.addresses where playback.held[address] == nil {
+			playback.held[address] = universe.values[address - 1]
 		}
-	}
-	
-	func stop() {
-		running?.cancel()
-		running = nil
-	}
-	
-	func arrive(at cue: String) {
-		stop()
-		activeCue = cue
-		cueStarted = .distantPast
-		outbox.append(Wire.Command.scene(cue).message)
-	}
-	
-	private func run(_ list: CueList, from index: Int) async {
-		var current = index
 		
-		while !Task.isCancelled {
-			let cue = list.cues[current]
-			let next = list.follower(of: current)
-			activeCue = cue.identifier
-			cueStarted = .now
-			outbox.append(Wire.Command.scene(cue.identifier).message)
+		playback.play(list.cues[index].identifier, of: list.scene)
+		glide(list.ramps(at: index, holding: playback.held), over: list.cues[index].fade)
+		outbox.append(.data(Wire.playback(playback.data)))
+	}
+	
+	func stop(_ list: CueList, among lists: [CueList]) {
+		guard let current = list.index(of: playback.cue(of: list.scene)) else { return }
+		playback.stop(list.scene)
+		
+		let mine = list.addresses
+		var kept: Set<Int> = []
+		var ramps: [Ramp] = []
+		
+		for entry in playback.playing.reversed() {
+			guard let other = lists.first(where: { $0.scene == entry.scene }), let index = other.index(of: entry.cue) else { continue }
+			kept.formUnion(other.addresses)
 			
-			var hold: Double?
-			
-			if let next, list.cues[next].trigger == .wait {
-				hold = list.cues[next].wait
+			for ramp in other.ramps(at: index, holding: playback.held) where mine.contains(ramp.address.value) && !ramps.contains(where: { $0.address == ramp.address }) {
+				ramps.append(ramp)
 			}
-			
-			await glide(list.ramps(at: current), delay: cue.delay, length: cue.fade, until: hold)
-			guard let next, !Task.isCancelled else { break }
-			try? await Task.sleep(for: .milliseconds(20))
-			current = next
 		}
 		
-		guard !Task.isCancelled else { return }
-		running = nil
+		for ramp in list.ramps(at: nil, holding: playback.held) where !ramps.contains(where: { $0.address == ramp.address }) {
+			ramps.append(ramp)
+		}
+		
+		for address in mine.subtracting(kept) {
+			playback.held[address] = nil
+		}
+		
+		glide(ramps, over: list.cues[current].fade)
+		outbox.append(.data(Wire.playback(playback.data)))
 	}
 	
-	private func glide(_ ramps: [Ramp], delay: Double, length: Double, until hold: Double?) async {
-		let clock = ContinuousClock()
-		let started = clock.now
-		let end = hold ?? delay + length
-		var moving = ramps.map { (ramp: $0, from: $0.level(in: universe), written: $0.level(in: universe)) }
+	private func glide(_ ramps: [Ramp], over length: Double) {
+		let now = ContinuousClock.now
 		
-		while !Task.isCancelled {
-			let elapsed = (clock.now - started) / .seconds(1)
-			
-			if elapsed >= delay, !moving.isEmpty {
-				let progress = length > 0 ? min((elapsed - delay) / length, 1) : 1
+		for ramp in ramps {
+			let level = ramp.level(in: universe)
+			motions[ramp.address.value] = (ramp, level, level, now, length)
+		}
+		
+		guard gliding == nil else { return }
+		
+		gliding = Task { [weak self] in
+			while let self, !Task.isCancelled, !motions.isEmpty {
+				let now = ContinuousClock.now
 				var next = universe
 				
-				for index in moving.indices.reversed() {
-					guard moving[index].ramp.level(in: next) == moving[index].written else {
-						moving.remove(at: index)
+				for (address, motion) in motions {
+					guard motion.ramp.level(in: next) == motion.written else {
+						motions[address] = nil
 						continue
 					}
 					
-					moving[index].written = moving[index].ramp.value(from: moving[index].from, at: progress)
-					moving[index].ramp.write(moving[index].written, into: &next)
+					let progress = motion.length > 0 ? min((now - motion.started) / .seconds(motion.length), 1) : 1
+					let value = motion.ramp.value(from: motion.from, at: progress)
+					motion.ramp.write(value, into: &next)
+					motions[address]?.written = value
+					if progress >= 1 { motions[address] = nil }
 				}
 				
 				universe = next
-				if progress >= 1 { moving = [] }
+				try? await Task.sleep(for: .milliseconds(20))
 			}
 			
-			guard elapsed < end else { return }
-			try? await Task.sleep(for: .seconds(moving.isEmpty && elapsed >= delay ? end - elapsed : 0.02))
+			self?.gliding = nil
 		}
 	}
 	

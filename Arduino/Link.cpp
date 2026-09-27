@@ -34,6 +34,8 @@ const uint8_t  OP_OUTPUT   = 0x01;
 const uint8_t  OP_SOURCE   = 0x02;
 const uint8_t  OP_DOCUMENT = 0x03;
 const uint8_t  OP_BOTH     = 0x04;
+const uint8_t  OP_PLAYBACK = 0x05;
+const size_t   STATE_MAX   = 2560;
 const size_t   DMX_HEADER  = 6;
 const uint16_t SLOTS       = 512;
 const uint8_t  NO_CLIENT   = 0xFF;
@@ -51,7 +53,8 @@ int          g_changedFrom = 0;
 int          g_changedTo   = 0;
 portMUX_TYPE g_lock        = portMUX_INITIALIZER_UNLOCKED;
 portMUX_TYPE g_sessions    = portMUX_INITIALIZER_UNLOCKED;
-char         g_scene[Store::NAME_LIMIT] = "";
+uint8_t      g_playback[STATE_MAX];
+size_t       g_playbackLength = 0;
 float        g_master   = 1;
 bool         g_blackout = false;
 char         g_out[512];
@@ -183,6 +186,12 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
   if (!admitted(num)) return;
   if (len >= 1 && p[0] == OP_DOCUMENT) return onDocument(num, p, len);
+  if (len >= 1 && p[0] == OP_PLAYBACK) {
+    if (len > STATE_MAX) return;
+    memcpy(g_playback, p, len);
+    g_playbackLength = len;
+    return relay(num, true, p, len);
+  }
   if (len < DMX_HEADER || p[1] != 0 || (p[0] != OP_OUTPUT && p[0] != OP_SOURCE && p[0] != OP_BOTH)) return;
 
   int start  = p[2] | (p[3] << 8);
@@ -207,7 +216,6 @@ void greet(uint8_t num) {
   out["src"] = g_haveSource;
   out["client"] = num;
   out["ip"] = Net::up() ? Net::ip().toString() : String();
-  out["scene"] = g_scene;
   out["master"] = g_master;
   out["blackout"] = g_blackout;
   out["id"] = Net::id();
@@ -218,6 +226,7 @@ void greet(uint8_t num) {
   String list = Shows::message();
   g_ws.sendTXT(num, list);
   if (g_haveSource) sendFrame(num, 1, SLOTS);
+  if (g_playbackLength) g_ws.sendBIN(num, g_playback, g_playbackLength);
 }
 
 void release() {
@@ -314,10 +323,6 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     g_master = doc["level"];
     relay(num, false, p, len);
 
-  } else if (!strcmp(t, "scene") && doc["id"].is<const char *>() && strlen(doc["id"].as<const char *>()) < Store::NAME_LIMIT) {
-    snprintf(g_scene, sizeof(g_scene), "%s", doc["id"].as<const char *>());
-    relay(num, false, p, len);
-
   } else if (!strcmp(t, "span") && doc["slots"].is<int>()) {
     DmxBus::setUsed(doc["slots"]);
 
@@ -325,7 +330,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     char was[Store::NAME_LIMIT];
     snprintf(was, sizeof(was), "%s", Shows::active());
     Shows::Outcome outcome = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
-    if (strcmp(was, Shows::active())) g_scene[0] = '\0';
+    if (strcmp(was, Shows::active())) g_playbackLength = 0;
     if (outcome == Shows::DONE) HomeKit::showChanged();
 
     if (outcome == Shows::LIMIT || outcome == Shows::STORAGE) {

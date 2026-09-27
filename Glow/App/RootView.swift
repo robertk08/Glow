@@ -59,12 +59,16 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: .constant(section == "lights")) {
+					.inspector(isPresented: .constant(section != "settings")) {
 						VStack(spacing: 0) {
-							ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
-
+							if section == "scenes" {
+								SceneInspector()
+							} else {
+								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
+							}
+							
 							Divider()
-
+							
 							MasterBar()
 								.padding(.vertical, 10)
 						}

@@ -57,7 +57,7 @@ struct PerformanceTests {
 				levels.set(128, slot: 8, of: fixture.identifier)
 			}
 			
-			cues.append(Cue(lookID: look.identifier, number: (index + 1) * 1000, fade: 0, levels: levels))
+			cues.append(Cue(lookID: look.identifier, sortIndex: Double(index), fade: 0, levels: levels))
 		}
 		
 		let clock = ContinuousClock()
@@ -65,7 +65,7 @@ struct PerformanceTests {
 		var ramps: [Ramp] = []
 		
 		for _ in 0..<5 {
-			best = min(best, clock.measure { ramps = CueList(look, cues: cues, fixtures: fixtures, library: library).ramps(at: 39) })
+			best = min(best, clock.measure { ramps = CueList(look, cues: cues, fixtures: fixtures, library: library).ramps(at: 39, holding: [:]) })
 		}
 		
 		#expect(best < .milliseconds(16))
@@ -104,7 +104,7 @@ struct PerformanceTests {
 			}
 			
 			show.scenes.append(ShowContents.Scene(identifier: Identifier.fresh(), name: "Scene \(index)", sortIndex: Double(index)))
-			show.cues.append(ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[index].identifier, number: 1000, levels: levels.data))
+			show.cues.append(ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[index].identifier, sortIndex: 1, levels: levels.data))
 		}
 		
 		return show

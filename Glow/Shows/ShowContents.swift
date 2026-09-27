@@ -84,21 +84,23 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var identifier: String
 		var name: String
 		var sortIndex: Double
-		var loops = false
+		var symbol: String?
+		var tint: String?
 		
-		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, loops }
+		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint }
 		
-		init(identifier: String, name: String, sortIndex: Double, loops: Bool = false) {
+		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil) {
 			self.identifier = identifier
 			self.name = name
 			self.sortIndex = sortIndex
-			self.loops = loops
+			self.symbol = symbol
+			self.tint = tint
 		}
 		
 		init?(identifier: String, body: Data) {
 			var reader = ByteReader(body)
-			guard reader.byte() == 1, let flags = reader.byte(), let sortIndex = reader.double(), let name = reader.text() else { return nil }
-			self.init(identifier: identifier, name: name, sortIndex: sortIndex, loops: flags & 1 != 0)
+			guard reader.byte() == 2, let sortIndex = reader.double(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
+			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint)
 		}
 		
 		init(from decoder: any Decoder) throws {
@@ -106,15 +108,17 @@ nonisolated struct ShowContents: Codable, Sendable {
 			identifier = try container.decode(String.self, forKey: .identifier)
 			name = try container.decode(String.self, forKey: .name)
 			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
-			loops = try container.decodeIfPresent(Bool.self, forKey: .loops) ?? false
+			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
+			tint = try container.decodeIfPresent(String.self, forKey: .tint)
 		}
 		
 		var body: Data {
 			var writer = ByteWriter()
-			writer.byte(1)
-			writer.byte(loops ? 1 : 0)
+			writer.byte(2)
 			writer.double(sortIndex)
 			writer.text(name)
+			writer.text(symbol ?? "")
+			writer.text(tint ?? "")
 			return writer.data
 		}
 	}
@@ -122,78 +126,57 @@ nonisolated struct ShowContents: Codable, Sendable {
 	nonisolated struct Cue: Codable, Sendable {
 		var identifier: String
 		var scene: String
-		var number: Int
-		var name = ""
+		var sortIndex: Double
+		var label = ""
 		var fade = 0.0
-		var delay = 0.0
-		var trigger = Trigger.go
-		var wait = 0.0
 		var levels = Data()
 		
-		private enum CodingKeys: String, CodingKey { case identifier, scene, number, name, fade, delay, trigger, wait, levels }
+		private enum CodingKeys: String, CodingKey { case identifier, scene, sortIndex, label, fade, levels }
 		
-		init(identifier: String, scene: String, number: Int, name: String = "", fade: Double = 0, delay: Double = 0, trigger: Trigger = .go, wait: Double = 0, levels: Data = Data()) {
+		init(identifier: String, scene: String, sortIndex: Double, label: String = "", fade: Double = 0, levels: Data = Data()) {
 			self.identifier = identifier
 			self.scene = scene
-			self.number = number
-			self.name = name
+			self.sortIndex = sortIndex
+			self.label = label
 			self.fade = fade
-			self.delay = delay
-			self.trigger = trigger
-			self.wait = wait
 			self.levels = levels
 		}
 		
 		init?(identifier: String, body: Data) {
 			var payload = Data(body.dropFirst())
 			
-			if body.first == 2 {
+			if body.first == 4 {
 				guard let inflated = try? (payload as NSData).decompressed(using: .zlib) as Data else { return nil }
 				payload = inflated
-			} else if body.first != 1 {
+			} else if body.first != 3 {
 				return nil
 			}
 			
 			var reader = ByteReader(payload)
-			guard let (_, scene) = reader.identifier(), let number = reader.number(), let fade = reader.tenths(), let delay = reader.tenths() else { return nil }
-			guard let raw = reader.byte(), let trigger = Trigger(rawValue: Int(raw)), let wait = reader.tenths(), let name = reader.text(), Levels(reader.rest) != nil else { return nil }
-			self.init(identifier: identifier, scene: scene, number: number, name: name, fade: fade, delay: delay, trigger: trigger, wait: wait, levels: reader.rest)
+			guard let (_, scene) = reader.identifier(), let sortIndex = reader.double(), let fade = reader.tenths(), let label = reader.text(), Levels(reader.rest) != nil else { return nil }
+			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, levels: reader.rest)
 		}
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
 			identifier = try container.decode(String.self, forKey: .identifier)
 			scene = try container.decode(String.self, forKey: .scene)
-			number = try container.decodeIfPresent(Int.self, forKey: .number) ?? 1000
-			name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
+			label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
 			fade = try container.decodeIfPresent(Double.self, forKey: .fade) ?? 0
-			delay = try container.decodeIfPresent(Double.self, forKey: .delay) ?? 0
-			trigger = try container.decodeIfPresent(Trigger.self, forKey: .trigger) ?? .go
-			wait = try container.decodeIfPresent(Double.self, forKey: .wait) ?? 0
 			levels = try container.decodeIfPresent(Data.self, forKey: .levels) ?? Data()
-		}
-		
-		var numberText: String {
-			Glow.Cue.text(number)
-		}
-		
-		var title: String {
-			name.isEmpty ? "Cue \(numberText)" : name
 		}
 		
 		var body: Data {
 			var writer = ByteWriter()
 			writer.identifier(scene, tag: 0)
-			writer.number(number)
+			writer.double(sortIndex)
 			writer.tenths(fade)
-			writer.tenths(delay)
-			writer.byte(UInt8(trigger.rawValue))
-			writer.tenths(wait)
-			writer.text(name)
+			writer.text(label)
 			writer.bytes([UInt8](levels))
 			
-			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([1]) + writer.data }
-			return Data([2]) + packed
+			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([3]) + writer.data }
+			return Data([4]) + packed
 		}
 	}
 	

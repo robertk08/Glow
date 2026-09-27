@@ -15,7 +15,7 @@ actor NodeLink {
 		case frame(start: DMXAddress, values: [UInt8])
 		case master(Double)
 		case blackout(Bool)
-		case scene(String)
+		case playback(Data)
 		case notice(Wire.Notice)
 	}
 	

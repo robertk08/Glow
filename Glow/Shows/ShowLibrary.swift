@@ -180,7 +180,7 @@ final class ShowLibrary {
 		if folders.contains(.lights) { show.lights = fixtures.map(\.entry) }
 		if folders.contains(.groups) { show.groups = ((try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
 		if folders.contains(.scenes) { show.scenes = ((try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
-		if folders.contains(.cues) { show.cues = ((try? context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.number)]))) ?? []).map(\.entry) }
+		if folders.contains(.cues) { show.cues = ((try? context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
 		
 		if folders.contains(.made) {
 			show.made = ((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition)
@@ -461,7 +461,7 @@ final class ShowLibrary {
 		}
 		
 		for entry in incoming.cues {
-			let cue = cues[entry.identifier] ?? Cue(lookID: entry.scene, number: entry.number, fade: entry.fade, levels: Levels())
+			let cue = cues[entry.identifier] ?? Cue(lookID: entry.scene, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
 			if cue.modelContext == nil { context.insert(cue) }
 			cue.take(entry)
 		}

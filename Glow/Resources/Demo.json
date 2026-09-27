@@ -1,151 +1,112 @@
 {
- "exportedAt": "2026-09-26T00:00:00Z",
+ "exportedAt": "2026-09-27T00:00:00Z",
  "format": "glow.show",
  "name": "Demo Show",
  "show": {
   "cues": [
    {
-    "delay": 0.0,
     "fade": 0.0,
     "identifier": "8ba88ec403374361",
+    "label": "",
     "levels": "AibptsGygFdL//////8AAAD/AiyLqkK/ANMl//////8AAAD/BCygB87oVqHv/z+AAEzMAPD/////AAAAAAJEyKYJtjFreP//////AAAA/wJh+jwI7vi7OP//////AAAA/wRl9WfJRWcPqP8/gABMzADw/////wAAAAAEgo+TD/WUYZX/////AP//////////AIAAAAAEmAHQAoVET6H/////AP//////////AIAAAAAIs2Uv4dQoOhn/////qqqAAP//AAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "name": "",
-    "number": 1000,
     "scene": "77768ee2a6e14315",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 1.0
    },
    {
-    "delay": 0.0,
     "fade": 2.0,
     "identifier": "97f95ea73b450890",
+    "label": "",
     "levels": "AibptsGygFdL/wAa/wAAAAD/AiyLqkK/ANMl/wAa/wAAAAD/BCygB87oVqHv/z+AAEzMAPAAGv8AAAAAAAJEyKYJtjFreP8AGv8AAAAA/wJh+jwI7vi7OP8AGv8AAAAA/wRl9WfJRWcPqP8/gABMzADwABr/AAAAAAAEgo+TD/WUYZX/////AAAAGZr//wAAAIAAAAAEmAHQAoVET6H/////AAAAGZr//wAAAIAAAAAIs2Uv4dQoOhn/////qqqAAP//AP//5mYAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "name": "",
-    "number": 1000,
     "scene": "193cf32c986209cf",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 1.0
    },
    {
-    "delay": 0.0,
     "fade": 3.0,
     "identifier": "665ec941736e4f54",
+    "label": "",
     "levels": "AibptsGygFdL//9zDTMAAAD/AiyLqkK/ANMl//9zDTMAAAD/BCygB87oVqHv/z+AAEzMAPD/cw0zAAAAAAJEyKYJtjFreP//cw0zAAAA/wJh+jwI7vi7OP//cw0zAAAA/wRl9WfJRWcPqP8/gABMzADw/3MNMwAAAAAEgo+TD/WUYZX/////AP//czMMzTMzAIAAAAAEmAHQAoVET6H/////AP//czMMzTMzAIAAAAAIs2Uv4dQoOhn/////qqqAAP//AAAAjMzzMgAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "name": "",
-    "number": 1000,
     "scene": "3c43e200bd4c9106",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 1.0
    },
    {
-    "delay": 0.0,
     "fade": 3.0,
     "identifier": "92cfc9f1aefd8a9b",
+    "label": "Audience comes in, washes low and warm",
     "levels": "AibptsGygFdLj/+AGkxMAiyLqkK/ANMlj/+AGkxMAiygB87oVqHvIAACRMimCbYxa3iP/4AaTEwCYfo8CO74uziP/4AaTEwCZfVnyUVnD6ggAAKCj5MP9ZRhlQMAAAKYAdAChURPoQMAAAKzZS/h1Cg6GTAAAA==",
-    "name": "Preshow",
-    "number": 1000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 1.0
    },
    {
-    "delay": 0.0,
     "fade": 8.0,
     "identifier": "06501db8437ebcf0",
+    "label": "Sunrise",
     "levels": "AibptsGygFdLj/9ZDQCyAiyLqkK/ANMlj/9ZDQCyAkTIpgm2MWt4j/9ZDQCyAmH6PAju+Ls4j/9ZDQCyBIKPkw/1lGGV+weZmf//mZlAAGZmBJgB0AKFRE+h+weZmf//mZlAAGZm",
-    "name": "Sunrise",
-    "number": 2000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 2.0
    },
    {
-    "delay": 0.0,
     "fade": 5.0,
     "identifier": "b3ff906d74bcabbf",
+    "label": "Midday",
     "levels": "AibptsGygFdLj5nM////AiyLqkK/ANMlj5nM////AkTIpgm2MWt4j5nM////AmH6PAju+Ls4j5nM////BIKPkw/1lGGV+wf/////////////BJgB0AKFRE+h+wf/////////////",
-    "name": "Midday",
-    "number": 3000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 3.0
    },
    {
-    "delay": 0.0,
     "fade": 6.0,
     "identifier": "88b35d0f8b18982c",
+    "label": "Dusk",
     "levels": "AibptsGygFdLj4AA/wCZAiyLqkK/ANMlj4AA/wCZBCygB87oVqHv7wOmZkAA8P8AmQACRMimCbYxa3iPgAD/AJkCYfo8CO74uziPgAD/AJkEZfVnyUVnD6jvA1mZQADw/wCZAAKCj5MP9ZRhlQNmZgKYAdAChURPoQNmZg==",
-    "name": "Dusk",
-    "number": 4000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 4.0
    },
    {
-    "delay": 1.0,
     "fade": 4.0,
     "identifier": "2f78bdd74ee4bef7",
+    "label": "Moonlight",
     "levels": "AibptsGygFdLjwAz/wAzAiyLqkK/ANMljwAz/wAzBCygB87oVqHvwANmmf//AkTIpgm2MWt4jwAz/wAzAmH6PAju+Ls4jwAz/wAzBGX1Z8lFZw+owANmmf//AoKPkw/1lGGVAwAAApgB0AKFRE+hAwAABrNlL+HUKDoZMABg//8Zmg==",
-    "name": "Moonlight",
-    "number": 5000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 5.0
    },
    {
-    "delay": 0.0,
     "fade": 2.0,
     "identifier": "245887574ed7e1cf",
+    "label": "Blackout",
     "levels": "AibptsGygFdLgAACLIuqQr8A0yWAAAIsoAfO6Fah7yAAAkTIpgm2MWt4gAACYfo8CO74uziAAAJl9WfJRWcPqCAAAoKPkw/1lGGVAwAAApgB0AKFRE+hAwAAArNlL+HUKDoZMAAA",
-    "name": "Blackout",
-    "number": 6000,
     "scene": "d7c3d10a8590ccee",
-    "trigger": 0,
-    "wait": 0.0
+    "sortIndex": 6.0
    },
    {
-    "delay": 0.0,
     "fade": 0.5,
-    "identifier": "727298b422ee5842",
+    "identifier": "2244bc056e9983bc",
+    "label": "",
     "levels": "AibptsGygFdLjwD/AAD/AiyLqkK/ANMlj/8A/wD/AkTIpgm2MWt4j/8AAAD/AmH6PAju+Ls4jwAA/wD/",
-    "name": "",
-    "number": 1000,
-    "scene": "8df8c1f25d0157a4",
-    "trigger": 2,
-    "wait": 1.0
+    "scene": "4146a4d32e185f8f",
+    "sortIndex": 1.0
    },
    {
-    "delay": 0.0,
     "fade": 0.5,
-    "identifier": "075679a871c580b7",
+    "identifier": "7f05f2a9cca20c97",
+    "label": "",
     "levels": "AibptsGygFdLjwAA/wD/AiyLqkK/ANMlj/8AAAD/AkTIpgm2MWt4jwD/AAD/AmH6PAju+Ls4j/8A/wD/",
-    "name": "",
-    "number": 2000,
-    "scene": "8df8c1f25d0157a4",
-    "trigger": 2,
-    "wait": 1.0
+    "scene": "4146a4d32e185f8f",
+    "sortIndex": 2.0
    },
    {
-    "delay": 0.0,
     "fade": 0.5,
-    "identifier": "36b230f034cbc2e1",
+    "identifier": "57faca56cb85a86a",
+    "label": "",
     "levels": "AibptsGygFdLj/8A/wD/AiyLqkK/ANMljwD/AAD/AkTIpgm2MWt4jwAA/wD/AmH6PAju+Ls4j/8AAAD/",
-    "name": "",
-    "number": 3000,
-    "scene": "8df8c1f25d0157a4",
-    "trigger": 2,
-    "wait": 1.0
+    "scene": "4146a4d32e185f8f",
+    "sortIndex": 3.0
    },
    {
-    "delay": 0.0,
     "fade": 0.5,
-    "identifier": "7e9258bd1150146b",
+    "identifier": "85abe7c2ee70ab89",
+    "label": "",
     "levels": "AibptsGygFdLj/8AAAD/AiyLqkK/ANMljwAA/wD/AkTIpgm2MWt4j/8A/wD/AmH6PAju+Ls4jwD/AAD/",
-    "name": "",
-    "number": 4000,
-    "scene": "8df8c1f25d0157a4",
-    "trigger": 2,
-    "wait": 1.0
+    "scene": "4146a4d32e185f8f",
+    "sortIndex": 4.0
    }
   ],
   "groups": [
@@ -259,30 +220,38 @@
    {
     "identifier": "77768ee2a6e14315",
     "name": "Open White",
-    "sortIndex": 0
+    "sortIndex": 0,
+    "symbol": "lightbulb.max"
    },
    {
     "identifier": "193cf32c986209cf",
     "name": "Deep Blue",
-    "sortIndex": 1
+    "sortIndex": 1,
+    "symbol": "sparkles",
+    "tint": "blue"
    },
    {
     "identifier": "3c43e200bd4c9106",
     "name": "Warm Amber",
-    "sortIndex": 2
+    "sortIndex": 2,
+    "symbol": "flame",
+    "tint": "orange"
    },
    {
     "identifier": "d7c3d10a8590ccee",
     "name": "Evening",
-    "sortIndex": 3
+    "sortIndex": 3,
+    "symbol": "theatermasks",
+    "tint": "purple"
    },
    {
-    "identifier": "8df8c1f25d0157a4",
-    "loops": true,
-    "name": "Color Chase",
-    "sortIndex": 4
+    "identifier": "4146a4d32e185f8f",
+    "name": "Color Steps",
+    "sortIndex": 4,
+    "symbol": "circle.hexagongrid",
+    "tint": "pink"
    }
   ]
  },
- "version": "2026-09-26"
+ "version": "2026-09-27"
 }

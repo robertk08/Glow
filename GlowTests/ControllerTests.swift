@@ -150,9 +150,9 @@ struct ControllerTests {
 		opening.set(128, slot: 1, of: identifier)
 		var closing = Levels()
 		closing.set(40, slot: 8, of: identifier)
-		let second = Cue(lookID: look.identifier, number: 2000, fade: 0.3, levels: closing)
+		let second = Cue(lookID: look.identifier, sortIndex: 2, fade: 0.3, levels: closing)
 		Rig.first.context.insert(look)
-		Rig.first.context.insert(Cue(lookID: look.identifier, number: 1000, fade: 0, levels: opening))
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 0, levels: opening))
 		Rig.first.context.insert(second)
 		try Rig.first.context.save()
 		let scene = look.identifier
@@ -168,7 +168,7 @@ struct ControllerTests {
 		} != nil)
 	}
 	
-	@Test func goOnOneDeviceMovesTheOtherToTheSameCue() async throws {
+	@Test func goAndOffOnOneDeviceReachTheOther() async throws {
 		try inScratch()
 		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
 		let light = try #require(Rig.first.lights.first)
@@ -176,13 +176,22 @@ struct ControllerTests {
 		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library)
 		try #require(list.cues.count == 2)
 		
-		Rig.first.console.go(list)
-		#expect(await eventually { Rig.second.console.activeCue == list.cues[0].identifier && Rig.second.console.value(at: dimmer) == 255 } != nil)
+		let before = Rig.first.console.value(at: dimmer)
 		
 		Rig.first.console.go(list)
-		let took = await eventually { Rig.second.console.activeCue == list.cues[1].identifier && Rig.second.console.value(at: dimmer) == 40 }
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == list.cues[0].identifier && Rig.second.console.value(at: dimmer) == 255 } != nil)
+		
+		Rig.first.console.go(list)
+		let took = await eventually { Rig.second.console.playback.cue(of: look.identifier) == list.cues[1].identifier && Rig.second.console.value(at: dimmer) == 40 }
 		#expect(took != nil)
 		print("HARDWARE a 0.3 s fade on one device finished on the other in \(String(format: "%.2f", took ?? -1))s")
+		
+		let others = Rig.second.looks.map { CueList($0, cues: Rig.second.cues, fixtures: Rig.second.lights, library: Rig.second.library) }
+		let theirs = try #require(others.first { $0.scene == look.identifier })
+		Rig.second.console.toggle(theirs, among: others)
+		let back = await eventually { Rig.first.console.playback.cue(of: look.identifier) == nil && Rig.first.console.value(at: dimmer) == before }
+		#expect(back != nil)
+		print("HARDWARE turning it off on the other device put the light back in \(String(format: "%.2f", back ?? -1))s")
 	}
 	
 	@Test func aSceneInTheOldFormatIsErasedWhenItsShowOpens() async throws {

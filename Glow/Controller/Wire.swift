@@ -5,6 +5,7 @@ nonisolated enum Wire {
 	static let sourceOpcode: UInt8 = 0x02
 	static let documentOpcode: UInt8 = 0x03
 	static let bothOpcode: UInt8 = 0x04
+	static let playbackOpcode: UInt8 = 0x05
 	static let documentHeader = 7
 	static let recordHeader = 5
 	
@@ -28,7 +29,6 @@ nonisolated enum Wire {
 		case blackout(Bool)
 		case master(Double)
 		case span(Int)
-		case scene(String)
 		case addShow(Show)
 		case renameShow(Show)
 		case removeShow(String)
@@ -43,7 +43,6 @@ nonisolated enum Wire {
 			case let .blackout(on): ["t": "blackout", "on": on]
 			case let .master(level): ["t": "master", "level": level]
 			case let .span(slots): ["t": "span", "slots": slots]
-			case let .scene(identifier): ["t": "scene", "id": identifier]
 			case let .addShow(show): ["t": "show.add", "id": show.id, "name": show.name]
 			case let .renameShow(show): ["t": "show.rename", "id": show.id, "name": show.name]
 			case let .removeShow(identifier): ["t": "show.remove", "id": identifier]
@@ -59,7 +58,6 @@ nonisolated enum Wire {
 		var hasSource = false
 		var client: Int?
 		var address = ""
-		var scene = ""
 		var master = 1.0
 		var blackout = false
 		var id = ""
@@ -71,7 +69,7 @@ nonisolated enum Wire {
 			hasPassword ? "Change Password" : "Set Password"
 		}
 		
-		private enum CodingKeys: String, CodingKey { case fw, src, client, ip, scene, master, blackout, id, password, nonce, session }
+		private enum CodingKeys: String, CodingKey { case fw, src, client, ip, master, blackout, id, password, nonce, session }
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -79,7 +77,6 @@ nonisolated enum Wire {
 			hasSource = try container.decodeIfPresent(Bool.self, forKey: .src) ?? false
 			client = try container.decodeIfPresent(Int.self, forKey: .client)
 			address = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
-			scene = try container.decodeIfPresent(String.self, forKey: .scene) ?? ""
 			master = try container.decodeIfPresent(Double.self, forKey: .master) ?? 1
 			blackout = try container.decodeIfPresent(Bool.self, forKey: .blackout) ?? false
 			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
@@ -156,6 +153,10 @@ nonisolated enum Wire {
 		return data
 	}
 	
+	static func playback(_ state: Data) -> Data {
+		Data([playbackOpcode]) + state
+	}
+	
 	static func objects(in log: Data) -> [(folder: String, id: String, body: Data)] {
 		let bytes = [UInt8](log)
 		var latest: [String: (folder: String, id: String, body: Data)] = [:]
@@ -201,6 +202,10 @@ nonisolated enum Wire {
 				
 				let place = Place(show: String(decoding: parts[0], as: UTF8.self), folder: String(decoding: parts[1], as: UTF8.self), id: String(decoding: parts[2], as: UTF8.self))
 				return .notice(bytes[1] == 1 ? .erased(place) : .stored(place, parts[3]))
+			}
+			
+			if bytes.first == playbackOpcode {
+				return .playback(Data(bytes.dropFirst()))
 			}
 			
 			guard bytes.count > 6, bytes[0] == sourceOpcode, bytes[1] == 0, bytes.count == 6 + (Int(bytes[4]) | (Int(bytes[5]) << 8)) else { return nil }
@@ -252,9 +257,6 @@ nonisolated enum Wire {
 			case "blackout":
 				guard let on = envelope.on else { return nil }
 				return .blackout(on)
-			case "scene":
-				guard let identifier = envelope.id else { return nil }
-				return .scene(identifier)
 			case "refused":
 				guard let refusal = envelope.reason.flatMap(Refusal.init(rawValue:)) else { return nil }
 				return .notice(.refused(refusal))

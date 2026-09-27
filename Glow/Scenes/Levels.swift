@@ -45,8 +45,6 @@ nonisolated struct Levels: Sendable, Equatable {
 	
 	var isEmpty: Bool { lights.isEmpty }
 	
-	var slotCount: Int { lights.values.reduce(0) { $0 + $1.count } }
-	
 	mutating func set(_ value: UInt8, slot: Int, of light: String) {
 		guard (1...Universe.channelCount).contains(slot) else { return }
 		lights[light, default: [:]][slot] = value

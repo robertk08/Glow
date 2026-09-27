@@ -87,31 +87,31 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
-A scene is a cue list, the way a grandMA sequence is. Most scenes hold one cue
-and are a tile you tap to bring the look back. Store a second cue into one and
-it becomes a list you run with Go and Back, or tap any cue to jump to it. Each
-cue carries a fade, a delay and how it starts: on Go, right after the cue
-before it has finished, or a set time after that cue began. A list can loop,
-which with timed cues makes it a chase. Values track: a cue keeps only what
-changed, and what it leaves alone stays as the cues before set it. Going to a
-cue, back or forward, puts every channel the scene touches where that cue
-leaves it, and a channel no cue up to there has set goes back to its default.
+A scene is a tile, like a light. Tap it and every light it holds takes the
+values it stored. Tap it again and those lights go back to whatever they were
+doing before, even when that was another scene that is still on. Scenes can be
+on together, and the one turned on last wins a light they share.
 
-Storing is a sheet, not a list. The lights are tiles to tap in or out, with
-shortcuts for all of them, the ones you changed, the selection and each group.
-It keeps only the channels you changed since they were last stored, or
-everything the chosen lights are doing, and you can leave out intensity,
-colour, position, gobo, beam or control. Storing into an existing cue merges
-unless you ask it to replace, and Update folds whatever you changed into the
-cue on stage. What was stored stops counting as changed.
+A scene can hold cues. Then the first tap starts it at cue 1 and every tap after
+that runs the next cue. Its menu also steps back, jumps to any cue and turns it
+off, and on iPad the same controls and the cues sit in a sidebar on the right,
+beside the scenes as the programmer sits beside the lights. On iPhone the menu
+opens them as a sheet. A cue has a name or a short description, and a fade.
+Cues can be reordered, deleted and added after any cue, so a new one can go in
+between. Values carry through: a cue holds only the lights and aspects stored
+into it, and everything else keeps what the cues before it set. Going back
+undoes what the later cues changed.
 
-A fade runs on the device that pressed Go and reaches the others as ordinary
-frames, so every device shows the same cue with its progress. Intensity,
-colour mixing, position, zoom, focus, iris and frost glide, a 16-bit channel
-glides as one value, and a dimmer that shares its channel with a strobe fades
-only inside its dimming band. Everything else snaps at the start of the fade.
-Touch a channel while it fades and the fade lets go of it. On an iPad with a
-keyboard, the space bar is Go.
+Storing takes the lights and the aspects you choose: intensity, colour,
+position, gobo, beam or control. It starts from the selection, or else the
+lights you changed. Storing into a cue replaces only what you chose and keeps
+the rest, and what was stored stops counting as changed.
+
+A fade runs on the device that started it and reaches the others as ordinary
+frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a
+16-bit channel glides as one value, and a dimmer that shares its channel with a
+strobe fades only inside its dimming band. Everything else snaps at the start.
+Touch a channel while it fades and the fade lets go of it.
 
 A show is one file on the controller, holding one patch, its groups, the
 fixtures built here and its scenes, one record per change. Switching show swaps
@@ -265,8 +265,8 @@ never stalls the controller.
 
 `ControllerTests` runs two complete copies of the app, as two devices, against a
 real controller on the network. It covers opening, show commands, lights,
-scenes and cues, Go on one device moving the other, a scene in the old format
-being erased, made and edited fixtures, deletes, two devices editing one light,
+scenes and cues, a cue started and a scene turned off on one device reaching
+the other, a scene in an old format being erased, made and edited fixtures, deletes, two devices editing one light,
 an edit made while the link is down, an import, deleting the open show and the
 password. It creates a show named **Hardware Test**, removes it again and
 leaves the controller on the show it found, with the password it found. It is
@@ -363,15 +363,22 @@ other client without clocking it. `0x04` is both at once, which is what the app
 sends whenever master and blackout leave the look as it is, so a move is one
 frame rather than two. The controller clocks it and passes it on as a source.
 
+`0x05` is what is playing, up to 2560 bytes after the opcode. The controller
+keeps the last one in memory, passes it to every other client and sends it to a
+device that joins, so any device can step a scene another one started or turn
+it off. It never touches flash, so starting a cue never pauses DMX, and
+switching show clears it. The app writes it as a count of playing scenes, each
+scene id and the id of the cue it is on in the order they were turned on, then
+pairs of address and value until the end: what those channels were before a
+scene took them.
+
 Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`, `scene`, `span`, and the show commands below. In: `status`
-(`fw`, `src`, `client`, `ip`, `scene`, `master`, `blackout`), `shows`, `refused`,
+`blackout`, `master`, `span`, and the show commands below. In: `status`
+(`fw`, `src`, `client`, `ip`, `master`, `blackout`), `shows`, `refused`,
 `pong` (with `ram`, `ramTotal`, `store` and `storeTotal` in bytes, which the
 Controller screen shows live),
-plus `blackout`, `master` and `scene` relayed from another client, and the
-document notices below. `scene` names the cue now on stage by its id, and the
-controller keeps it for `status`, so a device that joins mid-show knows where
-the list stands. Types are
+plus `blackout` and `master` relayed from another client, and the
+document notices below. Types are
 strict, a fraction is not an integer and a boolean is not `1`. `status` and
 `shows` are sent in reply to `hello`, so say hello first. `status` also carries
 `id`, `password` (whether one is set), `nonce` and `session`.
@@ -529,25 +536,24 @@ fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
 Scenes and cues are binary, because they are what a show holds most of. A
-scene is a format byte (1), a flags byte (1 loops), its order as a little
-endian double and its name. A cue is one cue per object, so editing one cue
+scene is a format byte (2), its order as a little endian double, then its
+name, icon and colour as texts. Each cue is its own object, so editing one cue
 writes one small record however long the list is:
 
 ```
-byte 0      1 plain, 2 the rest is raw DEFLATE, whichever is smaller
-then        scene id, number in thousandths, fade, delay in tenths of a second,
-            trigger (0 on Go, 1 after the previous, 2 timed), wait in tenths,
-            name, then the lights to the end
+byte 0      3 plain, 4 the rest is raw DEFLATE, whichever is smaller
+then        scene id, order as a little endian double, fade in tenths of a
+            second, name, then the lights to the end
 per light   header, id, channel mask, one byte per channel the mask sets
 ```
 
-Numbers are unsigned LEB128. An id is written as `header << 1` then its eight
-bytes when it is sixteen hex digits, or as `header << 1 | 1` then a length and
-the text. The header of a light is the length of its mask in bytes, and of the
-scene id in a cue it is 0. A cue stores only the channels it holds, so a cue
-that changes four lights' dimmers is about fifty bytes. It still records
-lights rather than addresses, so re-addressing later does not point a cue at
-whatever now sits on those channels.
+Numbers are unsigned LEB128 and a text is a length then UTF-8. An id is
+written as `header << 1` then its eight bytes when it is sixteen hex digits, or
+as `header << 1 | 1` then a text. The header of a light is the length of its
+mask in bytes, and of the scene id in a cue it is 0. A cue stores only the
+channels it holds, so a cue that sets four lights' dimmers is about fifty
+bytes. It still records lights rather than addresses, so re-addressing later
+does not point a cue at whatever now sits on those channels.
 
 An id is sixteen hex characters, not a UUID. A cue names every light it holds,
 so the id is most of what a cue weighs, and the odds of two devices minting

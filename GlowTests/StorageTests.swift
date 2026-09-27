@@ -49,14 +49,14 @@ struct StorageTests {
 		
 		show.scenes = [ShowContents.Scene(identifier: Identifier.fresh(), name: "Look", sortIndex: 0)]
 		show.cues = [
-			ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[0].identifier, number: 1000, name: "Whole", fade: 3, levels: whole.data),
-			ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[0].identifier, number: 2000, name: "Tracked", fade: 3, levels: tracked.data),
+			ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[0].identifier, sortIndex: 1, label: "Whole", fade: 3, levels: whole.data),
+			ShowContents.Cue(identifier: Identifier.fresh(), scene: show.scenes[0].identifier, sortIndex: 2, label: "Tracked", fade: 3, levels: tracked.data),
 		]
 		return show
 	}
 	
 	private static func cue(named name: String, in files: [String: Data], of show: ShowContents) throws -> (key: String, body: Data) {
-		let identifier = try #require(show.cues.first { $0.name == name }?.identifier)
+		let identifier = try #require(show.cues.first { $0.label == name }?.identifier)
 		let key = "cues/\(identifier)"
 		return (key, try #require(files[key]))
 	}
