@@ -105,7 +105,7 @@ struct SceneView: View {
 							}
 							.swipeActions(edge: .trailing) {
 								Button("Delete", systemImage: "trash", role: .destructive) {
-									context.delete(cue)
+									console.delete(cue, from: list, among: lists, context: context)
 								}
 							}
 							.contextMenu {
@@ -125,7 +125,7 @@ struct SceneView: View {
 								}
 								
 								Button("Delete Cue", systemImage: "trash", role: .destructive) {
-									context.delete(cue)
+									console.delete(cue, from: list, among: lists, context: context)
 								}
 							}
 						}
@@ -136,8 +136,8 @@ struct SceneView: View {
 							console.selection.isSceneOpen = false
 						} label: {
 							Label("Add Cues", systemImage: "plus")
+								.foregroundStyle(tint)
 						}
-						.tint(tint)
 						
 						SceneSettings(look: look)
 					}
@@ -210,6 +210,7 @@ struct SceneView: View {
 
 private struct Transport: View {
 	@Environment(Console.self) private var console
+	@ScaledMetric(relativeTo: .headline) private var height = 54
 	
 	let look: Look
 	let list: CueList
@@ -217,53 +218,58 @@ private struct Transport: View {
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
+		let tint = look.tint.color ?? .accentColor
+		let steps = list.cues.count > 1
 		
-		HStack(spacing: 12) {
-			if list.cues.count > 1 {
-				Button("Back", systemImage: "backward.end.fill") {
-					console.back(list)
+		GlassEffectContainer(spacing: 12) {
+			HStack(spacing: 12) {
+				if steps {
+					Button {
+						console.back(list)
+					} label: {
+						Image(systemName: "backward.end.fill")
+							.frame(width: height, height: height)
+							.glassEffect(.regular.interactive(index != nil), in: .circle)
+					}
+					.accessibilityLabel("Back")
+					.keyboardShortcut(.leftArrow, modifiers: [])
+					.disabled(index == nil)
 				}
-				.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
-				.buttonStyle(.glass)
-				.buttonBorderShape(.circle)
-				.labelStyle(.iconOnly)
-				.keyboardShortcut(.leftArrow, modifiers: [])
-				.disabled(index == nil)
 				
 				Button {
-					console.go(list)
+					if steps {
+						console.go(list)
+					} else {
+						console.toggle(list, among: lists)
+					}
 				} label: {
-					Label(index == nil ? "Start" : "Next Cue", systemImage: "forward.end.fill")
+					Label(steps ? (index == nil ? "Start" : "Next Cue") : (index == nil ? "Turn On" : "Turn Off"), systemImage: steps ? "forward.end.fill" : "power")
 						.foregroundStyle(.white)
 						.frame(maxWidth: .infinity)
+						.frame(height: height)
+						.glassEffect(.regular.tint(tint).interactive(), in: .capsule)
 				}
-				.buttonStyle(.glassProminent)
 				.keyboardShortcut(.rightArrow, modifiers: [])
 				
-				Button("Turn Off", systemImage: "stop.fill") {
-					console.toggle(list, among: lists)
+				if steps {
+					Button {
+						console.toggle(list, among: lists)
+					} label: {
+						Image(systemName: "stop.fill")
+							.frame(width: height, height: height)
+							.glassEffect(.regular.interactive(index != nil), in: .circle)
+					}
+					.accessibilityLabel("Turn Off")
+					.disabled(index == nil)
 				}
-				.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
-				.buttonStyle(.glass)
-				.buttonBorderShape(.circle)
-				.labelStyle(.iconOnly)
-				.disabled(index == nil)
-			} else {
-				Button {
-					console.toggle(list, among: lists)
-				} label: {
-					Label(index == nil ? "Turn On" : "Turn Off", systemImage: "power")
-						.foregroundStyle(.white)
-						.frame(maxWidth: .infinity)
-				}
-				.buttonStyle(.glassProminent)
 			}
 		}
+		.buttonStyle(.plain)
 		.font(.headline)
-		.controlSize(.extraLarge)
+		.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 		.lineLimit(1)
 		.padding(.horizontal)
-		.padding(.bottom, 8)
+		.padding(.vertical, 8)
 	}
 }
 

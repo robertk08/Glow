@@ -42,7 +42,7 @@ final class Recording: Identifiable {
 		case let .cue(look, _):
 			label = ""
 			fade = look.cues(among: cues).last?.fade ?? 0
-			if lights.isEmpty { lights = lit.isEmpty ? everyone : lit }
+			if lights.isEmpty, console.playback.cue(of: look.identifier) == nil { lights = lit.isEmpty ? everyone : lit }
 		case let .into(cue):
 			label = cue.label
 			fade = cue.fade
@@ -67,6 +67,7 @@ final class Recording: Identifiable {
 	var hint: String {
 		let count = lights.count == 1 ? "1 light" : "\(lights.count) lights"
 		guard changed.union(selected).isEmpty else { return "\(count) for cue \(number)" }
+		guard !lights.isEmpty else { return "Change or select lights for cue \(number)" }
 		return lit.isEmpty ? "Every light dark for cue \(number)" : "The stage as it is for cue \(number)"
 	}
 	

@@ -12,6 +12,7 @@ struct RootView: View {
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	@State private var section = "lights"
+	@State private var returning: String?
 	@Namespace private var transition
 	
 	private var tabs: some View {
@@ -103,8 +104,14 @@ struct RootView: View {
 		.onChange(of: looks.map(\.identifier)) {
 			if !looks.contains(where: { $0.identifier == console.selection.scene }) { console.selection.isSceneOpen = false }
 		}
-		.onChange(of: console.selection.building) {
-			if console.selection.building != nil { section = "lights" }
+		.onChange(of: console.selection.building) { before, after in
+			if before == nil, after != nil {
+				returning = section
+				section = "lights"
+			} else if after == nil, let returning {
+				section = returning
+				self.returning = nil
+			}
 		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)

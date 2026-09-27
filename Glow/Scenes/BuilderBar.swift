@@ -17,6 +17,7 @@ struct BuilderBar: View {
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
+			let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 			let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
 			let held = look.cues(among: cues)
 			let index = list.index(of: console.playback.cue(of: look.identifier))
@@ -126,7 +127,7 @@ struct BuilderBar: View {
 										}
 										
 										Button("Delete Cue", systemImage: "trash", role: .destructive) {
-											context.delete(cue)
+											console.delete(cue, from: list, among: lists, context: context)
 										}
 									}
 								}
@@ -162,21 +163,13 @@ struct BuilderBar: View {
 					}
 					.buttonStyle(.glassProminent)
 					.disabled(!next.isReady)
-					
-					Button {
-						recording = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
-					} label: {
-						Label("Options", systemImage: "slider.horizontal.3")
-							.labelStyle(.iconOnly)
-							.frame(minWidth: 28, minHeight: 44)
-					}
-					.buttonStyle(.glass)
 				}
+				.tint(tint)
 				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
 			}
 			.padding(16)
-			.glassEffect(.regular, in: .rect(cornerRadius: 28, style: .continuous))
+			.glassEffect(.regular.tint(Color(.systemBackground).opacity(0.7)), in: .rect(cornerRadius: 28, style: .continuous))
 			.frame(maxWidth: 640)
 			.padding(.horizontal, 12)
 			.padding(.bottom, 8)

@@ -307,6 +307,32 @@ struct SceneTests {
 		#expect(rig.recording(.cue(rig.look, after: nil)).hint == "Every light dark for cue 2")
 	}
 	
+	@Test func anUnchangedStageIsNotStoredTwice() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 200)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		
+		#expect(!recording.isReady)
+		#expect(recording.hint == "Change or select lights for cue 2")
+	}
+	
+	@Test func deletingTheLiveCueMovesTheStageToTheOneBefore() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		rig.console.play(rig.list, at: 1, snapping: true)
+		rig.console.delete(second, from: rig.list, among: rig.lists, context: rig.context)
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(held.count == 1)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[0].identifier)
+		
+		rig.console.delete(held[0], from: rig.list, among: rig.lists, context: rig.context)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
+	}
+	
 	@Test func updateAddsASelectedLightThatWasNotChanged() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])

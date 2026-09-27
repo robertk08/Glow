@@ -550,6 +550,18 @@ final class Console {
 		outbox.append(.data(Wire.playback(playback.data)))
 	}
 	
+	func delete(_ cue: Cue, from list: CueList, among lists: [CueList], context: ModelContext) {
+		if playback.cue(of: list.scene) == cue.identifier {
+			if list.cues.count > 1 {
+				back(list)
+			} else {
+				stop(list, among: lists)
+			}
+		}
+		
+		context.delete(cue)
+	}
+	
 	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
 		guard playback.cue(of: list.scene) != nil else { return }
 		let current = list.index(of: playback.cue(of: list.scene))
