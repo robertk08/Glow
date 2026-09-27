@@ -6,7 +6,9 @@ struct SceneInspector: View {
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	var body: some View {
-		if let look = looks.first(where: { $0.identifier == console.selection.scene }) ?? looks.first(where: { $0.identifier == console.playback.playing.last?.scene }) ?? looks.first {
+		let shown = console.shownScene(among: looks.map(\.identifier))
+		
+		if let look = looks.first(where: { $0.identifier == shown }) {
 			SceneView(look: look)
 				.id(look.identifier)
 		} else {

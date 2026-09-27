@@ -165,9 +165,10 @@ struct SceneView: View {
 			.navigationTitle(look.name)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
-				ToolbarItem(placement: .topBarLeading) {
-					EditButton()
-						.disabled(held.count < 2)
+				if held.count > 1 {
+					ToolbarItem(placement: .topBarLeading) {
+						EditButton()
+					}
 				}
 				
 				if isSheet {

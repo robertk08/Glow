@@ -151,7 +151,7 @@ private struct SceneTile: View {
 		let isOn = index != nil
 		let hasCues = list.cues.count > 1
 		let tint = look.tint.color ?? .accentColor
-		let isShown = sizeClass == .regular && console.selection.scene == look.identifier
+		let isShown = sizeClass == .regular && console.shownScene(among: lists.map(\.scene)) == look.identifier
 		let buttons = look.buttons.filter { isOn || $0 == .flash || look.tap == .flash && ($0 == .toggle || $0 == .next) }
 		
 		return VStack(alignment: .leading, spacing: 14) {
@@ -231,7 +231,7 @@ private struct SceneTile: View {
 				TileButtons(look: look, list: list, lists: lists, buttons: buttons)
 			}
 		}
-		.foregroundStyle(.primary)
+		.tint(.primary)
 		.padding(16)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil).interactive(), in: .rect(cornerRadius: 26, style: .continuous))

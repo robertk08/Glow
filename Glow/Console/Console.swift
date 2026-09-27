@@ -472,6 +472,10 @@ final class Console {
 		go(list)
 	}
 	
+	func shownScene(among scenes: [String]) -> String? {
+		[selection.scene, playback.playing.last?.scene].compactMap { $0 }.first(where: scenes.contains) ?? scenes.first
+	}
+	
 	func stopAll(among lists: [CueList]) {
 		for entry in playback.playing.reversed() {
 			guard let list = lists.first(where: { $0.scene == entry.scene }) else {
