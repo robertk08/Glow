@@ -194,6 +194,28 @@ struct ControllerTests {
 		print("HARDWARE turning it off on the other device put the light back in \(String(format: "%.2f", back ?? -1))s")
 	}
 	
+	@Test func aCueStoredOnOneDeviceIsOnStageOnTheOther() async throws {
+		try inScratch()
+		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library)
+		let first = try #require(Rig.first.cues.first { $0.identifier == list.cues[0].identifier })
+		
+		Rig.first.console.play(list, at: 0, snapping: true)
+		Rig.first.console.set(99, at: dimmer)
+		Recording(.cue(look, after: first), console: Rig.first.console, fixtures: Rig.first.lights, library: Rig.first.library, looks: Rig.first.looks, cues: Rig.first.cues).store(context: Rig.first.context)
+		let stored = try #require(Rig.first.console.playback.cue(of: look.identifier))
+		
+		let took = await eventually { Rig.second.cues.contains { $0.identifier == stored } && Rig.second.console.playback.cue(of: look.identifier) == stored && Rig.second.console.value(at: dimmer) == 99 }
+		#expect(took != nil)
+		#expect(look.cues(among: Rig.first.cues).map(\.identifier) == [list.cues[0].identifier, stored, list.cues[1].identifier])
+		print("HARDWARE a cue stored between two others was on stage on the other device in \(String(format: "%.2f", took ?? -1))s")
+		
+		Rig.first.console.stop(CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library), among: [], snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
+	}
+	
 	@Test func aSceneInTheOldFormatIsErasedWhenItsShowOpens() async throws {
 		try inScratch()
 		let old = Data(#"{"identifier":"0908ef53afc76309","levels":{},"name":"Open White","sortIndex":0}"#.utf8)
