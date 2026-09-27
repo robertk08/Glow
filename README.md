@@ -114,7 +114,8 @@ and the buttons ticked in a list, then the name, icon and colour, folded away
 until you open them. Edit puts cues and buttons in order with the usual
 handles, and the menu duplicates
 or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
-and hold it to edit its name, fade, delay and follow. On iPad the scene sits in the sidebar on the right, beside
+and hold it to edit its name, fade, delay and follow. On iPad the scene sits in
+the sidebar on the right, beside
 the scenes as the programmer sits beside the lights, and stays there until you
 open another, and the arrow keys or a presentation clicker step through its
 cues. On iPhone it opens as a sheet, and the bar above the tabs shows the scene
@@ -136,7 +137,8 @@ to the cue before it, or turns the scene off if it was the last. Store puts the
 new cue right after the one on stage, or at the end, and the stage is then on
 it without a light moving, so the next Store follows it and Update refines it.
 Update stores the same way into the cue on stage. After either, the selection
-clears, as the programmer empties after a store on a desk. Tap a cue in the bar to go back to it. Options chooses the lights,
+clears, as the programmer empties after a store on a desk. Tap a cue in the bar
+to go back to it. Options chooses the lights,
 the aspects (intensity, colour, position, gobo, beam or control), a name and
 the fade. Cancel on a scene without cues removes it.
 Storing into a cue replaces only what you chose and keeps the rest. All Off on
