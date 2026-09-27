@@ -291,6 +291,22 @@ struct SceneTests {
 		#expect(!rig.console.isActive(DMXAddress(1)!))
 	}
 	
+	@Test func storingWithNothingPickedTakesTheLightsThatAreOn() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 200)])
+		rig.console.set(120, at: DMXAddress(11)!)
+		rig.console.release(11...11)
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		
+		#expect(recording.lights == [rig.fixtures[1].identifier])
+		#expect(recording.hint == "The stage as it is for cue 2")
+		
+		rig.console.set(0, at: DMXAddress(11)!)
+		rig.console.release(11...11)
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).hint == "Every light dark for cue 2")
+	}
+	
 	@Test func updateAddsASelectedLightThatWasNotChanged() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])

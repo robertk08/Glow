@@ -12,6 +12,7 @@ final class Recording: Identifiable {
 	let destination: Destination
 	let changed: Set<String>
 	let selected: Set<String>
+	let lit: Set<String>
 	var label: String
 	var lights: Set<String>
 	var features = Set(FeatureGroup.allCases)
@@ -34,13 +35,14 @@ final class Recording: Identifiable {
 		let everyone = Set(fixtures.map(\.identifier))
 		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
 		changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
+		lit = Set(fixtures.filter { Programmer(fixture: $0, library: library, console: console)?.isOn == true }.map(\.identifier))
 		lights = changed.union(selected)
 		
 		switch destination {
 		case let .cue(look, _):
 			label = ""
 			fade = look.cues(among: cues).last?.fade ?? 0
-			if lights.isEmpty, look.cues(among: cues).isEmpty { lights = everyone }
+			if lights.isEmpty { lights = lit.isEmpty ? everyone : lit }
 		case let .into(cue):
 			label = cue.label
 			fade = cue.fade
@@ -63,8 +65,14 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		guard !changed.union(selected).isEmpty else { return number == 1 ? "Set the lights, then store cue 1" : "Select or change lights for cue \(number)" }
-		return lights.count == 1 ? "1 light for cue \(number)" : "\(lights.count) lights for cue \(number)"
+		let count = lights.count == 1 ? "1 light" : "\(lights.count) lights"
+		guard changed.union(selected).isEmpty else { return "\(count) for cue \(number)" }
+		return lit.isEmpty ? "Every light dark for cue \(number)" : "The stage as it is for cue \(number)"
+	}
+	
+	func takeStage() {
+		lights = lit.union(changed).union(selected)
+		if lights.isEmpty { lights = Set(fixtures.map(\.identifier)) }
 	}
 	
 	var place: String {

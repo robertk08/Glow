@@ -16,7 +16,6 @@ struct SceneView: View {
 	
 	@State private var editing: Cue?
 	@State private var editMode = EditMode.inactive
-	@State private var isShowingSettings = false
 	@State private var isDeleting = false
 	
 	var body: some View {
@@ -132,8 +131,11 @@ struct SceneView: View {
 						} label: {
 							Label("Add Cues", systemImage: "plus")
 						}
+						
+						SceneSettings(look: look)
 					}
 					.tint(tint)
+					.scrollEdgeEffectStyle(.hard, for: .bottom)
 					.safeAreaBar(edge: .bottom) {
 						Transport(look: look, list: list, lists: lists)
 							.tint(tint)
@@ -150,26 +152,28 @@ struct SceneView: View {
 					}
 				}
 				
-				ToolbarItem(placement: .topBarTrailing) {
-					if editMode.isEditing {
-						Button("Done", role: .confirm) {
-							editMode = .inactive
-						}
-					} else {
-						Menu {
-							Button("Scene Settings", systemImage: "slider.horizontal.3") {
-								isShowingSettings = true
+				if !held.isEmpty {
+					ToolbarItem(placement: .topBarTrailing) {
+						if editMode.isEditing {
+							Button("Done", role: .confirm) {
+								editMode = .inactive
 							}
-							
+						} else {
+							Button("Edit") {
+								editMode = .active
+							}
+						}
+					}
+				}
+				
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				
+				ToolbarItem(placement: .topBarTrailing) {
+					if !editMode.isEditing {
+						Menu {
 							Button("Add Cues", systemImage: "plus") {
 								console.selection.building = look.identifier
 								console.selection.isSceneOpen = false
-							}
-							
-							if held.count > 1 {
-								Button("Reorder Cues", systemImage: "arrow.up.arrow.down") {
-									editMode = .active
-								}
 							}
 							
 							Divider()
@@ -186,9 +190,6 @@ struct SceneView: View {
 						}
 					}
 				}
-			}
-			.navigationDestination(isPresented: $isShowingSettings) {
-				SceneSettings(look: look)
 			}
 			.sheet(item: $editing) { cue in
 				CueEditView(cue: cue, position: held.firstIndex { $0.identifier == cue.identifier } ?? 0)
@@ -268,99 +269,58 @@ private struct Transport: View {
 }
 
 private struct SceneSettings: View {
-	@Environment(FixtureLibrary.self) private var library
-	@Environment(\.modelContext) private var context
-	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
-	
 	@Bindable var look: Look
 	
-	@State private var isDeleting = false
-	
 	var body: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
-		
-		Form {
-			Section {
-				TextField("Name", text: $look.name)
-					.autocorrectionDisabled()
+		Section {
+			Picker("Tap", selection: $look.tap) {
+				ForEach(SceneAction.taps) { action in
+					Text(action.tapName)
+						.tag(action)
+				}
+			}
+			
+			ForEach(look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }) { action in
+				let isOn = look.buttons.contains(action)
 				
-				Picker("Tap", selection: $look.tap) {
-					ForEach(SceneAction.taps) { action in
-						Text(action.tapName)
-							.tag(action)
+				Button {
+					look.shows(action, !isOn)
+				} label: {
+					HStack(spacing: 16) {
+						Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+							.font(.title3)
+							.foregroundStyle(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+						
+						Label(action.name, systemImage: action.symbol)
+							.foregroundStyle(isOn ? .primary : .secondary)
+						
+						Spacer(minLength: 0)
 					}
+					.contentShape(.rect)
 				}
-			} header: {
-				SceneTile(look: look, list: CueList(look, cues: cues, fixtures: fixtures, library: library), lists: lists, recording: .constant(nil), deleting: .constant(nil))
-					.allowsHitTesting(false)
-					.containerRelativeFrame(.horizontal) { width, _ in
-						look.buttons.isEmpty ? (width - 44) / 2 : width - 32
-					}
-					.frame(maxWidth: .infinity)
-					.padding(.bottom, 20)
-					.textCase(nil)
-					.foregroundStyle(.primary)
-					.font(.body)
-					.accessibilityHidden(true)
+				.buttonStyle(.plain)
+				.disabled(!isOn && look.buttons.count >= Look.buttonLimit)
+				.accessibilityAddTraits(isOn ? .isSelected : [])
+				.moveDisabled(!isOn)
 			}
-			
-			Section {
-				ForEach(look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }) { action in
-					let isOn = look.buttons.contains(action)
-					
-					Button {
-						look.shows(action, !isOn)
-					} label: {
-						HStack(spacing: 16) {
-							Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-								.font(.title3)
-								.foregroundStyle(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
-							
-							Label(action.name, systemImage: action.symbol)
-								.foregroundStyle(isOn ? .primary : .secondary)
-							
-							Spacer(minLength: 0)
-						}
-						.contentShape(.rect)
-					}
-					.buttonStyle(.plain)
-					.disabled(!isOn && look.buttons.count >= Look.buttonLimit)
-					.accessibilityAddTraits(isOn ? .isSelected : [])
-				}
-				.onMove { from, to in
-					var order = look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }
-					let chosen = Set(look.buttons)
-					order.move(fromOffsets: from, toOffset: to)
-					look.buttons = order.filter(chosen.contains)
-				}
-			} header: {
-				Text("Buttons")
-			} footer: {
-				Text("Choose up to three for the tile and drag them into order. Everything else is in its menu.")
+			.onMove { from, to in
+				var order = look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }
+				let chosen = Set(look.buttons)
+				order.move(fromOffsets: from, toOffset: to)
+				look.buttons = order.filter(chosen.contains)
 			}
-			
-			Section("Icon") {
-				AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
-			}
-			
-			Section {
-				Button("Delete Scene", role: .destructive) {
-					isDeleting = true
-				}
-				.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
-					Button("Delete Scene", role: .destructive) {
-						look.remove(with: cues, context: context)
-					}
-				} message: {
-					Text("The lights stay as they are.")
-				}
-			}
+		} header: {
+			Text("Tile")
+		} footer: {
+			Text("Tick up to three buttons for the tile. Edit puts them in order. Everything else is in the tile's menu.")
 		}
-		.environment(\.editMode, .constant(.active))
 		.animation(.snappy, value: look.buttons)
-		.navigationTitle("Scene Settings")
-		.navigationBarTitleDisplayMode(.inline)
+		
+		Section("Name and Icon") {
+			TextField("Name", text: $look.name)
+				.autocorrectionDisabled()
+			
+			AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+		}
 	}
 }

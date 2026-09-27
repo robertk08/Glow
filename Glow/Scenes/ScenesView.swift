@@ -14,6 +14,7 @@ struct ScenesView: View {
 	@State private var recording: Recording?
 	@State private var deleting: Look?
 	@State private var isOrdering = false
+	@State private var stored = 0
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	@ViewBuilder private var tiles: some View {
@@ -40,20 +41,33 @@ struct ScenesView: View {
 	}
 	
 	var body: some View {
+		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
+		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
+		let adding = Group {
+			Button("Store the Stage", systemImage: "camera.aperture") {
+				let look = Look.fresh(among: looks, context: context)
+				let recording = Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+				recording.takeStage()
+				recording.store(context: context)
+				stored += 1
+			}
+			
+			Button("Build Cues", systemImage: "list.number") {
+				console.selection.building = Look.fresh(among: looks, context: context).identifier
+			}
+		}
+		
 		Group {
 			if looks.isEmpty {
 				ContentUnavailableView {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
-					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "A new scene opens on the lights. Set them, store a cue, change them and store the next.")
+					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "Store the stage as it is now, or build a scene cue by cue on the lights.")
 				} actions: {
-					Button("New Scene", systemImage: "plus") {
-						console.selection.building = Look.fresh(among: looks, context: context).identifier
-					}
-					.font(.headline)
-					.buttonStyle(.glassProminent)
-					.controlSize(.large)
-					.disabled(fixtures.isEmpty)
+					adding
+						.buttonStyle(.glass)
+						.controlSize(.large)
+						.disabled(fixtures.isEmpty)
 				}
 			} else {
 				ScrollView {
@@ -63,20 +77,20 @@ struct ScenesView: View {
 		}
 		.navigationTitle("Scenes")
 		.navigationSubtitle(shows.active.name)
+		.sensoryFeedback(.success, trigger: stored)
 		.toolbar {
 			LinkStatusButton()
 			
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			
-			if console.playback.playing.contains(where: { entry in looks.contains { $0.identifier == entry.scene } }) {
-				ToolbarItem(placement: .topBarTrailing) {
-					Button("All Off", systemImage: "power") {
-						console.stopAll(among: looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) })
-					}
+			ToolbarItem(placement: .topBarTrailing) {
+				Button("All Off", systemImage: "power") {
+					console.stopAll(among: lists)
 				}
-				
-				ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				.disabled(!isPlaying)
 			}
+			
+			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("Reorder", systemImage: "arrow.up.arrow.down") {
@@ -88,8 +102,8 @@ struct ScenesView: View {
 			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			ToolbarItem(placement: .topBarTrailing) {
-				Button("New Scene", systemImage: "plus") {
-					console.selection.building = Look.fresh(among: looks, context: context).identifier
+				Menu("New Scene", systemImage: "plus") {
+					adding
 				}
 				.disabled(fixtures.isEmpty)
 			}
@@ -115,18 +129,14 @@ struct ScenesView: View {
 				}
 			}
 		}
-		.confirmationDialog("Delete \(deleting?.name ?? "Scene")?", isPresented: Binding { deleting != nil } set: { _ in deleting = nil }, titleVisibility: .visible, presenting: deleting) { look in
-			Button("Delete Scene", role: .destructive) {
-				look.remove(with: cues, context: context)
-			}
-		} message: { _ in
-			Text("The lights stay as they are.")
-		}
 	}
 }
 
 struct SceneTile: View {
 	@Environment(Console.self) private var console
+	@Environment(FixtureLibrary.self) private var library
+	@Environment(\.modelContext) private var context
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	
 	let look: Look
@@ -136,52 +146,109 @@ struct SceneTile: View {
 	@Binding var recording: Recording?
 	@Binding var deleting: Look?
 	
+	@State private var size = CGSize.zero
+	
+	var body: some View {
+		let index = list.index(of: console.playback.cue(of: look.identifier))
+		let buttons = TileButtons(look: look, list: list, lists: lists)
+			.frame(maxWidth: 200)
+			.padding([.trailing, .bottom], 14)
+			.padding(.bottom, 26)
+		
+		Button {
+			if list.cues.isEmpty {
+				console.selection.building = look.identifier
+			} else {
+				console.run(look.tap, on: list, among: lists)
+			}
+		} label: {
+			SceneFace(look: look, list: list)
+		}
+		.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
+			console.flash(list, among: lists, isHeld: isHeld)
+		})
+		.accessibilityHint(look.tap.tapName)
+		.modifier(SceneMenu(isShown: look.tap != .flash) {
+			SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+		} preview: {
+			SceneFace(look: look, list: list)
+				.overlay(alignment: .bottomTrailing) {
+					if !look.buttons.isEmpty { buttons }
+				}
+				.frame(width: size.width, height: size.height)
+				.environment(console)
+				.environment(library)
+		})
+		.overlay(alignment: .bottomTrailing) {
+			if !look.buttons.isEmpty { buttons }
+		}
+		.overlay(alignment: .topTrailing) {
+			Button {
+				console.selection.scene = look.identifier
+				console.selection.isSceneOpen = sizeClass != .regular
+			} label: {
+				Image(systemName: "ellipsis")
+					.font(.body.weight(.semibold))
+					.foregroundStyle(.secondary)
+					.frame(width: 44, height: 44)
+					.contentShape(.rect)
+			}
+			.buttonStyle(.plain)
+			.padding(4)
+			.accessibilityLabel("Open \(look.name)")
+			.modifier(SceneMenu(isShown: look.tap == .flash) {
+				SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+			} preview: {
+				SceneFace(look: look, list: list)
+					.frame(width: size.width, height: size.height)
+					.environment(console)
+			})
+		}
+		.confirmationDialog("Delete \(look.name)?", isPresented: Binding { deleting?.identifier == look.identifier } set: { if !$0 { deleting = nil } }, titleVisibility: .visible) {
+			Button("Delete Scene", role: .destructive) {
+				look.remove(with: cues, context: context)
+			}
+		} message: {
+			Text("The lights stay as they are.")
+		}
+		.onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.animation(.snappy, value: index)
+		.sensoryFeedback(.impact(weight: .medium), trigger: index)
+		.layoutValue(key: TileSpan.self, value: look.buttons.isEmpty ? 1 : 2)
+	}
+}
+
+private struct SceneFace: View {
+	@Environment(Console.self) private var console
+	
+	let look: Look
+	let list: CueList
+	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let isOn = index != nil
 		let tint = look.tint.color ?? .accentColor
 		
 		VStack(alignment: .leading, spacing: 8) {
-			HStack(alignment: .bottom, spacing: 12) {
-				Button {
-					if list.cues.isEmpty {
-						console.selection.building = look.identifier
-					} else {
-						console.run(look.tap, on: list, among: lists)
-					}
-				} label: {
-					VStack(alignment: .leading, spacing: 8) {
-						Image(systemName: look.symbol)
-							.font(.title3)
-							.foregroundStyle(isOn ? Color.white : tint)
-							.frame(width: 38, height: 38)
-							.background(isOn ? tint : tint.opacity(0.16), in: .circle)
-							.symbolEffect(.bounce, value: index)
-						
-						VStack(alignment: .leading, spacing: 1) {
-							Text(look.name)
-								.font(.headline)
-							
-							Text(list.status(at: index))
-								.font(.caption2)
-								.foregroundStyle(.secondary)
-								.contentTransition(.numericText())
-						}
-						.lineLimit(1)
-					}
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.contentShape(.rect)
-				}
-				.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
-					console.flash(list, among: lists, isHeld: isHeld)
-				})
-				.accessibilityHint(look.tap.tapName)
+			Image(systemName: look.symbol)
+				.font(.title3)
+				.foregroundStyle(isOn ? Color.white : tint)
+				.frame(width: 38, height: 38)
+				.background(isOn ? tint : tint.opacity(0.16), in: .circle)
+				.symbolEffect(.bounce, value: index)
+			
+			VStack(alignment: .leading, spacing: 1) {
+				Text(look.name)
+					.font(.headline)
 				
-				if !look.buttons.isEmpty {
-					TileButtons(look: look, list: list, lists: lists)
-						.frame(maxWidth: 200)
-				}
+				Text(list.status(at: index))
+					.font(.caption2)
+					.foregroundStyle(.secondary)
+					.contentTransition(.numericText())
 			}
+			.lineLimit(1)
+			.padding(.trailing, look.buttons.isEmpty ? 0 : 212)
 			
 			HStack(spacing: list.cues.count > 16 ? 1 : 3) {
 				ForEach(list.cues.indices, id: \.self) { position in
@@ -203,32 +270,36 @@ struct SceneTile: View {
 			.padding(.vertical, 6)
 			.accessibilityHidden(true)
 		}
+		.foregroundStyle(.primary)
 		.padding(14)
 		.frame(maxWidth: .infinity, alignment: .topLeading)
-		.overlay(alignment: .topTrailing) {
-			Button {
-				console.selection.scene = look.identifier
-				console.selection.isSceneOpen = sizeClass != .regular
-			} label: {
-				Image(systemName: "ellipsis")
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.secondary)
-					.frame(width: 44, height: 44)
-					.contentShape(.rect)
-			}
-			.buttonStyle(.plain)
-			.padding(4)
-			.accessibilityLabel("Open \(look.name)")
-		}
 		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil), in: .rect(cornerRadius: 24, style: .continuous))
-		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.contextMenu(look.tap == .flash || look.buttons.contains(.flash) ? nil : ContextMenu {
-			SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
-		})
-		.animation(.snappy, value: index)
-		.sensoryFeedback(.impact(weight: .medium), trigger: index)
-		.layoutValue(key: TileSpan.self, value: look.buttons.isEmpty ? 1 : 2)
+		.contentShape(.rect(cornerRadius: 24, style: .continuous))
+	}
+}
+
+private struct SceneMenu<Items: View, Preview: View>: ViewModifier {
+	let isShown: Bool
+	@ViewBuilder let items: Items
+	@ViewBuilder let preview: Preview
+	
+	init(isShown: Bool, @ViewBuilder items: () -> Items, @ViewBuilder preview: () -> Preview) {
+		self.isShown = isShown
+		self.items = items()
+		self.preview = preview()
+	}
+	
+	func body(content: Content) -> some View {
+		if isShown {
+			content
+				.contextMenu {
+					items
+				} preview: {
+					preview
+				}
+		} else {
+			content
+		}
 	}
 }
 
