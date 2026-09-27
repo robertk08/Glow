@@ -29,19 +29,23 @@ const uint32_t MEASURE_MS   = 500;
 const int      JOBS_WAITING = 32;
 const int      KEEPER_STACK = 6144;
 const size_t   PIECE        = 1024;
+const size_t   BATCH        = 4096;
 const int      SORTED       = 2048;
 const int      SLICES_MAX   = 64;
 const uint32_t PUT_BIT      = 0x80000000;
 
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
+size_t            g_total      = 0;
+char              g_spent[NAME_LIMIT];
 volatile uint32_t g_generation = 0;
 int               g_readers    = 0;
 SemaphoreHandle_t g_lock       = nullptr;
 QueueHandle_t     g_jobs       = nullptr;
 QueueHandle_t     g_settled    = nullptr;
-uint8_t           g_piece[PIECE];
+uint8_t           g_piece[BATCH];
 uint8_t           g_scan[PIECE];
+uint32_t          g_pieces     = 0;
 
 struct Hold {
   Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -71,6 +75,10 @@ bool path(char *out, const char *show, int file, const char *suffix) {
   return n < (int)PATH_LIMIT;
 }
 
+void breathe() {
+  if (++g_pieces % 16 == 0) vTaskDelay(1);
+}
+
 uint64_t hash(uint64_t h, const char *text) {
   for (const char *p = text; *p; p++) h = (h ^ (uint8_t)*p) * 1099511628211ULL;
   return h;
@@ -95,6 +103,7 @@ struct Cursor {
 
   const uint8_t *at(uint32_t offset, size_t length) {
     if (offset < base || offset + length > base + filled) {
+      breathe();
       base      = offset;
       ssize_t n = ::pread(fd, g_scan, std::min(PIECE, (size_t)(size - offset)), offset);
       filled    = n > 0 ? n : 0;
@@ -190,7 +199,13 @@ int gather(int fd, uint32_t size, int slices, int slice) {
   return kept;
 }
 
-bool review(const char *show, int file, bool always) {
+bool flush(int fd, size_t &waiting) {
+  bool written = Flash::guarded([&] { return ::write(fd, g_piece, waiting) == (ssize_t)waiting; });
+  waiting      = 0;
+  return written;
+}
+
+bool review(const char *show, int file, bool always, uint32_t room = UINT32_MAX) {
   char name[PATH_LIMIT];
   char spare[PATH_LIMIT];
   if (!path(name, show, file, "") || !path(spare, show, file, ".tmp")) return false;
@@ -201,6 +216,10 @@ bool review(const char *show, int file, bool always) {
   int from = ::open(name, O_RDONLY);
   if (from < 0) return false;
   uint32_t size = sizeOf(from);
+  if (size / 2 > room) {
+    ::close(from);
+    return false;
+  }
 
   uint32_t records = 0;
   Cursor   c{from, size};
@@ -222,24 +241,29 @@ bool review(const char *show, int file, bool always) {
     slice++;
   }
 
-  if (slices > SLICES_MAX || (!always && holding * 2 > size)) {
+  if (slices > SLICES_MAX || holding == size || holding > room || (!always && holding * 2 > size)) {
     ::close(from);
     return false;
   }
 
-  int  to     = ::open(spare, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  bool copied = to >= 0;
+  int    to      = ::open(spare, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  bool   copied  = to >= 0;
+  size_t waiting = 0;
   for (slice = 0; copied && slice < slices; slice++) {
     int kept = gather(from, size, slices, slice);
     copied   = kept >= 0;
     for (int i = 0; copied && i < kept; i++) {
       for (uint32_t done = 0; copied && done < g_entries[i].length;) {
-        size_t n = std::min(PIECE, (size_t)(g_entries[i].length - done));
-        copied   = ::pread(from, g_piece, n, g_entries[i].at + done) == (ssize_t)n && Flash::guarded([&] { return ::write(to, g_piece, n) == (ssize_t)n; });
+        size_t n = std::min(BATCH - waiting, (size_t)(g_entries[i].length - done));
+        copied   = ::pread(from, g_piece + waiting, n, g_entries[i].at + done) == (ssize_t)n;
+        waiting += n;
         done += n;
+        if (copied && waiting == BATCH) copied = flush(to, waiting);
+        breathe();
       }
     }
   }
+  if (copied && waiting) copied = flush(to, waiting);
   ::close(from);
 
   if (to >= 0) copied = Flash::guarded([&] { return ::close(to) == 0; }) && copied;
@@ -249,6 +273,8 @@ bool review(const char *show, int file, bool always) {
   Serial.printf("store: %s.%d kept %u of %u bytes in %u ms\n", show, file, (unsigned)holding, (unsigned)size, (unsigned)(millis() - began));
   return copied;
 }
+
+bool fits(uint32_t bytes) { return g_used + bytes + g_total / 8 <= g_total; }
 
 void perform(Job *jobs, int count) {
   char show[NAME_LIMIT];
@@ -278,14 +304,29 @@ void perform(Job *jobs, int count) {
     }
     if (!members) continue;
 
+    bool     erasing = true;
+    bool     erased  = false;
+    uint32_t adding  = 0;
+    for (int i = 0; i < members; i++) {
+      erasing = erasing && group[i]->frame[1] == ERASE;
+      erased  = erased || group[i]->frame[1] == ERASE;
+      adding += HEAD + group[i]->length - DOC_HEADER - showLength(*group[i]);
+    }
+
     char     name[PATH_LIMIT];
     uint32_t before = 0;
     uint32_t after  = 0;
-    bool     stored = path(name, show, file, "") && append(name, group, members, before, after);
-    if (!stored) {
-      for (int other = 0; other < FILES; other++) review(show, other, true);
-      stored = append(name, group, members, before, after);
+    bool     stored = path(name, show, file, "") && (erasing || fits(adding)) && append(name, group, members, before, after);
+    if (!stored && strcmp(g_spent, show)) {
+      g_used = LittleFS.usedBytes();
+      for (int other = 0; other < FILES && !(erasing || fits(adding)); other++) {
+        if (review(show, other, true, g_total - g_used)) g_used = LittleFS.usedBytes();
+      }
+      stored = (erasing || fits(adding)) && append(name, group, members, before, after);
+      if (!stored) strcpy(g_spent, show);
     }
+    if (stored) g_used += after - before;
+    if (stored && erased) g_spent[0] = '\0';
     for (int i = 0; i < members; i++) group[i]->stored = stored;
 
     uint32_t step = REVIEW_EVERY;
@@ -332,7 +373,7 @@ bool begin() {
   g_lock    = xSemaphoreCreateMutex();
   g_jobs    = xQueueCreate(JOBS_WAITING, sizeof(Job));
   g_settled = xQueueCreate(JOBS_WAITING * 2, sizeof(Job));
-  g_ready   = g_lock && g_jobs && g_settled && LittleFS.begin(true) &&
+  g_ready   = g_lock && g_jobs && g_settled && LittleFS.begin(true) && (g_total = LittleFS.totalBytes()) &&
             xTaskCreatePinnedToCore(keeper, "store", KEEPER_STACK, nullptr, 1, nullptr, 0) == pdPASS;
   if (!g_ready) Serial.println(F("store: LittleFS unavailable, shows cannot be stored"));
   return g_ready;
@@ -485,6 +526,6 @@ void finish() {
 
 size_t used() { return g_used; }
 
-size_t capacity() { return g_ready ? LittleFS.totalBytes() : 0; }
+size_t capacity() { return g_ready ? g_total : 0; }
 
 }  // namespace Store

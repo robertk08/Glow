@@ -540,9 +540,13 @@ removes it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders toda
 Names are letters, digits, hyphen and underscore, up to 39 characters, and
 anything else is refused. One object can be up to 64 KB. Once a file has grown
 past twice what its newest records hold, the store task rewrites it with only
-those, and when the flash is full a write first rewrites every file of its show.
-A rewrite needs room for a copy of one file, an eighth of the show, so a single
-show can grow to about eight ninths of the flash. It sorts the records in a
+those. A rewrite needs room for a copy of one file, an eighth of the show, so
+the controller keeps an eighth of the flash free: a new object that would reach
+into it is refused, a delete never is, and a refused write first rewrites the
+files of its show that hold something to drop, once until something is deleted.
+A full store therefore still takes deletes and gets its room back from them. The
+store task pauses a moment every 16 KB it reads or copies, so a long rewrite
+never trips the watchdog. It sorts the records in a
 fixed 32 KB table, one slice of the keys at a time when a file holds more than
 fit, so no show is too large to rewrite. A store task gathers up to 32 queued
 writes and commits them together, one flash write per file they touch.
