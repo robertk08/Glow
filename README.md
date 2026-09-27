@@ -557,6 +557,28 @@ and the app keeps the newest record per folder and id. So a new kind of object
 is a folder the app starts writing to, and the firmware does not change.
 `/shows.json` is the one file the controller reads, and it keeps it in memory.
 
+**How much fits, measured on the controller.** The flash holds 6080 KB for
+shows, and with an eighth kept free about 5,300 KB is for objects of every show
+together. On 2026-09-27 a test client filled one empty show with twelve-light
+cues of 211 bytes each until the controller refused one: 25,059 cues went in,
+and the refusal came at 5,268 KB used. Records from the app are shorter, a cue
+that sets dimmer and colour on 12 lights is about 180 bytes and a scene with its
+cue for 50 lights at 20 channels each is about 650 bytes, so the whole
+controller holds about 29,000 such cues or about 8,000 such full-rig scenes.
+Before firmware 2.9 the controller rebooted at about 1,100 cues. A cue stores in
+0.06 to 0.2 s. At the limit the first refused write answers after about 18 s
+while the store looks for anything to drop, later ones in under 0.1 s. Deleting
+200 cues at the limit went through, and the next cue stored after 26 s while two
+files were rewritten.
+
+A usage pattern that fills it: a venue that builds a new show every week, each
+with 50 lights, 20 full-rig scenes and 500 twelve-light cues, uses about 110 KB a
+week and reaches the limit after about 49 weeks, close to the 64 show limit.
+Editing does not fill it, since an edited object replaces its old record the next
+time its file is rewritten. A single show of a 150 cue play on 30 lights uses
+about 70 KB, so a controller that keeps a handful of productions stays under a
+tenth full.
+
 **One record per object, not one write per show.** A whole-show write would
 mean your rename wiping my new scene. Per object, both survive under the same
 last writer wins rule, and one edit sends one small record rather than the show.
