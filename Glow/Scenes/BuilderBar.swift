@@ -32,11 +32,11 @@ struct BuilderBar: View {
 						.frame(width: 36, height: 36)
 						.background(tint, in: .circle)
 					
-					Button {
-						renamed = look.name
-						isRenaming = true
-					} label: {
-						VStack(alignment: .leading, spacing: 1) {
+					VStack(alignment: .leading, spacing: 1) {
+						Button {
+							renamed = look.name
+							isRenaming = true
+						} label: {
 							HStack(spacing: 4) {
 								Text(look.name)
 									.font(.headline)
@@ -46,17 +46,30 @@ struct BuilderBar: View {
 									.font(.caption)
 									.foregroundStyle(.secondary)
 							}
-							
-							Text(next.hint)
-								.font(.caption)
-								.foregroundStyle(.secondary)
-								.lineLimit(1)
-								.contentTransition(.numericText())
+							.contentShape(.rect)
 						}
-						.contentShape(.rect)
+						.buttonStyle(.plain)
+						.accessibilityHint("Renames the scene.")
+						
+						Button {
+							recording = next
+						} label: {
+							HStack(spacing: 2) {
+								Text(next.hint)
+									.contentTransition(.numericText())
+								
+								Image(systemName: "chevron.right")
+									.font(.caption2.weight(.semibold))
+									.foregroundStyle(.tertiary)
+							}
+							.font(.caption)
+							.foregroundStyle(.secondary)
+							.lineLimit(1)
+							.contentShape(.rect)
+						}
+						.buttonStyle(.plain)
+						.accessibilityHint("Chooses the lights, aspects, name and fade.")
 					}
-					.buttonStyle(.plain)
-					.accessibilityHint("Renames the scene.")
 					
 					Spacer(minLength: 0)
 					

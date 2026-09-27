@@ -26,6 +26,8 @@ struct StoreView: View {
 								
 								if recording.changed.contains(fixture.identifier) {
 									Text("Changed")
+								} else if recording.lit.contains(fixture.identifier) {
+									Text("On")
 								}
 							} icon: {
 								Image(systemName: fixture.symbol(library.type(fixture.typeID)))

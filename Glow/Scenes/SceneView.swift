@@ -57,7 +57,7 @@ struct SceneView: View {
 									Group {
 										if position == index {
 											Image(systemName: "play.fill")
-												.foregroundStyle(.tint)
+												.foregroundStyle(tint)
 												.accessibilityLabel("Live")
 										} else {
 											Text("\(position + 1)")
@@ -137,10 +137,10 @@ struct SceneView: View {
 						} label: {
 							Label("Add Cues", systemImage: "plus")
 						}
+						.tint(tint)
 						
 						SceneSettings(look: look)
 					}
-					.tint(tint)
 					.scrollEdgeEffectStyle(.hard, for: .bottom)
 					.safeAreaBar(edge: .bottom) {
 						Transport(look: look, list: list, lists: lists)
@@ -223,7 +223,7 @@ private struct Transport: View {
 				Button("Back", systemImage: "backward.end.fill") {
 					console.back(list)
 				}
-				.foregroundStyle(.primary)
+				.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 				.buttonStyle(.glass)
 				.buttonBorderShape(.circle)
 				.labelStyle(.iconOnly)
@@ -243,7 +243,7 @@ private struct Transport: View {
 				Button("Turn Off", systemImage: "stop.fill") {
 					console.toggle(list, among: lists)
 				}
-				.foregroundStyle(.primary)
+				.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 				.buttonStyle(.glass)
 				.buttonBorderShape(.circle)
 				.labelStyle(.iconOnly)
@@ -294,7 +294,7 @@ private struct SceneSettings: View {
 					HStack(spacing: 16) {
 						Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
 							.font(.title3)
-							.foregroundStyle(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+							.foregroundStyle(isOn ? AnyShapeStyle(look.tint.color ?? .accentColor) : AnyShapeStyle(.tertiary))
 						
 						Label(action.name, systemImage: action.symbol)
 							.foregroundStyle(isOn ? .primary : .secondary)

@@ -97,18 +97,22 @@ On and Off, Flash and Update, in an order you choose. A tile with buttons is
 twice as wide, like a medium widget beside small ones, and every tile is the
 same height, so the grid packs without holes and nothing moves while you play.
 A tap never does anything but the scene's own action. The corner button opens
-the scene, like a shortcut in the Shortcuts app, and a long press opens the
-menu, except on a scene that flashes, where a long press is the flash. A new
-scene gets a colour of its own. A scene gets its second cue and its tap starts
+the scene, like a shortcut in the Shortcuts app, and a long press on the tile
+opens its menu. On a scene whose tap flashes, holding the tile is the flash,
+and a long press on the corner button opens the menu instead. A new scene gets a
+colour of its own. All Off stays in the toolbar and is greyed out while nothing
+is on. A scene gets its second cue and its tap starts
 running cues, with Back and On and Off on the tile, until you choose otherwise.
 Scenes can be on together, and the one turned on last wins a light they share.
 
 The first Next starts a scene at cue 1, and after the last cue the next one
 starts again at the first, so a reading can go dark, full stage, one light and
-round again. A scene opens as a cue list in its own colour with one transport
-at the bottom, Back, Next Cue and Off, and one menu for its settings, adding,
-reordering, duplicating and deleting. Tap a cue to jump to it, swipe it to
-update or delete it. On iPad the scene sits in the sidebar on the right, beside
+round again. A scene opens as one page in its own colour: the cue list with one
+transport at the bottom, Back, Next Cue and Off, then the tile, what a tap does
+and up to three buttons ticked in a list, then the name, icon and colour. Edit
+puts cues and buttons in order with the usual handles, and the menu duplicates
+or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
+and hold it to edit its name, fade, delay and follow. On iPad the scene sits in the sidebar on the right, beside
 the scenes as the programmer sits beside the lights, and stays there until you
 open another, and the arrow keys or a presentation clicker step through its
 cues. On iPhone it opens as a sheet, and the bar above the tabs shows the scene
@@ -118,11 +122,15 @@ run the next cue by itself once it has faded in. Values carry through: a cue
 holds only the lights and aspects stored into it, and everything else keeps
 what the cues before it set. Going back undoes what the later cues changed.
 
-A scene is built on the Lights page. New Scene, or Add Cues on any scene,
-switches there and pins a bar under the lights with the scene's cues and one
-Store Cue button. A cue takes the lights you selected and the lights you
-changed, so selecting a light that already looks right adds it as it is, and a
-first cue with nothing selected or changed takes every light. Store puts the
+The quickest scene is Store the Stage under the plus button: one tap keeps every
+light that is on, as it is, as a new scene with one cue. Build Cues, or Add
+Cues on any scene, switches to the Lights page and pins a bar under the lights
+with the scene's cues and one Store Cue button. A cue takes the lights you
+selected and the lights you changed, so selecting a light that already looks
+right adds it as it is. With nothing selected or changed it takes the stage as
+it is, and if every light is dark it stores them all dark, which is a blackout
+cue. The line under the scene's name says which it will be, and tapping it
+opens the options. Store puts the
 new cue right after the one on stage, or at the end, and the stage is then on
 it without a light moving, so the next Store follows it and Update refines it.
 Update puts the same lights into the cue on stage. After either, the selection

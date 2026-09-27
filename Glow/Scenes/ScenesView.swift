@@ -446,20 +446,18 @@ private struct SceneActions: View {
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
 		Section {
-			if list.cues.count > 1 {
+			if list.cues.count > 1, index != nil {
 				Button("Next Cue", systemImage: "forward.end.fill") {
 					console.go(list)
 				}
 				
-				if index != nil {
-					Button("Previous Cue", systemImage: "backward.end.fill") {
-						console.back(list)
-					}
+				Button("Previous Cue", systemImage: "backward.end.fill") {
+					console.back(list)
 				}
 			}
 			
 			if !list.cues.isEmpty {
-				Button(index == nil ? "Turn On" : "Turn Off", systemImage: "power") {
+				Button(index != nil ? "Turn Off" : list.cues.count > 1 ? "Start" : "Turn On", systemImage: index != nil ? "stop.fill" : "play.fill") {
 					console.toggle(list, among: lists)
 				}
 			}
