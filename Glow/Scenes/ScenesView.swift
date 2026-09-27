@@ -200,7 +200,7 @@ struct SceneTile: View {
 					.contentShape(.rect)
 			}
 			.buttonStyle(.plain)
-			.padding(4)
+			.padding(11)
 			.accessibilityLabel("Open \(look.name)")
 			.modifier(SceneMenu(isShown: look.tap == .flash) {
 				SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
