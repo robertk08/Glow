@@ -100,6 +100,9 @@ struct RootView: View {
 		.onChange(of: console.node) {
 			shows.reach(console, library: library)
 		}
+		.onChange(of: looks.map(\.identifier)) {
+			if !looks.contains(where: { $0.identifier == console.selection.scene }) { console.selection.isSceneOpen = false }
+		}
 		.onChange(of: console.selection.building) {
 			if console.selection.building != nil { section = "lights" }
 		}

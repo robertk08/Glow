@@ -149,6 +149,12 @@ struct SceneTile: View {
 	@State private var size = CGSize.zero
 	
 	var body: some View {
+		if !look.isGone {
+			content
+		}
+	}
+	
+	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let buttons = TileButtons(look: look, list: list, lists: lists)
 			.frame(maxWidth: 200)
@@ -226,6 +232,12 @@ private struct SceneFace: View {
 	let list: CueList
 	
 	var body: some View {
+		if !look.isGone {
+			content
+		}
+	}
+	
+	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let isOn = index != nil
 		let tint = look.tint.color ?? .accentColor
@@ -316,6 +328,12 @@ struct TileButtons: View {
 	let lists: [CueList]
 	
 	var body: some View {
+		if !look.isGone {
+			content
+		}
+	}
+	
+	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		

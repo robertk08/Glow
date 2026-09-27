@@ -33,6 +33,10 @@ final class Look {
 		buttons = entry.buttons
 	}
 	
+	var isGone: Bool {
+		isDeleted || modelContext == nil
+	}
+	
 	var tap: SceneAction {
 		get { SceneAction(rawValue: tapValue) ?? .toggle }
 		set { tapValue = newValue.rawValue }

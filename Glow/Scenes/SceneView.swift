@@ -19,6 +19,12 @@ struct SceneView: View {
 	@State private var isDeleting = false
 	
 	var body: some View {
+		if !look.isGone {
+			content
+		}
+	}
+	
+	@ViewBuilder private var content: some View {
 		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 		let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
 		let held = look.cues(among: cues)
@@ -171,13 +177,6 @@ struct SceneView: View {
 				ToolbarItem(placement: .topBarTrailing) {
 					if !editMode.isEditing {
 						Menu {
-							Button("Add Cues", systemImage: "plus") {
-								console.selection.building = look.identifier
-								console.selection.isSceneOpen = false
-							}
-							
-							Divider()
-							
 							Button("Duplicate Scene", systemImage: "plus.square.on.square") {
 								look.duplicate(with: cues, among: looks, context: context)
 							}
@@ -272,6 +271,12 @@ private struct SceneSettings: View {
 	@Bindable var look: Look
 	
 	var body: some View {
+		if !look.isGone {
+			content
+		}
+	}
+	
+	@ViewBuilder private var content: some View {
 		Section {
 			Picker("Tap", selection: $look.tap) {
 				ForEach(SceneAction.taps) { action in
