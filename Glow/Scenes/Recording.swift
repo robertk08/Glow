@@ -10,9 +10,7 @@ final class Recording: Identifiable {
 	}
 	
 	let destination: Destination
-	let changed: Set<String>
 	let selected: Set<String>
-	let lit: Set<String>
 	var label: String
 	var lights: Set<String>
 	var features = Set(FeatureGroup.allCases)
@@ -32,21 +30,16 @@ final class Recording: Identifiable {
 		self.looks = looks
 		self.cues = cues
 		
-		let everyone = Set(fixtures.map(\.identifier))
 		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
-		changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
-		lit = Set(fixtures.filter { Programmer(fixture: $0, library: library, console: console)?.isOn == true }.map(\.identifier))
-		lights = changed.union(selected)
+		lights = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		
 		switch destination {
 		case let .cue(look, _):
 			label = ""
 			fade = look.cues(among: cues).last?.fade ?? 0
-			if lights.isEmpty, console.playback.cue(of: look.identifier) == nil { lights = lit.isEmpty ? everyone : lit }
 		case let .into(cue):
 			label = cue.label
 			fade = cue.fade
-			if lights.isEmpty { lights = everyone.intersection(cue.levels.lights.keys) }
 		}
 	}
 	
@@ -65,15 +58,8 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		let count = lights.count == 1 ? "1 light" : "\(lights.count) lights"
-		guard changed.union(selected).isEmpty else { return "\(count) for cue \(number)" }
-		guard !lights.isEmpty else { return "Change or select lights for cue \(number)" }
-		return lit.isEmpty ? "Every light dark for cue \(number)" : "The stage as it is for cue \(number)"
-	}
-	
-	func takeStage() {
-		lights = lit.union(changed).union(selected)
-		if lights.isEmpty { lights = Set(fixtures.map(\.identifier)) }
+		guard !selected.isEmpty else { return "All lights for cue \(number)" }
+		return selected.count == 1 ? "1 selected light for cue \(number)" : "\(selected.count) selected lights for cue \(number)"
 	}
 	
 	var place: String {
@@ -131,11 +117,6 @@ final class Recording: Identifiable {
 		} else {
 			features.insert(feature)
 		}
-	}
-	
-	func update(context: ModelContext) {
-		lights = changed.union(selected)
-		store(context: context)
 	}
 	
 	func store(context: ModelContext) {

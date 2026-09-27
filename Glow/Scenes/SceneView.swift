@@ -98,10 +98,9 @@ struct SceneView: View {
 							.accessibilityAddTraits(position == index ? .isSelected : [])
 							.swipeActions(edge: .leading) {
 								Button("Update", systemImage: "arrow.triangle.2.circlepath") {
-									Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+									Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 								}
 								.tint(tint)
-								.disabled(!console.hasProgrammer)
 							}
 							.swipeActions(edge: .trailing) {
 								Button("Delete", systemImage: "trash", role: .destructive) {
@@ -114,9 +113,8 @@ struct SceneView: View {
 								}
 								
 								Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
-									Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+									Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 								}
-								.disabled(!console.hasProgrammer)
 								
 								Button("Add Cue After", systemImage: "text.insert") {
 									console.play(list, at: position)
@@ -310,7 +308,6 @@ private struct SceneSettings: View {
 					.contentShape(.rect)
 				}
 				.buttonStyle(.plain)
-				.disabled(!isOn && look.buttons.count >= Look.buttonLimit)
 				.accessibilityAddTraits(isOn ? .isSelected : [])
 				.moveDisabled(!isOn)
 			}
@@ -323,7 +320,7 @@ private struct SceneSettings: View {
 		} header: {
 			Text("Tile")
 		} footer: {
-			Text("Tick up to three buttons for the tile. Edit puts them in order. Everything else is in the tile's menu.")
+			Text("Ticked buttons sit on the tile, and Edit puts them in order. Everything else is in the tile's menu.")
 		}
 		.animation(.snappy, value: look.buttons)
 		

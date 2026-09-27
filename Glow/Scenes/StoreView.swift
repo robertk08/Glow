@@ -24,10 +24,8 @@ struct StoreView: View {
 							Label {
 								Text(fixture.name)
 								
-								if recording.changed.contains(fixture.identifier) {
-									Text("Changed")
-								} else if recording.lit.contains(fixture.identifier) {
-									Text("On")
+								if recording.selected.contains(fixture.identifier) {
+									Text("Selected")
 								}
 							} icon: {
 								Image(systemName: fixture.symbol(library.type(fixture.typeID)))

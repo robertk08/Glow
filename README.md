@@ -92,8 +92,8 @@ scene can do the same things: turn on, where every light it holds takes the
 values it stored, turn off, where those lights go back to whatever they were
 doing before, flash, which is on only while a finger holds it, and step through
 its cues. What differs is what a tap on the tile does, run the next cue, turn on
-and off or flash, and which buttons sit on the tile: up to three of Next, Back,
-On and Off, Flash and Update, in an order you choose. A tile with buttons is
+and off or flash, and which buttons sit on the tile: any of Next, Back, On and
+Off, Flash and Update, in an order you choose, using the width beside the name. A tile with buttons is
 twice as wide, like a medium widget beside small ones, and every tile is the
 same height, so the grid packs without holes and nothing moves while you play.
 A tap never does anything but the scene's own action. The corner button opens
@@ -109,7 +109,7 @@ The first Next starts a scene at cue 1, and after the last cue the next one
 starts again at the first, so a reading can go dark, full stage, one light and
 round again. A scene opens as one page in its own colour: the cue list with one
 transport at the bottom, Back, Next Cue and Off, then the tile, what a tap does
-and up to three buttons ticked in a list, then the name, icon and colour. Edit
+and the buttons ticked in a list, then the name, icon and colour. Edit
 puts cues and buttons in order with the usual handles, and the menu duplicates
 or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
 and hold it to edit its name, fade, delay and follow. On iPad the scene sits in the sidebar on the right, beside
@@ -122,25 +122,21 @@ run the next cue by itself once it has faded in. Values carry through: a cue
 holds only the lights and aspects stored into it, and everything else keeps
 what the cues before it set. Going back undoes what the later cues changed.
 
-The quickest scene is Store the Stage under the plus button: one tap keeps every
-light that is on, as it is, as a new scene with one cue. Build Cues, or Add
-Cues on any scene, switches to the Lights page and pins a bar under the lights
-with the scene's cues and one Store Cue button. A cue takes the lights you
-selected and the lights you changed, so selecting a light that already looks
-right adds it as it is. With nothing selected or changed it takes the stage as
-it is, and if every light is dark it stores them all dark, which is a blackout
-cue. Once the scene itself is on stage, Store waits for a change, so a second
-tap cannot store the same cue twice. The line under the scene's name says which
-it will be, and tapping it opens the options. Done goes back to the page you
-started from, and deleting the cue on stage moves the stage to the cue before
-it, or turns the scene off if it was the last. Store puts the
+The quickest scene is under the plus button: Store All Lights keeps every light
+as it is now as a new scene with one cue, and with lights selected it reads
+Store Selected Lights and keeps only those. Build Cues, or Add Cues on any
+scene, switches to the Lights page and pins a bar under the lights with the
+scene's cues, Update and Store Cue on one row. Every store follows the same
+rule: the lights you selected, or all lights when none are. The line under the
+scene's name says which it will be, and tapping it opens the options. Done goes
+back to the page you started from, and deleting the cue on stage moves the stage
+to the cue before it, or turns the scene off if it was the last. Store puts the
 new cue right after the one on stage, or at the end, and the stage is then on
 it without a light moving, so the next Store follows it and Update refines it.
-Update puts the same lights into the cue on stage. After either, the selection
-clears and nothing counts as changed, as the programmer empties after a store
-on a desk. Tap a cue in the bar to go back to it. Options chooses the lights,
+Update stores the same way into the cue on stage. After either, the selection
+clears, as the programmer empties after a store on a desk. Tap a cue in the bar to go back to it. Options chooses the lights,
 the aspects (intensity, colour, position, gobo, beam or control), a name and
-the fade. Done leaves the bar, and Cancel on a scene without cues removes it.
+the fade. Cancel on a scene without cues removes it.
 Storing into a cue replaces only what you chose and keeps the rest. All Off on
 the Scenes page turns every scene off.
 

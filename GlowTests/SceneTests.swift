@@ -276,8 +276,8 @@ struct SceneTests {
 		
 		#expect(fresh.name == "Scene 2")
 		#expect(recording.number == 1)
-		#expect(recording.hint == "2 lights for cue 1")
-		#expect(recording.lights == [rig.fixtures[0].identifier, rig.fixtures[1].identifier])
+		#expect(recording.hint == "All lights for cue 1")
+		#expect(recording.lights == Set(rig.fixtures.map(\.identifier)))
 		
 		recording.lights = [rig.fixtures[0].identifier]
 		recording.toggle(.position)
@@ -291,30 +291,18 @@ struct SceneTests {
 		#expect(!rig.console.isActive(DMXAddress(1)!))
 	}
 	
-	@Test func storingWithNothingPickedTakesTheLightsThatAreOn() throws {
+	@Test func aSelectionStoresOnlyItsLightsAndNothingSelectedStoresAll() throws {
 		let rig = try rig()
-		rig.add(1, [(0, 1, 200)])
 		rig.console.set(120, at: DMXAddress(11)!)
-		rig.console.release(11...11)
+		rig.console.selection.toggle(rig.fixtures[0])
 		let recording = rig.recording(.cue(rig.look, after: nil))
 		
-		#expect(recording.lights == [rig.fixtures[1].identifier])
-		#expect(recording.hint == "The stage as it is for cue 2")
+		#expect(recording.lights == [rig.fixtures[0].identifier])
+		#expect(recording.hint == "1 selected light for cue 1")
 		
-		rig.console.set(0, at: DMXAddress(11)!)
-		rig.console.release(11...11)
+		rig.console.selection.clear()
 		
-		#expect(rig.recording(.cue(rig.look, after: nil)).hint == "Every light dark for cue 2")
-	}
-	
-	@Test func anUnchangedStageIsNotStoredTwice() throws {
-		let rig = try rig()
-		rig.add(1, [(0, 1, 200)])
-		rig.console.play(rig.list, at: 0, snapping: true)
-		let recording = rig.recording(.cue(rig.look, after: nil))
-		
-		#expect(!recording.isReady)
-		#expect(recording.hint == "Change or select lights for cue 2")
+		#expect(rig.recording(.cue(rig.look, after: nil)).lights == Set(rig.fixtures.map(\.identifier)))
 	}
 	
 	@Test func deletingTheLiveCueMovesTheStageToTheOneBefore() throws {
@@ -333,22 +321,20 @@ struct SceneTests {
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
 	}
 	
-	@Test func updateAddsASelectedLightThatWasNotChanged() throws {
+	@Test func updateStoresTheSelectedLightIntoTheCue() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])
 		rig.console.set(70, at: DMXAddress(11)!)
 		rig.console.release(11...11)
 		rig.console.selection.toggle(rig.fixtures[1])
 		
-		#expect(rig.console.hasProgrammer)
-		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 light for cue 2")
+		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 selected light for cue 2")
 		
-		rig.recording(.into(cue)).update(context: rig.context)
+		rig.recording(.into(cue)).store(context: rig.context)
 		
 		#expect(cue.levels.lights[rig.fixtures[1].identifier]?[1] == 70)
 		#expect(cue.levels.lights[rig.fixtures[0].identifier]?[1] == 200)
 		#expect(rig.console.selection.isEmpty)
-		#expect(!rig.console.hasProgrammer)
 	}
 	
 	@Test func aNewCueCanGoBetweenTwoOthers() throws {
@@ -406,6 +392,7 @@ struct SceneTests {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 255), (1, 1, 255)])
 		rig.console.set(9, at: DMXAddress(1)!)
+		rig.console.selection.toggle(rig.fixtures[0])
 		let recording = rig.recording(.into(cue))
 		recording.features = [.dimmer]
 		recording.store(context: rig.context)

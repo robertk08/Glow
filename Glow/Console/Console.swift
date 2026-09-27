@@ -472,10 +472,6 @@ final class Console {
 		go(list)
 	}
 	
-	var hasProgrammer: Bool {
-		!active.isEmpty || !selection.isEmpty
-	}
-	
 	func shownScene(among scenes: [String]) -> String? {
 		[selection.scene, playback.playing.last?.scene].compactMap { $0 }.first(where: scenes.contains) ?? scenes.first
 	}

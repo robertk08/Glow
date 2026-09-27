@@ -11,8 +11,6 @@ final class Look {
 	var tapValue: Int = 0
 	var buttonValues: [Int] = []
 	
-	static let buttonLimit = 3
-	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
 		self.name = name
@@ -48,7 +46,7 @@ final class Look {
 	}
 	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
-		buttons = Array((buttons.filter { $0 != button } + (isShown ? [button] : [])).prefix(Self.buttonLimit))
+		buttons = buttons.filter { $0 != button } + (isShown ? [button] : [])
 	}
 	
 	var tint: FixtureTint {

@@ -44,11 +44,9 @@ struct ScenesView: View {
 		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
 		let adding = Group {
-			Button("Store the Stage", systemImage: "camera.aperture") {
+			Button(console.selection.isEmpty ? "Store All Lights" : "Store Selected Lights", systemImage: "camera.aperture") {
 				let look = Look.fresh(among: looks, context: context)
-				let recording = Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
-				recording.takeStage()
-				recording.store(context: context)
+				Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 				stored += 1
 			}
 			
@@ -157,7 +155,7 @@ struct SceneTile: View {
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let buttons = TileButtons(look: look, list: list, lists: lists)
-			.frame(maxWidth: 200)
+			.padding(.leading, 140)
 			.padding([.trailing, .bottom], 14)
 			.padding(.bottom, 26)
 		
@@ -260,7 +258,7 @@ private struct SceneFace: View {
 					.contentTransition(.numericText())
 			}
 			.lineLimit(1)
-			.padding(.trailing, look.buttons.isEmpty ? 0 : 212)
+			.frame(maxWidth: look.buttons.isEmpty ? .infinity : 112, alignment: .leading)
 			
 			HStack(spacing: list.cues.count > 16 ? 1 : 3) {
 				ForEach(list.cues.indices, id: \.self) { position in
@@ -338,9 +336,9 @@ struct TileButtons: View {
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
 		HStack(spacing: 6) {
-			ForEach(look.buttons.prefix(Look.buttonLimit)) { action in
+			ForEach(look.buttons) { action in
 				let isEnabled = switch action {
-				case .update: current != nil && console.hasProgrammer
+				case .update: current != nil
 				case .next: !list.cues.isEmpty
 				case .back: list.cues.count > 1 && index != nil
 				case .toggle, .flash: !list.cues.isEmpty
@@ -348,7 +346,7 @@ struct TileButtons: View {
 				
 				Button {
 					if action == .update, let current {
-						Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+						Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 					} else if action != .flash {
 						console.run(action, on: list, among: lists)
 					}
@@ -357,7 +355,7 @@ struct TileButtons: View {
 						.labelStyle(.iconOnly)
 						.font(.body.weight(.semibold))
 						.foregroundStyle(isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-						.frame(maxWidth: .infinity, minHeight: 40)
+						.frame(minWidth: 40, maxWidth: 88, minHeight: 40)
 						.glassEffect(.regular.interactive(isEnabled), in: .capsule)
 						.contentShape(.capsule)
 				}
@@ -367,6 +365,7 @@ struct TileButtons: View {
 				.disabled(!isEnabled)
 			}
 		}
+		.frame(maxWidth: .infinity, alignment: .trailing)
 	}
 }
 
@@ -464,9 +463,8 @@ private struct SceneActions: View {
 			
 			if let current {
 				Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
-					Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+					Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 				}
-				.disabled(!console.hasProgrammer)
 			}
 		}
 		

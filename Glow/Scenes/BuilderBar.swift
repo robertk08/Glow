@@ -84,7 +84,7 @@ struct BuilderBar: View {
 					.buttonStyle(.glass)
 				}
 				
-				if !held.isEmpty {
+				HStack(spacing: 8) {
 					ScrollViewReader { proxy in
 						ScrollView(.horizontal) {
 							HStack(spacing: 6) {
@@ -140,29 +140,27 @@ struct BuilderBar: View {
 							}
 						}
 					}
-				}
-				
-				HStack(spacing: 10) {
+					.frame(maxWidth: .infinity, alignment: .leading)
+					
 					if let current, let index {
 						Button {
-							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 							updates += 1
 						} label: {
 							Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
 								.frame(minHeight: 44)
 						}
 						.buttonStyle(.glass)
-						.disabled(!console.hasProgrammer)
 					}
 					
 					Button {
 						next.store(context: context)
 					} label: {
-						Label("Store Cue \(next.number)", systemImage: "plus")
-							.frame(maxWidth: .infinity, minHeight: 44)
+						Label("Cue \(next.number)", systemImage: "plus")
+							.frame(minHeight: 44)
 					}
 					.buttonStyle(.glassProminent)
-					.disabled(!next.isReady)
+					.accessibilityLabel("Store Cue \(next.number)")
 				}
 				.tint(tint)
 				.font(.subheadline.weight(.semibold))
