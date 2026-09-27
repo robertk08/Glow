@@ -95,7 +95,8 @@ its cues. What differs is what a tap on the tile does, run the next cue, turn on
 and off, flash or open the scene like its corner button, and which buttons sit
 on the tile: any of Next, Back, On and Off, Flash and Update, in an order you
 choose, using the width beside the name. A tile with buttons is twice as wide,
-like a medium widget beside small ones, and every tile is the same height, so the grid packs without holes and nothing moves while you play.
+like a medium widget beside small ones, and every tile is the same height, so
+the grid packs without holes and nothing moves while you play.
 A tap never does anything but the scene's own action. The corner button opens
 the scene, like a shortcut in the Shortcuts app, and a long press on the tile
 opens its menu. On a scene whose tap flashes, holding the tile is the flash,
