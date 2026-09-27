@@ -223,7 +223,7 @@ private struct SceneSettings: View {
 			} header: {
 				Text("On the Tile")
 			} footer: {
-				Text("Everything else is in the tile's menu.")
+				Text("A tile with buttons is twice as wide. Everything else is in its menu.")
 			}
 			
 			Section("Icon") {

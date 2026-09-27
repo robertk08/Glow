@@ -15,18 +15,15 @@ struct ScenesView: View {
 	@State private var showing: Look?
 	@State private var deleting: Look?
 	@State private var isOrdering = false
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 320
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
-	private var columns: [GridItem] {
-		[GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 600 : tileWidth), spacing: 12)]
-	}
 	
 	@ViewBuilder private var tiles: some View {
 		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 		let items = ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
 			SceneTile(look: look, list: list, lists: lists, recording: $recording, showing: $showing, deleting: $deleting)
 		}
-		let grid = LazyVGrid(columns: columns, spacing: 12) {
+		let grid = TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			if #available(iOS 27.0, *) {
 				items.reorderable()
 			} else {
@@ -146,102 +143,108 @@ private struct SceneTile: View {
 	@Binding var showing: Look?
 	@Binding var deleting: Look?
 	
+	@State private var isBroad = false
+	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let isOn = index != nil
 		let hasCues = list.cues.count > 1
 		let tint = look.tint.color ?? .accentColor
 		let isShown = sizeClass == .regular && console.shownScene(among: lists.map(\.scene)) == look.identifier
-		let buttons = look.buttons.filter { isOn || $0 == .flash || look.tap == .flash && ($0 == .toggle || $0 == .next) }
+		let isWide = !look.buttons.isEmpty
+		let header = isWide || isBroad ? AnyLayout(HStackLayout(spacing: 12)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
 		
-		return VStack(alignment: .leading, spacing: 14) {
-			HStack(alignment: .top, spacing: 10) {
-				Button {
-					console.selection.scene = look.identifier
-					
-					if list.cues.isEmpty {
-						console.selection.building = look.identifier
-					} else {
-						console.run(look.tap, on: list, among: lists)
-					}
-				} label: {
-					HStack(spacing: 14) {
+		return VStack(alignment: .leading, spacing: 10) {
+			Button {
+				console.selection.scene = look.identifier
+				
+				if list.cues.isEmpty {
+					console.selection.building = look.identifier
+				} else {
+					console.run(look.tap, on: list, among: lists)
+				}
+			} label: {
+				VStack(alignment: .leading, spacing: 8) {
+					header {
 						Image(systemName: look.symbol)
-							.font(.title2)
+							.font(.title3)
 							.foregroundStyle(isOn ? Color.white : tint)
-							.frame(width: 50, height: 50)
+							.frame(width: 38, height: 38)
 							.background(isOn ? tint : tint.opacity(0.16), in: .circle)
 							.symbolEffect(.bounce, value: index)
 						
-						VStack(alignment: .leading, spacing: 2) {
+						VStack(alignment: .leading, spacing: 1) {
 							Text(look.name)
 								.font(.headline)
 								.lineLimit(1)
 							
 							Text(list.status(at: index))
-								.font(.subheadline)
+								.font(.caption2)
 								.foregroundStyle(.secondary)
 								.lineLimit(1)
 							
-							if hasCues, let index, let next = list.next(after: index) {
+							if hasCues, let next = list.next(after: index) {
 								Text("Next · \(list.title(at: next))")
-									.font(.caption)
+									.font(.caption2)
 									.foregroundStyle(.secondary)
 									.lineLimit(1)
 							}
 						}
-						
-						Spacer(minLength: 0)
 					}
-					.contentShape(.rect)
+					.padding(.trailing, isWide || isBroad ? 34 : 0)
+					.frame(maxHeight: .infinity, alignment: .top)
+					
+					if !list.cues.isEmpty {
+						HStack(spacing: list.cues.count > 16 ? 1 : 3) {
+							ForEach(list.cues.indices, id: \.self) { position in
+								if position == index {
+									FadeBar(fade: console.fades[look.identifier], tint: tint)
+								} else {
+									Capsule()
+										.fill(index.map { position < $0 } == true ? tint : Color(.tertiarySystemFill))
+										.frame(height: 6)
+								}
+							}
+						}
+						.padding(.vertical, 6)
+						.accessibilityHidden(true)
+					}
 				}
-				.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
-					console.flash(list, among: lists, isHeld: isHeld)
-				})
-				.accessibilityHint(look.tap.tapName)
-				
+				.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+				.contentShape(.rect)
+			}
+			.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
+				console.flash(list, among: lists, isHeld: isHeld)
+			})
+			.accessibilityHint(look.tap.tapName)
+			.overlay(alignment: .topTrailing) {
 				Menu {
 					SceneActions(look: look, list: list, lists: lists, recording: $recording, showing: $showing, deleting: $deleting)
 				} label: {
 					Image(systemName: "ellipsis")
 						.font(.body.weight(.semibold))
 						.foregroundStyle(.secondary)
-						.frame(width: 44, height: 44)
+						.frame(width: 38, height: 38)
 						.contentShape(.rect)
 				}
 				.accessibilityLabel("\(look.name) Actions")
 			}
 			
-			if hasCues {
-				HStack(spacing: 4) {
-					ForEach(list.cues.indices, id: \.self) { position in
-						if position == index {
-							FadeBar(fade: console.fades[look.identifier], tint: tint)
-						} else {
-							Capsule()
-								.fill(index.map { position < $0 } == true ? tint : Color(.tertiarySystemFill))
-								.frame(height: 6)
-						}
-					}
-				}
-				.accessibilityHidden(true)
-			}
-			
-			if !buttons.isEmpty {
-				TileButtons(look: look, list: list, lists: lists, buttons: buttons)
+			if !look.buttons.isEmpty {
+				TileButtons(look: look, list: list, lists: lists)
 			}
 		}
 		.tint(.primary)
-		.padding(16)
+		.padding(14)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil).interactive(), in: .rect(cornerRadius: 26, style: .continuous))
+		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.overlay {
-			RoundedRectangle(cornerRadius: 26, style: .continuous)
+			RoundedRectangle(cornerRadius: 24, style: .continuous)
 				.strokeBorder(Color.accentColor, lineWidth: 2)
 				.opacity(isShown ? 1 : 0)
 		}
-		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 26, style: .continuous))
-		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 26, style: .continuous))
+		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
+		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
 		.contextMenu {
 			if look.tap != .flash {
 				SceneActions(look: look, list: list, lists: lists, recording: $recording, showing: $showing, deleting: $deleting)
@@ -249,6 +252,66 @@ private struct SceneTile: View {
 		}
 		.animation(.snappy, value: index)
 		.sensoryFeedback(.impact(weight: .medium), trigger: index)
+		.onGeometryChange(for: Bool.self) { $0.size.width > 300 } action: { isBroad = $0 }
+		.layoutValue(key: TileSpan.self, value: isWide ? 2 : 1)
+	}
+}
+
+private nonisolated struct TileSpan: LayoutValueKey {
+	static let defaultValue = 1
+}
+
+private struct TileLayout: Layout {
+	struct Row {
+		var y: CGFloat
+		var height: CGFloat = 0
+		var cells: [(index: Int, x: CGFloat, width: CGFloat)] = []
+	}
+	
+	let minimum: CGFloat
+	let spacing: CGFloat
+	
+	func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+		let width = proposal.width ?? minimum * 2 + spacing
+		return CGSize(width: width, height: rows(of: subviews, width: width).last.map { $0.y + $0.height } ?? 0)
+	}
+	
+	func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+		for row in rows(of: subviews, width: bounds.width) {
+			for cell in row.cells {
+				subviews[cell.index].place(at: CGPoint(x: bounds.minX + cell.x, y: bounds.minY + row.y), proposal: ProposedViewSize(width: cell.width, height: row.height))
+			}
+		}
+	}
+	
+	private func rows(of subviews: Subviews, width: CGFloat) -> [Row] {
+		let columns = max(1, Int((width + spacing) / (minimum + spacing)))
+		let column = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
+		var rows: [Row] = []
+		var row = Row(y: 0)
+		var used = 0
+		
+		for (index, subview) in subviews.enumerated() {
+			let span = min(subview[TileSpan.self], columns)
+			
+			if used + span > columns, let last = row.cells.indices.last {
+				row.cells[last].width = width - row.cells[last].x
+				rows.append(row)
+				row = Row(y: row.y + row.height + spacing)
+				used = 0
+			}
+			
+			let cellWidth = column * CGFloat(span) + spacing * CGFloat(span - 1)
+			row.cells.append((index, CGFloat(used) * (column + spacing), cellWidth))
+			row.height = max(row.height, subview.sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height)
+			used += span
+		}
+		
+		if !row.cells.isEmpty {
+			rows.append(row)
+		}
+		
+		return rows
 	}
 }
 
@@ -263,14 +326,13 @@ private struct TileButtons: View {
 	let look: Look
 	let list: CueList
 	let lists: [CueList]
-	let buttons: [SceneAction]
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
 		HStack(spacing: 8) {
-			ForEach(buttons) { action in
+			ForEach(look.buttons) { action in
 				switch action {
 				case .flash:
 					Button {} label: {
@@ -305,7 +367,7 @@ private struct TileButtons: View {
 						Label(action.name, systemImage: action.symbol)
 							.frame(maxWidth: .infinity)
 					}
-					.disabled(list.cues.count < 2)
+					.disabled(list.cues.count < 2 || action == .back && index == nil)
 				}
 			}
 		}
