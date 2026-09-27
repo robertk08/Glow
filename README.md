@@ -28,42 +28,43 @@ holding Clear resets those lights to their defaults. A group is a saved
 selection, not a container, so a light can be in several. The master fader and
 blackout hold the accessory whenever nothing is selected.
 
-The programmer is the fixture's own feature groups along the top, the only
-thing that stays put, and under them the group you are on in named sections
-that scroll with everything else. Everything is a system control unless there
-is nothing that fits: position is a pad reading real degrees with a fine mode
-that moves a sixth as far for the same gesture, and beam and strobe draw the
-light itself against a dark stage, the cone widening with zoom and softening
-with focus. Wheels are a picker with their slots under it, coloured or drawn as the
+The programmer is the fixture's own feature groups along the top, the only thing
+that stays put, and under them the group you are on in named sections that
+scroll with everything else. Everything is a system control unless there is
+nothing that fits: position is a pad reading real degrees with a fine mode that
+moves a sixth as far for the same gesture, and beam and strobe draw the light
+itself against a dark stage, the cone widening with zoom and softening with
+focus. Wheels are a picker with their slots under it, coloured or drawn as the
 shape they throw and turning when the wheel turns, and a shutter is the same
-picker, so every band it carries is reachable and a rate runs the width of
-the band it belongs to. Anything the definition carries but the group
-does not show is under All Channels, on its raw value. Selecting lights of
-different kinds leaves the groups they can be driven by together.
+picker, so every band it carries is reachable and a rate runs the width of the
+band it belongs to. Anything the definition carries but the group does not show
+is under All Channels, on its raw value. Selecting lights of different kinds
+leaves the groups they can be driven by together.
 
 Blackout latches and pulls only the dimmers down, the same channels and the same
 way the master fader does, so a head keeps its position and its colour through
 one.
 
 The patch, the groups, the fixtures built here and the scenes sit in one store
-in memory with an undo manager, so editing is undoable. Removing a light writes zeros
-across its channels on the way out. A light whose fixture definition is gone
-says so on its tile and opens straight into a picker to point it at another
+in memory with an undo manager, so editing is undoable. Removing a light writes
+zeros across its channels on the way out. A light whose fixture definition is
+gone says so on its tile and opens straight into a picker to point it at another
 one, keeping its name, address and group.
 
 A moving head can be told to invert pan, tilt or both. The fixture definition
 carries what is usual for that model and each patched light can differ.
 
 A fixture type is one file, whether Glow ships it or you build it here, and the
-app reads both through the same decoder. A channel names the attribute it
-drives rather than an index, so the same control reaches pan on any head and
-the dimmer on any lamp. A channel can claim a second address as its fine half,
-carry a default, and split into named functions with named sets inside them,
-which is how a gobo wheel offers its gobos and a colour wheel its slots. A function can say what it stands for, the
-dimmer band, fully open, blacked out, or handing colour back to the mixer, and
-what it means in the world, so a strobe reads in hertz and a zoom in degrees.
-A channel can also name the channel and range it depends on, for a fixture
-whose colour channels go dead while a built-in pattern runs.
+app reads both through the same decoder. A channel names the attribute it drives
+rather than an index, so the same control reaches pan on any head and the dimmer
+on any lamp. A channel can claim a second address as its fine half, carry a
+default, and split into named functions with named sets inside them, which is
+how a gobo wheel offers its gobos and a colour wheel its slots. A function can
+say what it stands for, the dimmer band, fully open, blacked out, or handing
+colour back to the mixer, and what it means in the world, so a strobe reads in
+hertz and a zoom in degrees. A channel can also name the channel and range it
+depends on, for a fixture whose colour channels go dead while a built-in pattern
+runs.
 
 Editing a fixture Glow ships keeps the original and saves yours beside it, and
 any light already patched to it moves over. No two fixtures share a name, so
@@ -92,35 +93,37 @@ scene can do the same things: turn on, where every light it holds takes the
 values it stored, turn off, where those lights go back to whatever they were
 doing before, flash, which is on only while a finger holds it, and step through
 its cues. What differs is what a tap on the tile does, run the next cue, turn on
-and off or flash, and which buttons sit on the tile: any of Next, Back, On and
-Off, Flash and Update, in an order you choose, using the width beside the name. A tile with buttons is
-twice as wide, like a medium widget beside small ones, and every tile is the
-same height, so the grid packs without holes and nothing moves while you play.
-A tap never does anything but the scene's own action. The corner button opens
-the scene, like a shortcut in the Shortcuts app, and a long press on the tile
-opens its menu. On a scene whose tap flashes, holding the tile is the flash,
-and a long press on the corner button opens the menu instead. A new scene gets a
-colour of its own. All Off stays in the toolbar and is greyed out while nothing
-is on. A scene gets its second cue and its tap starts
-running cues, with Back and On and Off on the tile, until you choose otherwise.
-Scenes can be on together, and the one turned on last wins a light they share.
+and off, flash or open the scene like its corner button, and which buttons sit
+on the tile: any of Next, Back, On and Off, Flash and Update, in an order you
+choose, using the width beside the name. A tile with buttons is twice as wide,
+like a medium widget beside small ones, and every tile is the same height, so
+the grid packs without holes and nothing moves while you play. A tap never does
+anything but the scene's own action. The corner button opens the scene, like a
+shortcut in the Shortcuts app, and a long press on the tile opens its menu. On a
+scene whose tap flashes, holding the tile is the flash, and a long press on the
+corner button opens the menu instead. A new scene gets a colour of its own. All
+Off stays in the toolbar and is greyed out while nothing is on. A scene gets its
+second cue and its tap starts running cues, with Back and On and Off on the
+tile, until you choose otherwise. Scenes can be on together, and the one turned
+on last wins a light they share.
 
 The first Next starts a scene at cue 1, and after the last cue the next one
 starts again at the first, so a reading can go dark, full stage, one light and
 round again. A scene opens as one page in its own colour: the cue list with one
 transport at the bottom, Back, Next Cue and Off, then the tile, what a tap does
-and the buttons ticked in a list, then the name, icon and colour. Edit
-puts cues and buttons in order with the usual handles, and the menu duplicates
-or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
-and hold it to edit its name, fade, delay and follow. On iPad the scene sits in the sidebar on the right, beside
-the scenes as the programmer sits beside the lights, and stays there until you
-open another, and the arrow keys or a presentation clicker step through its
-cues. On iPhone it opens as a sheet, and the bar above the tabs shows the scene
-on stage with its cue, Back, Next and Off, like the mini player in Music. A cue
-has a name or a short description, a fade, a delay before it starts, and can
-run the next cue by itself once it has faded in. Values carry through: a cue
-holds only the lights and aspects stored into it, and everything else keeps
-what the cues before it set. Going back undoes what the later cues changed.
+and the buttons ticked in a list, then the name, icon and colour folded away
+until you open them. Edit puts cues and buttons in order with the usual handles,
+and the menu duplicates or deletes the scene. Tap a cue to jump to it, swipe it
+to update or delete it, and hold it to edit its name, fade, delay and follow. On
+iPad the scene sits in the sidebar on the right, beside the scenes as the
+programmer sits beside the lights, and stays there until you open another, and
+the arrow keys or a presentation clicker step through its cues. On iPhone it
+opens as a sheet, and the bar above the tabs shows the scene on stage with its
+cue, Back, Next and Off, like the mini player in Music. A cue has a name or a
+short description, a fade, a delay before it starts, and can run the next cue by
+itself once it has faded in. Values carry through: a cue holds only the lights
+and aspects stored into it, and everything else keeps what the cues before it
+set. Going back undoes what the later cues changed.
 
 The quickest scene is under the plus button: Store All Lights keeps every light
 as it is now as a new scene with one cue, and with lights selected it reads
@@ -131,14 +134,14 @@ rule: the lights you selected, or all lights when none are. The line under the
 scene's name says which it will be, and tapping it opens the options. Done goes
 back to the page you started from, and deleting the cue on stage moves the stage
 to the cue before it, or turns the scene off if it was the last. Store puts the
-new cue right after the one on stage, or at the end, and the stage is then on
-it without a light moving, so the next Store follows it and Update refines it.
+new cue right after the one on stage, or at the end, and the stage is then on it
+without a light moving, so the next Store follows it and Update refines it.
 Update stores the same way into the cue on stage. After either, the selection
-clears, as the programmer empties after a store on a desk. Tap a cue in the bar to go back to it. Options chooses the lights,
-the aspects (intensity, colour, position, gobo, beam or control), a name and
-the fade. Cancel on a scene without cues removes it.
-Storing into a cue replaces only what you chose and keeps the rest. All Off on
-the Scenes page turns every scene off.
+clears, as the programmer empties after a store on a desk. Tap a cue in the bar
+to go back to it. Options chooses the lights, the aspects (intensity, colour,
+position, gobo, beam or control), a name and the fade. Cancel on a scene without
+cues removes it. Storing into a cue replaces only what you chose and keeps the
+rest. All Off on the Scenes page turns every scene off.
 
 A fade runs on the device that started it and reaches the others as ordinary
 frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a
@@ -171,10 +174,14 @@ the controller holds it.
 The DMX monitor shows output after master and blackout. Switch to Source to
 inspect or adjust the programmer values before those controls.
 
-Glow ships the four fixtures here, and their channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
-[Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
-[Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf),
-and, for the unbranded head, the [Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),
+Glow ships the four fixtures here, and their channel tables come from the [Cameo
+F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
+[Stairville BSW-350
+manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
+[Stairville HL-x180
+manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf),
+and, for the unbranded head, the [Monoprice 612870
+manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),
 which is the same 7 by 10 W RGBW platform channel for channel.
 
 ## Password
@@ -218,10 +225,10 @@ wrong password cannot displace a working network.
 **Two networks are remembered, the two most recent.** Joining a third pushes out
 the older one. On boot the controller scans once and joins the stronger of the
 two it can see, so carrying it between two places needs no setup at either end
-and no time goes on a network that is not there. A hidden network never shows
-in a scan, so when neither is seen it tries them in turn, every ten seconds. A
-network that drops is tried again straight away. Provisioning a network it already knows just moves that one back
-to the front.
+and no time goes on a network that is not there. A hidden network never shows in
+a scan, so when neither is seen it tries them in turn, every ten seconds. A
+network that drops is tried again straight away. Provisioning a network it
+already knows just moves that one back to the front.
 
 **Getting back to setup:** the controller raises **Glow Setup** by itself after
 a minute of finding neither stored network, and keeps it up until it joins. To
@@ -284,26 +291,27 @@ Shows live in that partition, mounted as LittleFS and formatted on first boot.
 At every boot the controller deletes any file there that is not the show list
 or a listed show.
 
-Serial console at 115200: `net | setup | forget | home | unpair | password | key`. The
-controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
-`home`, `setup`, `link`), and HomeSpan's own output is silenced. `net` reports
-the firmware, the address, the connected phones, free memory, how much of the
-loop's stack is spare, the show filesystem and the stored networks. `home`
-prints the HomeKit accessory database with any errors in it. `password` removes
-the controller's password and `key` prints the key it keeps for it. A line
-nobody reads is dropped rather than waited on, so a Mac holding the port open
-never stalls the controller.
+Serial console at 115200: `net | setup | forget | home | unpair | password |
+key`. The controller prints one line per event, led by its area (`dmx`, `wifi`,
+`store`, `home`, `setup`, `link`), and HomeSpan's own output is silenced. `net`
+reports the firmware, the address, the connected phones, free memory, how much
+of the loop's stack is spare, the show filesystem and the stored networks.
+`home` prints the HomeKit accessory database with any errors in it. `password`
+removes the controller's password and `key` prints the key it keeps for it. A
+line nobody reads is dropped rather than waited on, so a Mac holding the port
+open never stalls the controller.
 
 ## Testing against a controller
 
 `ControllerTests` runs two complete copies of the app, as two devices, against a
-real controller on the network. It covers opening, show commands, lights,
-scenes and cues, a cue started and a scene turned off on one device reaching
-the other, a scene in an old format being erased, made and edited fixtures, deletes, two devices editing one light,
-an edit made while the link is down, an import, deleting the open show and the
-password. It creates a show named **Hardware Test**, removes it again and
-leaves the controller on the show it found, with the password it found. It is
-skipped unless it is given an address. Run it with the controller on USB:
+real controller on the network. It covers opening, show commands, lights, scenes
+and cues, a cue started and a scene turned off on one device reaching the other,
+a scene in an old format being erased, made and edited fixtures, deletes, two
+devices editing one light, an edit made while the link is down, an import,
+deleting the open show and the password. It creates a show named **Hardware
+Test**, removes it again and leaves the controller on the show it found, with
+the password it found. It is skipped unless it is given an address. Run it with
+the controller on USB:
 
 ```bash
 GlowTests/controller-tests.sh 192.168.68.55
@@ -426,12 +434,12 @@ signs `"change"` and the nonce with the current key, and the new key travels
 XORed with the HMAC of `"wrap"` and the nonce, or bare when there was none. An
 empty `key` removes it. Every device then gets `{"t":"password","set"}`, and a
 refusal goes to the sender alone as `{"t":"password","refused":"wrong"}` with
-`wait`, or `"storage"`. HTTP requests carry the session as `X-Glow-Session`,
-and without a live one everything but `/api/info`, `/api/scan` and provisioning
-on the setup network answers 403. A session lasts as long as its WebSocket. `client` is the slot the
-controller gave you, and you send it back as `X-Glow-Client` so your own writes
-are not relayed to you. Anything the controller cannot read is ignored rather
-than answered.
+`wait`, or `"storage"`. HTTP requests carry the session as `X-Glow-Session`, and
+without a live one everything but `/api/info`, `/api/scan` and provisioning on
+the setup network answers 403. A session lasts as long as its WebSocket.
+`client` is the slot the controller gave you, and you send it back as
+`X-Glow-Client` so your own writes are not relayed to you. Anything the
+controller cannot read is ignored rather than answered.
 
 Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
 `POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is
@@ -479,9 +487,10 @@ green and blue emitters against the white one, which is the centre of Home's
 colour wheel.
 
 **It follows the desk.** Every control reads the controller's source back and
-updates itself, so moving the head in Glow moves the sliders in Home. Position, brightness and on or off come back exactly. Colour comes back
-as the nearest hue and saturation Home can show, because `EmitterMix` can reach
-mixes that one pair of values cannot describe.
+updates itself, so moving the head in Glow moves the sliders in Home. Position,
+brightness and on or off come back exactly. Colour comes back as the nearest hue
+and saturation Home can show, because `EmitterMix` can reach mixes that one pair
+of values cannot describe.
 
 A change from Home enters as a source frame, the same as a change from any other
 device, so the app sees the fader move and the look survives for the next
@@ -512,9 +521,9 @@ client. A command it refuses, such as removing the last show or a name over 64
 characters, goes back to the sender alone as the unchanged list, so the device
 puts its screen back. When the reason is one a person can act on, a full store
 or the limit of 64 shows, `{"t":"refused","reason":"storage"}` or `"limit"`
-comes first and the app says so. Adding a show opens it, removing the open one opens the
-first, and every device follows the active show the moment the list arrives. A
-controller with no shows makes **Show 1** when it starts.
+comes first and the app says so. Adding a show opens it, removing the open one
+opens the first, and every device follows the active show the moment the list
+arrives. A controller with no shows makes **Show 1** when it starts.
 
 Show contents move over plain HTTP on the same port, because a made fixture
 definition runs to tens of kilobytes and the WebSocket carries only small
@@ -548,26 +557,26 @@ bytes 3-4   body length, uint16 LE
 bytes 5..   folder, id, body
 ```
 
-The newest record for a folder and id is the object, and a delete record
-removes it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders today.
-Names are letters, digits, hyphen and underscore, up to 39 characters, and
-anything else is refused. One object can be up to 64 KB. Once a file has grown
-past twice what its newest records hold, the store task rewrites it with only
-those. A rewrite needs room for a copy of one file, an eighth of the show, so
-the controller keeps an eighth of the flash free: a new object that would reach
-into it is refused, a delete never is, and a refused write first rewrites the
-files of its show that hold something to drop, once until something is deleted.
-A full store therefore still takes deletes and gets its room back from them. The
-store task pauses a moment every 16 KB it reads or copies, so a long rewrite
-never trips the watchdog. It sorts the records in a
-fixed 32 KB table, one slice of the keys at a time when a file holds more than
-fit, so no show is too large to rewrite. A store task gathers up to 32 queued
-writes and commits them together, one flash write per file they touch.
+The newest record for a folder and id is the object, and a delete record removes
+it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders today. Names
+are letters, digits, hyphen and underscore, up to 39 characters, and anything
+else is refused. One object can be up to 64 KB. Once a file has grown past twice
+what its newest records hold, the store task rewrites it with only those. A
+rewrite needs room for a copy of one file, an eighth of the show, so the
+controller keeps an eighth of the flash free: a new object that would reach into
+it is refused, a delete never is, and a refused write first rewrites the files
+of its show that hold something to drop, once until something is deleted. A full
+store therefore still takes deletes and gets its room back from them. The store
+task pauses a moment every 16 KB it reads or copies, so a long rewrite never
+trips the watchdog. It sorts the records in a fixed 32 KB table, one slice of
+the keys at a time when a file holds more than fit, so no show is too large to
+rewrite. A store task gathers up to 32 queued writes and commits them together,
+one flash write per file they touch.
 
 **The controller does not know what a folder means.** It stores and returns
-records without parsing a body, `GET /api/show/<id>` sends the files as they are,
-and the app keeps the newest record per folder and id. So a new kind of object
-is a folder the app starts writing to, and the firmware does not change.
+records without parsing a body, `GET /api/show/<id>` sends the files as they
+are, and the app keeps the newest record per folder and id. So a new kind of
+object is a folder the app starts writing to, and the firmware does not change.
 `/shows.json` is the one file the controller reads, and it keeps it in memory.
 
 **How much fits, measured on the controller.** The flash holds 6080 KB for
@@ -585,12 +594,12 @@ while the store looks for anything to drop, later ones in under 0.1 s. Deleting
 files were rewritten.
 
 A usage pattern that fills it: a venue that builds a new show every week, each
-with 50 lights, 20 full-rig scenes and 500 twelve-light cues, uses about 110 KB a
-week and reaches the limit after about 49 weeks, close to the 64 show limit.
-Editing does not fill it, since an edited object replaces its old record the next
-time its file is rewritten. A single show of a 150 cue play on 30 lights uses
-about 70 KB, so a controller that keeps a handful of productions stays under a
-tenth full.
+with 50 lights, 20 full-rig scenes and 500 twelve-light cues, uses about 110 KB
+a week and reaches the limit after about 49 weeks, close to the 64 show limit.
+Editing does not fill it, since an edited object replaces its old record the
+next time its file is rewritten. A single show of a 150 cue play on 30 lights
+uses about 70 KB, so a controller that keeps a handful of productions stays
+under a tenth full.
 
 **One record per object, not one write per show.** A whole-show write would
 mean your rename wiping my new scene. Per object, both survive under the same
@@ -601,10 +610,10 @@ After an HTTP write lands, the controller sends
 fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
-Scenes and cues are binary, because they are what a show holds most of. A
-scene is a format byte (4), what a tap does and its tile buttons as a count and
-one byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order,
-then its name, icon and colour as texts. Each cue is its own object, so editing one cue
+Scenes and cues are binary, because they are what a show holds most of. A scene
+is a format byte (4), what a tap does and its tile buttons as a count and one
+byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order, then its
+name, icon and colour as texts. Each cue is its own object, so editing one cue
 writes one small record however long the list is:
 
 ```
@@ -619,11 +628,11 @@ Numbers are unsigned LEB128 and a text is a length then UTF-8. An order is a
 number, twice the order in 256ths, when that is exact, or 1 then a little endian
 double. An id is written as `header << 2` then its eight bytes when it is
 sixteen hex digits, `header << 2 | 1` then its eight bytes when it is eleven
-base64url characters, or `header << 2 | 2` then a text. The header of a light is the length of its
-mask in bytes, and of the scene id in a cue it is 0. A cue stores only the
-channels it holds, so a cue that sets four lights' dimmers is about fifty
-bytes. It still records lights rather than addresses, so re-addressing later
-does not point a cue at whatever now sits on those channels.
+base64url characters, or `header << 2 | 2` then a text. The header of a light is
+the length of its mask in bytes, and of the scene id in a cue it is 0. A cue
+stores only the channels it holds, so a cue that sets four lights' dimmers is
+about fifty bytes. It still records lights rather than addresses, so
+re-addressing later does not point a cue at whatever now sits on those channels.
 
 An id is 64 random bits written as eleven base64url characters, not a UUID.
 Ids made before that are sixteen hex characters, and both stay valid. A record

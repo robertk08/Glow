@@ -459,7 +459,7 @@ final class Console {
 		case .toggle: toggle(list, among: lists)
 		case .next: go(list)
 		case .back: back(list)
-		case .flash, .update: break
+		case .flash, .update, .open: break
 		}
 	}
 	

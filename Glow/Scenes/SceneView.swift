@@ -289,7 +289,7 @@ private struct SceneSettings: View {
 				}
 			}
 			
-			ForEach(look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }) { action in
+			ForEach(look.buttons + SceneAction.buttons.filter { !look.buttons.contains($0) }) { action in
 				let isOn = look.buttons.contains(action)
 				
 				Button {
@@ -312,7 +312,7 @@ private struct SceneSettings: View {
 				.moveDisabled(!isOn)
 			}
 			.onMove { from, to in
-				var order = look.buttons + SceneAction.allCases.filter { !look.buttons.contains($0) }
+				var order = look.buttons + SceneAction.buttons.filter { !look.buttons.contains($0) }
 				let chosen = Set(look.buttons)
 				order.move(fromOffsets: from, toOffset: to)
 				look.buttons = order.filter(chosen.contains)
@@ -324,11 +324,20 @@ private struct SceneSettings: View {
 		}
 		.animation(.snappy, value: look.buttons)
 		
-		Section("Name and Icon") {
-			TextField("Name", text: $look.name)
-				.autocorrectionDisabled()
-			
-			AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+		Section {
+			DisclosureGroup {
+				TextField("Name", text: $look.name)
+					.autocorrectionDisabled()
+				
+				AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+			} label: {
+				Label {
+					Text("Name, Icon and Colour")
+				} icon: {
+					Image(systemName: look.symbol)
+						.foregroundStyle(look.tint.color ?? .accentColor)
+				}
+			}
 		}
 	}
 }

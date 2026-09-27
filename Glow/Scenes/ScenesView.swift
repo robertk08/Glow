@@ -160,7 +160,10 @@ struct SceneTile: View {
 			.padding(.bottom, 26)
 		
 		Button {
-			if list.cues.isEmpty {
+			if look.tap == .open {
+				console.selection.scene = look.identifier
+				console.selection.isSceneOpen = sizeClass != .regular
+			} else if list.cues.isEmpty {
 				console.selection.building = look.identifier
 			} else {
 				console.run(look.tap, on: list, among: lists)
@@ -341,7 +344,7 @@ struct TileButtons: View {
 				case .update: current != nil
 				case .next: !list.cues.isEmpty
 				case .back: list.cues.count > 1 && index != nil
-				case .toggle, .flash: !list.cues.isEmpty
+				case .toggle, .flash, .open: !list.cues.isEmpty
 				}
 				
 				Button {

@@ -5,6 +5,9 @@ struct MasterBar: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	@ScaledMetric(relativeTo: .headline) private var height = 54
+	
+	var isRaised = false
 	
 	private var power: some Gesture {
 		LongPressGesture()
@@ -30,11 +33,12 @@ struct MasterBar: View {
 				.frame(width: 40, alignment: .trailing)
 			
 			Image(systemName: "power")
-				.font(.title3)
+				.font(isRaised ? .headline : .title3)
 				.foregroundStyle(console.blackout ? Color.white : Color.primary)
-				.frame(width: 32, height: 32)
+				.frame(width: isRaised ? height : 32, height: isRaised ? height : 32)
 				.background(console.blackout ? Color.accentColor : Color.clear, in: .circle)
-				.frame(width: 44, height: 40)
+				.glassEffect(isRaised ? .regular.interactive() : .identity, in: .circle)
+				.frame(width: isRaised ? height : 44, height: isRaised ? height : 40)
 				.contentShape(.rect)
 				.gesture(power)
 				.accessibilityElement()
@@ -44,7 +48,7 @@ struct MasterBar: View {
 				.accessibilityHint("Tap to black out. Touch and hold to reset every light to its defaults.")
 		}
 		.frame(maxWidth: 520)
-		.padding(.horizontal, 12)
+		.padding(.horizontal, isRaised ? 16 : 12)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.blackout)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.resets)
 	}

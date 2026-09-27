@@ -83,10 +83,9 @@ struct RootView: View {
 								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
 							}
 							
-							Divider()
-							
-							MasterBar()
-								.padding(.vertical, 10)
+							MasterBar(isRaised: true)
+								.padding(.top, 4)
+								.padding(.bottom, 8)
 						}
 						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
