@@ -11,6 +11,7 @@ final class Recording: Identifiable {
 	
 	let destination: Destination
 	let changed: Set<String>
+	let selected: Set<String>
 	var label: String
 	var lights: Set<String>
 	var features = Set(FeatureGroup.allCases)
@@ -31,19 +32,19 @@ final class Recording: Identifiable {
 		self.cues = cues
 		
 		let everyone = Set(fixtures.map(\.identifier))
-		let selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
+		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
 		changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
-		lights = changed.isEmpty ? (selected.isEmpty ? everyone : selected) : changed
+		lights = changed.union(selected)
 		
 		switch destination {
 		case let .cue(look, _):
 			label = ""
 			fade = look.cues(among: cues).last?.fade ?? 0
+			if lights.isEmpty, look.cues(among: cues).isEmpty { lights = everyone }
 		case let .into(cue):
 			label = cue.label
 			fade = cue.fade
-			let held = everyone.intersection(cue.levels.lights.keys)
-			if selected.isEmpty, changed.isEmpty, !held.isEmpty { lights = held }
+			if lights.isEmpty { lights = everyone.intersection(cue.levels.lights.keys) }
 		}
 	}
 	
@@ -62,9 +63,8 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		let count = lights.count == 1 ? "1 light" : "\(lights.count) lights"
-		guard changed.isEmpty else { return "\(count) changed for cue \(number)" }
-		return number == 1 && lights.count == fixtures.count ? "Set the lights, then store cue 1" : "\(count) for cue \(number)"
+		guard !changed.union(selected).isEmpty else { return number == 1 ? "Set the lights, then store cue 1" : "Select or change lights for cue \(number)" }
+		return lights.count == 1 ? "1 light for cue \(number)" : "\(lights.count) lights for cue \(number)"
 	}
 	
 	var place: String {
@@ -125,7 +125,7 @@ final class Recording: Identifiable {
 	}
 	
 	func update(context: ModelContext) {
-		lights = changed
+		lights = changed.union(selected)
 		store(context: context)
 	}
 	
@@ -174,5 +174,7 @@ final class Recording: Identifiable {
 		if let stored {
 			console.land(on: stored.cue, of: stored.scene, holding: addresses)
 		}
+		
+		console.selection.clear()
 	}
 }

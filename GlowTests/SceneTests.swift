@@ -276,7 +276,7 @@ struct SceneTests {
 		
 		#expect(fresh.name == "Scene 2")
 		#expect(recording.number == 1)
-		#expect(recording.hint == "2 lights changed for cue 1")
+		#expect(recording.hint == "2 lights for cue 1")
 		#expect(recording.lights == [rig.fixtures[0].identifier, rig.fixtures[1].identifier])
 		
 		recording.lights = [rig.fixtures[0].identifier]
@@ -289,6 +289,24 @@ struct SceneTests {
 		#expect(rig.looks.count == 2)
 		#expect(fresh.cues(among: rig.cues).count == 1)
 		#expect(!rig.console.isActive(DMXAddress(1)!))
+	}
+	
+	@Test func updateAddsASelectedLightThatWasNotChanged() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 200)])
+		rig.console.set(70, at: DMXAddress(11)!)
+		rig.console.release(11...11)
+		rig.console.selection.toggle(rig.fixtures[1])
+		
+		#expect(rig.console.hasProgrammer)
+		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 light for cue 2")
+		
+		rig.recording(.into(cue)).update(context: rig.context)
+		
+		#expect(cue.levels.lights[rig.fixtures[1].identifier]?[1] == 70)
+		#expect(cue.levels.lights[rig.fixtures[0].identifier]?[1] == 200)
+		#expect(rig.console.selection.isEmpty)
+		#expect(!rig.console.hasProgrammer)
 	}
 	
 	@Test func aNewCueCanGoBetweenTwoOthers() throws {

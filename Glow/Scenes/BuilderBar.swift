@@ -138,7 +138,7 @@ struct BuilderBar: View {
 								.frame(minHeight: 44)
 						}
 						.buttonStyle(.glass)
-						.disabled(console.active.isEmpty)
+						.disabled(!console.hasProgrammer)
 					}
 					
 					Button {

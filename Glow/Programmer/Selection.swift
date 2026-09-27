@@ -5,6 +5,7 @@ import SwiftUI
 final class Selection {
 	private(set) var identifiers: Set<String> = []
 	var isProgrammerOpen = false
+	var isSceneOpen = false
 	var scene: String?
 	var building: String?
 	

@@ -9,6 +9,7 @@ struct RootView: View {
 	@Environment(\.scenePhase) private var scenePhase
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	@State private var section = "lights"
 	@Namespace private var transition
@@ -48,7 +49,11 @@ struct RootView: View {
 			} else if sizeClass == .compact {
 				tabs
 					.tabViewBottomAccessory {
-						ConsoleBar(transition: transition)
+						if section == "scenes" {
+							SceneBar(transition: transition)
+						} else {
+							ConsoleBar(transition: transition)
+						}
 					}
 					.sheet(isPresented: $selection.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: true)
@@ -56,6 +61,16 @@ struct RootView: View {
 							.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
 							.presentationDragIndicator(.visible)
 							.navigationTransition(.zoom(sourceID: "programmer", in: transition))
+					}
+					.sheet(isPresented: $selection.isSceneOpen) {
+						if let look = looks.first(where: { $0.identifier == console.selection.scene }) {
+							SceneView(look: look, isSheet: true)
+								.id(look.identifier)
+								.presentationDetents([.fraction(0.5), .large])
+								.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
+								.presentationDragIndicator(.visible)
+								.navigationTransition(.zoom(sourceID: "scene", in: transition))
+						}
 					}
 			} else {
 				tabs

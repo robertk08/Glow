@@ -11,6 +11,8 @@ final class Look {
 	var tapValue: Int = 0
 	var buttonValues: [Int] = []
 	
+	static let buttonLimit = 3
+	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
 		self.name = name
@@ -42,7 +44,7 @@ final class Look {
 	}
 	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
-		buttons = SceneAction.allCases.filter { $0 == button ? isShown : buttons.contains($0) }
+		buttons = Array((buttons.filter { $0 != button } + (isShown ? [button] : [])).prefix(Self.buttonLimit))
 	}
 	
 	var tint: FixtureTint {
@@ -60,6 +62,8 @@ final class Look {
 	
 	@MainActor static func fresh(among looks: [Look], context: ModelContext) -> Look {
 		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
+		let tints = [FixtureTint.blue, .orange, .purple, .green, .pink, .yellow, .indigo, .red, .mint]
+		look.tint = tints.min { first, second in looks.count { $0.tint == first } < looks.count { $0.tint == second } } ?? .blue
 		context.insert(look)
 		try? context.save()
 		return look
