@@ -34,7 +34,8 @@ struct SceneView: View {
 								console.back(list)
 							}
 							.labelStyle(.iconOnly)
-							.disabled(index.flatMap(list.previous(before:)) == nil)
+							.keyboardShortcut(.leftArrow, modifiers: [])
+							.disabled(index == nil)
 							
 							Button {
 								console.go(list)
@@ -43,7 +44,7 @@ struct SceneView: View {
 									.frame(maxWidth: .infinity)
 							}
 							.buttonStyle(.glassProminent)
-							.disabled(list.next(after: index) == nil)
+							.keyboardShortcut(.rightArrow, modifiers: [])
 							
 							Button("Turn Off", systemImage: "stop.fill") {
 								console.toggle(list, among: lists)
@@ -84,7 +85,7 @@ struct SceneView: View {
 									Text(cue.title(at: position))
 										.lineLimit(2)
 									
-									Text(Cue.seconds(cue.fade))
+									Text(cue.timing)
 										.font(.caption)
 										.foregroundStyle(.secondary)
 								}
@@ -120,6 +121,11 @@ struct SceneView: View {
 								recording = Recording(.cue(look, after: cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 							}
 							
+							Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
+								Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).update(context: context)
+							}
+							.disabled(console.active.isEmpty)
+							
 							Button("Store into Cue", systemImage: "square.and.arrow.down") {
 								recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 							}
@@ -137,7 +143,26 @@ struct SceneView: View {
 				} header: {
 					Text("Cues")
 				} footer: {
-					Text(held.count > 1 ? "Tap a cue to jump to it. A new cue goes after the one on stage." : "Add a cue and this scene steps through them, one tap at a time.")
+					Text(held.count > 1 ? "Tap a cue to jump to it. After the last cue the next tap starts again at the first. The arrow keys or a presentation clicker step through them too." : "Add a cue and this scene steps through them, one tap at a time.")
+				}
+				
+				Section {
+					Picker("A Tap", selection: $look.tap) {
+						ForEach(SceneAction.taps) { action in
+							Text(action.tapName)
+								.tag(action)
+						}
+					}
+					
+					ForEach(SceneAction.allCases) { action in
+						Toggle(isOn: Binding { look.buttons.contains(action) } set: { look.shows(action, $0) }) {
+							Label(action.name, systemImage: action.symbol)
+						}
+					}
+				} header: {
+					Text("On the Tile")
+				} footer: {
+					Text("Choose what a tap on the tile does and which buttons sit on it. Everything else is in its menu.")
 				}
 				
 				Section("Name") {

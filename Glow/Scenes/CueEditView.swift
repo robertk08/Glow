@@ -30,6 +30,24 @@ struct CueEditView: View {
 						LabeledContent("Fade", value: Cue.seconds(cue.fade))
 							.monospacedDigit()
 					}
+					
+					Stepper(value: $cue.delay, in: 0...600, step: 0.5) {
+						LabeledContent("Delay", value: Cue.seconds(cue.delay))
+							.monospacedDigit()
+					}
+					
+					Toggle("Then Run the Next Cue", isOn: Binding { cue.follow != nil } set: { cue.follow = $0 ? 0 : nil })
+					
+					if let follow = cue.follow {
+						Stepper(value: Binding { cue.follow ?? 0 } set: { cue.follow = $0 }, in: 0...600, step: 0.5) {
+							LabeledContent("After", value: Cue.seconds(follow, zero: "Right away"))
+								.monospacedDigit()
+						}
+					}
+				} header: {
+					Text("Timing")
+				} footer: {
+					Text("The delay waits before the fade starts. The next cue can follow by itself once this one has faded in.")
 				}
 				
 				Section {

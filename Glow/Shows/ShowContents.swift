@@ -86,21 +86,26 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var sortIndex: Double
 		var symbol: String?
 		var tint: String?
+		var tap = SceneAction.toggle
+		var buttons: [SceneAction] = []
 		
-		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint }
+		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint, tap, buttons }
 		
-		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil) {
+		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil, tap: SceneAction = .toggle, buttons: [SceneAction] = []) {
 			self.identifier = identifier
 			self.name = name
 			self.sortIndex = sortIndex
 			self.symbol = symbol
 			self.tint = tint
+			self.tap = tap
+			self.buttons = buttons
 		}
 		
 		init?(identifier: String, body: Data) {
 			var reader = ByteReader(body)
-			guard reader.byte() == 2, let sortIndex = reader.double(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
-			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint)
+			guard reader.byte() == 3, let tap = reader.byte().flatMap({ SceneAction(rawValue: Int($0)) }), let count = reader.byte(), let buttons = reader.bytes(Int(count)) else { return nil }
+			guard let sortIndex = reader.double(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
+			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) })
 		}
 		
 		init(from decoder: any Decoder) throws {
@@ -110,11 +115,16 @@ nonisolated struct ShowContents: Codable, Sendable {
 			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
 			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
 			tint = try container.decodeIfPresent(String.self, forKey: .tint)
+			tap = try container.decodeIfPresent(SceneAction.self, forKey: .tap) ?? .toggle
+			buttons = try container.decodeIfPresent([SceneAction].self, forKey: .buttons) ?? []
 		}
 		
 		var body: Data {
 			var writer = ByteWriter()
-			writer.byte(2)
+			writer.byte(3)
+			writer.byte(UInt8(tap.rawValue))
+			writer.byte(UInt8(buttons.count))
+			writer.bytes(buttons.map { UInt8($0.rawValue) })
 			writer.double(sortIndex)
 			writer.text(name)
 			writer.text(symbol ?? "")
@@ -129,32 +139,37 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var sortIndex: Double
 		var label = ""
 		var fade = 0.0
+		var delay = 0.0
+		var follow: Double?
 		var levels = Data()
 		
-		private enum CodingKeys: String, CodingKey { case identifier, scene, sortIndex, label, fade, levels }
+		private enum CodingKeys: String, CodingKey { case identifier, scene, sortIndex, label, fade, delay, follow, levels }
 		
-		init(identifier: String, scene: String, sortIndex: Double, label: String = "", fade: Double = 0, levels: Data = Data()) {
+		init(identifier: String, scene: String, sortIndex: Double, label: String = "", fade: Double = 0, delay: Double = 0, follow: Double? = nil, levels: Data = Data()) {
 			self.identifier = identifier
 			self.scene = scene
 			self.sortIndex = sortIndex
 			self.label = label
 			self.fade = fade
+			self.delay = delay
+			self.follow = follow
 			self.levels = levels
 		}
 		
 		init?(identifier: String, body: Data) {
 			var payload = Data(body.dropFirst())
 			
-			if body.first == 4 {
+			if body.first == 6 {
 				guard let inflated = try? (payload as NSData).decompressed(using: .zlib) as Data else { return nil }
 				payload = inflated
-			} else if body.first != 3 {
+			} else if body.first != 5 {
 				return nil
 			}
 			
 			var reader = ByteReader(payload)
-			guard let (_, scene) = reader.identifier(), let sortIndex = reader.double(), let fade = reader.tenths(), let label = reader.text(), Levels(reader.rest) != nil else { return nil }
-			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, levels: reader.rest)
+			guard let (_, scene) = reader.identifier(), let sortIndex = reader.double(), let fade = reader.tenths(), let delay = reader.tenths(), let follow = reader.number() else { return nil }
+			guard let label = reader.text(), Levels(reader.rest) != nil else { return nil }
+			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 10, levels: reader.rest)
 		}
 		
 		init(from decoder: any Decoder) throws {
@@ -164,6 +179,8 @@ nonisolated struct ShowContents: Codable, Sendable {
 			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
 			label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
 			fade = try container.decodeIfPresent(Double.self, forKey: .fade) ?? 0
+			delay = try container.decodeIfPresent(Double.self, forKey: .delay) ?? 0
+			follow = try container.decodeIfPresent(Double.self, forKey: .follow)
 			levels = try container.decodeIfPresent(Data.self, forKey: .levels) ?? Data()
 		}
 		
@@ -172,11 +189,13 @@ nonisolated struct ShowContents: Codable, Sendable {
 			writer.identifier(scene, tag: 0)
 			writer.double(sortIndex)
 			writer.tenths(fade)
+			writer.tenths(delay)
+			writer.number(follow.map { Int(($0 * 10).rounded()) + 1 } ?? 0)
 			writer.text(label)
 			writer.bytes([UInt8](levels))
 			
-			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([3]) + writer.data }
-			return Data([4]) + packed
+			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([5]) + writer.data }
+			return Data([6]) + packed
 		}
 	}
 	

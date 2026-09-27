@@ -11,6 +11,7 @@ final class Recording: Identifiable {
 	}
 	
 	let destination: Destination
+	let changed: Set<String>
 	var label: String
 	var lights: Set<String>
 	var features = Set(FeatureGroup.allCases)
@@ -32,7 +33,7 @@ final class Recording: Identifiable {
 		
 		let everyone = Set(fixtures.map(\.identifier))
 		let selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
-		let changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
+		changed = Set(fixtures.filter { fixture in fixture.range(library.type(fixture.typeID)).contains { DMXAddress($0).map(console.isActive) == true } }.map(\.identifier))
 		lights = selected.isEmpty ? (changed.isEmpty ? everyone : changed) : selected
 		
 		switch destination {
@@ -108,6 +109,11 @@ final class Recording: Identifiable {
 		}
 	}
 	
+	func update(context: ModelContext) {
+		lights = changed
+		store(context: context)
+	}
+	
 	func store(context: ModelContext) {
 		let levels = levels
 		let label = label.trimmingCharacters(in: .whitespaces)
@@ -128,6 +134,11 @@ final class Recording: Identifiable {
 			let cue = Cue(lookID: look.identifier, sortIndex: sortIndex, fade: fade, levels: levels)
 			cue.label = label
 			context.insert(cue)
+			
+			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {
+				look.tap = .next
+				look.buttons = [.back, .toggle]
+			}
 		case let .into(cue):
 			cue.levels = cue.levels.merging(levels)
 			cue.label = label

@@ -75,6 +75,7 @@ final class Console {
 	private var pause: Task<Void, Never>?
 	private var motions: [Int: (ramp: Ramp, from: Int, written: Int, started: ContinuousClock.Instant, length: Double)] = [:]
 	private var gliding: Task<Void, Never>?
+	private var followers: [String: Task<Void, Never>] = [:]
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -335,6 +336,12 @@ final class Console {
 		gliding?.cancel()
 		gliding = nil
 		
+		for follower in followers.values {
+			follower.cancel()
+		}
+		
+		followers = [:]
+		
 		if !keepingLook || !hasAdoptedSource {
 			universe = Universe()
 			hasAdoptedSource = false
@@ -444,6 +451,15 @@ final class Console {
 		}
 	}
 	
+	func run(_ action: SceneAction, on list: CueList, among lists: [CueList]) {
+		switch action {
+		case .toggle: toggle(list, among: lists)
+		case .next: go(list)
+		case .back: back(list)
+		case .flash, .update: break
+		}
+	}
+	
 	func toggle(_ list: CueList, among lists: [CueList]) {
 		guard playback.cue(of: list.scene) == nil else {
 			stop(list, among: lists)
@@ -451,6 +467,15 @@ final class Console {
 		}
 		
 		go(list)
+	}
+	
+	func flash(_ list: CueList, among lists: [CueList], isHeld: Bool) {
+		guard isHeld else {
+			stop(list, among: lists, snapping: true)
+			return
+		}
+		
+		play(list, at: list.index(of: playback.cue(of: list.scene)) ?? 0, snapping: true)
 	}
 	
 	func go(_ list: CueList) {
@@ -463,21 +488,34 @@ final class Console {
 		play(list, at: index)
 	}
 	
-	func play(_ list: CueList, at index: Int) {
+	func play(_ list: CueList, at index: Int, snapping: Bool = false) {
 		guard list.cues.indices.contains(index) else { return }
+		let cue = list.cues[index]
 		
 		for address in list.addresses where playback.held[address] == nil {
 			playback.held[address] = universe.values[address - 1]
 		}
 		
-		playback.play(list.cues[index].identifier, of: list.scene)
-		glide(list.ramps(at: index, holding: playback.held), over: list.cues[index].fade)
+		playback.play(cue.identifier, of: list.scene)
+		glide(list.ramps(at: index, holding: playback.held), over: snapping ? 0 : cue.fade, after: snapping ? 0 : cue.delay)
 		outbox.append(.data(Wire.playback(playback.data)))
+		followers[list.scene]?.cancel()
+		followers[list.scene] = nil
+		guard let follow = cue.follow, !snapping else { return }
+		
+		followers[list.scene] = Task { [weak self] in
+			try? await Task.sleep(for: .seconds(cue.delay + cue.fade + follow))
+			guard !Task.isCancelled, let self, playback.cue(of: list.scene) == cue.identifier else { return }
+			followers[list.scene] = nil
+			go(list)
+		}
 	}
 	
-	func stop(_ list: CueList, among lists: [CueList]) {
+	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
 		guard let current = list.index(of: playback.cue(of: list.scene)) else { return }
 		playback.stop(list.scene)
+		followers[list.scene]?.cancel()
+		followers[list.scene] = nil
 		
 		let mine = list.addresses
 		var kept: Set<Int> = []
@@ -500,16 +538,16 @@ final class Console {
 			playback.held[address] = nil
 		}
 		
-		glide(ramps, over: list.cues[current].fade)
+		glide(ramps, over: snapping ? 0 : list.cues[current].fade, after: 0)
 		outbox.append(.data(Wire.playback(playback.data)))
 	}
 	
-	private func glide(_ ramps: [Ramp], over length: Double) {
-		let now = ContinuousClock.now
+	private func glide(_ ramps: [Ramp], over length: Double, after delay: Double) {
+		let start = ContinuousClock.now + .seconds(delay)
 		
 		for ramp in ramps {
 			let level = ramp.level(in: universe)
-			motions[ramp.address.value] = (ramp, level, level, now, length)
+			motions[ramp.address.value] = (ramp, level, level, start, length)
 		}
 		
 		guard gliding == nil else { return }
@@ -525,6 +563,7 @@ final class Console {
 						continue
 					}
 					
+					guard now >= motion.started else { continue }
 					let progress = motion.length > 0 ? min((now - motion.started) / .seconds(motion.length), 1) : 1
 					let value = motion.ramp.value(from: motion.from, at: progress)
 					motion.ramp.write(value, into: &next)

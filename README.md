@@ -87,20 +87,29 @@ app can declare itself subtractive too.
 A scene records lights rather than addresses, so re-addressing one later does
 not point its scenes at whatever now sits on those channels.
 
-A scene is a tile, like a light. Tap it and every light it holds takes the
-values it stored. Tap it again and those lights go back to whatever they were
-doing before, even when that was another scene that is still on. Scenes can be
-on together, and the one turned on last wins a light they share.
+A scene is a wide tile. Every scene can do the same things: turn on, where every
+light it holds takes the values it stored, turn off, where those lights go back
+to whatever they were doing before, flash, which is on only while a finger
+holds it, and step through its cues. What differs is what a tap on the tile
+does, turn on and off, flash or run the next cue, and which buttons sit on the
+tile: Back, Next, On and Off, Flash and Update. Both are chosen per scene, and
+everything else is in the tile's menu. A scene gets its second cue and its tap
+starts running cues, with Back and On and Off on the tile, until you choose
+otherwise. Scenes can be on together, and the one turned on last wins a light
+they share.
 
-A scene can hold cues. Then the first tap starts it at cue 1 and every tap after
-that runs the next cue. Its menu also steps back, jumps to any cue and turns it
-off, and on iPad the same controls and the cues sit in a sidebar on the right,
-beside the scenes as the programmer sits beside the lights. On iPhone the menu
-opens them as a sheet. A cue has a name or a short description, and a fade.
-Cues can be reordered, deleted and added after any cue, so a new one can go in
-between. Values carry through: a cue holds only the lights and aspects stored
-into it, and everything else keeps what the cues before it set. Going back
-undoes what the later cues changed.
+The first Next starts a scene at cue 1, and after the last cue the next one
+starts again at the first, so a reading can go dark, full stage, one light and
+round again. The menu also jumps to any cue. On iPad the cues and the tile
+settings sit in a sidebar on the right, beside the scenes as the programmer
+sits beside the lights, and the arrow keys or a presentation clicker step
+through the cues while it is open. On iPhone the menu opens them as a sheet. A
+cue has a name or a short description, a fade, a delay before it starts, and
+can run the next cue by itself once it has faded in. Cues can be reordered,
+deleted and added after any cue. Values carry through: a cue holds only the
+lights and aspects stored into it, and everything else keeps what the cues
+before it set. Going back undoes what the later cues changed. Update folds what
+you changed on the lights into the cue on stage.
 
 Storing takes the lights and the aspects you choose: intensity, colour,
 position, gobo, beam or control. It starts from the selection, or else the
@@ -536,14 +545,16 @@ fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
 Scenes and cues are binary, because they are what a show holds most of. A
-scene is a format byte (2), its order as a little endian double, then its
-name, icon and colour as texts. Each cue is its own object, so editing one cue
+scene is a format byte (3), what a tap does and its tile buttons as a count and
+one byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order as a
+little endian double, then its name, icon and colour as texts. Each cue is its own object, so editing one cue
 writes one small record however long the list is:
 
 ```
-byte 0      3 plain, 4 the rest is raw DEFLATE, whichever is smaller
-then        scene id, order as a little endian double, fade in tenths of a
-            second, name, then the lights to the end
+byte 0      5 plain, 6 the rest is raw DEFLATE, whichever is smaller
+then        scene id, order as a little endian double, fade and delay in
+            tenths of a second, when the next cue follows (0 never, else
+            tenths plus one), name, then the lights to the end
 per light   header, id, channel mask, one byte per channel the mask sets
 ```
 

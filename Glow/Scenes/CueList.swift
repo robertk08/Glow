@@ -7,6 +7,7 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	let scene: String
+	let tap: SceneAction
 	let cues: [ShowContents.Cue]
 	
 	private let states: [Levels]
@@ -15,6 +16,7 @@ nonisolated struct CueList: Sendable {
 	
 	@MainActor init(_ look: Look, cues: [Cue], fixtures: [Fixture], library: FixtureLibrary) {
 		scene = look.identifier
+		tap = look.tap
 		self.cues = look.cues(among: cues).map(\.entry)
 		
 		var lights: [String: Light] = [:]
@@ -42,12 +44,14 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	func next(after index: Int?) -> Int? {
-		guard let index else { return cues.isEmpty ? nil : 0 }
-		return index + 1 < cues.count ? index + 1 : nil
+		guard !cues.isEmpty else { return nil }
+		guard let index else { return 0 }
+		return (index + 1) % cues.count
 	}
 	
 	func previous(before index: Int) -> Int? {
-		index > 0 ? index - 1 : nil
+		guard !cues.isEmpty else { return nil }
+		return (index + cues.count - 1) % cues.count
 	}
 	
 	func title(at index: Int) -> String {
@@ -55,9 +59,9 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	func status(at index: Int?) -> String {
-		guard cues.count > 1 else { return index == nil ? "Off" : "On" }
-		guard let index else { return "\(cues.count) cues" }
-		return "\(index + 1) of \(cues.count) · \(title(at: index))"
+		guard cues.count > 1 else { return index == nil ? (tap == .flash ? "Hold to flash" : "Off") : "On" }
+		guard let index else { return "\(cues.count) cues, tap to start" }
+		return "\(index + 1) · \(title(at: index))"
 	}
 	
 	var addresses: Set<Int> {

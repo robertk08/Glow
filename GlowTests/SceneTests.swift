@@ -148,6 +148,53 @@ struct SceneTests {
 		try await until { rig.value(2) == 255 && rig.value(11) == 0 }
 	}
 	
+	@Test func afterTheLastCueTheNextTapStartsAgainAtTheFirst() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		
+		rig.console.go(rig.list)
+		rig.console.go(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier }
+		
+		rig.console.go(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == first.identifier && rig.value(1) == 10 }
+		
+		rig.console.back(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier && rig.value(1) == 20 }
+	}
+	
+	@Test func aCueWithAFollowRunsTheNextOneByItselfAfterItsDelay() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		let third = rig.add(3, [(0, 1, 30)])
+		first.delay = 0.1
+		first.follow = 0.1
+		second.follow = 0
+		try rig.context.save()
+		
+		let started = Date()
+		rig.console.go(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == third.identifier && rig.value(1) == 30 }
+		#expect(Date().timeIntervalSince(started) >= 0.2)
+		try await Task.sleep(for: .milliseconds(150))
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == third.identifier)
+	}
+	
+	@Test func aFlashHoldsOnlyWhileHeldAndIgnoresTheFade() async throws {
+		let rig = try rig()
+		rig.console.set(40, at: DMXAddress(1)!)
+		rig.add(1, fade: 5, [(0, 1, 255)])
+		
+		rig.console.flash(rig.list, among: rig.lists, isHeld: true)
+		try await until { rig.value(1) == 255 }
+		
+		rig.console.flash(rig.list, among: rig.lists, isHeld: false)
+		try await until { rig.value(1) == 40 }
+		#expect(rig.console.playback.playing.isEmpty)
+	}
+	
 	@Test func jumpingToACueSetsWhatItAndTheCuesBeforeHold() async throws {
 		let rig = try rig()
 		rig.add(1, [(0, 1, 10)])
@@ -255,6 +302,23 @@ struct SceneTests {
 		#expect(held[1].title(at: 1) == "Storm rolls in")
 		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[2] == 77)
 		#expect(held[0].title(at: 0) == "Cue 1")
+	}
+	
+	@Test func aSecondCueMakesTheTileStepThroughCuesUntilChosenOtherwise() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 1)])
+		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)
+		
+		#expect(rig.look.tap == .next)
+		#expect(rig.look.buttons == [.back, .toggle])
+		
+		rig.look.tap = .toggle
+		rig.look.shows(.flash, true)
+		rig.look.shows(.back, false)
+		rig.recording(.cue(rig.look, after: nil)).store(context: rig.context)
+		
+		#expect(rig.look.tap == .toggle)
+		#expect(rig.look.buttons == [.toggle, .flash])
 	}
 	
 	@Test func storingIntoACueReplacesOnlyWhatWasChosen() throws {

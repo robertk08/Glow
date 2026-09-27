@@ -79,8 +79,9 @@ struct ShowSyncTests {
 		levels.set(255, slot: 1, of: "0123456789abcdef")
 		levels.set(7, slot: 14, of: "0123456789abcdef")
 		levels.set(128, slot: 3, of: "par")
-		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, symbol: "sun.max", tint: "orange")
-		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", sortIndex: 1.5, label: "The sun comes up over the hill", fade: 3.5, levels: levels.data)
+		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, symbol: "sun.max", tint: "orange", tap: .flash, buttons: [.back, .update])
+		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", sortIndex: 1.5, label: "The sun comes up over the hill", fade: 3.5, delay: 1, follow: 0, levels: levels.data)
+		let held = ShowContents.Cue(identifier: "held", scene: "look", sortIndex: 2, follow: nil)
 		
 		let readScene = try #require(ShowContents.Scene(identifier: "look", body: scene.body))
 		let readCue = try #require(ShowContents.Cue(identifier: "cue", body: cue.body))
@@ -89,10 +90,15 @@ struct ShowSyncTests {
 		#expect(readScene.sortIndex == 2.5)
 		#expect(readScene.symbol == "sun.max")
 		#expect(readScene.tint == "orange")
+		#expect(readScene.tap == .flash)
+		#expect(readScene.buttons == [.back, .update])
 		#expect(readCue.scene == "0123456789abcdef")
 		#expect(readCue.sortIndex == 1.5)
 		#expect(readCue.label == "The sun comes up over the hill")
 		#expect(readCue.fade == 3.5)
+		#expect(readCue.delay == 1)
+		#expect(readCue.follow == 0)
+		#expect(try #require(ShowContents.Cue(identifier: "held", body: held.body)).follow == nil)
 		#expect(Levels(readCue.levels) == levels)
 	}
 	
@@ -117,7 +123,7 @@ struct ShowSyncTests {
 		
 		let cue = ShowContents.Cue(identifier: "cue", scene: "look", sortIndex: 1, levels: levels.data)
 		
-		#expect(cue.body.first == 4)
+		#expect(cue.body.first == 6)
 		#expect(cue.body.count < levels.data.count * 2 / 3)
 		#expect(try #require(ShowContents.Cue(identifier: "cue", body: cue.body)).levels == levels.data)
 	}
@@ -139,7 +145,7 @@ struct ShowSyncTests {
 	@Test func aBrokenBodyIsNeverReadAsACue() {
 		#expect(ShowContents.Cue(identifier: "cue", body: Data(#"{"identifier":"look","name":"Look","levels":{}}"#.utf8)) == nil)
 		#expect(ShowContents.Scene(identifier: "look", body: Data(#"{"identifier":"look","name":"Look","sortIndex":0}"#.utf8)) == nil)
-		#expect(ShowContents.Cue(identifier: "cue", body: Data([3, 0])) == nil)
+		#expect(ShowContents.Cue(identifier: "cue", body: Data([5, 0])) == nil)
 		#expect(ShowContents.Cue(identifier: "cue", body: Data()) == nil)
 	}
 	

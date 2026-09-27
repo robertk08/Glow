@@ -8,6 +8,8 @@ final class Look {
 	var sortIndex: Double = 0
 	var symbolOverride: String?
 	var tintName: String?
+	var tapValue: Int = 0
+	var buttonValues: [Int] = []
 	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
@@ -16,7 +18,7 @@ final class Look {
 	}
 	
 	var entry: ShowContents.Scene {
-		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName)
+		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons)
 	}
 	
 	func take(_ entry: ShowContents.Scene) {
@@ -25,6 +27,22 @@ final class Look {
 		sortIndex = entry.sortIndex
 		symbolOverride = entry.symbol
 		tintName = entry.tint
+		tap = entry.tap
+		buttons = entry.buttons
+	}
+	
+	var tap: SceneAction {
+		get { SceneAction(rawValue: tapValue) ?? .toggle }
+		set { tapValue = newValue.rawValue }
+	}
+	
+	var buttons: [SceneAction] {
+		get { buttonValues.compactMap(SceneAction.init(rawValue:)) }
+		set { buttonValues = newValue.map(\.rawValue) }
+	}
+	
+	func shows(_ button: SceneAction, _ isShown: Bool) {
+		buttons = SceneAction.allCases.filter { $0 == button ? isShown : buttons.contains($0) }
 	}
 	
 	var tint: FixtureTint {
@@ -52,11 +70,16 @@ final class Look {
 		let copy = Look(name: Identifier.unusedName(name, among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
 		copy.symbolOverride = symbolOverride
 		copy.tintName = tintName
+		copy.tapValue = tapValue
+		copy.buttonValues = buttonValues
 		context.insert(copy)
 		
 		for cue in self.cues(among: cues) {
-			let twin = Cue(lookID: copy.identifier, sortIndex: cue.sortIndex, fade: cue.fade, levels: cue.levels)
-			twin.label = cue.label
+			var entry = cue.entry
+			entry.identifier = Identifier.fresh()
+			entry.scene = copy.identifier
+			let twin = Cue(lookID: copy.identifier, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
+			twin.take(entry)
 			context.insert(twin)
 		}
 	}

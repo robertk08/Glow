@@ -8,6 +8,8 @@ final class Cue {
 	var sortIndex: Double = 0
 	var label: String = ""
 	var fade: Double = 0
+	var delay: Double = 0
+	var follow: Double?
 	var values: Data = Data()
 	
 	init(lookID: String, sortIndex: Double, fade: Double, levels: Levels) {
@@ -24,7 +26,7 @@ final class Cue {
 	}
 	
 	var entry: ShowContents.Cue {
-		ShowContents.Cue(identifier: identifier, scene: lookID, sortIndex: sortIndex, label: label, fade: fade, levels: values)
+		ShowContents.Cue(identifier: identifier, scene: lookID, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow, levels: values)
 	}
 	
 	func take(_ entry: ShowContents.Cue) {
@@ -33,6 +35,8 @@ final class Cue {
 		sortIndex = entry.sortIndex
 		label = entry.label
 		fade = entry.fade
+		delay = entry.delay
+		follow = entry.follow
 		values = entry.levels
 	}
 	
@@ -40,7 +44,14 @@ final class Cue {
 		label.isEmpty ? "Cue \(position + 1)" : label
 	}
 	
-	static func seconds(_ value: Double) -> String {
-		value > 0 ? "\(value.formatted(.number.precision(.fractionLength(0...1)))) s" : "No fade"
+	var timing: String {
+		var parts = [fade > 0 ? "\(Self.seconds(fade)) fade" : "No fade"]
+		if delay > 0 { parts.append("\(Self.seconds(delay)) delay") }
+		if let follow { parts.append(follow > 0 ? "next after \(Self.seconds(follow))" : "next right after") }
+		return parts.joined(separator: ", ")
+	}
+	
+	static func seconds(_ value: Double, zero: String = "None") -> String {
+		value > 0 ? "\(value.formatted(.number.precision(.fractionLength(0...1)))) s" : zero
 	}
 }

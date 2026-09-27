@@ -77,6 +77,38 @@
     "sortIndex": 6.0
    },
    {
+    "fade": 2.0,
+    "identifier": "8d6e70a38aa751ec",
+    "label": "Dark",
+    "levels": "AibptsGygFdLgAACLIuqQr8A0yWAAAIsoAfO6Fah7yAAAkTIpgm2MWt4gAACYfo8CO74uziAAAJl9WfJRWcPqCAAAoKPkw/1lGGVAwAAApgB0AKFRE+hAwAAArNlL+HUKDoZMAAA",
+    "scene": "77b2ee07d9d2a24b",
+    "sortIndex": 1.0
+   },
+   {
+    "fade": 3.0,
+    "identifier": "ca7e47614b06176a",
+    "label": "Full stage",
+    "levels": "AibptsGygFdLj//Zsv//AiyLqkK/ANMlj//Zsv//AkTIpgm2MWt4j//Zsv//AmH6PAju+Ls4j//Zsv//BIKPkw/1lGGV+wf/////2ZmzMv//BJgB0AKFRE+h+wf/////2ZmzMv//",
+    "scene": "77b2ee07d9d2a24b",
+    "sortIndex": 2.0
+   },
+   {
+    "fade": 3.0,
+    "identifier": "ba86934a5347e839",
+    "label": "The reader alone in one light",
+    "levels": "AibptsGygFdLgAACLIuqQr8A0yWAAAJEyKYJtjFreIAAAmH6PAju+Ls4gAAEZfVnyUVnD6jvA4AAWZnw/+bM/wKCj5MP9ZRhlQMAAAKYAdAChURPoQMAAA==",
+    "scene": "77b2ee07d9d2a24b",
+    "sortIndex": 3.0
+   },
+   {
+    "fade": 0.0,
+    "identifier": "bfe815fe97ae710e",
+    "label": "",
+    "levels": "AibptsGygFdLj///////AiyLqkK/ANMlj///////AkTIpgm2MWt4j///////AmH6PAju+Ls4j///////BIKPkw/1lGGV+wf/////////////BJgB0AKFRE+h+wf/////////////",
+    "scene": "2ca8c6a4dc130952",
+    "sortIndex": 1.0
+   },
+   {
     "fade": 0.5,
     "identifier": "2244bc056e9983bc",
     "label": "",
@@ -238,17 +270,47 @@
     "tint": "orange"
    },
    {
+    "buttons": [
+     3,
+     0,
+     4
+    ],
     "identifier": "d7c3d10a8590ccee",
     "name": "Evening",
     "sortIndex": 3,
     "symbol": "theatermasks",
+    "tap": 2,
     "tint": "purple"
    },
    {
+    "buttons": [
+     3,
+     0
+    ],
+    "identifier": "77b2ee07d9d2a24b",
+    "name": "Reading",
+    "sortIndex": 4,
+    "symbol": "book",
+    "tap": 2,
+    "tint": "teal"
+   },
+   {
+    "identifier": "2ca8c6a4dc130952",
+    "name": "Blinder",
+    "sortIndex": 5,
+    "symbol": "bolt",
+    "tap": 1,
+    "tint": "yellow"
+   },
+   {
+    "buttons": [
+     0
+    ],
     "identifier": "4146a4d32e185f8f",
     "name": "Color Steps",
-    "sortIndex": 4,
+    "sortIndex": 6,
     "symbol": "circle.hexagongrid",
+    "tap": 2,
     "tint": "pink"
    }
   ]
