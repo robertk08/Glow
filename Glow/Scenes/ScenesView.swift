@@ -131,7 +131,7 @@ struct ScenesView: View {
 	}
 }
 
-private struct SceneTile: View {
+struct SceneTile: View {
 	@Environment(Console.self) private var console
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	
@@ -331,7 +331,7 @@ private struct TileButtons: View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
-		HStack(spacing: 8) {
+		let row = EvenRow(spacing: 8) {
 			ForEach(look.buttons) { action in
 				switch action {
 				case .flash:
@@ -350,7 +350,7 @@ private struct TileButtons: View {
 						}
 					} label: {
 						Label(action.name, systemImage: action.symbol)
-							.frame(maxWidth: .infinity)
+							.frame(maxWidth: .infinity, minHeight: 26)
 					}
 					.disabled(current == nil || console.active.isEmpty)
 				case .toggle:
@@ -358,23 +358,48 @@ private struct TileButtons: View {
 						console.run(action, on: list, among: lists)
 					} label: {
 						Label(index == nil ? "On" : "Off", systemImage: action.symbol)
-							.frame(maxWidth: .infinity)
+							.frame(maxWidth: .infinity, minHeight: 26)
 					}
 				case .next, .back:
 					Button {
 						console.run(action, on: list, among: lists)
 					} label: {
 						Label(action.name, systemImage: action.symbol)
-							.frame(maxWidth: .infinity)
+							.frame(maxWidth: .infinity, minHeight: 26)
 					}
 					.disabled(list.cues.count < 2 || action == .back && index == nil)
 				}
 			}
 		}
+		
+		ViewThatFits(in: .horizontal) {
+			row
+			
+			row
+				.labelStyle(.iconOnly)
+		}
 		.font(.subheadline.weight(.medium))
 		.lineLimit(1)
 		.buttonStyle(.glass)
 		.frame(minHeight: 40)
+	}
+}
+
+private struct EvenRow: Layout {
+	let spacing: CGFloat
+	
+	func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+		let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+		let needed = (sizes.map(\.width).max() ?? 0) * CGFloat(subviews.count) + spacing * CGFloat(max(subviews.count - 1, 0))
+		return CGSize(width: proposal.width ?? needed, height: sizes.map(\.height).max() ?? 0)
+	}
+	
+	func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+		let width = (bounds.width - spacing * CGFloat(max(subviews.count - 1, 0))) / CGFloat(max(subviews.count, 1))
+		
+		for (index, subview) in subviews.enumerated() {
+			subview.place(at: CGPoint(x: bounds.minX + CGFloat(index) * (width + spacing), y: bounds.minY), proposal: ProposedViewSize(width: width, height: bounds.height))
+		}
 	}
 }
 

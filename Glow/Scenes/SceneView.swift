@@ -192,15 +192,20 @@ struct SceneView: View {
 }
 
 private struct SceneSettings: View {
+	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.dismiss) private var dismiss
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
+	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@Bindable var look: Look
 	
 	@State private var isDeleting = false
 	
 	var body: some View {
+		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
+		
 		Form {
 			Section {
 				TextField("Name", text: $look.name)
@@ -223,7 +228,7 @@ private struct SceneSettings: View {
 			} header: {
 				Text("On the Tile")
 			} footer: {
-				Text("A tile with buttons is twice as wide. Everything else is in its menu.")
+				Text("Everything else is in the tile's menu.")
 			}
 			
 			Section("Icon") {
@@ -243,6 +248,16 @@ private struct SceneSettings: View {
 					Text("The lights stay as they are.")
 				}
 			}
+		}
+		.safeAreaBar(edge: .top) {
+			SceneTile(look: look, list: CueList(look, cues: cues, fixtures: fixtures, library: library), lists: lists, recording: .constant(nil), showing: .constant(nil), deleting: .constant(nil))
+				.environment(\.horizontalSizeClass, .compact)
+				.allowsHitTesting(false)
+				.fixedSize(horizontal: false, vertical: true)
+				.frame(maxWidth: look.buttons.isEmpty ? 200 : .infinity)
+				.padding(.horizontal)
+				.padding(.bottom, 8)
+				.animation(.snappy, value: look.buttons)
 		}
 		.navigationTitle("Scene Settings")
 		.navigationBarTitleDisplayMode(.inline)

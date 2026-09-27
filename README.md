@@ -92,10 +92,10 @@ light it holds takes the values it stored, turn off, where those lights go back
 to whatever they were doing before, flash, which is on only while a finger
 holds it, and step through its cues. What differs is what a tap on the tile
 does, turn on and off, flash or run the next cue, and which buttons sit on the
-tile: Back, Next, On and Off, Flash and Update. Both are chosen per scene, a
-tile with buttons is twice as wide and shows them whether the scene is on or
-off, so no tile moves while you play, and everything else is in the tile's
-menu. A scene gets its second cue and its tap
+tile: Back, Next, On and Off, Flash and Update. Both are chosen per scene with
+the tile shown above them, a tile with buttons is twice as wide and shows them
+whether the scene is on or off, so no tile moves while you play, and everything
+else is in the tile's menu. A scene gets its second cue and its tap
 starts running cues, with Back and On and Off on the tile, until you choose
 otherwise. Scenes can be on together, and the one turned on last wins a light
 they share.
