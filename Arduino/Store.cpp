@@ -26,9 +26,12 @@ const size_t   HEAD         = 5;
 const uint32_t REVIEW_FROM  = 32768;
 const uint32_t REVIEW_EVERY = 16384;
 const uint32_t MEASURE_MS   = 500;
-const int      JOBS_WAITING = 8;
-const int      KEEPER_STACK = 4096;
+const int      JOBS_WAITING = 32;
+const int      KEEPER_STACK = 6144;
 const size_t   PIECE        = 1024;
+const int      SORTED       = 2048;
+const int      SLICES_MAX   = 64;
+const uint32_t PUT_BIT      = 0x80000000;
 
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
@@ -38,6 +41,7 @@ SemaphoreHandle_t g_lock       = nullptr;
 QueueHandle_t     g_jobs       = nullptr;
 QueueHandle_t     g_settled    = nullptr;
 uint8_t           g_piece[PIECE];
+uint8_t           g_scan[PIECE];
 
 struct Hold {
   Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -57,11 +61,14 @@ struct Entry {
   uint64_t key;
   uint32_t at;
   uint32_t length;
-  bool     put;
 };
 
-bool path(char *out, const char *show, const char *suffix) {
-  return safe(show) && snprintf(out, PATH_LIMIT, "%s/%s%s", ROOT, show, suffix) < (int)PATH_LIMIT;
+Entry g_entries[SORTED];
+
+bool path(char *out, const char *show, int file, const char *suffix) {
+  if (!safe(show)) return false;
+  int n = file ? snprintf(out, PATH_LIMIT, "%s/%s.%d%s", ROOT, show, file, suffix) : snprintf(out, PATH_LIMIT, "%s/%s%s", ROOT, show, suffix);
+  return n < (int)PATH_LIMIT;
 }
 
 uint64_t hash(uint64_t h, const char *text) {
@@ -69,18 +76,37 @@ uint64_t hash(uint64_t h, const char *text) {
   return h;
 }
 
-uint64_t key(const Record &r) {
-  return hash(hash(hash(1469598103934665603ULL, r.folder), "/"), r.id);
+uint64_t key(const char *folder, const char *id) {
+  return hash(hash(hash(1469598103934665603ULL, folder), "/"), id);
 }
+
+uint64_t key(const Record &r) { return key(r.folder, r.id); }
 
 uint32_t sizeOf(int fd) {
   struct stat st;
   return fstat(fd, &st) ? 0 : (uint32_t)st.st_size;
 }
 
-bool record(int fd, uint32_t at, uint32_t size, Record &r) {
-  uint8_t head[HEAD];
-  if (at + HEAD > size || ::pread(fd, head, HEAD, at) != (ssize_t)HEAD) return false;
+struct Cursor {
+  int      fd;
+  uint32_t size;
+  uint32_t base   = 0;
+  uint32_t filled = 0;
+
+  const uint8_t *at(uint32_t offset, size_t length) {
+    if (offset < base || offset + length > base + filled) {
+      base      = offset;
+      ssize_t n = ::pread(fd, g_scan, std::min(PIECE, (size_t)(size - offset)), offset);
+      filled    = n > 0 ? n : 0;
+      if (length > filled) return nullptr;
+    }
+    return g_scan + (offset - base);
+  }
+};
+
+bool record(Cursor &c, uint32_t at, Record &r) {
+  const uint8_t *head = at + HEAD <= c.size ? c.at(at, HEAD) : nullptr;
+  if (!head) return false;
 
   size_t folderLength = head[1];
   size_t idLength     = head[2];
@@ -90,10 +116,12 @@ bool record(int fd, uint32_t at, uint32_t size, Record &r) {
   r.at   = at;
   r.body = at + HEAD + folderLength + idLength;
   r.next = r.body + (head[3] | (head[4] << 8));
-  if (r.next > size) return false;
-  if (::pread(fd, r.folder, folderLength, at + HEAD) != (ssize_t)folderLength) return false;
-  if (::pread(fd, r.id, idLength, at + HEAD + folderLength) != (ssize_t)idLength) return false;
+  if (r.next > c.size) return false;
 
+  const uint8_t *names = c.at(at + HEAD, folderLength + idLength);
+  if (!names) return false;
+  memcpy(r.folder, names, folderLength);
+  memcpy(r.id, names + folderLength, idLength);
   r.folder[folderLength] = '\0';
   r.id[idLength]         = '\0';
   return true;
@@ -101,11 +129,22 @@ bool record(int fd, uint32_t at, uint32_t size, Record &r) {
 
 size_t showLength(const Job &job) { return job.frame[2]; }
 
+int fileOf(const Job &job) {
+  const uint8_t *p = job.frame + DOC_HEADER + job.frame[2];
+  char folder[NAME_LIMIT];
+  char id[NAME_LIMIT];
+  memcpy(folder, p, job.frame[3]);
+  memcpy(id, p + job.frame[3], job.frame[4]);
+  folder[job.frame[3]] = '\0';
+  id[job.frame[4]]     = '\0';
+  return (int)(key(folder, id) % FILES);
+}
+
 bool sameShow(const Job &a, const Job &b) {
   return b.frame[1] != DROP && showLength(a) == showLength(b) && !memcmp(a.frame + DOC_HEADER, b.frame + DOC_HEADER, showLength(a));
 }
 
-bool append(const char *file, Job *jobs, int count, uint32_t &before, uint32_t &after) {
+bool append(const char *file, Job **jobs, int count, uint32_t &before, uint32_t &after) {
   Hold hold;
   return Flash::guarded([&] {
     int fd = ::open(file, O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -115,10 +154,10 @@ bool append(const char *file, Job *jobs, int count, uint32_t &before, uint32_t &
 
     bool written = true;
     for (int i = 0; i < count && written; i++) {
-      const uint8_t *p          = jobs[i].frame;
+      const uint8_t *p          = jobs[i]->frame;
       uint8_t        head[HEAD] = {p[1], p[3], p[4], p[5], p[6]};
-      size_t         skip       = DOC_HEADER + showLength(jobs[i]);
-      size_t         length     = jobs[i].length - skip;
+      size_t         skip       = DOC_HEADER + showLength(*jobs[i]);
+      size_t         length     = jobs[i]->length - skip;
       written = ::write(fd, head, HEAD) == (ssize_t)HEAD && ::write(fd, p + skip, length) == (ssize_t)length;
       after += HEAD + length;
     }
@@ -127,56 +166,87 @@ bool append(const char *file, Job *jobs, int count, uint32_t &before, uint32_t &
   });
 }
 
-bool review(const char *show, bool always) {
-  char file[PATH_LIMIT];
-  char spare[PATH_LIMIT];
-  if (!path(file, show, "") || !path(spare, show, ".tmp")) return false;
+int gather(int fd, uint32_t size, int slices, int slice) {
+  int    count = 0;
+  Cursor c{fd, size};
+  Record r;
+  for (uint32_t at = 0; at < size && record(c, at, r); at = r.next) {
+    uint64_t k = key(r);
+    if ((int)((k >> 32) % slices) != slice) continue;
+    if (count == SORTED) return -1;
+    g_entries[count++] = {k, r.at, (r.next - r.at) | (r.op == PUT ? PUT_BIT : 0)};
+  }
 
-  Hold hold;
+  std::sort(g_entries, g_entries + count, [](const Entry &a, const Entry &b) { return a.key != b.key ? a.key < b.key : a.at < b.at; });
+
+  int kept = 0;
+  for (int i = 0; i < count; i++) {
+    if ((i + 1 < count && g_entries[i + 1].key == g_entries[i].key) || !(g_entries[i].length & PUT_BIT)) continue;
+    g_entries[kept] = g_entries[i];
+    g_entries[kept++].length &= ~PUT_BIT;
+  }
+
+  std::sort(g_entries, g_entries + kept, [](const Entry &a, const Entry &b) { return a.at < b.at; });
+  return kept;
+}
+
+bool review(const char *show, int file, bool always) {
+  char name[PATH_LIMIT];
+  char spare[PATH_LIMIT];
+  if (!path(name, show, file, "") || !path(spare, show, file, ".tmp")) return false;
+
+  Hold     hold;
+  uint32_t began = millis();
   if (!always && g_readers) return false;
-  int from = ::open(file, O_RDONLY);
+  int from = ::open(name, O_RDONLY);
   if (from < 0) return false;
   uint32_t size = sizeOf(from);
 
-  std::vector<Entry> entries;
-  Record r;
-  for (uint32_t at = 0; at < size && record(from, at, size, r); at = r.next) {
-    entries.push_back({key(r), r.at, r.next - r.at, r.op == PUT});
+  uint32_t records = 0;
+  Cursor   c{from, size};
+  Record   r;
+  for (uint32_t at = 0; at < size && record(c, at, r); at = r.next) records++;
+
+  int      slices  = records / SORTED + 1;
+  uint32_t holding = 0;
+  int      slice   = 0;
+  while (slice < slices && slices <= SLICES_MAX) {
+    int kept = gather(from, size, slices, slice);
+    if (kept < 0) {
+      slices++;
+      slice   = 0;
+      holding = 0;
+      continue;
+    }
+    for (int i = 0; i < kept; i++) holding += g_entries[i].length;
+    slice++;
   }
 
-  std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) { return a.key != b.key ? a.key < b.key : a.at < b.at; });
-
-  std::vector<Entry> kept;
-  uint32_t           holding = 0;
-  for (size_t i = 0; i < entries.size(); i++) {
-    if ((i + 1 < entries.size() && entries[i + 1].key == entries[i].key) || !entries[i].put) continue;
-    kept.push_back(entries[i]);
-    holding += entries[i].length;
-  }
-  std::vector<Entry>().swap(entries);
-
-  if (!always && holding * 2 > size) {
+  if (slices > SLICES_MAX || (!always && holding * 2 > size)) {
     ::close(from);
     return false;
   }
 
-  std::sort(kept.begin(), kept.end(), [](const Entry &a, const Entry &b) { return a.at < b.at; });
-
   int  to     = ::open(spare, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   bool copied = to >= 0;
-  for (const Entry &entry : kept) {
-    for (uint32_t done = 0; copied && done < entry.length;) {
-      size_t n = std::min(PIECE, (size_t)(entry.length - done));
-      copied   = ::pread(from, g_piece, n, entry.at + done) == (ssize_t)n && Flash::guarded([&] { return ::write(to, g_piece, n) == (ssize_t)n; });
-      done += n;
+  for (slice = 0; copied && slice < slices; slice++) {
+    int kept = gather(from, size, slices, slice);
+    copied   = kept >= 0;
+    for (int i = 0; copied && i < kept; i++) {
+      for (uint32_t done = 0; copied && done < g_entries[i].length;) {
+        size_t n = std::min(PIECE, (size_t)(g_entries[i].length - done));
+        copied   = ::pread(from, g_piece, n, g_entries[i].at + done) == (ssize_t)n && Flash::guarded([&] { return ::write(to, g_piece, n) == (ssize_t)n; });
+        done += n;
+      }
     }
   }
   ::close(from);
 
   if (to >= 0) copied = Flash::guarded([&] { return ::close(to) == 0; }) && copied;
-  if (copied) copied = Flash::guarded([&] { return ::rename(spare, file) == 0; });
+  if (copied) copied = Flash::guarded([&] { return ::rename(spare, name) == 0; });
   if (!copied) Flash::guarded([&] { return ::unlink(spare) == 0; });
   if (copied) g_generation++;
+  Serial.printf("store: %s.%d kept %u of %u bytes in %u ms\n", show, file, (unsigned)holding, (unsigned)size, (unsigned)(millis() - began));
   return copied;
 }
 
@@ -185,35 +255,55 @@ void perform(Job *jobs, int count) {
   memcpy(show, jobs[0].frame + DOC_HEADER, showLength(jobs[0]));
   show[showLength(jobs[0])] = '\0';
 
-  char file[PATH_LIMIT];
-  bool named = path(file, show, "");
-
   if (jobs[0].frame[1] == DROP) {
-    if (named) {
+    if (safe(show)) {
       Hold hold;
-      Flash::guarded([&] { return ::unlink(file) == 0; });
+      for (int file = 0; file < FILES; file++) {
+        char name[PATH_LIMIT];
+        if (path(name, show, file, "")) Flash::guarded([&] { return ::unlink(name) == 0; });
+      }
       g_generation++;
     }
     free(jobs[0].frame);
     return;
   }
 
-  uint32_t before = 0;
-  uint32_t after  = 0;
-  bool     listed = named && Shows::contains(show);
-  bool     stored = listed && append(file, jobs, count, before, after);
-  if (listed && !stored && review(show, true)) stored = append(file, jobs, count, before, after);
+  bool listed = safe(show) && Shows::contains(show);
+  int  grown  = 0;
+  for (int file = 0; listed && file < FILES; file++) {
+    Job *group[JOBS_WAITING];
+    int  members = 0;
+    for (int i = 0; i < count; i++) {
+      if (fileOf(jobs[i]) == file) group[members++] = &jobs[i];
+    }
+    if (!members) continue;
+
+    char     name[PATH_LIMIT];
+    uint32_t before = 0;
+    uint32_t after  = 0;
+    bool     stored = path(name, show, file, "") && append(name, group, members, before, after);
+    if (!stored) {
+      for (int other = 0; other < FILES; other++) review(show, other, true);
+      stored = append(name, group, members, before, after);
+    }
+    for (int i = 0; i < members; i++) group[i]->stored = stored;
+
+    uint32_t step = REVIEW_EVERY;
+    while (step * 8 <= before) step *= 2;
+    if (stored && after >= REVIEW_FROM && before / step != after / step) grown |= 1 << file;
+  }
 
   for (int i = 0; i < count; i++) {
-    jobs[i].stored = stored;
     if (jobs[i].done) {
-      *jobs[i].outcome = stored;
+      *jobs[i].outcome = jobs[i].stored;
       xSemaphoreGive(jobs[i].done);
     }
     xQueueSend(g_settled, &jobs[i], portMAX_DELAY);
   }
 
-  if (stored && after >= REVIEW_FROM && before / REVIEW_EVERY != after / REVIEW_EVERY) review(show, false);
+  for (int file = 0; file < FILES; file++) {
+    if (grown & (1 << file)) review(show, file, false);
+  }
 }
 
 void keeper(void *) {
@@ -254,7 +344,11 @@ void sweep() {
   std::vector<String> strays;
   if (DIR *root = opendir(ROOT)) {
     while (dirent *entry = readdir(root)) {
-      if (entry->d_type == DT_REG && strcmp(entry->d_name, "shows.json") && !Shows::contains(entry->d_name)) strays.push_back(String(ROOT) + "/" + entry->d_name);
+      char   show[NAME_LIMIT + 4];
+      size_t n = strlen(entry->d_name);
+      snprintf(show, sizeof(show), "%s", entry->d_name);
+      if (n > 2 && show[n - 2] == '.' && show[n - 1] > '0' && show[n - 1] < '0' + FILES) show[n - 2] = '\0';
+      if (entry->d_type == DT_REG && strcmp(entry->d_name, "shows.json") && !Shows::contains(show)) strays.push_back(String(ROOT) + "/" + entry->d_name);
     }
     closedir(root);
   }
@@ -324,51 +418,60 @@ void drop(const char *show) {
 }
 
 bool whole(const char *show, Span &span) {
-  char file[PATH_LIMIT];
-  if (!path(file, show, "")) return false;
-
-  Hold        hold;
-  struct stat st;
-  span = {0, stat(file, &st) ? 0 : (uint32_t)st.st_size, g_generation};
+  Hold hold;
+  span = {0, 0, g_generation, {}};
+  for (int file = 0; file < FILES; file++) {
+    char        name[PATH_LIMIT];
+    struct stat st;
+    if (!path(name, show, file, "")) return false;
+    span.sizes[file] = stat(name, &st) ? 0 : (uint32_t)st.st_size;
+    span.to += span.sizes[file];
+  }
   g_readers++;
   return true;
 }
 
 bool locate(const char *show, const char *folder, const char *id, Span &span) {
-  char file[PATH_LIMIT];
-  span = {0, 0, 0};
-  if (!path(file, show, "")) return false;
-
+  span = {0, 0, 0, {}};
   Hold hold;
-  int  fd = ::open(file, O_RDONLY);
-  if (fd < 0) return false;
+  bool found = false;
+  for (int file = 0; file < FILES; file++) {
+    char name[PATH_LIMIT];
+    if (!path(name, show, file, "")) return false;
+    int fd = ::open(name, O_RDONLY);
+    if (fd < 0) continue;
 
-  uint32_t size  = sizeOf(fd);
-  bool     found = false;
-  Record   r;
-  for (uint32_t at = 0; at < size && record(fd, at, size, r); at = r.next) {
-    if (strcmp(r.folder, folder) || strcmp(r.id, id)) continue;
-    found = r.op == PUT;
-    span  = {r.body, r.next, g_generation};
+    Cursor c{fd, sizeOf(fd)};
+    Record r;
+    for (uint32_t at = 0; at < c.size && record(c, at, r); at = r.next) {
+      if (strcmp(r.folder, folder) || strcmp(r.id, id)) continue;
+      found            = r.op == PUT;
+      span             = {r.body, r.next, g_generation, {}};
+      span.sizes[file] = r.next;
+    }
+    ::close(fd);
   }
-  ::close(fd);
   if (found) g_readers++;
   return found;
 }
 
 long read(const char *show, Span &span, uint8_t *into, size_t max) {
-  char file[PATH_LIMIT];
-  if (!path(file, show, "")) return -1;
-
-  size_t want = span.to - span.from;
-  if (want > max) want = max;
-  if (!want) return 0;
-
   Hold hold;
   if (span.generation != g_generation) return -1;
-  int fd = ::open(file, O_RDONLY);
+
+  uint32_t offset = span.from;
+  int      file   = 0;
+  while (file < FILES && offset >= span.sizes[file]) offset -= span.sizes[file++];
+  if (file == FILES) return span.from < span.to ? -1 : 0;
+
+  size_t want = std::min(max, (size_t)std::min(span.sizes[file] - offset, span.to - span.from));
+  if (!want) return 0;
+
+  char name[PATH_LIMIT];
+  if (!path(name, show, file, "")) return -1;
+  int fd = ::open(name, O_RDONLY);
   if (fd < 0) return -1;
-  ssize_t n = ::pread(fd, into, want, span.from);
+  ssize_t n = ::pread(fd, into, want, offset);
   ::close(fd);
   if (n <= 0) return -1;
   span.from += n;

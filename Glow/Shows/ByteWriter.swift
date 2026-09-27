@@ -35,6 +35,18 @@ nonisolated struct ByteWriter {
 		}
 	}
 	
+	mutating func order(_ value: Double) {
+		let steps = value * 256
+		
+		guard steps >= 0, steps < 8_000_000_000, steps == steps.rounded() else {
+			number(1)
+			double(value)
+			return
+		}
+		
+		number(Int(steps) << 1)
+	}
+	
 	mutating func text(_ value: String) {
 		let bytes = Array(value.utf8)
 		number(bytes.count)
@@ -42,23 +54,16 @@ nonisolated struct ByteWriter {
 	}
 	
 	mutating func identifier(_ value: String, tag: Int) {
-		let nibbles = value.utf8.map { digit -> UInt8? in
-			switch digit {
-			case 48...57: digit - 48
-			case 97...102: digit - 87
-			default: nil
-			}
-		}
-		let isPacked = nibbles.count == 16 && nibbles.allSatisfy { $0 != nil }
-		number(tag << 1 | (isPacked ? 0 : 1))
-		
-		guard isPacked else {
+		guard let packed = Identifier.value(value) else {
+			number(tag << 2 | 2)
 			text(value)
 			return
 		}
 		
-		for index in stride(from: 0, to: 16, by: 2) {
-			data.append((nibbles[index] ?? 0) << 4 | (nibbles[index + 1] ?? 0))
+		number(tag << 2 | (packed.short ? 1 : 0))
+		
+		for shift in stride(from: 56, through: 0, by: -8) {
+			data.append(UInt8(truncatingIfNeeded: packed.value >> UInt64(shift)))
 		}
 	}
 }

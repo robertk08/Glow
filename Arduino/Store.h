@@ -8,6 +8,7 @@ namespace Store {
 
 static const size_t NAME_LIMIT = 40;
 static const size_t DOC_HEADER = 7;
+static const int    FILES      = 8;
 
 struct Job {
   uint8_t          *frame;
@@ -22,6 +23,7 @@ struct Span {
   uint32_t from;
   uint32_t to;
   uint32_t generation;
+  uint32_t sizes[FILES];
 };
 
 bool begin();

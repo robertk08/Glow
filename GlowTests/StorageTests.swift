@@ -7,6 +7,7 @@ import Testing
 @MainActor
 struct StorageTests {
 	private static let filesystem = 0x5F0000
+	private static let files = 8
 	private static let lights = 50
 	private static let channels = 20
 	
@@ -109,7 +110,7 @@ struct StorageTests {
 		#expect(total < 60_000)
 	}
 	
-	@Test func oneFiftyLightShowHoldsTenThousandCuesOrFourThousandWholeLooks() async throws {
+	@Test func oneFiftyLightShowHoldsTwentyFiveThousandCuesOrSevenThousandWholeLooks() async throws {
 		let show = Self.rig()
 		let files = await ShowLibrary.snapshot(of: show)
 		let whole = try Self.cue(named: "Whole", in: files, of: show)
@@ -122,10 +123,10 @@ struct StorageTests {
 			fixed += Self.record(key, data)
 		}
 		
-		let room = Self.filesystem / 2 - fixed
+		let room = Self.filesystem / Self.files * (Self.files - 1) - fixed
 		
-		#expect(room / Self.record(tracked.key, tracked.body) >= 10_000)
-		#expect(room / (Self.record(whole.key, whole.body) + Self.record(scene.key, scene.value)) >= 4_000)
+		#expect(room / Self.record(tracked.key, tracked.body) >= 25_000)
+		#expect(room / (Self.record(whole.key, whole.body) + Self.record(scene.key, scene.value)) >= 7_000)
 	}
 	
 	@Test func theWholeShowIsATinyShareOfTheFilesystem() async {

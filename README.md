@@ -516,10 +516,12 @@ will not replace an open file.
 
 | Method | Path | |
 |---|---|---|
-| GET | `/api/show/<id>` | the show file, as stored |
+| GET | `/api/show/<id>` | the show's eight files, one after another, as stored |
 | GET, PUT | `/api/show/<id>/<folder>/<objid>` | one object |
 
-A show is one file named by its id, and every write appends one record to it:
+A show is eight files, `<id>` and `<id>.1` to `<id>.7`. Every object always
+lands in the same one, picked by a hash of its folder and id, and every write
+appends one record to it:
 
 ```
 byte 0      0 put, 1 delete
@@ -534,10 +536,15 @@ removes it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders toda
 Names are letters, digits, hyphen and underscore, up to 39 characters, and
 anything else is refused. One object can be up to 64 KB. Once a file has grown
 past twice what its newest records hold, the store task rewrites it with only
-those, so a show costs about what it holds and deleting one removes one file.
+those, and when the flash is full a write first rewrites every file of its show.
+A rewrite needs room for a copy of one file, an eighth of the show, so a single
+show can grow to about eight ninths of the flash. It sorts the records in a
+fixed 32 KB table, one slice of the keys at a time when a file holds more than
+fit, so no show is too large to rewrite. A store task gathers up to 32 queued
+writes and commits them together, one flash write per file they touch.
 
 **The controller does not know what a folder means.** It stores and returns
-records without parsing a body, `GET /api/show/<id>` sends the file as it is,
+records without parsing a body, `GET /api/show/<id>` sends the files as they are,
 and the app keeps the newest record per folder and id. So a new kind of object
 is a folder the app starts writing to, and the firmware does not change.
 `/shows.json` is the one file the controller reads, and it keeps it in memory.
@@ -552,30 +559,34 @@ fetches just that object and applies it, so nothing reloads the show to learn
 one name changed.
 
 Scenes and cues are binary, because they are what a show holds most of. A
-scene is a format byte (3), what a tap does and its tile buttons as a count and
-one byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order as a
-little endian double, then its name, icon and colour as texts. Each cue is its own object, so editing one cue
+scene is a format byte (4), what a tap does and its tile buttons as a count and
+one byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order,
+then its name, icon and colour as texts. Each cue is its own object, so editing one cue
 writes one small record however long the list is:
 
 ```
-byte 0      5 plain, 6 the rest is raw DEFLATE, whichever is smaller
-then        scene id, order as a little endian double, fade and delay in
+byte 0      7 plain, 8 the rest is raw DEFLATE, whichever is smaller
+then        scene id, order, fade and delay in
             tenths of a second, when the next cue follows (0 never, else
             tenths plus one), name, then the lights to the end
 per light   header, id, channel mask, one byte per channel the mask sets
 ```
 
-Numbers are unsigned LEB128 and a text is a length then UTF-8. An id is
-written as `header << 1` then its eight bytes when it is sixteen hex digits, or
-as `header << 1 | 1` then a text. The header of a light is the length of its
+Numbers are unsigned LEB128 and a text is a length then UTF-8. An order is a
+number, twice the order in 256ths, when that is exact, or 1 then a little endian
+double. An id is written as `header << 2` then its eight bytes when it is
+sixteen hex digits, `header << 2 | 1` then its eight bytes when it is eleven
+base64url characters, or `header << 2 | 2` then a text. The header of a light is the length of its
 mask in bytes, and of the scene id in a cue it is 0. A cue stores only the
 channels it holds, so a cue that sets four lights' dimmers is about fifty
 bytes. It still records lights rather than addresses, so re-addressing later
 does not point a cue at whatever now sits on those channels.
 
-An id is sixteen hex characters, not a UUID. A cue names every light it holds,
-so the id is most of what a cue weighs, and the odds of two devices minting
-the same one are still far past never.
+An id is 64 random bits written as eleven base64url characters, not a UUID.
+Ids made before that are sixteen hex characters, and both stay valid. A record
+names its object and a cue names every light it holds, so the id is most of
+what a small cue weighs, and the odds of two devices minting the same one are
+still far past never.
 
 **Order is a fraction, not a position.** Dragging a light to a new place gives
 it a value between its new neighbours and leaves every other light alone, so one

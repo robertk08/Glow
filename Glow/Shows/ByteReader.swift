@@ -1,8 +1,6 @@
 import Foundation
 
 nonisolated struct ByteReader {
-	private static let digits = Array("0123456789abcdef".utf8)
-	
 	private let bytes: [UInt8]
 	private var cursor = 0
 	
@@ -53,6 +51,12 @@ nonisolated struct ByteReader {
 		return Double(bitPattern: bits)
 	}
 	
+	mutating func order() -> Double? {
+		guard let header = number() else { return nil }
+		guard header & 1 == 0 else { return double() }
+		return Double(header >> 1) / 256
+	}
+	
 	mutating func text() -> String? {
 		guard let count = number(), let raw = bytes(count) else { return nil }
 		return String(bytes: raw, encoding: .utf8)
@@ -61,22 +65,13 @@ nonisolated struct ByteReader {
 	mutating func identifier() -> (tag: Int, value: String)? {
 		guard let header = number() else { return nil }
 		
-		guard header & 1 == 0 else {
+		guard header & 3 != 2 else {
 			guard let value = text(), !value.isEmpty else { return nil }
-			return (header >> 1, value)
+			return (header >> 2, value)
 		}
 		
-		guard cursor + 8 <= bytes.count else { return nil }
-		let start = cursor
-		cursor += 8
-		
-		return (header >> 1, String(unsafeUninitializedCapacity: 16) { text in
-			for index in 0..<8 {
-				text[index * 2] = Self.digits[Int(bytes[start + index] >> 4)]
-				text[index * 2 + 1] = Self.digits[Int(bytes[start + index] & 0x0F)]
-			}
-			
-			return 16
-		})
+		guard header & 3 < 2, let raw = bytes(8) else { return nil }
+		let value = raw.reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
+		return (header >> 2, Identifier.text(value, short: header & 3 == 1))
 	}
 }

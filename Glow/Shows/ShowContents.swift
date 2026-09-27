@@ -103,8 +103,8 @@ nonisolated struct ShowContents: Codable, Sendable {
 		
 		init?(identifier: String, body: Data) {
 			var reader = ByteReader(body)
-			guard reader.byte() == 3, let tap = reader.byte().flatMap({ SceneAction(rawValue: Int($0)) }), let count = reader.byte(), let buttons = reader.bytes(Int(count)) else { return nil }
-			guard let sortIndex = reader.double(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
+			guard reader.byte() == 4, let tap = reader.byte().flatMap({ SceneAction(rawValue: Int($0)) }), let count = reader.byte(), let buttons = reader.bytes(Int(count)) else { return nil }
+			guard let sortIndex = reader.order(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
 			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) })
 		}
 		
@@ -121,11 +121,11 @@ nonisolated struct ShowContents: Codable, Sendable {
 		
 		var body: Data {
 			var writer = ByteWriter()
-			writer.byte(3)
+			writer.byte(4)
 			writer.byte(UInt8(tap.rawValue))
 			writer.byte(UInt8(buttons.count))
 			writer.bytes(buttons.map { UInt8($0.rawValue) })
-			writer.double(sortIndex)
+			writer.order(sortIndex)
 			writer.text(name)
 			writer.text(symbol ?? "")
 			writer.text(tint ?? "")
@@ -159,15 +159,15 @@ nonisolated struct ShowContents: Codable, Sendable {
 		init?(identifier: String, body: Data) {
 			var payload = Data(body.dropFirst())
 			
-			if body.first == 6 {
+			if body.first == 8 {
 				guard let inflated = try? (payload as NSData).decompressed(using: .zlib) as Data else { return nil }
 				payload = inflated
-			} else if body.first != 5 {
+			} else if body.first != 7 {
 				return nil
 			}
 			
 			var reader = ByteReader(payload)
-			guard let (_, scene) = reader.identifier(), let sortIndex = reader.double(), let fade = reader.tenths(), let delay = reader.tenths(), let follow = reader.number() else { return nil }
+			guard let (_, scene) = reader.identifier(), let sortIndex = reader.order(), let fade = reader.tenths(), let delay = reader.tenths(), let follow = reader.number() else { return nil }
 			guard let label = reader.text(), Levels(reader.rest) != nil else { return nil }
 			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 10, levels: reader.rest)
 		}
@@ -187,15 +187,15 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var body: Data {
 			var writer = ByteWriter()
 			writer.identifier(scene, tag: 0)
-			writer.double(sortIndex)
+			writer.order(sortIndex)
 			writer.tenths(fade)
 			writer.tenths(delay)
 			writer.number(follow.map { Int(($0 * 10).rounded()) + 1 } ?? 0)
 			writer.text(label)
 			writer.bytes([UInt8](levels))
 			
-			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([5]) + writer.data }
-			return Data([6]) + packed
+			guard let packed = try? (writer.data as NSData).compressed(using: .zlib) as Data, packed.count < writer.data.count else { return Data([7]) + writer.data }
+			return Data([8]) + packed
 		}
 	}
 	
