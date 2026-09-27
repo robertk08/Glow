@@ -26,48 +26,6 @@ struct SceneView: View {
 		return NavigationStack {
 			List {
 				Section {
-					HStack(spacing: 10) {
-						if held.count > 1 {
-							Button("Back", systemImage: "backward.end.fill") {
-								console.back(list)
-							}
-							.labelStyle(.iconOnly)
-							.keyboardShortcut(.leftArrow, modifiers: [])
-							.disabled(index == nil)
-							
-							Button {
-								console.go(list)
-							} label: {
-								Label(index == nil ? "Start" : "Next Cue", systemImage: "forward.end.fill")
-									.frame(maxWidth: .infinity)
-							}
-							.buttonStyle(.glassProminent)
-							.keyboardShortcut(.rightArrow, modifiers: [])
-							
-							Button("Turn Off", systemImage: "stop.fill") {
-								console.toggle(list, among: lists)
-							}
-							.labelStyle(.iconOnly)
-							.disabled(index == nil)
-						} else {
-							Button {
-								console.toggle(list, among: lists)
-							} label: {
-								Label(index == nil ? "Turn On" : "Turn Off", systemImage: index == nil ? "play.fill" : "stop.fill")
-									.frame(maxWidth: .infinity)
-							}
-							.buttonStyle(.glassProminent)
-						}
-					}
-					.lineLimit(1)
-					.buttonStyle(.glass)
-					.buttonBorderShape(.capsule)
-					.controlSize(.large)
-					.listRowBackground(Color.clear)
-					.listRowSeparator(.hidden)
-				}
-				
-				Section {
 					ForEach(Array(held.enumerated()), id: \.element.identifier) { position, cue in
 						Button {
 							console.play(list, at: position)
@@ -104,6 +62,7 @@ struct SceneView: View {
 							.contentShape(.rect)
 						}
 						.buttonStyle(.plain)
+						.tint(look.tint.color)
 						.listRowBackground(position == index ? (look.tint.color ?? .accentColor).opacity(0.14) : nil)
 						.accessibilityAddTraits(position == index ? .isSelected : [])
 						.swipeActions(edge: .leading) {
@@ -161,6 +120,47 @@ struct SceneView: View {
 				} footer: {
 					Text("Name, icon and colour, what a tap on the tile does and which buttons sit on it.")
 				}
+			}
+			.safeAreaBar(edge: .top) {
+				HStack(spacing: 10) {
+					if held.count > 1 {
+						Button("Back", systemImage: "backward.end.fill") {
+							console.back(list)
+						}
+						.labelStyle(.iconOnly)
+						.keyboardShortcut(.leftArrow, modifiers: [])
+						.disabled(index == nil)
+						
+						Button {
+							console.go(list)
+						} label: {
+							Label(index == nil ? "Start" : "Next Cue", systemImage: "forward.end.fill")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.glassProminent)
+						.keyboardShortcut(.rightArrow, modifiers: [])
+						
+						Button("Turn Off", systemImage: "stop.fill") {
+							console.toggle(list, among: lists)
+						}
+						.labelStyle(.iconOnly)
+						.disabled(index == nil)
+					} else {
+						Button {
+							console.toggle(list, among: lists)
+						} label: {
+							Label(index == nil ? "Turn On" : "Turn Off", systemImage: index == nil ? "play.fill" : "stop.fill")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.glassProminent)
+					}
+				}
+				.lineLimit(1)
+				.buttonStyle(.glass)
+				.buttonBorderShape(.capsule)
+				.controlSize(.large)
+				.padding(.horizontal)
+				.padding(.bottom, 8)
 			}
 			.navigationTitle(look.name)
 			.navigationBarTitleDisplayMode(.inline)

@@ -152,6 +152,7 @@ private struct SceneTile: View {
 		let hasCues = list.cues.count > 1
 		let tint = look.tint.color ?? .accentColor
 		let isShown = sizeClass == .regular && console.selection.scene == look.identifier
+		let buttons = look.buttons.filter { isOn || $0 == .flash || look.tap == .flash && ($0 == .toggle || $0 == .next) }
 		
 		return VStack(alignment: .leading, spacing: 14) {
 			HStack(alignment: .top, spacing: 10) {
@@ -226,8 +227,8 @@ private struct SceneTile: View {
 				.accessibilityHidden(true)
 			}
 			
-			if !look.buttons.isEmpty {
-				TileButtons(look: look, list: list, lists: lists)
+			if !buttons.isEmpty {
+				TileButtons(look: look, list: list, lists: lists, buttons: buttons)
 			}
 		}
 		.foregroundStyle(.primary)
@@ -262,13 +263,14 @@ private struct TileButtons: View {
 	let look: Look
 	let list: CueList
 	let lists: [CueList]
+	let buttons: [SceneAction]
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let current = index.flatMap { position in cues.first { $0.identifier == list.cues[position].identifier } }
 		
 		HStack(spacing: 8) {
-			ForEach(look.buttons.filter { index != nil || ($0 != .back && $0 != .update) }) { action in
+			ForEach(buttons) { action in
 				switch action {
 				case .flash:
 					Button {} label: {
@@ -303,7 +305,7 @@ private struct TileButtons: View {
 						Label(action.name, systemImage: action.symbol)
 							.frame(maxWidth: .infinity)
 					}
-					.disabled(list.cues.count < 2 || (action == .back && index == nil))
+					.disabled(list.cues.count < 2)
 				}
 			}
 		}
@@ -357,7 +359,6 @@ private struct SceneActions: View {
 			Button("Previous Cue", systemImage: "backward.end") {
 				console.back(list)
 			}
-			.disabled(list.previous(before: index) == nil)
 			
 			Menu("Go to Cue", systemImage: "list.number") {
 				ForEach(list.cues.indices, id: \.self) { position in
