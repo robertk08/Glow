@@ -23,7 +23,7 @@ void           stage_clear(Stage *stage);
 void           stage_map(Stage *stage, const uint8_t *message, size_t length);
 void           stage_levels(Stage *stage, float master, bool blackout);
 bool           stage_write(Stage *stage, const uint8_t *message, size_t length, uint8_t writer);
-void           stage_command(Stage *stage, const uint8_t *message, size_t length, uint32_t now);
+void           stage_command(Stage *stage, const uint8_t *message, size_t length, uint8_t caller, uint32_t now);
 bool           stage_tick(Stage *stage, uint32_t now);
 bool           stage_busy(const Stage *stage);
 size_t         stage_frame(const Stage *stage, uint8_t client, uint8_t *out, size_t room);

@@ -101,7 +101,7 @@ struct SceneTests {
 			}
 			
 			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
-			cue.follow = 0
+			cue.follow = 0.03
 			if step == odd { cue.identifier = String(repeating: "y", count: 60) }
 			container.mainContext.insert(cue)
 		}
@@ -110,6 +110,20 @@ struct SceneTests {
 		let console = Console()
 		console.applyPatch([wall], library: library)
 		return (console, CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall]))
+	}
+	
+	private func settled(_ console: Console, scene: String) async throws -> String? {
+		var previous: String?
+		
+		for _ in 0..<50 {
+			try await Task.sleep(for: .milliseconds(100))
+			let current = console.playback.cue(of: scene)
+			if current == previous, console.playback.playing.first?.wants == true { return current }
+			previous = current
+		}
+		
+		Issue.record("the chase never came to rest")
+		return previous
 	}
 	
 	private func until(within seconds: Double = 3, _ condition: () -> Bool) async throws {
@@ -478,7 +492,7 @@ struct SceneTests {
 	@Test func aChaseTooLongToSendAtOnceCarriesOnFromTheCues() async throws {
 		let (console, list) = try wall()
 		console.lists = [list.scene: list]
-		#expect(list.program(from: 0).count < 13000)
+		#expect(list.program(from: 0).count < 6500)
 		
 		console.go(list)
 		var seen: Set<UInt8> = []
@@ -493,11 +507,11 @@ struct SceneTests {
 		let (console, list) = try wall()
 		
 		console.go(list)
-		try await until { console.playback.playing.first?.wants == true }
-		let stuck = console.playback.cue(of: list.scene)
+		let stuck = try await settled(console, scene: list.scene)
 		console.lists = [list.scene: list]
 		
-		try await until { console.playback.cue(of: list.scene) != stuck }
+		#expect(try #require(list.index(of: stuck)) < 29)
+		try await until { console.value(at: DMXAddress(512)!) == 30 }
 	}
 	
 	@Test func aFlashOnASceneAlreadyOnLeavesItOn() async throws {
@@ -630,11 +644,9 @@ struct SceneTests {
 		console.lists = [list.scene: list]
 		
 		console.go(list)
-		try await until { console.playback.playing.first?.wants == true }
-		let stuck = console.playback.cue(of: list.scene)
-		try await Task.sleep(for: .milliseconds(100))
+		let stuck = try await settled(console, scene: list.scene)
 		
-		#expect(console.playback.cue(of: list.scene) == stuck)
+		#expect(try #require(list.index(of: stuck)) < 25)
 		#expect(console.playback.playing.first?.wants == true)
 	}
 	

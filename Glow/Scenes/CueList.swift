@@ -7,7 +7,7 @@ nonisolated struct CueList: Sendable {
 	
 	private let starts: [String: DMXAddress]
 	
-	private static let budget = 12000
+	private static let budget = 6000
 	
 	@MainActor init(_ look: Look, cues: [Cue], fixtures: [Fixture]) {
 		self.init(look, cues: cues, starts: Self.starts(of: fixtures))
@@ -96,13 +96,16 @@ nonisolated struct CueList: Sendable {
 		
 		var order = [index]
 		var loop: Int?
+		var onward = false
 		
-		while !snapping, order.count < 255, cues[order[order.count - 1]].follow != nil, let next = next(after: order[order.count - 1]) {
+		while !snapping, cues[order[order.count - 1]].follow != nil, let next = next(after: order[order.count - 1]) {
 			if let seen = order.firstIndex(of: next) {
 				loop = seen
 				break
 			}
 			
+			onward = order.count == 254
+			guard !onward else { break }
 			order.append(next)
 		}
 		
@@ -133,6 +136,7 @@ nonisolated struct CueList: Sendable {
 			
 			guard count == 0 || steps.count + step.count <= Self.budget else {
 				loop = nil
+				onward = true
 				break
 			}
 			
@@ -141,7 +145,7 @@ nonisolated struct CueList: Sendable {
 		}
 		
 		var writer = ByteWriter()
-		writer.byte(UInt8(loop ?? 0xFF))
+		writer.byte(UInt8(loop ?? (onward ? 0xFE : 0xFF)))
 		writer.byte(UInt8(count))
 		return writer.data + steps
 	}

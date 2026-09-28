@@ -583,7 +583,7 @@ final class Console {
 		}
 		
 		let bytes = [UInt8](message)
-		stage_command(stage, bytes, bytes.count, now)
+		stage_command(stage, bytes, bytes.count, UInt8(Self.ownClient), now)
 		advance()
 		announce()
 	}
@@ -599,13 +599,12 @@ final class Console {
 	
 	private func resume() {
 		guard acked == sent else { return }
+		let own = isLocal ? Self.ownClient : node?.client
 		
-		for entry in playback.playing where entry.wants && continued[entry.scene] != entry.cue {
+		for entry in playback.playing where entry.wants && [0xFF, own].contains(entry.caller) && continued[entry.scene] != entry.cue {
 			guard let list = lists[entry.scene], let index = list.index(of: entry.cue) else { continue }
 			continued[entry.scene] = entry.cue
-			var writer = ByteWriter()
-			writer.text(entry.cue)
-			command(.more, scene: entry.scene, body: writer.data + list.program(from: index))
+			command(.more, scene: entry.scene, body: list.program(from: index))
 		}
 	}
 	

@@ -5,6 +5,7 @@ nonisolated struct Playback: Sendable, Equatable {
 		var scene: String
 		var cue: String
 		var wants = false
+		var caller = 0xFF
 	}
 	
 	private(set) var playing: [Playing] = []
@@ -17,8 +18,8 @@ nonisolated struct Playback: Sendable, Equatable {
 		guard reader.byte() == Wire.commandOpcode, reader.byte() != nil, reader.word() != nil, let count = reader.number() else { return nil }
 		
 		for _ in 0..<count {
-			guard let scene = reader.text(), let cue = reader.text(), let delay = reader.number(), let fade = reader.number(), let elapsed = reader.number(), let wants = reader.byte() else { return nil }
-			playing.append(Playing(scene: scene, cue: cue, wants: wants == 1))
+			guard let scene = reader.text(), let cue = reader.text(), let delay = reader.number(), let fade = reader.number(), let elapsed = reader.number(), let wants = reader.byte(), let caller = reader.byte() else { return nil }
+			playing.append(Playing(scene: scene, cue: cue, wants: wants == 1, caller: Int(caller)))
 			let start = date.addingTimeInterval(Double(delay - elapsed) / 1000)
 			if elapsed < delay + fade { fades[scene] = Fade(start: start, end: start.addingTimeInterval(Double(fade) / 1000)) }
 		}

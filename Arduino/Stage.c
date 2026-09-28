@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { SLOTS = STAGE_SLOTS, BYTES = SLOTS / 8 + 1, NAME = 40, NONE = 0xFF };
+enum { SLOTS = STAGE_SLOTS, BYTES = SLOTS / 8 + 1, NAME = 40, NONE = 0xFF, ONWARD = 0xFE };
 enum { FADES = 1, DIMS = 2, BAND = 4, OPEN = 8, WIDE = 16, FINE = 32 };
 enum { PLAY = 0, LAND = 1, STOP = 2, MORE = 3 };
 enum { HELD = 0x8000, ADDRESS = 0x3FF };
@@ -66,6 +66,7 @@ typedef struct Scene {
   uint8_t       count;
   uint8_t       loop;
   uint8_t       step;
+  uint8_t       caller;
   bool          wants;
   uint32_t      started;
   Step          current;
@@ -175,7 +176,7 @@ static bool program(Reader *r, Program *p) {
     if (!step(r, &s)) r->ok = false;
   }
   p->size = (size_t)(r->at - p->steps);
-  return r->ok && r->at == r->end && p->count && (p->loop == NONE || p->loop < p->count);
+  return r->ok && r->at == r->end && p->count && (p->loop >= ONWARD || p->loop < p->count);
 }
 
 static float level(const Stage *stage) {
@@ -343,13 +344,21 @@ static void release(Stage *stage, Scene *scene) {
   free(scene);
 }
 
+static bool wanting(const Scene *scene) {
+  return scene->loop == ONWARD && (scene->step + 1) * 2 > scene->count;
+}
+
+static bool advancing(const Scene *scene) {
+  return scene->current.follow && (scene->step + 1 < scene->count || scene->loop < scene->count);
+}
+
 static void enter(Stage *stage, Scene *scene, size_t at, uint8_t index, uint32_t now) {
   Reader r = {scene->steps + at, scene->steps + scene->size, true};
   step(&r, &scene->current);
   scene->step    = index;
   scene->nextAt  = (size_t)(r.at - scene->steps);
   scene->started = now;
-  scene->wants   = false;
+  scene->wants   = wanting(scene);
 
   unlink(stage, scene);
   Scene **link = &stage->scenes;
@@ -374,7 +383,7 @@ static void load(Scene *scene, const Program *p, uint8_t *steps) {
   scene->loopAt = p->loopAt;
 }
 
-static void play(Stage *stage, const char *id, Reader *r, uint32_t now, bool moving) {
+static void play(Stage *stage, const char *id, Reader *r, uint8_t caller, uint32_t now, bool moving) {
   Program p;
   if (!program(r, &p)) return;
 
@@ -390,6 +399,7 @@ static void play(Stage *stage, const char *id, Reader *r, uint32_t now, bool mov
 
   if (!fresh && moving) mention(stage, &scene->current, true, true);
   if (fresh) strcpy(scene->id, id);
+  scene->caller = caller;
   load(scene, &p, steps);
   enter(stage, scene, 0, 0, now);
   if (moving) return move(stage, scene);
@@ -401,24 +411,27 @@ static void play(Stage *stage, const char *id, Reader *r, uint32_t now, bool mov
   }
 }
 
-static void more(Scene *scene, Reader *r) {
-  char after[NAME];
-  text(r, after);
+static void more(Scene *scene, Reader *r, uint8_t caller) {
   Program p;
-  if (!program(r, &p) || !scene || !scene->wants || strcmp(scene->current.cue, after)) return;
+  if (!program(r, &p) || !scene || !scene->wants) return;
 
-  uint8_t *steps = (uint8_t *)malloc(p.size);
-  if (!steps) return;
-  load(scene, &p, steps);
+  Reader s = {p.steps, p.steps + p.size, true};
+  Step   found;
+  for (uint8_t i = 0; i < p.count; i++) {
+    step(&s, &found);
+    if (strcmp(found.cue, scene->current.cue)) continue;
 
-  Step   first;
-  Reader s = {steps, steps + p.size, true};
-  step(&s, &first);
-  scene->current.runs = first.runs;
-  scene->current.size = first.size;
-  scene->nextAt       = (size_t)(s.at - steps);
-  scene->step         = 0;
-  scene->wants        = false;
+    uint8_t *steps = (uint8_t *)malloc(p.size);
+    if (!steps) return;
+    load(scene, &p, steps);
+    scene->current.runs = steps + (found.runs - p.steps);
+    scene->current.size = found.size;
+    scene->nextAt       = (size_t)(s.at - p.steps);
+    scene->step         = i;
+    scene->caller       = caller;
+    scene->wants        = wanting(scene);
+    return;
+  }
 }
 
 static void stop(Stage *stage, Scene *scene, uint32_t fade, uint32_t now) {
@@ -493,7 +506,7 @@ bool stage_write(Stage *stage, const uint8_t *message, size_t length, uint8_t wr
   return true;
 }
 
-void stage_command(Stage *stage, const uint8_t *message, size_t length, uint32_t now) {
+void stage_command(Stage *stage, const uint8_t *message, size_t length, uint8_t caller, uint32_t now) {
   Reader r = {message, message + length, true};
   if (byte(&r) != STAGE_COMMAND) return;
   word(&r);
@@ -504,14 +517,14 @@ void stage_command(Stage *stage, const uint8_t *message, size_t length, uint32_t
   if (!r.ok || !id[0]) return;
 
   switch (action) {
-    case PLAY: play(stage, id, &r, now, true); break;
-    case LAND: play(stage, id, &r, now, false); break;
+    case PLAY: play(stage, id, &r, caller, now, true); break;
+    case LAND: play(stage, id, &r, caller, now, false); break;
     case STOP: {
       uint32_t fade = number(&r);
       if (r.ok && r.at == r.end && fade <= SPAN) stop(stage, find(stage, id), fade, now);
       break;
     }
-    case MORE: more(find(stage, id), &r); break;
+    case MORE: more(find(stage, id), &r, caller); break;
     default: break;
   }
 }
@@ -539,20 +552,17 @@ bool stage_tick(Stage *stage, uint32_t now) {
   size_t left     = 0;
   for (Scene *scene = stage->scenes; scene; scene = scene->next) left++;
   for (Scene *scene = stage->scenes; scene && left--;) {
-    Scene   *next = scene->next;
-    uint32_t due  = scene->started + scene->current.delay + scene->current.fade + scene->current.follow - 1;
-    if (scene->current.follow && !scene->wants && (int32_t)(now - due) >= 0) {
-      uint32_t start = now - due < scene->current.follow ? due : now;
-      restated       = true;
-      if (scene->step + 1 < scene->count) {
-        enter(stage, scene, scene->nextAt, scene->step + 1, start);
-        move(stage, scene);
-      } else if (scene->loop != NONE) {
-        enter(stage, scene, scene->loopAt, scene->loop, start);
-        move(stage, scene);
-      } else {
-        scene->wants = true;
-      }
+    Scene   *next    = scene->next;
+    uint32_t due     = scene->started + scene->current.delay + scene->current.fade + scene->current.follow - 1;
+    bool     overdue = scene->current.follow && (int32_t)(now - due) >= 0;
+    uint32_t start   = now - due < scene->current.follow ? due : now;
+    if (overdue && advancing(scene)) {
+      enter(stage, scene, scene->step + 1 < scene->count ? scene->nextAt : scene->loopAt, scene->step + 1 < scene->count ? scene->step + 1 : scene->loop, start);
+      move(stage, scene);
+      restated = true;
+    } else if (overdue && scene->wants && scene->caller != NONE) {
+      scene->caller = NONE;
+      restated      = true;
     }
     scene = next;
   }
@@ -564,7 +574,7 @@ bool stage_busy(const Stage *stage) {
     if (stage->motions[a].length & LIVE) return true;
   }
   for (const Scene *scene = stage->scenes; scene; scene = scene->next) {
-    if (scene->current.follow && !scene->wants) return true;
+    if (advancing(scene)) return true;
   }
   return false;
 }
@@ -621,7 +631,7 @@ static size_t writeText(uint8_t *out, const char *value) {
 size_t stage_state(const Stage *stage, uint32_t now, uint8_t *out, size_t room) {
   size_t count = 0;
   for (const Scene *scene = stage->scenes; scene; scene = scene->next) count++;
-  size_t need = 4 + 5 + count * (2 * NAME + 16);
+  size_t need = 4 + 5 + count * (2 * NAME + 17);
   if (!out) return need;
   if (room < need) return 0;
 
@@ -641,6 +651,7 @@ size_t stage_state(const Stage *stage, uint32_t now, uint8_t *out, size_t room) 
     n += writeNumber(out + n, scene->current.fade);
     n += writeNumber(out + n, elapsed < whole ? elapsed : whole);
     out[n++] = scene->wants;
+    out[n++] = scene->caller;
   }
   return n;
 }

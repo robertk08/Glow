@@ -294,6 +294,91 @@ struct ControllerTests {
 		#expect(await eventually { Rig.second.console.value(at: dimmer) == before } != nil)
 	}
 	
+	@Test func aValueSetMidFadeHoldsOnEveryDeviceAndStaysWhenTheSceneGoesOff() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Takeover", sortIndex: 5)
+		var up = Levels()
+		up.set(255, slot: 8, of: light.identifier)
+		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 2, levels: up))
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.contains { $0.lookID == look.identifier } } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		Rig.first.console.set(0, at: dimmer)
+		#expect(await eventually { Rig.second.console.value(at: dimmer) == 0 } != nil)
+		
+		Rig.first.console.go(list)
+		#expect(await eventually { (30...220).contains(Rig.second.console.value(at: dimmer)) } != nil)
+		Rig.first.console.set(77, at: dimmer)
+		let took = await eventually { Rig.both.allSatisfy { $0.console.value(at: dimmer) == 77 } }
+		
+		#expect(took != nil)
+		try await Task.sleep(for: .milliseconds(2200))
+		#expect(Rig.both.allSatisfy { $0.console.value(at: dimmer) == 77 })
+		print("HARDWARE a value set mid fade held on both devices after \(String(format: "%.2f", took ?? -1))s and the fade never took it back")
+		
+		Rig.second.console.toggle(CueList(look, cues: Rig.second.cues, fixtures: Rig.second.lights))
+		#expect(await eventually { Rig.first.console.playback.cue(of: look.identifier) == nil } != nil)
+		try await Task.sleep(for: .milliseconds(200))
+		#expect(Rig.both.allSatisfy { $0.console.value(at: dimmer) == 77 })
+	}
+	
+	@Test func aChaseTooLongToSendAtOnceRunsThroughEveryCue() async throws {
+		try inScratch()
+		var lights: [Fixture] = []
+		
+		for index in 0..<10 {
+			let light = Fixture(typeID: "stairville-bsw350-32ch", name: "Chase \(index + 1)", address: DMXAddress(100 + index * 32)!, sortIndex: Double(10 + index))
+			Rig.first.context.insert(light)
+			lights.append(light)
+		}
+		
+		let look = Look(name: "Probe Chase", sortIndex: 6)
+		Rig.first.context.insert(look)
+		
+		for step in 0..<40 {
+			var levels = Levels()
+			
+			for light in lights {
+				for slot in 1...32 {
+					levels.set(UInt8(step + 1), slot: slot, of: light.identifier)
+				}
+			}
+			
+			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
+			cue.follow = 0.05
+			Rig.first.context.insert(cue)
+		}
+		
+		try Rig.first.context.save()
+		#expect(await eventually(within: 20) { Rig.second.cues.count { $0.lookID == look.identifier } == 40 && Rig.second.lights.count == Rig.first.lights.count } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		let first = try #require(DMXAddress(100))
+		var seen: Set<UInt8> = []
+		
+		Rig.first.console.go(list)
+		let took = await eventually(within: 10) {
+			seen.insert(Rig.second.console.value(at: first))
+			return seen.isSuperset(of: Set(1...40))
+		}
+		
+		#expect(took != nil)
+		print("HARDWARE a 40 cue chase too long for one command showed every cue on the other device within \(String(format: "%.2f", took ?? -1))s")
+		
+		Rig.first.console.stop(list, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
+		Rig.first.console.remove(look, with: Rig.first.cues, context: Rig.first.context)
+		
+		for light in lights {
+			Rig.first.context.delete(light)
+		}
+		
+		try Rig.first.context.save()
+		#expect(await eventually(within: 20) { Rig.second.lights.count == Rig.first.lights.count && !Rig.second.looks.contains { $0.identifier == look.identifier } } != nil)
+	}
+	
 	@Test func twoDevicesStartingCuesTogetherEndOnTheLastOne() async throws {
 		try inScratch()
 		let light = try #require(Rig.first.lights.first)

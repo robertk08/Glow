@@ -238,7 +238,7 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
   if (p[0] == STAGE_COMMAND) {
     {
       Hold hold;
-      stage_command(g_stage, p, len, millis());
+      stage_command(g_stage, p, len, num, millis());
     }
     if (len >= 3) g_seq[num] = p[1] | p[2] << 8;
     g_restated = true;
