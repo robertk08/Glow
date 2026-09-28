@@ -51,7 +51,6 @@ struct ProgrammerView: View {
 			.safeAreaBar(edge: .bottom) {
 				if !isSheet {
 					MasterBar(isRaised: true)
-						.padding(.bottom, 8)
 				}
 			}
 			.navigationTitle(programmer.title)

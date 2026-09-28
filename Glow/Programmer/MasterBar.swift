@@ -49,6 +49,8 @@ struct MasterBar: View {
 		}
 		.frame(maxWidth: 520)
 		.padding(.horizontal, isRaised ? 16 : 12)
+		.padding(.top, isRaised ? 12 : 0)
+		.padding(.bottom, isRaised ? 24 : 0)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.blackout)
 		.sensoryFeedback(.impact(weight: .heavy), trigger: console.resets)
 	}

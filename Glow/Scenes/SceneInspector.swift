@@ -17,7 +17,6 @@ struct SceneInspector: View {
 			}
 			.safeAreaBar(edge: .bottom) {
 				MasterBar(isRaised: true)
-					.padding(.bottom, 8)
 			}
 		}
 	}

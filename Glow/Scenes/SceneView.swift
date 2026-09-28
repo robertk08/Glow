@@ -149,7 +149,6 @@ struct SceneView: View {
 					
 					if !isSheet {
 						MasterBar(isRaised: true)
-							.padding(.bottom, 8)
 					}
 				}
 			}
