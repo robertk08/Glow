@@ -138,7 +138,7 @@ final class ShowLibrary {
 		guard phase != .active, isLoaded, !isDemo else { return }
 		
 		enqueue {
-			await self.synchronise(Self.everything)
+			await self.synchronise(Self.everything, draining: true)
 		}
 	}
 	
@@ -285,7 +285,7 @@ final class ShowLibrary {
 			if isDemo {
 				held[loadedID] = contents()
 			} else {
-				await synchronise(Self.everything)
+				await synchronise(Self.everything, draining: true)
 			}
 		}
 		
@@ -587,7 +587,7 @@ final class ShowLibrary {
 		}
 	}
 	
-	private func synchronise(_ folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier> = [], pruned: Set<NodeStore.Folder> = []) async {
+	private func synchronise(_ folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier> = [], pruned: Set<NodeStore.Folder> = [], draining: Bool = false) async {
 		guard isLoaded, isCurrent, !isDemo else { return }
 		
 		let context = container.mainContext
@@ -640,11 +640,11 @@ final class ShowLibrary {
 			}
 		}
 		
-		send()
+		send(draining: draining)
 	}
 	
-	private func send() {
-		while let (key, data) = queued.first, sent.isEmpty || sent.reduce(weight(key, data), { $0 + weight($1.key, $1.value) }) <= Self.frameLimit {
+	private func send(draining: Bool = false) {
+		while let (key, data) = queued.first, draining || sent.isEmpty || sent.reduce(weight(key, data), { $0 + weight($1.key, $1.value) }) <= Self.frameLimit {
 			queued.removeFirst()
 			guard let (folder, identifier) = Self.split(key), let endpoint else { continue }
 			
