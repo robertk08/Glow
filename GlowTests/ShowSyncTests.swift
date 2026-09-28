@@ -59,7 +59,7 @@ struct ShowSyncTests {
 		for _ in 0..<1000 {
 			let identifier = Identifier.fresh()
 			#expect(identifier.count == 11)
-			#expect(identifier.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") })
+			#expect(Wire.isStorable(identifier))
 			#expect(Identifier.value(identifier).map(Identifier.text) == identifier)
 			seen.insert(identifier)
 		}
@@ -69,10 +69,13 @@ struct ShowSyncTests {
 	
 	@Test func everyFolderNameIsSafeAsAPathOnTheController() {
 		for folder in NodeStore.Folder.allCases {
-			#expect(!folder.rawValue.isEmpty)
-			#expect(folder.rawValue.count < 40)
-			#expect(folder.rawValue.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") })
+			#expect(Wire.isStorable(folder.rawValue))
 		}
+		
+		#expect(Wire.isStorable(String(repeating: "a", count: 39)))
+		#expect(!Wire.isStorable(String(repeating: "a", count: 40)))
+		#expect(!Wire.isStorable("a/b"))
+		#expect(!Wire.isStorable(""))
 	}
 	
 	@Test func aSceneAndACueReadBackAsWritten() throws {

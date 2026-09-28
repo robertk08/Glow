@@ -159,6 +159,10 @@ nonisolated enum Wire {
 		case landed(Place, Bool)
 	}
 	
+	static func isStorable(_ name: String) -> Bool {
+		(1..<40).contains(name.utf8.count) && name.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }
+	}
+	
 	static func document(show: String, folder: String, id: String, body: Data?) -> Data {
 		let name = Array(show.utf8)
 		let place = Array(folder.utf8)

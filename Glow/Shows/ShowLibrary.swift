@@ -29,6 +29,7 @@ final class ShowLibrary {
 	private var epoch = 0
 	private var baseline: [String: Data] = [:]
 	private var sent: [String: Data] = [:]
+	private var queued: [(key: String, data: Data)] = []
 	private var deferred: Set<String> = []
 	private var waiting: Set<NodeStore.Folder> = []
 	private var touched: Set<PersistentIdentifier> = []
@@ -103,6 +104,7 @@ final class ShowLibrary {
 			isCurrent = false
 			held = [:]
 			sent = [:]
+			queued = []
 			deferred = []
 			retry?.cancel()
 			guard isLoaded, dropping == nil else { return }
@@ -346,6 +348,7 @@ final class ShowLibrary {
 	private func reject() {
 		refusal = .storage
 		isCurrent = false
+		queued = []
 		follow()
 	}
 	
@@ -368,6 +371,7 @@ final class ShowLibrary {
 				baseline[place.key] = data.isEmpty ? nil : data
 			}
 			
+			send()
 			guard deferred.remove(place.key) != nil else { return }
 			let identifier = place.id
 			
@@ -393,7 +397,7 @@ final class ShowLibrary {
 	}
 	
 	private func accepts(_ place: Wire.Place) -> NodeStore.Folder? {
-		guard isLoaded, isCurrent, !isDemo, place.show == loadedID, sent[place.key] == nil else { return nil }
+		guard isLoaded, isCurrent, !isDemo, place.show == loadedID, sent[place.key] == nil, !queued.contains(where: { $0.key == place.key }) else { return nil }
 		return NodeStore.Folder(rawValue: place.folder)
 	}
 	
@@ -534,6 +538,7 @@ final class ShowLibrary {
 		loadedID = ""
 		baseline = [:]
 		sent = [:]
+		queued = []
 		deferred = []
 		waiting = []
 		clear()
@@ -545,6 +550,7 @@ final class ShowLibrary {
 		prune(keeping: incoming)
 		container.mainContext.undoManager?.removeAllActions()
 		sent = [:]
+		queued = []
 		deferred = []
 		baseline = incoming.originals
 		
@@ -622,29 +628,50 @@ final class ShowLibrary {
 		}
 		
 		for (key, data) in changes {
-			guard let (folder, identifier) = Self.split(key) else { continue }
-			
 			guard sent[key] == nil else {
 				deferred.insert(key)
 				continue
 			}
 			
+			if let index = queued.firstIndex(where: { $0.key == key }) {
+				queued[index].data = data
+			} else {
+				queued.append((key, data))
+			}
+		}
+		
+		send()
+	}
+	
+	private func send() {
+		while let (key, data) = queued.first, sent.isEmpty || sent.reduce(weight(key, data), { $0 + weight($1.key, $1.value) }) <= Self.frameLimit {
+			queued.removeFirst()
+			guard let (folder, identifier) = Self.split(key), let endpoint else { continue }
+			
+			guard Wire.isStorable(identifier) else {
+				reject()
+				return
+			}
+			
 			sent[key] = data
 			
 			if data.count <= Self.frameLimit {
-				console?.send(document: Wire.document(show: showID, folder: folder.rawValue, id: identifier, body: data.isEmpty ? nil : data))
+				console?.send(document: Wire.document(show: loadedID, folder: folder.rawValue, id: identifier, body: data.isEmpty ? nil : data))
 				continue
 			}
 			
-			guard let endpoint else { continue }
-			let place = Wire.Place(show: showID, folder: folder.rawValue, id: identifier)
+			let place = Wire.Place(show: loadedID, folder: folder.rawValue, id: identifier)
 			let client = client
 			
 			Task {
-				let isStored = await store.put(data, folder: folder, id: identifier, in: showID, at: endpoint, client: client)
+				let isStored = await store.put(data, folder: folder, id: identifier, in: place.show, at: endpoint, client: client)
 				receive(.landed(place, isStored))
 			}
 		}
+	}
+	
+	private func weight(_ key: String, _ data: Data) -> Int {
+		Wire.documentHeader + loadedID.utf8.count + key.utf8.count + data.count
 	}
 	
 	@concurrent nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = everything) async -> [String: Data] {
