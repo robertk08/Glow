@@ -92,6 +92,17 @@ private func eventually(within seconds: Double = 6, _ condition: () async -> Boo
 }
 
 @MainActor
+private func stall() async throws -> URLSessionStreamTask {
+	let stream = URLSession.shared.streamTask(withHostName: Rig.host, port: 80)
+	stream.resume()
+	try await stream.write(Data("GET /ws HTTP/1.1\r\nHost: \(Rig.host)\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n".utf8), timeout: 2)
+	let (answer, _) = try await stream.readData(ofMinLength: 12, maxLength: 512, timeout: 2)
+	try #require(String(decoding: answer ?? Data(), as: UTF8.self).contains(" 101 "))
+	try await stream.write(Data([0x82, 0xFE, 0x03, 0xE8, 1, 2, 3, 4] + [UInt8](repeating: 0, count: 10)), timeout: 2)
+	return stream
+}
+
+@MainActor
 @Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["GLOW_CONTROLLER"] != nil))
 struct ControllerTests {
 	@Test func bothDevicesOpenTheActiveShow() async throws {
@@ -377,6 +388,51 @@ struct ControllerTests {
 		
 		try Rig.first.context.save()
 		#expect(await eventually(within: 20) { Rig.second.lights.count == Rig.first.lights.count && !Rig.second.looks.contains { $0.identifier == look.identifier } } != nil)
+	}
+	
+	@Test func aChaseKeepsItsTimeWhileAPhoneHoldsTheControllerMidMessage() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Stall", sortIndex: 7)
+		Rig.first.context.insert(look)
+		
+		for step in 0..<10 {
+			var levels = Levels()
+			levels.set(UInt8(step * 20 + 10), slot: 8, of: light.identifier)
+			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
+			cue.follow = 0.2
+			Rig.first.context.insert(cue)
+		}
+		
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.count { $0.lookID == look.identifier } == 10 } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		
+		Rig.first.console.go(list)
+		let started = Date()
+		try await Task.sleep(for: .milliseconds(300))
+		let stalled = try await stall()
+		try await Task.sleep(for: .milliseconds(200))
+		let frozen = Rig.second.console.value(at: dimmer)
+		var moved = false
+		
+		for _ in 0..<250 {
+			moved = moved || Rig.second.console.value(at: dimmer) != frozen
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		stalled.cancel()
+		try await Task.sleep(for: .milliseconds(150))
+		let expected = Int(Date().timeIntervalSince(started) / 0.2) % 10
+		let reached = try #require(list.index(of: Rig.second.console.playback.cue(of: look.identifier)))
+		
+		#expect(!moved, "the controller never stalled, so this proves nothing")
+		#expect([9, 0, 1].contains((reached - expected + 10) % 10))
+		print("HARDWARE after a phone held the controller mid message for 2.5 s the chase was on cue \(reached + 1) of 10, its clock said \(expected + 1)")
+		
+		Rig.first.console.stop(list, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
 	}
 	
 	@Test func twoDevicesStartingCuesTogetherEndOnTheLastOne() async throws {
