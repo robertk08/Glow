@@ -1,248 +1,200 @@
 # Glow
 
-An iOS app that controls DMX stage lights over Wi-Fi, and the ESP32-S3 firmware
-that puts the signal on the wire.
+An iOS 26 app (SwiftUI, SwiftData) that controls DMX stage lights over Wi-Fi,
+and the ESP32-S3 firmware in `Arduino/` that puts the signal on the wire.
+Bundled fixture definitions are `Glow/Fixtures/BuiltIn/*.json`, the demo show is
+`Glow/Resources/Demo.json`.
 
-The controller is the desk. It holds the shows, and every device is a terminal
-on it. Connect and you are handed the whole show. Disconnect and there is
-nothing to see, because nothing is kept on the device. Two phones and an iPad on
-one controller see the same patch, the same scenes and the same look, and a
-scene saved on one appears on the others.
+## Build and test
 
-The app still decides what every channel is worth. It holds the fixture
-definitions and the 512-channel universe and works out the values, and the
-controller clocks them onto the DMX line and files the show away. It never reads
-a show it is given, so fixture support stays a JSON file in the app, never a
-reflash.
+```bash
+xcodebuild test -quiet -scheme Glow -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -collect-test-diagnostics never
+```
 
-A device changes itself first and tells the controller after, the way an X32
-remote does, so nothing waits on a round trip. The controller passes the change
-to every other device and never back to the sender. Last writer wins, per
-object, with no locking and nothing to resolve.
+`ControllerTests` is skipped unless `TEST_RUNNER_GLOW_CONTROLLER` holds an
+address. Against a real controller on USB and the LAN:
 
-Selecting lights is how you control them. Tap one or several in Lights and the
-programmer drives the whole selection at once, the way a grandMA programmer
-does. On iPhone it takes over the tab bar accessory and raises a sheet, on iPad
-it is an inspector beside the grid. The selection stays until you clear it, and
-holding Clear resets those lights to their defaults. A group is a saved
-selection, not a container, so a light can be in several. The master fader and
-blackout hold the accessory whenever nothing is selected.
+```bash
+GlowTests/controller-tests.sh glow.local
+```
 
-The programmer is the fixture's own feature groups along the top, the only
-thing that stays put, and under them the group you are on in named sections
-that scroll with everything else. Everything is a system control unless there
-is nothing that fits: position is a pad reading real degrees with a fine mode
-that moves a sixth as far for the same gesture, and beam and strobe draw the
-light itself against a dark stage, the cone widening with zoom and softening
-with focus. Wheels are a picker with their slots under it, coloured or drawn as the
-shape they throw and turning when the wheel turns, and a shutter is the same
-picker, so every band it carries is reachable and a rate runs the width of
-the band it belongs to. Anything the definition carries but the group
-does not show is under All Channels, on its raw value. Selecting lights of
-different kinds leaves the groups they can be driven by together.
+The script reads the controller's password key over serial (`key`) and passes
+it as `TEST_RUNNER_GLOW_KEY`, so it works whatever password is set. It runs two
+app instances as two devices, creates a show named **Hardware Test**, removes
+it, and leaves the controller on the show and password it found. A run stopped
+halfway can leave a test password behind, which serial `password` removes.
+Only one process can hold the serial port, so close any serial monitor first.
 
-Blackout latches and pulls only the dimmers down, the same channels and the same
-way the master fader does, so a head keeps its position and its colour through
-one.
+Firmware: install the libraries under Toolchain, run
+`Arduino/patch_esp_dmx.sh`, then build and upload with
+`arduino-cli` (bundled in the Arduino IDE at
+`/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/`)
+using FQBN `esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=8M,PartitionScheme=custom`
+and the port from `ls /dev/cu.usbmodem*`.
 
-The patch, the groups, the fixtures built here and the scenes sit in one store
-in memory with an undo manager, so editing is undoable. Removing a light writes zeros
-across its channels on the way out. A light whose fixture definition is gone
-says so on its tile and opens straight into a picker to point it at another
-one, keeping its name, address and group.
+## Architecture
 
-A moving head can be told to invert pan, tilt or both. The fixture definition
-carries what is usual for that model and each patched light can differ.
+The controller is the desk. It stores every show, and devices are terminals
+with nothing on disk. On connect a device loads the whole show into an
+in-memory SwiftData store with an undo manager. Disconnected, it shows a waiting
+screen with controller setup and a demo that runs on `Demo.json` and sends
+nothing. Any number of devices share one controller and see the same show.
 
-A fixture type is one file, whether Glow ships it or you build it here, and the
-app reads both through the same decoder. A channel names the attribute it
-drives rather than an index, so the same control reaches pan on any head and
-the dimmer on any lamp. A channel can claim a second address as its fine half,
-carry a default, and split into named functions with named sets inside them,
-which is how a gobo wheel offers its gobos and a colour wheel its slots. A function can say what it stands for, the
-dimmer band, fully open, blacked out, or handing colour back to the mixer, and
-what it means in the world, so a strobe reads in hertz and a zoom in degrees.
-A channel can also name the channel and range it depends on, for a fixture
-whose colour channels go dead while a built-in pattern runs.
+The app computes every channel value from the fixture definitions and the
+512-channel universe. The controller clocks frames onto the wire, stores show
+objects without parsing them, and relays. Fixture support is a JSON file in the
+app, never a firmware change.
 
-Editing a fixture Glow ships keeps the original and saves yours beside it, and
-any light already patched to it moves over. No two fixtures share a name, so
-the copy needs its own before it saves. Everything a bundled definition
-can say, the builder can write: 16-bit pairs and their defaults, named
-functions, the slots inside them and their swatches, real units, and the
-channel a channel depends on. A test fails if a bundled definition ever uses a
-field the builder cannot set.
+Sync works like an X32 and its remotes. A device applies a change locally at
+once and tells the controller after. The controller relays it to every other
+device, never back to the sender. Last writer wins per object, with no locking,
+revisions or conflict handling. Do not round-trip a change through the
+controller before showing it.
 
-Every channel has a default, and defaults are not settings. A light patched
-and brought up reads plain white, centred, no gobo and no strobe, because that
-is where its channels sit, and none of it counts as chosen. Raising the dimmer
-marks the dimmer and nothing else, so colour and position stay available to
-whatever you do next, and resetting puts every channel back to its default.
+A controller silent for 5 seconds (`NodeLink.silenceLimit`) counts as lost, and
+the show gives way to the waiting screen within about seven seconds. Edits made
+after the link is lost never reach the controller, and on reconnect the show
+reloads exactly as the controller holds it. There is no queue or replay of
+edits.
 
-Color is one control for two kinds of fixture. An LED fixture adds emitters
-together, and a discharge head subtracts cyan, magenta and yellow flags from a
-white lamp. A type says which it is with `mixing`, and a fixture built in the
-app can declare itself subtractive too.
+**The controller is the only copy of the shows.** Export is the backup.
 
-A scene records lights rather than addresses, so re-addressing one later does
-not point its scenes at whatever now sits on those channels.
+## App behaviour
 
-A scene is a tile like a light, and it works like an executor on a desk. Every
-scene can do the same things: turn on, where every light it holds takes the
-values it stored, turn off, where those lights go back to whatever they were
-doing before, flash, which is on only while a finger holds it, and step through
-its cues. What differs is what a tap on the tile does, run the next cue, turn on
-and off, flash or open the scene like its corner button, and which buttons sit
-on the tile: any of Next, Back, On and Off, Flash and Update, in an order you
-choose, using the width beside the name. A tile with buttons is twice as wide,
-like a medium widget beside small ones, and every tile is the same height, so
-the grid packs without holes and nothing moves while you play.
-A tap never does anything but the scene's own action. The corner button opens
-the scene, like a shortcut in the Shortcuts app, and a long press on the tile
-opens its menu. On a scene whose tap flashes, holding the tile is the flash,
-and a long press on the corner button opens the menu instead. A new scene gets a
-colour of its own. All Off stays in the toolbar and is greyed out while nothing
-is on. A scene gets its second cue and its tap starts
-running cues, with Back and On and Off on the tile, until you choose otherwise.
-Scenes can be on together, and the one turned on last wins a light they share.
+**Lights and the programmer.** Selecting lights is how they are controlled: the
+programmer drives the whole selection, as a tab bar accessory plus sheet on
+iPhone and an inspector beside the grid on iPad. The selection stays until
+cleared, and holding Clear resets those lights to their defaults. With nothing
+selected, the accessory holds the master fader and blackout. A group is a saved
+selection, not a container, so a light can be in several. The programmer shows
+the fixture's feature groups as a fixed header over scrolling sections, and a
+selection of mixed types shows only the groups they share. Controls are system
+controls where one fits. Position is a pad in real degrees with a fine mode at
+a sixth of the travel. Beam and strobe draw the light itself. Wheels and
+shutters are a picker over their slots. Channels no group shows are under All
+Channels as raw values.
 
-The first Next starts a scene at cue 1, and after the last cue the next one
-starts again at the first, so a reading can go dark, full stage, one light and
-round again. A scene opens as one page in its own colour: the cue list with one
-transport at the bottom, Back, Next Cue and Off, then the tile, what a tap does
-and the buttons ticked in a list, then the name, icon and colour, folded away
-until you open them. Edit puts cues and buttons in order with the usual
-handles, and the menu duplicates
-or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
-and hold it to rename it or set its fade, delay and follow. On iPad the scene sits in
-the sidebar on the right, beside
-the scenes as the programmer sits beside the lights, and stays there until you
-open another, and the arrow keys or a presentation clicker step through its
-cues. On iPhone it opens as a sheet, and the bar above the tabs shows the scene
-on stage with its cue, Back, Next and Off, like the mini player in Music. A cue
-has a name or a short description, a fade, a delay before it starts, and can
-run the next cue by itself once it has faded in. Values carry through: a cue
-holds only the lights and aspects stored into it, and everything else keeps
-what the cues before it set. Going back undoes what the later cues changed.
+**Defaults are not settings.** A freshly patched light reads plain white,
+centred, no gobo, no strobe, and none of that counts as chosen. Raising the
+dimmer marks only the dimmer. Reset returns every channel to its default.
 
-A new scene asks for its name first. Under the plus button, Store All keeps
-every light as it is now as a new scene with one cue, whatever is selected, and
-Empty Scene, or Add Cues on any scene, switches to the Lights page and pins a
-bar under the lights with the scene's cues, Update and Store Cue on one row.
-There every store follows one rule: the lights you selected, or all lights when
-none are. The line under the
-scene's name says which it will be, and tapping it opens the options. Done goes
-back to the page you started from, and deleting the cue on stage moves the stage
-to the cue before it, or turns the scene off if it was the last. Store puts the
-new cue right after the one on stage, or at the end, and the stage is then on
-it without a light moving, so the next Store follows it and Update refines it.
-Update stores the same way into the cue on stage. The selection stays, so the
-next cue can take the same lights. Tap a cue in the bar to go back to it, or
-hold it to rename it. Options chooses the lights,
-the aspects (intensity, colour, position, gobo, beam or control), a name and
-the fade. Cancel on a scene without cues removes it.
-Storing into a cue replaces only what you chose and keeps the rest. All Off on
-the Scenes page turns every scene off.
+**Master and blackout** scale only dimmer channels, so position and colour hold
+through a blackout, which latches. The DMX monitor shows output after master and
+blackout, and its Source view shows programmer values before them.
 
-A fade runs on the device that started it and reaches the others as ordinary
-frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a
-16-bit channel glides as one value, and a dimmer that shares its channel with a
-strobe fades only inside its dimming band. Everything else snaps at the start.
-Touch a channel while it fades and the fade lets go of it.
+**Patch.** Removing a light writes zeros across its channels. A light whose
+definition is gone says so on its tile and opens a picker to re-point it,
+keeping its name, address and group. Pan and tilt inversion defaults from the
+definition and can differ per light.
 
-A show is one file on the controller, holding one patch, its groups, the
-fixtures built here and its scenes, one record per change. Switching show swaps
-the store underneath the app without moving you off the screen you are on, and
-switches it on every other device too. A show stores no DMX values, so every
-light comes back on its defaults. The controller you send to belongs to the
-device, not the show. The show you are in exports and imports as one JSON file
-carrying the date its format was settled and the date it was written. A file
-from a newer format is refused.
+**Fixture definitions.** A fixture type is one JSON file, bundled or built in the
+app, read by one decoder. A channel names the attribute it drives rather than
+an index. A channel can claim a second address as its fine half, carry a
+default, split into named functions with named slots (gobos, colour wheel
+slots, with swatches), give a function a role (dimmer band, open, blackout,
+hand colour back to the mixer) and real units (Hz, degrees), and depend on
+another channel's range. `mixing` says whether colour is additive (LED
+emitters) or subtractive (CMY flags on a white lamp). Editing a bundled fixture
+saves a copy under a new name, since names are unique, and moves patched lights
+to it. The builder must be able to write every field a bundled definition uses,
+and a test enforces it.
 
-**The controller is the only copy of your shows.** A dead board or an erased
-filesystem loses them, and there is no local cache softening that. Export is the
-backup.
-
-With no controller reachable, Glow shows a waiting screen with a way into
-controller setup and a way into a demo. The demo runs the whole app on a show
-built into the app, changes go nowhere, and quitting throws it away.
-
-A controller that stops answering is noticed within about seven seconds, and
-the show gives way to the waiting screen rather than looking live. Nothing
-edited after the link is lost reaches the controller, and the show reopens as
-the controller holds it.
-
-The DMX monitor shows output after master and blackout. Switch to Source to
-inspect or adjust the programmer values before those controls.
-
-Glow ships the four fixtures here, and their channel tables come from the [Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
+Bundled channel tables come from the
+[Cameo F2 FC DMX table](https://www.cameolight.com/en/downloads/file/id/1419641648),
 [Stairville BSW-350 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/549467_v2_en_online.pdf),
-[Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf),
-and, for the unbranded head, the [Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf),
-which is the same 7 by 10 W RGBW platform channel for channel.
+[Stairville HL-x180 manual](https://images.static-thomann.de/pics/atg/atgdata/document/manual/c_467326_467328_524858_524859_v2_en_online.pdf)
+and, for the unbranded 7 by 10 W RGBW head, the
+[Monoprice 612870 manual](https://downloads.monoprice.com/files/manuals/612870_Manual_170822.pdf).
+
+**Scenes** (the `Look` model) record lights, not addresses, so re-addressing a
+light never points a scene at whatever now sits on its channels. A scene works
+like a desk executor: on (its lights take the stored values), off (they return
+to what they were doing), flash (on while held), and stepping cues. `tap`
+chooses what a tile tap does (next cue, on and off, flash, open) and `buttons`
+which of Next, Back, On and Off, Flash and Update sit on the tile, in order. A
+tile with buttons is double width and every tile has one height, so the grid
+packs without holes. A tap only ever runs the scene's own action. The corner
+button opens the scene and a long press opens its menu, except on a flash tile,
+where holding the tile flashes and the corner button's long press opens the
+menu. A new scene asks for its name first and gets its own colour. Its second
+cue sets the tap to Next and the buttons to Back and On and Off. Scenes can be
+on together and the one turned on last wins a shared light. All Off in the
+toolbar turns every scene off and is disabled while none is on.
+
+**Cues** track. A cue holds only the lights and aspects stored into it,
+everything else keeps what earlier cues set, and going back undoes what later
+cues changed. The first Next starts cue 1 and after the last cue it wraps. A cue
+has a label, a fade, a delay, and an optional follow that runs the next cue once
+it has faded in. A scene opens as one page: cue list with one transport (Back,
+Next Cue, Off), then the tile settings, then name, icon and colour folded away.
+Tap a cue to jump to it, swipe to update or delete, hold to rename or set
+timing. On iPad the scene sits in the right sidebar and the arrow keys or a
+presentation clicker step its cues. On iPhone it is a sheet, and the bar above
+the tabs shows the scene on stage like the Music mini player.
+
+**Storing.** Store All under the plus button makes a one-cue scene of every
+light. Empty Scene, or Add Cues on a scene, switches to Lights and pins the
+builder bar with the scene's cues, Update and Store Cue. Every store takes the
+selected lights, or all lights when none are selected. The hint under the
+scene's name says which and opens the options: lights, aspects (intensity,
+colour, position, gobo, beam, control), name and fade. Store inserts after the
+cue on stage, or at the end, and puts the stage on the new cue without a light
+moving. Update stores into the cue on stage. Storing into a cue replaces only
+what was chosen. The selection stays. Deleting the cue on stage moves the stage
+to the cue before it, or turns the scene off if it was the last. Done returns to
+the page the builder started from, and Cancel on a scene without cues removes
+it.
+
+**Fades** run on the device that started them and reach others as ordinary
+frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a
+16-bit channel glides as one value, and a dimmer sharing its channel with a
+strobe fades only inside its dimming band. Everything else snaps at the start.
+Touching a channel mid-fade releases it from the fade.
+
+**Shows.** A show holds a patch, its groups, fixtures built in the app, and
+scenes with their cues. It stores no DMX values, so lights come back on their
+defaults. Switching show swaps the store without leaving the current screen and
+switches every device. The controller address belongs to the device, not the
+show. Export is one JSON file (`ShowFile`) with `format` `glow.show`, `version`
+(the date the format was settled, `ShowFile.current`) and `exportedAt`. Import
+reads only an exact format and version match. There is no migration.
 
 ## Password
 
-**One password guards the whole controller**, every show and every channel,
-and HomeKit keeps its own pairing code. There is none until someone sets one in
-Settings › Controller. From then on a device that has not given it sees a
-password field instead of the rig, and the controller answers it nothing else:
-no frames, no shows, no commands, no HTTP.
+One optional password guards the whole controller. Once set in Settings ›
+Controller, a device without it gets a password field and nothing else: no
+frames, shows, commands or HTTP. HomeKit keeps its own pairing code.
 
-**Each device asks once.** The app turns the password into a key with
-PBKDF2-SHA256 (100,000 rounds, salted with the controller's id) and keeps that
-key in the Keychain for that controller, so every later connection unlocks by
-itself. Neither the password nor the key crosses the network to unlock. The
-controller keeps only the key, in NVS, never the password.
+The app derives a key with PBKDF2-SHA256 (100,000 rounds, salted with the
+controller's `id`) and keeps it in the Keychain per controller, so each device
+asks once. Neither password nor key crosses the network to unlock. The
+controller keeps only the key, in NVS. Changing or removing it needs the current
+one, and a change drops every other device. Five misses in a row pause
+unlocking for 30 seconds, doubling per further miss up to 16 minutes. Serial
+`password` or three quick restarts remove it. Traffic is not encrypted.
 
-Changing or removing it asks for the current one. A change drops every other
-device, and each one asks for the new password. Five wrong answers in a row
-pause unlocking for 30 seconds, and each further miss doubles the pause, up to
-16 minutes. When everyone has forgotten it, serial `password` or three quick
-restarts remove it.
+## Wi-Fi setup
 
-It keeps out anyone with Glow who does not know the password. It does not
-encrypt the traffic, so someone capturing packets on the same Wi-Fi could still
-take over a connection that is already unlocked.
+A controller with no stored network raises the open network **Glow Setup**
+(192.168.4.1). In the app, Settings › Controller › Change Wi-Fi Network lists
+what the controller sees, takes the password (and a username for enterprise
+networks) and hands it over. This needs the Hotspot Configuration entitlement.
+The controller keeps the setup network up until the app confirms, the app
+checks the controller's identity on the new network before reporting Ready, and
+credentials are written only after the join succeeds.
 
-## Setting up a controller
-
-Nothing is entered on the Arduino, including Wi-Fi. A controller with no stored
-credentials raises its own open network called **Glow Setup**. In Glow, open
-Settings › Controller › Change Wi-Fi Network and allow the Wi-Fi connection.
-The app lists what the controller can see, takes the password and hands it over.
-A network that signs you in by name takes a username too. The app requires the
-Hotspot Configuration capability when signing for a device.
-
-The controller keeps its setup network available until the app confirms. Glow
-reconnects to the chosen network and checks the controller identity before
-reporting Ready. Credentials are written only after the join succeeds, so a
-wrong password cannot displace a working network.
-
-**Two networks are remembered, the two most recent.** Joining a third pushes out
-the older one. On boot the controller scans once and joins the stronger of the
-two it can see, so carrying it between two places needs no setup at either end
-and no time goes on a network that is not there. A hidden network never shows
-in a scan, so when neither is seen it tries them in turn, every ten seconds. A
-network that drops is tried again straight away. Provisioning a network it already knows just moves that one back
-to the front.
-
-**Getting back to setup:** the controller raises **Glow Setup** by itself after
-a minute of finding neither stored network, and keeps it up until it joins. To
-ask for it while a stored network is fine, use Change Wi-Fi Network in Glow,
-or power the controller off and on three times leaving it on for less than five
-seconds each time, which raises the setup network for five minutes. The three
-quick restarts also remove the controller's password, and otherwise nothing is
-erased. Serial `forget`, or the app's forget button, is what erases networks.
-Reflashing does not, because credentials live in NVS.
-
-Only 2.4 GHz: the ESP32-S3 has no 5 GHz radio, so a 5 GHz-only network never
-appears in the list.
+The two most recent networks are kept in NVS, surviving reflashes. On boot the
+controller scans once and joins the stronger one it sees. When neither is seen
+(a hidden network) it tries each in turn every ten seconds. A dropped network is
+retried at once. After a minute without either it raises **Glow Setup** until it
+joins. Three power cycles of under five seconds each raise it for five minutes
+and also remove the password. Serial `forget` or the app's forget button erase
+the networks. 2.4 GHz only.
 
 ## Hardware
 
-Arduino Uno R4 WiFi, using only its onboard ESP32-S3. RS485 module TTL485-V2.0,
-auto-direction, so there is no DE/RE pin to wire.
+Arduino Uno R4 WiFi, using only its onboard ESP32-S3, and an auto-direction
+RS485 module TTL485-V2.0 (no DE/RE pin).
 
 | From | To |
 |---|---|
@@ -253,107 +205,51 @@ auto-direction, so there is no DE/RE pin to wire.
 | module `D-/B` | XLR pin 2 |
 | module `GND` | XLR pin 1 |
 
-Three things break this silently:
+The transmit pin goes to `RXD` (the module names pins from its own side).
+GPIO42, not GPIO43, which the RA4M1 holds up. 3.3 V from the POWER header, since
+the 2×3 header has no 3V3. The controller end of the XLR is male. If nothing
+decodes, swap `D+/A` and `D-/B`.
 
-- **The ESP's transmit pin goes to `RXD`, not `TXD`.** The module's names are
-  from its own point of view.
-- **GPIO42, not GPIO43.** GPIO43 is `ESP_TXD0` and the RA4M1 holds it up
-  through a level translator.
-- **Module power comes from the main POWER header.** The 2×3 ESP header has no
-  3V3 pin. 3.3 V, not 5 V.
+If an upload cannot reach the bootloader, bridge `GND` and `ESP_DOWNLOAD` on the
+2×3 header, upload, then remove the bridge or the chip stays in the bootloader.
 
-DMX reverses the audio-XLR pin 2/3 convention but keeps the gender convention:
-the controller end is male. If nothing decodes, swap `D+/A` and `D-/B`.
+`partitions.csv` gives `app0` 2 MB (the firmware uses about 1.6 MB) and 6.2 MB
+to a LittleFS partition for shows, formatted on first boot. With the custom
+scheme the compiler reports the whole flash as the maximum, so size against
+`app0`. At boot the controller deletes any file there that is not the show list
+or part of a listed show.
 
-## Flashing
-
-Bridge `GND` and `ESP_DOWNLOAD` on the 2×3 header, connect USB, flash, then
-**un-bridge them** or the chip stays in the bootloader.
-
-All four board settings are required, and none are saved with the sketch:
-
-- Board: **ESP32S3 Dev Module**, not "Arduino UNO R4 WiFi", which targets the RA4M1
-- **USB CDC On Boot: Enabled**, or `Serial` never reaches the USB port
-- Flash Size: **8MB**
-- Partition Scheme: **Custom**, which takes `partitions.csv` from the sketch folder
-
-The stock schemes spend only half the 8 MB and leave under a megabyte for shows.
-`partitions.csv` gives the firmware 2 MB, of which it uses about 1.6 MB,
-and hands the remaining **6.2 MB to shows**. Confirm it took by checking that
-`partitions.csv` appears in the build folder, because the custom scheme makes
-the compiler report the whole flash as the maximum rather than the app
-partition. If the binary ever passes 2 MB, `app0` is the number to raise.
-
-Shows live in that partition, mounted as LittleFS and formatted on first boot.
-At every boot the controller deletes any file there that is not the show list
-or a listed show.
-
-Serial console at 115200: `net | setup | forget | home | unpair | password | key`. The
-controller prints one line per event, led by its area (`dmx`, `wifi`, `store`,
-`home`, `setup`, `link`), and HomeSpan's own output is silenced. `net` reports
-the firmware, the address, the connected phones, free memory, how much of the
-loop's stack is spare, the show filesystem and the stored networks. `home`
-prints the HomeKit accessory database with any errors in it. `password` removes
-the controller's password and `key` prints the key it keeps for it. A line
-nobody reads is dropped rather than waited on, so a Mac holding the port open
-never stalls the controller.
-
-## Testing against a controller
-
-`ControllerTests` runs two complete copies of the app, as two devices, against a
-real controller on the network. It covers opening, show commands, lights,
-scenes and cues, a cue started and a scene turned off on one device reaching
-the other, a scene in an old format being erased, made and edited fixtures, deletes, two devices editing one light,
-an edit made while the link is down, an import, deleting the open show and the
-password. It creates a show named **Hardware Test**, removes it again and
-leaves the controller on the show it found, with the password it found. It is
-skipped unless it is given an address. Run it with the controller on USB:
-
-```bash
-GlowTests/controller-tests.sh 192.168.68.55
-```
-
-The script asks the controller for its key over serial, so the two devices get
-in whatever password is set, and it turns off Xcode's diagnostics collection,
-which otherwise adds more than a minute after the run. It takes about 10 to
-15 seconds and the unit tests about 5. A run stopped halfway can leave a test
-password behind, which serial `password` removes.
+Serial console at 115200: `net` (firmware, address, clients, memory, loop stack,
+filesystem, stored networks), `setup`, `forget`, `home` (HomeKit database),
+`unpair`, `password` (removes it), `key` (prints the stored key). Log lines lead
+with their area (`dmx`, `wifi`, `store`, `home`, `setup`, `link`). Unread output
+is dropped, never waited on.
 
 ## Toolchain
 
-arduino-esp32 core 3.3.12 · ESP-IDF 5.5.5 · esp_dmx 4.1.0 · WebSockets 2.7.2 ·
-ArduinoJson 7.4.3 · HomeSpan 2.1.8
+arduino-esp32 core 3.3.12, ESP-IDF 5.5.5, esp_dmx 4.1.0, WebSockets 2.7.2,
+ArduinoJson 7.4.3, HomeSpan 2.1.8.
 
-**esp_dmx needs patching, three times.** 4.1.0 does not build against ESP-IDF ≥ 5.3,
-which removed `.module` from `uart_signal_conn_t`. And its ISR only goes into
-IRAM when `CONFIG_DMX_ISR_IN_IRAM` is set, which Kconfig does under ESP-IDF but
-cannot under Arduino, so by default the ISR sits in flash and any flash access
-that drops the cache corrupts the packet on the wire as a visible flicker. And
-it times the mark after break from when the break was due to end rather than
-when it did, so an interrupt that arrives late eats into the mark. Read back off
-the wire, the mark fell under the 8 µs a receiver must accept about once a
-second, and cheap LED fixtures dropped that packet all at once while moving
-heads read it fine. Patched, the mark never measured under 15 µs. Run
-`./patch_esp_dmx.sh` after installing from Library Manager. Idempotent, keeps
-`.orig` backups. It marks the library once every patch is in, and the sketch
-refuses to build without that mark, so a fresh machine or a library update
-cannot quietly bring the flicker back.
+**esp_dmx must be patched.** `Arduino/patch_esp_dmx.sh` (idempotent, keeps
+`.orig` backups, defaults to `~/Documents/Arduino/libraries/esp_dmx/src`) makes
+it build against ESP-IDF 5.3 and later, forces its ISR into IRAM, and restarts
+the mark-after-break timer after the break actually ends. Without the last two,
+cheap LED fixtures flicker because the mark drops under 8 µs. The script stamps
+`GLOW_ESP_DMX_PATCHED 3` into `esp_dmx.h` and `DmxBus.cpp` refuses to build
+without it. Never remove the patches, the stamp or the check. A new patch bumps
+the number in both places.
 
-**Use `DMX_NUM_1`.** Port 0 is the console UART, and `DMX_NUM_2` crashes in
-`dmx_driver_install()`, because esp_dmx drops the third UART's context entry
-([#228](https://github.com/someweisguy/esp_dmx/issues/228)).
+**Use `DMX_NUM_1`.** Port 0 is the console and `DMX_NUM_2` crashes in
+`dmx_driver_install()` ([esp_dmx#228](https://github.com/someweisguy/esp_dmx/issues/228)).
 
 ## Wire protocol
 
-WebSocket at `ws://glow.local/ws` on port 80, the hostname the controller
-answers to over mDNS. A client that has connected before also tries the address
-the controller last reported, at the same time, and keeps whichever answers
-first, so a changed address costs nothing.
+WebSocket at `ws://glow.local/ws`, port 80, found over mDNS. A client that has
+connected before also tries the last address the controller reported, in
+parallel, and keeps whichever answers first. The client must not offer a
+WebSocket subprotocol.
 
-**The client must not offer a WebSocket subprotocol.** The node's library echoes
-one back and a strict client then rejects its own connection.
-
-DMX travels as binary frames:
+DMX frames are binary:
 
 ```
 byte 0      opcode    0x01 output, 0x02 source, 0x04 both
@@ -363,10 +259,14 @@ bytes 4-5   length    uint16 LE
 bytes 6..   values
 ```
 
-`0x03` is a document, which is how an edit reaches the controller and the other
-devices in one hop. Opening a TCP connection per object was what made saving a
-scene feel slow, and it made every other device fetch the object back over HTTP
-before it could show it.
+`0x01` is output after master and blackout: clocked, not relayed. `0x02` is the
+programmer's source before master: stored and relayed, not clocked. `0x04` is
+both, sent whenever master and blackout leave the look unchanged: clocked, then
+relayed as a source. The app sends a full universe on connect and deltas after,
+never on a timer.
+
+`0x03` is a document, how an edit reaches the controller and every other device
+in one hop:
 
 ```
 byte 0      opcode    0x03 document
@@ -378,171 +278,79 @@ bytes 5-6   body length, uint16 LE
 bytes 7..   show, folder, id, body
 ```
 
-The controller stores the body, relays the frame untouched to every other
-client, and answers the sender with `{"t":"wrote"}`, or `{"t":"unwritten"}` when
-it could not store it, both naming the show, folder and id. A client folds an
-object into what it believes the controller holds only once that answer arrives,
-and a write that never lands makes the app say so and reload the show as the
-controller holds it. It keeps one write per object in flight and sends a newer
-edit once the answer is in.
-An edit relayed from another device for an object whose write is still in flight
-is ignored, because the controller stores the frames in the order they arrive
-and the pending write lands after it. A document for a show the controller does
-not list is refused, so a device still editing a show that was just deleted
-cannot bring its folder back. Anything larger than the socket carries
-comfortably still goes over HTTP.
+The controller stores the body, relays the frame to every other client, and
+answers the sender `{"t":"wrote"}` or `{"t":"unwritten"}` with `show`, `folder`
+and `id`. The app folds an object into what it believes the controller holds
+only on that answer, reloads the show when a write fails, keeps one write per
+object in flight, and ignores a relayed edit to an object whose own write is in
+flight. A document for a show the controller does not list is refused. Objects
+over 12,000 bytes (`ShowLibrary.frameLimit`) go over HTTP instead.
 
-**The opcode says what the frame is for.** `0x01` is the output, what the lamps
-should be doing once master and blackout are in it, and the controller clocks it
-onto the wire and tells nobody. `0x02` is the source, what the programmer holds
-before master touches it, and the controller stores it and passes it to every
-other client without clocking it. `0x04` is both at once, which is what the app
-sends whenever master and blackout leave the look as it is, so a move is one
-frame rather than two. The controller clocks it and passes it on as a source.
+`0x05` is playback state, at most 2560 bytes. The controller keeps the latest in
+memory only, relays it, sends it to joining clients, and clears it on show
+switch. Layout: a count of playing scenes, each scene id and its current cue id
+in the order they were turned on, then address and value pairs to the end
+holding what those channels were before a scene took them.
 
-`0x05` is what is playing, up to 2560 bytes after the opcode. The controller
-keeps the last one in memory, passes it to every other client and sends it to a
-device that joins, so any device can step a scene another one started or turn
-it off. It never touches flash, so starting a cue never pauses DMX, and
-switching show clears it. The app writes it as a count of playing scenes, each
-scene id and the id of the cue it is on in the order they were turned on, then
-pairs of address and value until the end: what those channels were before a
-scene took them.
+Everything else is JSON with a `t` discriminator. Types are strict: a fraction
+is not an integer, a boolean is not `1`. Unreadable messages are ignored.
 
-Everything else is JSON with a `t` discriminator. Out: `hello`, `ping`,
-`blackout`, `master`, `span`, and the show commands below. In: `status`
-(`fw`, `src`, `client`, `ip`, `master`, `blackout`), `shows`, `refused`,
-`pong` (with `ram`, `ramTotal`, `store` and `storeTotal` in bytes, which the
-Controller screen shows live),
-plus `blackout` and `master` relayed from another client, and the
-document notices below. Types are
-strict, a fraction is not an integer and a boolean is not `1`. `status` and
-`shows` are sent in reply to `hello`, so say hello first. `status` also carries
-`id`, `password` (whether one is set), `nonce` and `session`.
+- Client to controller: `hello`, `ping` (`seq`), `blackout` (`on`), `master`
+  (`level`), `span` (`slots`), `unlock`, `password`, and the show commands.
+- Controller to client: `status`, `shows`, `refused`, `pong`, `locked`,
+  `password`, `wrote`, `unwritten`, `doc`, plus `blackout` and `master` relayed
+  from other clients.
 
-**A controller with a password answers `hello` with `locked`** (`id`, `nonce`,
-`wrong`, `wait` in seconds) and ignores everything else until the client sends
-`{"t":"unlock","proof"}`. The proof is HMAC-SHA256 of `"unlock"` followed by the
-nonce, keyed with the password key and written in hex. A right proof gets the
-usual `status`, `shows` and frame. A wrong one gets a new `locked` with a fresh
-nonce. `{"t":"password","proof","key"}` sets, changes or removes it: the proof
-signs `"change"` and the nonce with the current key, and the new key travels
-XORed with the HMAC of `"wrap"` and the nonce, or bare when there was none. An
-empty `key` removes it. Every device then gets `{"t":"password","set"}`, and a
-refusal goes to the sender alone as `{"t":"password","refused":"wrong"}` with
-`wait`, or `"storage"`. HTTP requests carry the session as `X-Glow-Session`,
-and without a live one everything but `/api/info`, `/api/scan` and provisioning
-on the setup network answers 403. A session lasts as long as its WebSocket. `client` is the slot the
-controller gave you, and you send it back as `X-Glow-Client` so your own writes
-are not relayed to you. Anything the controller cannot read is ignored rather
-than answered.
+Send `hello` first. It is answered with `status` (`fw`, `src`, `client`, `ip`,
+`master`, `blackout`, `id`, `password`, `nonce`, `session`), `shows` and the
+source frame. `pong` carries `seq`, `ram`, `ramTotal`, `store` and `storeTotal`
+in bytes. `src` true means the controller holds a look and the client adopts it
+with master and blackout. False means the client asserts its own. The
+controller keeps its last source across disconnects. Master and blackout are
+relayed like source frames so every device sends the same output.
 
-Setup is plain HTTP on the same port: `GET /api/info`, `GET /api/scan`,
-`POST /api/provision`, `POST /api/setup`, `POST /api/forget`. `/api/scan` is
-served only on the setup network, and it starts the scan and answers straight
-away, so the app polls until the list arrives.
+**With a password set**, `hello` gets `locked` (`id`, `nonce`, `wrong`, `wait`
+in seconds) and everything else is ignored until `{"t":"unlock","proof"}`. The
+proof is hex HMAC-SHA256 of `"unlock"` followed by the nonce, keyed with the
+key. A wrong proof gets a new `locked` with a fresh nonce.
+`{"t":"password","proof","key"}` sets, changes or removes it: the proof signs
+`"change"` plus the nonce with the current key, the new key travels XORed with
+the HMAC of `"wrap"` plus the nonce (bare when none was set), and an empty `key`
+removes it. Every device then gets `{"t":"password","set"}`. A refusal goes to
+the sender alone as `{"t":"password","refused":"wrong"}` with `wait`, or
+`"storage"`.
 
-## Apple Home
+HTTP requests carry `X-Glow-Session` (valid while its WebSocket lives) and
+`X-Glow-Client` (the `client` slot from `status`, so the sender's own writes are
+not relayed back). Without a live session everything answers 403 except
+`/api/info`, `/api/scan`, and `/api/provision` from the setup network.
 
-The controller is a HomeKit bridge as well as a desk. It serves HAP itself,
-so Siri and the Home app reach the rig with no phone, no hub and no other
-bridge in between.
+Setup routes: `GET /api/info`, `GET /api/scan`, `POST /api/provision`,
+`POST /api/setup`, `POST /api/forget`. `/api/scan` works only on the setup
+network, returns at once and is polled until the list arrives.
 
-**Apple Home belongs to one show.** The accessories are live only while the show
-named **Home** is the active one, because channel 1 is this head in that show
-and something else entirely in the others. Switch to another show and Home's
-controls refuse the write and report a failure rather than moving a stranger's
-fixture. Switch back and they pick the light up again. The binding is by name,
-so renaming the show in Glow moves it.
+## Show storage
 
-The head arrives in Home as two accessories, so its light and its position
-sit on separate tiles:
-
-| Accessory | Control | What it drives | Channels |
-|---|---|---|---|
-| Moving Head | Moving Head | on, brightness, hue and saturation | 6 to 10 |
-| Pan and Tilt | Pan | 0 to 100 percent across 540 degrees | 1 and 2 |
-| Pan and Tilt | Tilt | 0 to 100 percent across 270 degrees | 3 and 4 |
-
-Home has no control for an axis, so Pan and Tilt borrow the window covering
-service and read as a percentage rather than in degrees. They carry shade icons
-and say Open and Closed at the extremes. A light is what they would rather look
-like, but every Lightbulb service answers "turn off the lights" and a Good Night
-scene, which would drag the head's position to zero along with the real lamps.
-
-**Home touches only those nine channels.** The movement speed, the colour macro,
-the program speed, the program and reset are the desk's alone, and a change from
-Home leaves them exactly where you put them. Each control writes only the
-channels it owns, and only when the value it computes differs from what the
-controller already holds, so nothing is sent for a drag that lands where it
-started.
-
-Brightness runs the dimmer band on channel 6 and never touches the emitters, so
-colour keeps its full resolution at any level. Saturation crossfades the red,
-green and blue emitters against the white one, which is the centre of Home's
-colour wheel.
-
-**It follows the desk.** Every control reads the controller's source back and
-updates itself, so moving the head in Glow moves the sliders in Home. Position, brightness and on or off come back exactly. Colour comes back
-as the nearest hue and saturation Home can show, because `EmitterMix` can reach
-mixes that one pair of values cannot describe.
-
-A change from Home enters as a source frame, the same as a change from any other
-device, so the app sees the fader move and the look survives for the next
-device to connect. Master and blackout are held on the controller and
-scale the head's dimmer the way they do everywhere else.
-
-**The head is the fourteen channels starting at address 1.** That is fixed in
-`Config.h` as `HEAD_ADDRESS` and the channels Home drives within it, along with
-the dimmer band, the pan and tilt inversions, the show name and the HAP port.
-Nothing about it is sent from the app.
-
-**Pairing:** HAP is on port 1201, advertised as `_hap._tcp` on the same
-`glow.local`. Add Glow in Home and enter **466-37-726**, HomeSpan's default
-code. Pair with the
-rig dark, because pairing writes to flash and a flash write corrupts the packet
-on the wire. Removing the bridge from Home leaves the controller believing it
-is paired, so serial `unpair` is what lets it be added again. Home caches the
-accessory database, so a firmware change that adds or removes a control or an
-accessory needs the bridge removed and added back before it shows.
-
-## Shows on the wire
-
-**The controller keeps the list of shows.** A device never writes the list.
-It sends `show.add` (`id`, `name`), `show.rename` (`id`, `name`), `show.remove`
-(`id`) or `show.open` (`id`) and the controller changes the list in one step,
-stores it and sends `{"t":"shows","active","shows":[{"id","name"}]}` to every
-client. A command it refuses, such as removing the last show or a name over 64
-characters, goes back to the sender alone as the unchanged list, so the device
-puts its screen back. When the reason is one a person can act on, a full store
-or the limit of 64 shows, `{"t":"refused","reason":"storage"}` or `"limit"`
-comes first and the app says so. Adding a show opens it, removing the open one opens the
-first, and every device follows the active show the moment the list arrives. A
-controller with no shows makes **Show 1** when it starts.
-
-Show contents move over plain HTTP on the same port, because a made fixture
-definition runs to tens of kilobytes and the WebSocket carries only small
-messages.
-
-**Nothing on the main loop waits on flash or on a slow client.** HTTP has its
-own task and every show write goes through a store task, so the controller
-keeps answering every phone while one of them loads a show or the store is
-busy. The ESP32 keeps a packet in its Wi-Fi receive buffers until the program
-reads it. When the main loop sent a show itself, a few busy phones filled every
-buffer, and the controller stopped hearing the acknowledgements the download
-was waiting for, for minutes at a time. A phone that takes nothing for a second
-is dropped rather than waited on, and reconnects. A download reads the show in
-pieces under the store's lock and never keeps the file open, because LittleFS
-will not replace an open file.
+**The controller owns the show list** (`/shows.json`, held in memory). Devices
+send `show.add` (`id`, `name`), `show.rename` (`id`, `name`), `show.remove`
+(`id`) and `show.open` (`id`), and the controller broadcasts
+`{"t":"shows","active","shows":[{"id","name"}]}`. A refused command (last show,
+name over 64 characters) returns the unchanged list to the sender alone,
+preceded by `{"t":"refused","reason":"storage"}` or `"limit"` (64 shows) when a
+person can act on it. Adding a show opens it, removing the open one opens the
+first, and every device follows the active show. With no shows the controller
+creates **Show 1**.
 
 | Method | Path | |
 |---|---|---|
-| GET | `/api/show/<id>` | the show's eight files, one after another, as stored |
+| GET | `/api/show/<id>` | the show's eight files concatenated, as stored |
 | GET, PUT | `/api/show/<id>/<folder>/<objid>` | one object |
 
-A show is eight files, `<id>` and `<id>.1` to `<id>.7`. Every object always
-lands in the same one, picked by a hash of its folder and id, and every write
-appends one record to it:
+After a PUT lands, every other client gets `{"t":"doc","show","folder","id"}`
+and fetches that object.
+
+A show is eight append-only files, `<id>` and `<id>.1` to `<id>.7`. An object
+always lands in the file its folder and id hash to. Each write appends:
 
 ```
 byte 0      0 put, 1 delete
@@ -552,131 +360,87 @@ bytes 3-4   body length, uint16 LE
 bytes 5..   folder, id, body
 ```
 
-The newest record for a folder and id is the object, and a delete record
-removes it. `lights`, `groups`, `made`, `scenes` and `cues` are the folders today.
-Names are letters, digits, hyphen and underscore, up to 39 characters, and
-anything else is refused. One object can be up to 64 KB. Once a file has grown
-past twice what its newest records hold, the store task rewrites it with only
-those. A rewrite needs room for a copy of one file, an eighth of the show, so
-the controller keeps an eighth of the flash free: a new object that would reach
-into it is refused, a delete never is, and a refused write first rewrites the
-files of its show that hold something to drop, once until something is deleted.
-A full store therefore still takes deletes and gets its room back from them. The
-store task pauses a moment every 16 KB it reads or copies, so a long rewrite
-never trips the watchdog. It sorts the records in a
-fixed 32 KB table, one slice of the keys at a time when a file holds more than
-fit, so no show is too large to rewrite. A store task gathers up to 32 queued
-writes and commits them together, one flash write per file they touch.
+The newest record per folder and id is the object, and a delete record removes
+it. The controller never parses a body and does not know what a folder means,
+so a new kind of object is a new folder the app writes, with no firmware
+change. Folders today: `lights`, `groups`, `made`, `scenes`, `cues`. Names are
+letters, digits, `-` and `_`, up to 39 characters. An object is at most 64 KB.
+One record per object, never a whole-show write, is what lets two editors'
+changes both survive.
 
-**The controller does not know what a folder means.** It stores and returns
-records without parsing a body, `GET /api/show/<id>` sends the files as they are,
-and the app keeps the newest record per folder and id. So a new kind of object
-is a folder the app starts writing to, and the firmware does not change.
-`/shows.json` is the one file the controller reads, and it keeps it in memory.
+A file is rewritten with only its live records once it passes twice their size.
+The controller keeps an eighth of the flash free for rewrites: a put that would
+reach into it is refused, a delete never is, and a refused put first compacts
+its show once until something is deleted. Rewrites sort in a fixed 32 KB table
+one key slice at a time and yield every 16 KB for the watchdog. The store task
+commits up to 32 queued writes per flash write. About 5.3 MB is usable for
+objects, roughly 25,000 twelve-light cues.
 
-**How much fits, measured on the controller.** The flash holds 6080 KB for
-shows, and with an eighth kept free about 5,300 KB is for objects of every show
-together. On 2026-09-27 a test client filled one empty show with twelve-light
-cues of 211 bytes each until the controller refused one: 25,059 cues went in,
-and the refusal came at 5,268 KB used. Records from the app are shorter, a cue
-that sets dimmer and colour on 12 lights is about 180 bytes and a scene with its
-cue for 50 lights at 20 channels each is about 650 bytes, so the whole
-controller holds about 29,000 such cues or about 8,000 such full-rig scenes.
-Before firmware 2.9 the controller rebooted at about 1,100 cues. A cue stores in
-0.06 to 0.2 s. At the limit the first refused write answers after about 18 s
-while the store looks for anything to drop, later ones in under 0.1 s. Deleting
-200 cues at the limit went through, and the next cue stored after 26 s while two
-files were rewritten.
+**Nothing on the main loop waits on flash or a slow client.** HTTP has its own
+task, every show write goes through the store task, and a client that accepts
+nothing for a second is dropped. A download reads in pieces under the store lock
+and never holds a file open, because LittleFS will not replace an open file.
 
-A usage pattern that fills it: a venue that builds a new show every week, each
-with 50 lights, 20 full-rig scenes and 500 twelve-light cues, uses about 110 KB a
-week and reaches the limit after about 49 weeks, close to the 64 show limit.
-Editing does not fill it, since an edited object replaces its old record the next
-time its file is rewritten. A single show of a 150 cue play on 30 lights uses
-about 70 KB, so a controller that keeps a handful of productions stays under a
-tenth full.
+**Writing flash pauses DMX** (`Flash::guarded`), since a flash write drops the
+cache and would corrupt the packet on the wire. Fixtures hold their last value
+for a frame or two. The app writes only on change, never on a timer.
 
-**One record per object, not one write per show.** A whole-show write would
-mean your rename wiping my new scene. Per object, both survive under the same
-last writer wins rule, and one edit sends one small record rather than the show.
+**Output timing.** The controller clocks only up to the highest slot it has been
+sent, sends as soon as new values arrive capped at `DMX_BURST_HZ` (100), and
+refreshes at `DMX_REFRESH_HZ` (40) when idle.
 
-After an HTTP write lands, the controller sends
-`{"t":"doc","show","folder","id"}` to every client but the sender. A client
-fetches just that object and applies it, so nothing reloads the show to learn
-one name changed.
+**Object encoding.** `lights`, `groups` and `made` are JSON. Numbers in the
+binary formats are unsigned LEB128, a text is a length then UTF-8. An order is
+a fractional `Double`, so a drag writes one object. It is encoded as the number
+`order * 256 << 1` when exact, else `1` then a little-endian double. An id is 64
+random bits as eleven base64url characters (older ids are sixteen hex digits,
+still valid), written as `header << 2` plus eight bytes for hex, `header << 2 |
+1` plus eight bytes for base64url, or `header << 2 | 2` plus a text.
 
-Scenes and cues are binary, because they are what a show holds most of. A
-scene is a format byte (4), what a tap does and its tile buttons as a count and
-one byte each (0 on and off, 1 flash, 2 next, 3 back, 4 update), its order,
-then its name, icon and colour as texts. Each cue is its own object, so editing one cue
-writes one small record however long the list is:
+A scene: format byte `4`, the `SceneAction` raw value of `tap`, a button count
+and one raw value per button, order, then name, icon and colour as texts. Each
+cue is its own object:
 
 ```
 byte 0      7 plain, 8 the rest is raw DEFLATE, whichever is smaller
-then        scene id, order, fade and delay in
-            tenths of a second, when the next cue follows (0 never, else
-            tenths plus one), name, then the lights to the end
-per light   header, id, channel mask, one byte per channel the mask sets
+then        scene id (header 0), order, fade and delay in tenths of a
+            second, follow (0 never, else tenths plus one), label, levels
+per light   header (mask length in bytes), id, channel mask, one byte per
+            channel the mask sets
 ```
 
-Numbers are unsigned LEB128 and a text is a length then UTF-8. An order is a
-number, twice the order in 256ths, when that is exact, or 1 then a little endian
-double. An id is written as `header << 2` then its eight bytes when it is
-sixteen hex digits, `header << 2 | 1` then its eight bytes when it is eleven
-base64url characters, or `header << 2 | 2` then a text. The header of a light is the length of its
-mask in bytes, and of the scene id in a cue it is 0. A cue stores only the
-channels it holds, so a cue that sets four lights' dimmers is about fifty
-bytes. It still records lights rather than addresses, so re-addressing later
-does not point a cue at whatever now sits on those channels.
+Every field decodes with a fallback, so a missing folder or field reads as
+empty. An object the app cannot read in a known folder is erased from the
+controller the next time its show opens.
 
-An id is 64 random bits written as eleven base64url characters, not a UUID.
-Ids made before that are sixteen hex characters, and both stay valid. A record
-names its object and a cue names every light it holds, so the id is most of
-what a small cue weighs, and the odds of two devices minting the same one are
-still far past never.
+## Apple Home
 
-**Order is a fraction, not a position.** Dragging a light to a new place gives
-it a value between its new neighbours and leaves every other light alone, so one
-drag is one small write rather than one per light in the list. Each write pauses
-DMX, which is the real reason this matters. If a gap ever gets too small to
-divide, that list renumbers itself once and carries on.
+The controller serves HAP itself as a HomeKit bridge (port 1201, `_hap._tcp` on
+`glow.local`, HomeSpan default code **466-37-726**). Its accessories are live
+only while the show named **Home** (`HOMEKIT_SHOW`) is active, and refuse
+writes otherwise. The binding is by name.
 
-Every field is read with a fallback rather than a requirement, so a folder or a
-field that is not there yet reads as empty instead of failing the whole show.
-That is what makes adding to the format safe. An object the app cannot read at
-all, in a folder it knows, is erased from the controller the next time its show
-opens, so nothing unreadable stays on the controller.
+The head is the fourteen channels at `HEAD_ADDRESS` 1, fixed in `Config.h`
+along with the channels Home drives, the dimmer band, the inversions and the
+show name. Nothing about it comes from the app.
 
-A show exports as one file carrying `format`, `version`, the date it was written
-and the show itself. Glow reads a file only when both the format and the version
-are the ones it writes today. There is no migration and no reader for anything
-older.
+| Accessory | Control | What it drives | Channels |
+|---|---|---|---|
+| Moving Head | Moving Head | on, brightness, hue and saturation | 6 to 10 |
+| Pan and Tilt | Pan | 0 to 100 percent across 540 degrees | 1 and 2 |
+| Pan and Tilt | Tilt | 0 to 100 percent across 270 degrees | 3 and 4 |
 
-**Writing to flash pauses DMX**, because a flash write drops the cache and
-corrupts the packet on the wire. `Flash::guarded` takes the driver down for the
-length of one write, the same guard the Wi-Fi credentials have always used. A
-frame or two is lost and fixtures hold their last value, which is why the app
-only writes when you change something and never on a timer.
+Pan and Tilt are window coverings, not lightbulbs, so "turn off the lights" and
+Good Night scenes leave the head's position alone. Home writes only these nine
+channels, and only when the computed value differs from what the controller
+holds. Brightness runs the dimmer band on channel 6 and never the emitters.
+Saturation crossfades red, green and blue against white.
 
-**The controller clocks only the slots the rig uses.** A full 512 slot packet
-takes 23 ms on the wire whatever is patched, which is most of the delay you can
-feel between touching a fader and the lamp moving. The controller tracks the
-highest slot it has ever been sent and clocks only that far, so a rig ending at
-channel 124 spends 5 ms per packet instead of 23. It also sends the moment new
-values arrive rather than waiting for the next scheduled slot, capped at 100 Hz,
-and falls back to a 40 Hz refresh when nothing is changing.
+Every control follows the controller's source, so Glow and Home stay in step.
+Colour reads back as the nearest hue and saturation. A change from Home enters
+as a source frame like any device's, and master and blackout scale it.
 
-If a fixture ever misbehaves at that rate, `DMX_BURST_HZ` in `Config.h` is the
-one number to lower.
-
-Master and blackout are relayed the same way a source frame is, so two devices
-on one node stay in step and both send the same output. The app sends a full
-universe on connect and deltas after, never re-asserting the whole universe on
-a timer.
-
-**Who has the look on connect is settled by `src`.** The controller keeps the
-last source it was given, across client churn and disconnects. A joining client
-reads `src` in the status: true means the controller has a look and the client
-takes it along with the master and blackout, false means there is none and the
-client asserts its own. On
-disconnect the controller holds its last look.
+Pair with the rig dark, because pairing writes flash. Removing the bridge in
+Home leaves the controller paired, so serial `unpair` is needed before adding it
+again. After a firmware change that adds or removes a control or accessory,
+remove and re-add the bridge.
