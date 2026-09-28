@@ -418,8 +418,8 @@ final class Console {
 	}
 	
 	static func sortIndex(between low: Double, and high: Double) -> Double? {
-		let middle = ((low + high) * 128).rounded(.down) / 256
-		return middle > low && middle < high ? middle : nil
+		let next = low + max(((high - low) * 32).rounded(.down), 1) / 256
+		return next < high ? next : nil
 	}
 	
 	@available(iOS 27.0, *)

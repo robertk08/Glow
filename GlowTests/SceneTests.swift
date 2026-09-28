@@ -345,7 +345,7 @@ struct SceneTests {
 		recording.store(context: rig.context)
 		
 		let held = rig.look.cues(among: rig.cues)
-		#expect(held.map(\.sortIndex) == [1, 1.5, 2])
+		#expect(held.map(\.sortIndex) == [1, 1.125, 2])
 		#expect(held[1].title(at: 1) == "Storm rolls in")
 		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[2] == 77)
 		#expect(held[0].title(at: 0) == "Cue 1")
@@ -530,14 +530,14 @@ struct SceneTests {
 		var after = rig.add(1, [(0, 1, 1)])
 		rig.add(2, [(0, 1, 2)])
 		
-		for step in 0..<30 {
+		for step in 0..<60 {
 			rig.console.set(UInt8(step + 3), at: DMXAddress(1)!)
 			rig.recording(.cue(rig.look, after: after)).store(context: rig.context)
 			after = try #require(rig.look.cues(among: rig.cues).first { $0.levels.lights[rig.fixtures[0].identifier]?[1] == UInt8(step + 3) })
 		}
 		
 		let held = rig.look.cues(among: rig.cues)
-		#expect(held.compactMap { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [1] + (3...32).map(UInt8.init) + [2])
+		#expect(held.compactMap { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [1] + (3...62).map(UInt8.init) + [2])
 		#expect(Set(held.map(\.sortIndex)).count == held.count)
 		#expect(held.allSatisfy { ($0.sortIndex * 256).rounded() == $0.sortIndex * 256 })
 	}

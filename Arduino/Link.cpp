@@ -199,6 +199,7 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   for (uint32_t since = millis(); frame && millis() - since < STORE_WAIT_MS; delay(1)) {
     if (Store::submit(job)) return;
     settle();
+    step(false);
   }
   free(frame);
   answer(num, p, false);
