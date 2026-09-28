@@ -10,7 +10,7 @@ struct SceneBar: View {
 	let transition: Namespace.ID
 	
 	var body: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures) }
+		let lists = CueList.all(looks, cues: cues, fixtures: fixtures)
 		let playing = console.playback.playing.map(\.scene)
 		let shown = console.shownScene(among: lists.map(\.scene).filter(playing.contains))
 		

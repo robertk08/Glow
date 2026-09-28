@@ -416,14 +416,14 @@ final class ShowLibrary {
 		
 		if let types, !folders.isDisjoint(with: [.lights, .made, .scenes, .cues]) {
 			let fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
-			let cues = Dictionary(grouping: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], by: \.lookID)
 			
 			if !folders.isDisjoint(with: [.lights, .made]) {
 				types.setMade(((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition))
 				console?.applyPatch(fixtures, library: types)
 			}
 			
-			console?.lists = Dictionary(((try? context.fetch(FetchDescriptor<Look>())) ?? []).map { ($0.identifier, CueList($0, cues: cues[$0.identifier] ?? [], fixtures: fixtures)) }, uniquingKeysWith: { first, _ in first })
+			let lists = CueList.all((try? context.fetch(FetchDescriptor<Look>())) ?? [], cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
+			console?.lists = Dictionary(lists.map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
 		}
 		
 		changed(folders)

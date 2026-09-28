@@ -6,22 +6,37 @@ nonisolated struct Levels: Sendable, Equatable {
 	init() {}
 	
 	init?(_ data: Data) {
+		guard let lights = Self.read(data, keeping: true) else { return nil }
+		self.lights = lights
+	}
+	
+	static func isReadable(_ data: Data) -> Bool {
+		read(data, keeping: false) != nil
+	}
+	
+	private static func read(_ data: Data, keeping: Bool) -> [String: [Int: UInt8]]? {
 		var reader = ByteReader(data)
+		var lights: [String: [Int: UInt8]] = [:]
 		
 		while !reader.isAtEnd {
 			guard let (width, light) = reader.identifier(), width <= 64, let mask = reader.bytes(width) else { return nil }
-			var slots = [Int: UInt8](minimumCapacity: mask.reduce(0) { $0 + $1.nonzeroBitCount })
+			let count = mask.reduce(0) { $0 + $1.nonzeroBitCount }
+			guard count > 0, let values = reader.bytes(count) else { return nil }
+			guard keeping else { continue }
+			var slots = [Int: UInt8](minimumCapacity: count)
+			var next = 0
 			
 			for (index, bits) in mask.enumerated() {
 				for bit in 0..<8 where bits & (1 << bit) != 0 {
-					guard let value = reader.byte() else { return nil }
-					slots[index * 8 + bit + 1] = value
+					slots[index * 8 + bit + 1] = values[next]
+					next += 1
 				}
 			}
 			
-			guard !slots.isEmpty else { return nil }
 			lights[light] = slots
 		}
+		
+		return lights
 	}
 	
 	var data: Data {

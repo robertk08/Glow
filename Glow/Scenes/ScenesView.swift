@@ -20,7 +20,7 @@ struct ScenesView: View {
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	@ViewBuilder private var tiles: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures) }
+		let lists = CueList.all(looks, cues: cues, fixtures: fixtures)
 		let items = ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
 			SceneTile(look: look, list: list, recording: $recording, deleting: $deleting)
 		}

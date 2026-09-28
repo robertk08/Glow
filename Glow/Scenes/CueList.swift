@@ -10,10 +10,24 @@ nonisolated struct CueList: Sendable {
 	private static let budget = 12000
 	
 	@MainActor init(_ look: Look, cues: [Cue], fixtures: [Fixture]) {
+		self.init(look, cues: cues, starts: Self.starts(of: fixtures))
+	}
+	
+	@MainActor private init(_ look: Look, cues: [Cue], starts: [String: DMXAddress]) {
 		scene = look.identifier
 		tap = look.tap
 		self.cues = look.cues(among: cues).map(\.entry)
-		starts = Dictionary(fixtures.map { ($0.identifier, $0.start) }, uniquingKeysWith: { first, _ in first })
+		self.starts = starts
+	}
+	
+	@MainActor static func all(_ looks: [Look], cues: [Cue], fixtures: [Fixture]) -> [CueList] {
+		let grouped = Dictionary(grouping: cues, by: \.lookID)
+		let starts = starts(of: fixtures)
+		return looks.map { CueList($0, cues: grouped[$0.identifier] ?? [], starts: starts) }
+	}
+	
+	@MainActor private static func starts(of fixtures: [Fixture]) -> [String: DMXAddress] {
+		Dictionary(fixtures.map { ($0.identifier, $0.start) }, uniquingKeysWith: { first, _ in first })
 	}
 	
 	func index(of identifier: String?) -> Int? {
