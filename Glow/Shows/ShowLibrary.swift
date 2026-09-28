@@ -697,7 +697,7 @@ final class ShowLibrary {
 		
 		if folders.contains(.made) {
 			for made in contents.made {
-				out["\(NodeStore.Folder.made.rawValue)/\(made.id)"] = try? encoder.encode(made)
+				out["\(NodeStore.Folder.made.rawValue)/\(made.id)"] = (try? encoder.encode(made)).flatMap { try? ($0 as NSData).compressed(using: .zlib) as Data }
 			}
 		}
 		

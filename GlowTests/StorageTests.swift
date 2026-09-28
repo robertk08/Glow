@@ -101,13 +101,16 @@ struct StorageTests {
 		#expect(light.count < 120)
 	}
 	
-	@Test func theBundledDefinitionsFitInSixtyKilobytes() async {
+	@Test func theBundledDefinitionsFitInEightKilobytesAndReadBack() async {
 		let show = Self.rig()
 		let files = await ShowLibrary.snapshot(of: show, folders: [.made])
 		let total = files.values.reduce(0) { $0 + $1.count }
+		let read = ShowContents(objects: files.map { (String($0.key.split(separator: "/")[0]), String($0.key.split(separator: "/")[1]), $0.value) })
 		
 		#expect(files.count == 4)
-		#expect(total < 60_000)
+		#expect(total < 8_000)
+		#expect(Set(read.made) == Set(show.made))
+		#expect(read.unreadable.isEmpty)
 	}
 	
 	@Test func oneFiftyLightShowHoldsTwentyFiveThousandCuesOrSevenThousandWholeLooks() async throws {

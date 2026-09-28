@@ -228,7 +228,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 			switch NodeStore.Folder(rawValue: folder) {
 			case .lights: if let light = try? decoder.decode(Light.self, from: body) { lights.append(light) }
 			case .groups: if let group = try? decoder.decode(Group.self, from: body) { groups.append(group) }
-			case .made: if let type = try? decoder.decode(FixtureType.self, from: body) { made.append(type) }
+			case .made: if let type = (try? (body as NSData).decompressed(using: .zlib) as Data).flatMap({ try? decoder.decode(FixtureType.self, from: $0) }) { made.append(type) }
 			case .scenes: if let scene = Scene(identifier: id, body: body) { scenes.append(scene) }
 			case .cues: if let cue = Cue(identifier: id, body: body) { cues.append(cue) }
 			case nil: continue
