@@ -170,7 +170,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 			guard let (_, scene) = reader.identifier(), let sortIndex = reader.order(), let fade = reader.tenths(), let delay = reader.tenths(), let follow = reader.number() else { return nil }
 			guard let label = reader.text() else { return nil }
 			let levels = reader.rest
-			guard Levels.isReadable(levels) else { return nil }
+			guard Levels.read(levels, { _, _, _ in }) else { return nil }
 			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 10, levels: levels)
 		}
 		

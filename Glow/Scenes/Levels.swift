@@ -6,37 +6,40 @@ nonisolated struct Levels: Sendable, Equatable {
 	init() {}
 	
 	init?(_ data: Data) {
-		guard let lights = Self.read(data, keeping: true) else { return nil }
-		self.lights = lights
-	}
-	
-	static func isReadable(_ data: Data) -> Bool {
-		read(data, keeping: false) != nil
-	}
-	
-	private static func read(_ data: Data, keeping: Bool) -> [String: [Int: UInt8]]? {
-		var reader = ByteReader(data)
 		var lights: [String: [Int: UInt8]] = [:]
 		
-		while !reader.isAtEnd {
-			guard let (width, light) = reader.identifier(), width <= 64, let mask = reader.bytes(width) else { return nil }
-			let count = mask.reduce(0) { $0 + $1.nonzeroBitCount }
-			guard count > 0, let values = reader.bytes(count) else { return nil }
-			guard keeping else { continue }
-			var slots = [Int: UInt8](minimumCapacity: count)
-			var next = 0
-			
-			for (index, bits) in mask.enumerated() {
-				for bit in 0..<8 where bits & (1 << bit) != 0 {
-					slots[index * 8 + bit + 1] = values[next]
-					next += 1
-				}
-			}
-			
+		let isRead = Self.read(data) { light, mask, values in
+			var slots = [Int: UInt8](minimumCapacity: values.count)
+			Self.visit(mask, values) { slots[$0] = $1 }
 			lights[light] = slots
 		}
 		
-		return lights
+		guard isRead else { return nil }
+		self.lights = lights
+	}
+	
+	@discardableResult static func read(_ data: Data, _ light: (String, [UInt8], [UInt8]) -> Void) -> Bool {
+		var reader = ByteReader(data)
+		
+		while !reader.isAtEnd {
+			guard let (width, identifier) = reader.identifier(), width <= 64, let mask = reader.bytes(width) else { return false }
+			let count = mask.reduce(0) { $0 + $1.nonzeroBitCount }
+			guard count > 0, let values = reader.bytes(count) else { return false }
+			light(identifier, mask, values)
+		}
+		
+		return true
+	}
+	
+	static func visit(_ mask: [UInt8], _ values: [UInt8], _ slot: (Int, UInt8) -> Void) {
+		var next = 0
+		
+		for (index, bits) in mask.enumerated() {
+			for bit in 0..<8 where bits & (1 << bit) != 0 {
+				slot(index * 8 + bit + 1, values[next])
+				next += 1
+			}
+		}
 	}
 	
 	var data: Data {

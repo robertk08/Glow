@@ -525,6 +525,127 @@ struct SceneTests {
 		#expect(rig.console.playback.playing.isEmpty)
 	}
 	
+	@Test func goingBackToACueBeforeALightIsSetShowsWhatAnotherSceneHoldsOnIt() async throws {
+		let rig = try rig()
+		let other = Look(name: "Other", sortIndex: 1)
+		rig.context.insert(other)
+		rig.add(1, to: other, [(0, 1, 200)])
+		rig.add(1, [(0, 2, 50)])
+		rig.add(2, [(0, 1, 100)])
+		
+		rig.console.toggle(rig.list(of: other))
+		rig.console.go(rig.list)
+		try await until { rig.value(1) == 200 && rig.value(2) == 50 }
+		
+		rig.console.go(rig.list)
+		try await until { rig.value(1) == 100 }
+		
+		rig.console.back(rig.list)
+		try await until { rig.value(1) == 200 }
+	}
+	
+	@Test func turningASceneOffLeavesAnotherScenesFadeOnTheSameLightRunning() async throws {
+		let rig = try rig()
+		let other = Look(name: "Other", sortIndex: 1)
+		rig.context.insert(other)
+		rig.add(1, [(0, 1, 100)])
+		rig.add(1, fade: 1, to: other, [(0, 1, 255)])
+		
+		rig.console.toggle(rig.list)
+		try await until { rig.value(1) == 100 }
+		rig.console.toggle(rig.list(of: other))
+		try await until { (130...200).contains(rig.value(1)) }
+		
+		rig.console.toggle(rig.list)
+		try await Task.sleep(for: .milliseconds(60))
+		
+		#expect(rig.value(1) < 250)
+		try await until { rig.value(1) == 255 }
+	}
+	
+	@Test func aLightTouchedWhileASceneHoldsItKeepsTheTouchWhenTheSceneGoesOff() async throws {
+		let rig = try rig()
+		rig.console.set(40, at: DMXAddress(1)!)
+		rig.add(1, [(0, 1, 255)])
+		
+		rig.console.toggle(rig.list)
+		try await until { rig.value(1) == 255 }
+		rig.console.set(90, at: DMXAddress(1)!)
+		
+		rig.console.toggle(rig.list)
+		try await Task.sleep(for: .milliseconds(60))
+		
+		#expect(rig.value(1) == 90)
+	}
+	
+	@Test func aSceneStartedWhileAnotherFadesOutReturnsTheLightToWhereItWasBeforeBoth() async throws {
+		let rig = try rig()
+		let other = Look(name: "Other", sortIndex: 1)
+		rig.context.insert(other)
+		rig.add(1, fade: 1, [(0, 1, 255)])
+		rig.add(1, to: other, [(0, 1, 100)])
+		
+		rig.console.play(rig.list, at: 0, snapping: true)
+		try await until { rig.value(1) == 255 }
+		rig.console.toggle(rig.list)
+		try await until { (120...220).contains(rig.value(1)) }
+		
+		rig.console.toggle(rig.list(of: other))
+		try await until { rig.value(1) == 100 }
+		rig.console.toggle(rig.list(of: other))
+		try await until { rig.value(1) == 0 }
+	}
+	
+	@Test func deletingTheOnlyCueThatHeldALightPutsThatLightBack() async throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 200)])
+		let second = rig.add(2, [(1, 1, 150)])
+		
+		rig.console.play(rig.list, at: 1, snapping: true)
+		try await until { rig.value(1) == 200 && rig.value(11) == 150 }
+		
+		rig.console.delete(second, from: rig.list, context: rig.context)
+		try await until { rig.value(11) == 0 }
+		#expect(rig.value(1) == 200)
+	}
+	
+	@Test func aChainTheEngineCannotContinueStopsAskingAtItsLastCue() async throws {
+		let library = FixtureLibrary(builtIn: [])
+		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
+		let look = Look(name: "Chase", sortIndex: 0)
+		container.mainContext.insert(wall)
+		container.mainContext.insert(look)
+		
+		for step in 1...30 {
+			var levels = Levels()
+			
+			for slot in 1...512 {
+				levels.set(UInt8(step), slot: slot, of: wall.identifier)
+			}
+			
+			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
+			cue.follow = 0
+			if step == 26 { cue.identifier = String(repeating: "y", count: 60) }
+			container.mainContext.insert(cue)
+		}
+		
+		try container.mainContext.save()
+		let console = Console()
+		console.applyPatch([wall], library: library)
+		let list = CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall])
+		console.lists = [look.identifier: list]
+		
+		console.go(list)
+		try await until { console.playback.playing.first?.wants == true }
+		let stuck = console.playback.cue(of: look.identifier)
+		try await Task.sleep(for: .milliseconds(100))
+		
+		#expect(console.playback.cue(of: look.identifier) == stuck)
+		#expect(console.playback.playing.first?.wants == true)
+	}
+	
 	@Test func storingCueAfterCueAtOneSpotKeepsTheirOrder() throws {
 		let rig = try rig()
 		var after = rig.add(1, [(0, 1, 1)])

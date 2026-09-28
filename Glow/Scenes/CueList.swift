@@ -55,7 +55,8 @@ nonisolated struct CueList: Sendable {
 		guard let index else {
 			if tap == .flash { return "Hold to flash" }
 			if cues.count > 1 { return "\(cues.count) cues" }
-			let lights = Levels(cues[0].levels)?.lights.count ?? 0
+			var lights = 0
+			Levels.read(cues[0].levels) { _, _, _ in lights += 1 }
 			return lights == 1 ? "1 light" : "\(lights) lights"
 		}
 		
@@ -74,18 +75,23 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	func program(from index: Int, snapping: Bool = false) -> Data {
-		let levels = cues.map { Levels($0.levels) ?? Levels() }
+		var changes: [[(address: Int, value: UInt8)]] = []
 		var owned = [Bool](repeating: false, count: Universe.channelCount + 1)
 		
-		for level in levels {
-			for (light, slots) in level.lights {
-				guard let start = starts[light] else { continue }
+		for cue in cues {
+			var change: [(address: Int, value: UInt8)] = []
+			
+			Levels.read(cue.levels) { light, mask, values in
+				guard let start = starts[light] else { return }
 				
-				for slot in slots.keys {
-					guard let address = start.offset(by: slot - 1) else { continue }
+				Levels.visit(mask, values) { slot, value in
+					guard let address = start.offset(by: slot - 1) else { return }
 					owned[address.value] = true
+					change.append((address.value, value))
 				}
 			}
+			
+			changes.append(change)
 		}
 		
 		var order = [index]
@@ -118,13 +124,8 @@ nonisolated struct CueList: Sendable {
 			while folded < position {
 				folded += 1
 				
-				for (light, slots) in levels[folded].lights {
-					guard let start = starts[light] else { continue }
-					
-					for (slot, value) in slots {
-						guard let address = start.offset(by: slot - 1) else { continue }
-						state[address.value] = Int(value)
-					}
+				for (address, value) in changes[folded] {
+					state[address] = Int(value)
 				}
 			}
 			

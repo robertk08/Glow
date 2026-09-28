@@ -10,10 +10,11 @@ extern "C" {
 typedef struct Stage Stage;
 
 enum {
-  STAGE_SLOTS   = 512,
-  STAGE_FRAME   = 0x02,
-  STAGE_COMMAND = 0x05,
-  STAGE_MAP     = 0x06,
+  STAGE_SLOTS     = 512,
+  STAGE_FRAME     = 0x02,
+  STAGE_COMMAND   = 0x05,
+  STAGE_MAP       = 0x06,
+  STAGE_FRAME_MAX = 3 + 4 * (STAGE_SLOTS / 2 + 1) + STAGE_SLOTS,
 };
 
 Stage         *stage_new(void);

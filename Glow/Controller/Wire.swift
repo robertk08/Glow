@@ -12,10 +12,10 @@ nonisolated enum Wire {
 		case play, land, stop, more
 	}
 	
-	static func frame(_ runs: [(start: DMXAddress, values: [UInt8])]) -> Data {
+	static func frame(_ runs: [(start: DMXAddress, values: [UInt8])], seq: Int) -> Data {
 		var writer = ByteWriter()
 		writer.byte(frameOpcode)
-		writer.byte(0)
+		writer.word(seq & 0xFFFF)
 		
 		for run in runs {
 			writer.word(run.start.value)
@@ -26,9 +26,9 @@ nonisolated enum Wire {
 		return writer.data
 	}
 	
-	static func runs(in bytes: [UInt8]) -> [(start: DMXAddress, values: [UInt8])]? {
+	static func runs(in bytes: [UInt8]) -> (ack: Int, runs: [(start: DMXAddress, values: [UInt8])])? {
 		var reader = ByteReader(Data(bytes))
-		guard reader.byte() == frameOpcode, reader.byte() == 0, !reader.isAtEnd else { return nil }
+		guard reader.byte() == frameOpcode, let ack = reader.word(), !reader.isAtEnd else { return nil }
 		var runs: [(start: DMXAddress, values: [UInt8])] = []
 		
 		while !reader.isAtEnd {
@@ -36,7 +36,7 @@ nonisolated enum Wire {
 			runs.append((start, values))
 		}
 		
-		return runs
+		return (ack, runs)
 	}
 	
 	static func command(_ action: Action, seq: Int, scene: String, body: Data) -> Data {
@@ -231,7 +231,7 @@ nonisolated enum Wire {
 				return .playback(bytes)
 			}
 			
-			return runs(in: bytes).map { .frame($0) }
+			return runs(in: bytes).map { .frame(ack: $0.ack, runs: $0.runs) }
 		case let .string(text):
 			struct Envelope: Decodable {
 				var t: String

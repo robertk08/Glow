@@ -12,7 +12,7 @@ actor NodeLink {
 		case latency(TimeInterval)
 		case pong(Int, Wire.Usage?)
 		case usage(Wire.Usage)
-		case frame([(start: DMXAddress, values: [UInt8])])
+		case frame(ack: Int, runs: [(start: DMXAddress, values: [UInt8])])
 		case master(Double)
 		case blackout(Bool)
 		case playback([UInt8])

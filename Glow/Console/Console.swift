@@ -66,6 +66,7 @@ final class Console {
 	}
 	private var events: Task<Void, Never>?
 	private var frames = FrameStream()
+	private var scratch = [UInt8](repeating: 0, count: Int(STAGE_FRAME_MAX))
 	private var map = Data([Wire.mapOpcode])
 	private var announcedMaster: Double?
 	private var announcedBlackout: Bool?
@@ -78,6 +79,7 @@ final class Console {
 	private var sent = 0
 	private var acked = 0
 	private var flashing: Set<String> = []
+	private var continued: [String: String] = [:]
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
@@ -147,6 +149,7 @@ final class Console {
 			announcedBlackout = nil
 			sent = 0
 			acked = 0
+			continued = [:]
 			stage_clear(stage)
 			frames.cover(span)
 			frames.startOver()
@@ -224,8 +227,8 @@ final class Console {
 			usage = value
 		case .pong:
 			break
-		case let .frame(runs):
-			adopt(runs)
+		case let .frame(ack, runs):
+			frames.adopt(runs, ack: ack, into: &universe)
 			guard runs.count == 1, runs[0].start.value == 1, runs[0].values.count == Universe.channelCount else { return }
 			hasAdoptedSource = true
 			isSynced = true
@@ -352,6 +355,7 @@ final class Console {
 	func closeShow(keepingLook: Bool = false) {
 		playback = Playback()
 		flashing = []
+		continued = [:]
 		stage_clear(stage)
 		
 		if !keepingLook || !hasAdoptedSource {
@@ -545,7 +549,7 @@ final class Console {
 			if trimmed.cues.isEmpty {
 				stop(list)
 			} else {
-				play(trimmed, at: max(index - 1, 0))
+				play(trimmed, at: max(index - 1, 0), snapping: true)
 			}
 		}
 		
@@ -586,9 +590,11 @@ final class Console {
 		guard state.count >= 4 else { return }
 		if Int(state[1]) == (isLocal ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
 		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
-		if fresh.playing != playback.playing { playback = fresh }
+		if fresh.playing != playback.playing || fresh.fades.keys != playback.fades.keys { playback = fresh }
+		let wanting = fresh.playing.filter { $0.wants && continued[$0.scene] != $0.cue }
+		continued = Dictionary(fresh.playing.filter(\.wants).map { ($0.scene, $0.cue) }, uniquingKeysWith: { first, _ in first })
 		
-		for entry in fresh.playing where entry.wants {
+		for entry in wanting {
 			guard let list = lists[entry.scene], let index = list.index(of: entry.cue) else { continue }
 			var writer = ByteWriter()
 			writer.text(entry.cue)
@@ -596,35 +602,37 @@ final class Console {
 		}
 	}
 	
-	private func adopt(_ runs: [(start: DMXAddress, values: [UInt8])]) {
-		for run in runs {
-			universe.set(run.values, at: run.start)
-			frames.adopt(run.values, at: run.start, into: universe.values)
-		}
-	}
-	
 	private func flush() {
-		guard isLocal || isSynced else { return }
-		let runs = frames.next(universe.values)
-		guard !runs.isEmpty else { return }
-		let frame = Wire.frame(runs)
-		
 		guard isLocal else {
-			outbox.append(.data(frame))
+			guard isSynced else { return }
+			let runs = frames.next(universe.values)
+			guard !runs.isEmpty else { return }
+			outbox.append(.data(Wire.frame(runs, seq: frames.sent)))
 			return
 		}
 		
-		let bytes = [UInt8](frame)
+		let runs = FrameStream.changes(from: UnsafeBufferPointer(start: stage_source(stage) + 1, count: Universe.channelCount), to: universe.values)
+		guard !runs.isEmpty else { return }
+		let bytes = [UInt8](Wire.frame(runs, seq: 0))
 		stage_write(stage, bytes, bytes.count, UInt8(Self.ownClient))
 	}
 	
 	private func advance() {
 		flush()
 		let restated = stage_tick(stage, now)
-		var frame = [UInt8](repeating: 0, count: 2 + 4 + Universe.channelCount * 3)
-		let count = stage_frame(stage, UInt8(Self.ownClient), &frame, frame.count)
+		let count = stage_frame(stage, UInt8(Self.ownClient), &scratch, scratch.count)
 		stage_relayed(stage)
-		if count > 0, let runs = Wire.runs(in: Array(frame.prefix(count))) { adopt(runs) }
+		
+		if count > 0, let (_, runs) = Wire.runs(in: Array(scratch.prefix(count))) {
+			var next = universe
+			
+			for run in runs {
+				next.set(run.values, at: run.start)
+			}
+			
+			universe = next
+		}
+		
 		if restated { announce() }
 		guard running == nil, stage_busy(stage) else { return }
 		

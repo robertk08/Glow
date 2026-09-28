@@ -44,12 +44,12 @@ struct FrameStreamTests {
 	
 	@Test func anAdoptedFrameIsNotEchoedBack() {
 		var stream = FrameStream()
-		var values = [UInt8](repeating: 0, count: 512)
-		_ = stream.next(values)
-		values[4] = 99
-		stream.adopt([99], at: DMXAddress(5)!, into: values)
+		var universe = Universe()
+		_ = stream.next(universe.values)
+		stream.adopt([(DMXAddress(5)!, [99])], ack: stream.sent, into: &universe)
 		
-		#expect(stream.next(values).isEmpty)
+		#expect(universe[DMXAddress(5)!] == 99)
+		#expect(stream.next(universe.values).isEmpty)
 	}
 	
 	@Test func theLastChannelIsReachable() {
@@ -85,12 +85,11 @@ struct FrameStreamTests {
 	
 	@Test func adoptingAnotherDevicesSlotKeepsALocalChangeElsewherePending() {
 		var stream = FrameStream()
-		var universe = [UInt8](repeating: 0, count: 512)
-		_ = stream.next(universe)
-		universe[2] = 7
-		universe[9] = 5
-		stream.adopt([5], at: DMXAddress(10)!, into: universe)
-		let runs = stream.next(universe)
+		var universe = Universe()
+		_ = stream.next(universe.values)
+		universe[DMXAddress(3)!] = 7
+		stream.adopt([(DMXAddress(10)!, [5])], ack: stream.sent, into: &universe)
+		let runs = stream.next(universe.values)
 		
 		#expect(runs.map(\.start.value) == [3])
 		#expect(runs.map(\.values) == [[7]])
@@ -98,28 +97,62 @@ struct FrameStreamTests {
 	
 	@Test func aWholeUniverseAdoptedOnConnectIsNotSentBack() {
 		var stream = FrameStream()
+		var universe = Universe()
 		stream.cover(120)
-		let universe = [UInt8](repeating: 4, count: 512)
-		stream.adopt(universe, at: DMXAddress(1)!, into: universe)
+		stream.adopt([(DMXAddress(1)!, [UInt8](repeating: 4, count: 512))], ack: 0, into: &universe)
 		
-		#expect(stream.next(universe).isEmpty)
+		#expect(universe[DMXAddress(512)!] == 4)
+		#expect(stream.next(universe.values).isEmpty)
 	}
 	
 	@Test func aPartialAdoptOnConnectStillSendsEverything() {
 		var stream = FrameStream()
+		var universe = Universe()
 		stream.cover(120)
-		let universe = [UInt8](repeating: 4, count: 512)
-		stream.adopt([4, 4, 4, 4, 4], at: DMXAddress(10)!, into: universe)
+		stream.adopt([(DMXAddress(10)!, [4, 4, 4, 4, 4])], ack: 0, into: &universe)
 		
-		#expect(stream.next(universe).first?.values.count == 120)
+		#expect(stream.next(universe.values).first?.values.count == 120)
+	}
+	
+	@Test func aValueSentBeforeTheControllerSawANewerLocalWriteIsIgnored() {
+		var stream = FrameStream()
+		var universe = Universe()
+		_ = stream.next(universe.values)
+		let before = stream.sent
+		universe[DMXAddress(8)!] = 200
+		_ = stream.next(universe.values)
+		stream.adopt([(DMXAddress(8)!, [90]), (DMXAddress(9)!, [30])], ack: before, into: &universe)
+		
+		#expect(universe[DMXAddress(8)!] == 200)
+		#expect(universe[DMXAddress(9)!] == 30)
+		
+		stream.adopt([(DMXAddress(8)!, [90])], ack: stream.sent, into: &universe)
+		
+		#expect(universe[DMXAddress(8)!] == 90)
+		#expect(stream.next(universe.values).isEmpty)
+	}
+	
+	@Test func anAcknowledgementPastTheSixteenBitWrapStillCounts() {
+		var stream = FrameStream()
+		var universe = Universe()
+		
+		for step in 0..<70_000 {
+			universe[DMXAddress(1)!] = UInt8(step % 2)
+			_ = stream.next(universe.values)
+		}
+		
+		stream.adopt([(DMXAddress(1)!, [77])], ack: stream.sent & 0xFFFF, into: &universe)
+		
+		#expect(universe[DMXAddress(1)!] == 77)
 	}
 	
 	@Test func runsReadBackAsWritten() throws {
-		let frame = Wire.frame([(DMXAddress(1)!, [9]), (DMXAddress(510)!, [1, 2, 3])])
-		let runs = try #require(Wire.runs(in: [UInt8](frame)))
+		let frame = Wire.frame([(DMXAddress(1)!, [9]), (DMXAddress(510)!, [1, 2, 3])], seq: 70_001)
+		let read = try #require(Wire.runs(in: [UInt8](frame)))
 		
-		#expect(runs.map(\.start.value) == [1, 510])
-		#expect(runs.map(\.values) == [[9], [1, 2, 3]])
-		#expect(Wire.runs(in: [UInt8](Wire.frame([(DMXAddress(511)!, [1, 2, 3])]))) == nil)
+		#expect(read.ack == 70_001 & 0xFFFF)
+		#expect(read.runs.map(\.start.value) == [1, 510])
+		#expect(read.runs.map(\.values) == [[9], [1, 2, 3]])
+		#expect(Wire.runs(in: [UInt8](Wire.frame([(DMXAddress(511)!, [1, 2, 3])], seq: 0))) == nil)
 	}
 }
