@@ -447,6 +447,43 @@ struct SceneTests {
 		#expect(rig.console.playback.cue(of: rig.look.identifier) != nil)
 	}
 	
+	@Test func aChaseTooLongToSendAtOnceCarriesOnFromTheCues() async throws {
+		let library = FixtureLibrary(builtIn: [])
+		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
+		let look = Look(name: "Chase", sortIndex: 0)
+		container.mainContext.insert(wall)
+		container.mainContext.insert(look)
+		
+		for step in 1...30 {
+			var levels = Levels()
+			
+			for slot in 1...512 {
+				levels.set(UInt8(step), slot: slot, of: wall.identifier)
+			}
+			
+			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
+			cue.follow = 0
+			container.mainContext.insert(cue)
+		}
+		
+		try container.mainContext.save()
+		let console = Console()
+		console.applyPatch([wall], library: library)
+		let list = CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall])
+		console.lists = [look.identifier: list]
+		#expect(list.program(from: 0).count < 13000)
+		
+		console.go(list)
+		var seen: Set<UInt8> = []
+		
+		try await until(within: 5) {
+			seen.insert(console.value(at: DMXAddress(512)!))
+			return seen.count == 30
+		}
+	}
+	
 	@Test func aFlashOnASceneAlreadyOnLeavesItOn() async throws {
 		let rig = try rig()
 		rig.add(1, [(0, 1, 200)])

@@ -40,10 +40,12 @@ in-memory SwiftData store with an undo manager. Disconnected, it shows a waiting
 screen with controller setup and a demo that runs on `Demo.json` and sends
 nothing. Any number of devices share one controller and see the same show.
 
-The app computes every channel value from the fixture definitions and the
-512-channel universe. The controller clocks frames onto the wire, stores show
-objects without parsing them, and relays. Fixture support is a JSON file in the
-app, never a firmware change.
+The app computes every programmer value from the fixture definitions and the
+512-channel universe, and turns each cue into channel values before it plays.
+The controller runs what is playing, fades and follows included, scales master
+and blackout from a map of the patch the app sends, clocks the result onto the
+wire, stores show objects without parsing them, and relays. Fixture support is
+a JSON file in the app, never a firmware change.
 
 Sync works like an X32 and its remotes. A device applies a change locally at
 once and tells the controller after. The controller relays it to every other
@@ -109,7 +111,8 @@ and, for the unbranded 7 by 10 W RGBW head, the
 **Scenes** (the `Look` model) record lights, not addresses, so re-addressing a
 light never points a scene at whatever now sits on its channels. A scene works
 like a desk executor: on (its lights take the stored values), off (they return
-to what they were doing), flash (on while held), and stepping cues. `tap`
+to what they were doing), flash (on while held, leaving a scene that was
+already on as it was), and stepping cues. `tap`
 chooses what a tile tap does (next cue, on and off, flash, open) and `buttons`
 which of Next, Back, On and Off, Flash and Update sit on the tile, in order. A
 tile with buttons is double width and every tile has one height, so the grid
@@ -141,15 +144,18 @@ colour, position, gobo, beam, control), name and fade. Store inserts after the
 cue on stage, or at the end, and puts the stage on the new cue without a light
 moving. Update stores into the cue on stage. Storing into a cue replaces only
 what was chosen. The selection stays. Deleting the cue on stage moves the stage
-to the cue before it, or turns the scene off if it was the last. Done returns to
-the page the builder started from, and Cancel on a scene without cues removes
-it.
+to the cue before it, or to the next one when it was the first, and turns the
+scene off when it was the only cue. Deleting a scene that is on turns it off
+first. Done returns to the page the builder started from, and Cancel on a scene
+without cues removes it.
 
-**Fades** run on the device that started them and reach others as ordinary
-frames. Intensity, colour mixing, position, zoom, focus, iris and frost glide, a
-16-bit channel glides as one value, and a dimmer sharing its channel with a
-strobe fades only inside its dimming band. Everything else snaps at the start.
-Touching a channel mid-fade releases it from the fade.
+**Fades** run on the controller, so a fade, a delay and a chain of follows carry
+on when the device that started them sleeps or drops, and every device shows the
+same cue and fade. The demo runs the same engine in the app. Intensity, colour
+mixing, position, zoom, focus, iris and frost glide, a 16-bit channel glides as
+one value, and a dimmer sharing its channel with a strobe fades only inside its
+dimming band. Everything else snaps at the start. Touching a channel mid-fade,
+on any device, releases it from the fade.
 
 **Shows.** A show holds a patch, its groups, fixtures built in the app, and
 scenes with their cues. It stores no DMX values, so lights come back on their
@@ -252,18 +258,19 @@ WebSocket subprotocol.
 DMX frames are binary:
 
 ```
-byte 0      opcode    0x01 output, 0x02 source, 0x04 both
+byte 0      opcode    0x02
 byte 1      universe  0
-bytes 2-3   start     uint16 LE, 1-based
-bytes 4-5   length    uint16 LE
-bytes 6..   values
+then runs   start uint16 LE (1-based), count uint16 LE, count values
 ```
 
-`0x01` is output after master and blackout: clocked, not relayed. `0x02` is the
-programmer's source before master: stored and relayed, not clocked. `0x04` is
-both, sent whenever master and blackout leave the look unchanged: clocked, then
-relayed as a source. The app sends a full universe on connect and deltas after,
-never on a timer.
+A frame is the source, the values before master and blackout, and carries only
+the channels that changed, so it never repeats a stale value lying between two
+changes. The controller stores it, stops any fade on those channels, clocks the
+output and relays the frame to every other device. What the controller changes
+itself, fades and Home, goes to every device at most every 20 ms. The app sends
+its whole span on connect when the controller has no look, and changes after,
+never on a timer. A device gets nothing before its `hello` is answered, so the
+full look always arrives before any change.
 
 `0x03` is a document, how an edit reaches the controller and every other device
 in one hop:
@@ -286,11 +293,35 @@ object in flight, and ignores a relayed edit to an object whose own write is in
 flight. A document for a show the controller does not list is refused. Objects
 over 12,000 bytes (`ShowLibrary.frameLimit`) go over HTTP instead.
 
-`0x05` is playback state, at most 2560 bytes. The controller keeps the latest in
-memory only, relays it, sends it to joining clients, and clears it on show
-switch. Layout: a count of playing scenes, each scene id and its current cue id
-in the order they were turned on, then address and value pairs to the end
-holding what those channels were before a scene took them.
+`0x05` from a device is a playback command: a sequence number (uint16 LE), the
+action (0 play, 1 land, 2 stop, 3 more) and the scene id as a text. Stop carries
+the fade in milliseconds, and the scene's channels go to the scene turned on
+last that still holds them, else back to what they were before any scene took
+them. Play and land carry the step to loop back to (`0xFF` none), a step count
+and the steps. A step is the cue id, delay, fade and follow in milliseconds
+(follow 0 never, else the time plus one), the byte length of its runs, then runs
+of start (uint16 LE, bit 15 set when the channels go back to what they were
+before the scene, with no values), count (uint16 LE) and values. Every step
+names every channel the scene holds. Play runs the first step and follows on
+through the rest. Land puts the scene on its cue without moving a light, as
+storing a cue does. The app sends as many follow steps as fit in 12,000 bytes.
+When a chain runs out, the state says the scene wants more, and the first device
+to answer with more (the cue it must still be on, then steps like play) carries
+it on.
+
+`0x05` from the controller is the playback state, sent to every device after
+each command and whenever a follow moves on: the client and sequence number of
+the command it answers, a count, then per playing scene in the order they were
+turned on its id, cue id, delay, fade and elapsed milliseconds and whether it
+wants more. A device keeps its own prediction until the state answering its
+latest command arrives. Playback lives in memory only, so it never pauses DMX,
+and a show switch clears it.
+
+`0x06` is the patch map, sent by a device when its patch changes and on connect
+once it has one: per channel that fades or dims, its address (uint16 LE) and
+flags (1 fades, 2 master scales it, 4 a dimming band, 8 the band has an open
+value, 16 16-bit), then the fine address (uint16 LE) of a 16-bit channel and the
+band's first, last and open values. A show switch clears it.
 
 Everything else is JSON with a `t` discriminator. Types are strict: a fraction
 is not an integer, a boolean is not `1`. Unreadable messages are ignored.
@@ -303,11 +334,11 @@ is not an integer, a boolean is not `1`. Unreadable messages are ignored.
 
 Send `hello` first. It is answered with `status` (`fw`, `src`, `client`, `ip`,
 `master`, `blackout`, `id`, `password`, `nonce`, `session`), `shows` and the
-source frame. `pong` carries `seq`, `ram`, `ramTotal`, `store` and `storeTotal`
+source frame, then the playback state. `pong` carries `seq`, `ram`, `ramTotal`, `store` and `storeTotal`
 in bytes. `src` true means the controller holds a look and the client adopts it
 with master and blackout. False means the client asserts its own. The
-controller keeps its last source across disconnects. Master and blackout are
-relayed like source frames so every device sends the same output.
+controller keeps its last source across disconnects. The controller applies
+master and blackout and relays them so every device shows them.
 
 **With a password set**, `hello` gets `locked` (`id`, `nonce`, `wrong`, `wait`
 in seconds) and everything else is ignored until `{"t":"unlock","proof"}`. The
