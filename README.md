@@ -70,9 +70,9 @@ bridge.
   both survive.
 - **No replay after a lost link.** Edits made while the link is down never reach
   the controller, and on reconnect the show reloads as the controller holds it.
-- **Nothing on the firmware's main loop waits on flash or a slow client.** HTTP
-  and show writes have their own tasks, and a client that accepts nothing for a
-  second is dropped.
+- **Nothing on the firmware's main loop waits on flash or a slow client.** HTTP,
+  show writes and playback have their own tasks, and a client that accepts
+  nothing for a second is dropped.
 - **Writing flash pauses DMX** (`Flash::guarded`), so the app writes only on
   change, never on a timer.
 - **Decoders are additive.** Every field decodes with a fallback, so a missing
@@ -127,8 +127,9 @@ and, for the unbranded 7 by 10 W RGBW head, the
 
 WebSocket at `ws://glow.local/ws` on port 80. The client must not offer a
 WebSocket subprotocol, because the controller's library echoes it and a strict
-client then rejects its own connection. The app also tries the last address the
-controller reported and keeps whichever answers first.
+client then rejects its own connection. The app tries the last address the
+controller reported first, the other addresses half a second apart, and keeps
+whichever answers first.
 
 - Send `hello` first. Nothing else arrives before it is answered with `status`,
   `shows`, the source frame when the controller has one, and the playback
@@ -149,8 +150,9 @@ controller reported and keeps whichever answers first.
   devices then get a `doc` notice and fetch that object.
 - A playback chain longer than one command's budget (6,000 bytes) is sent in
   parts. Halfway through a part the state asks the device that last commanded
-  the scene for the next one, and any device once the part has run out. The
-  controller picks the answer up at whichever cue it has reached.
+  the scene for the next one, and any device once the part has run out or that
+  device has left. The controller picks the answer up at whichever cue it has
+  reached.
 - The controller owns the show list. Devices send `show.add`, `show.rename`,
   `show.remove` and `show.open`, and the controller broadcasts the whole list.
 - With a password set, `hello` is answered `locked` until the client proves the
