@@ -77,8 +77,6 @@ struct Stage {
   bool     blackout;
   int      dirtyFrom;
   int      dirtyTo;
-  uint8_t  client;
-  uint16_t seq;
 };
 
 static bool bit(const uint8_t *set, int a) { return set[a >> 3] & (1 << (a & 7)); }
@@ -466,7 +464,6 @@ static void stop(Stage *stage, Scene *scene, uint32_t fade, uint32_t now) {
 Stage *stage_new(void) {
   Stage *stage = (Stage *)calloc(1, sizeof(Stage));
   if (stage) stage->master = 1;
-  if (stage) stage->client = NONE;
   return stage;
 }
 
@@ -537,11 +534,10 @@ bool stage_write(Stage *stage, const uint8_t *message, size_t length, uint8_t wr
   return true;
 }
 
-void stage_command(Stage *stage, uint8_t client, const uint8_t *message, size_t length, uint32_t now) {
+void stage_command(Stage *stage, const uint8_t *message, size_t length, uint32_t now) {
   Reader r = {message, message + length, true};
   if (byte(&r) != STAGE_COMMAND) return;
-  stage->client = client;
-  stage->seq    = word(&r);
+  word(&r);
 
   uint8_t action = byte(&r);
   char    id[NAME];
@@ -662,21 +658,21 @@ static size_t writeText(uint8_t *out, const char *value) {
   return length + 1;
 }
 
-size_t stage_state(Stage *stage, uint32_t now, uint8_t *out, size_t room) {
+size_t stage_state(const Stage *stage, uint32_t now, uint8_t *out, size_t room) {
   size_t count = 0;
-  for (Scene *scene = stage->scenes; scene; scene = scene->next) count++;
+  for (const Scene *scene = stage->scenes; scene; scene = scene->next) count++;
   size_t need = 4 + 5 + count * (2 * NAME + 16);
   if (!out) return need;
   if (room < need) return 0;
 
   size_t n = 0;
   out[n++] = STAGE_COMMAND;
-  out[n++] = stage->client;
-  out[n++] = (uint8_t)(stage->seq & 0xFF);
-  out[n++] = (uint8_t)(stage->seq >> 8);
+  out[n++] = NONE;
+  out[n++] = 0;
+  out[n++] = 0;
   n += writeNumber(out + n, (uint32_t)count);
 
-  for (Scene *scene = stage->scenes; scene; scene = scene->next) {
+  for (const Scene *scene = stage->scenes; scene; scene = scene->next) {
     uint32_t whole   = scene->delay + scene->fade;
     uint32_t elapsed = now - scene->started;
     n += writeText(out + n, scene->id);
@@ -686,9 +682,6 @@ size_t stage_state(Stage *stage, uint32_t now, uint8_t *out, size_t room) {
     n += writeNumber(out + n, elapsed < whole ? elapsed : whole);
     out[n++] = scene->wants;
   }
-
-  stage->client = NONE;
-  stage->seq    = 0;
   return n;
 }
 
@@ -704,8 +697,10 @@ const uint8_t *stage_output(Stage *stage, int *from, int *to) {
 
 void stage_scale(const Stage *stage, uint8_t *values) {
   uint8_t source[SLOTS + 1];
+  uint8_t out[SLOTS + 1];
   memcpy(source + 1, values, SLOTS);
   for (int a = 1; a <= SLOTS; a++) {
-    if (!follower(stage, a)) scaled(stage, source, values - 1, a);
+    if (!follower(stage, a)) scaled(stage, source, out, a);
   }
+  memcpy(values, out + 1, SLOTS);
 }

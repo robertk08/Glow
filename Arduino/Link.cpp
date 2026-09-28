@@ -48,6 +48,8 @@ Stage            *g_stage      = nullptr;
 SemaphoreHandle_t g_lock       = nullptr;
 uint8_t           g_frame[FRAME_MAX];
 bool              g_haveSource = false;
+bool              g_restated   = false;
+uint32_t          g_stated     = 0;
 uint32_t          g_stepped    = 0;
 uint32_t          g_relayed    = 0;
 portMUX_TYPE      g_sessions   = portMUX_INITIALIZER_UNLOCKED;
@@ -56,6 +58,7 @@ bool              g_blackout   = false;
 char              g_out[512];
 bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 bool         g_greeted[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
+uint16_t     g_seq[WEBSOCKETS_SERVER_CLIENT_MAX]      = {};
 char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
@@ -98,14 +101,19 @@ void announce(uint8_t to) {
     state       = (uint8_t *)malloc(room);
     n           = state ? stage_state(g_stage, millis(), state, room) : 0;
   }
-  if (n && to == NO_CLIENT) relay(NO_CLIENT, true, state, n);
-  else if (n) g_ws.sendBIN(to, state, n);
+  for (uint8_t i = 0; n && i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if ((to != NO_CLIENT && i != to) || !admitted(i) || !g_greeted[i]) continue;
+    state[1] = i;
+    state[2] = (uint8_t)(g_seq[i] & 0xFF);
+    state[3] = (uint8_t)(g_seq[i] >> 8);
+    g_ws.sendBIN(i, state, n);
+  }
   free(state);
 }
 
-void step(bool urgent) {
+void step() {
   uint32_t now = millis();
-  if (!urgent && now - g_stepped < STEP_MS) return;
+  if (now - g_stepped < STEP_MS) return;
   g_stepped = now;
 
   bool restated;
@@ -113,7 +121,7 @@ void step(bool urgent) {
     Hold hold;
     restated = stage_tick(g_stage, now);
     light();
-    if (urgent || now - g_relayed >= RELAY_MS) {
+    if (now - g_relayed >= RELAY_MS) {
       for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
         size_t n = admitted(i) && g_greeted[i] ? stage_frame(g_stage, i, g_frame, sizeof(g_frame)) : 0;
         if (n) g_ws.sendBIN(i, g_frame, n);
@@ -122,7 +130,11 @@ void step(bool urgent) {
       stage_relayed(g_stage);
     }
   }
-  if (restated) announce(NO_CLIENT);
+  g_restated = g_restated || restated;
+  if (!g_restated || now - g_stated < RELAY_MS) return;
+  g_restated = false;
+  g_stated   = now;
+  announce(NO_CLIENT);
 }
 
 void greetFrame(uint8_t num) {
@@ -203,7 +215,7 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   for (uint32_t since = millis(); frame && millis() - since < STORE_WAIT_MS; delay(1)) {
     if (Store::submit(job)) return;
     settle();
-    step(false);
+    step();
   }
   free(frame);
   answer(num, p, false);
@@ -216,10 +228,11 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
   if (p[0] == STAGE_COMMAND) {
     {
       Hold hold;
-      stage_command(g_stage, num, p, len, millis());
+      stage_command(g_stage, p, len, millis());
     }
-    step(true);
-    return announce(NO_CLIENT);
+    if (len >= 3) g_seq[num] = p[1] | p[2] << 8;
+    g_restated = true;
+    return step();
   }
 
   if (p[0] == STAGE_MAP) {
@@ -236,7 +249,7 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
   }
   if (!written) return;
   g_haveSource = true;
-  step(false);
+  step();
 }
 
 void greet(uint8_t num) {
@@ -371,7 +384,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
         stage_map(g_stage, EMPTY_MAP, sizeof(EMPTY_MAP));
         light();
       }
-      announce(NO_CLIENT);
+      g_restated = true;
     }
 
     if (outcome == Shows::LIMIT || outcome == Shows::STORAGE) {
@@ -395,6 +408,7 @@ void arrive(uint8_t num) {
   portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = false;
   g_greeted[num]  = false;
+  g_seq[num]      = 0;
   memcpy(g_session[num], session, sizeof(session));
   portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str());
@@ -432,7 +446,7 @@ void begin() {
 
 void tick() {
   g_ws.loop();
-  step(false);
+  step();
   settle();
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {

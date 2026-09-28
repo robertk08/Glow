@@ -571,7 +571,7 @@ struct ControllerTests {
 		let id = try #require(Rig.first.console.node?.id)
 		Rig.second.console.unlock(password: "probe-pass")
 		
-		let took = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded }
+		let took = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.console.lock == nil && Rig.second.shows.isLoaded }
 		#expect(took != nil)
 		#expect(Passkey.stored(id: id) != nil)
 		print("HARDWARE unlocked and loaded in \(String(format: "%.2f", took ?? -1))s")

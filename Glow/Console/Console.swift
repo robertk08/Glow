@@ -145,7 +145,8 @@ final class Console {
 			hasAdoptedSource = false
 			announcedMaster = nil
 			announcedBlackout = nil
-			acked = sent
+			sent = 0
+			acked = 0
 			stage_clear(stage)
 			frames.cover(span)
 			frames.startOver()
@@ -576,7 +577,7 @@ final class Console {
 		}
 		
 		let bytes = [UInt8](message)
-		stage_command(stage, UInt8(Self.ownClient), bytes, bytes.count, now)
+		stage_command(stage, bytes, bytes.count, now)
 		advance()
 		announce()
 	}
@@ -640,6 +641,9 @@ final class Console {
 	private func announce() {
 		var state = [UInt8](repeating: 0, count: stage_state(stage, now, nil, 0))
 		let count = stage_state(stage, now, &state, state.count)
+		state[1] = UInt8(Self.ownClient)
+		state[2] = UInt8(sent & 0xFF)
+		state[3] = UInt8(sent >> 8)
 		take(Array(state.prefix(count)))
 	}
 	
