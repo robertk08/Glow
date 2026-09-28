@@ -101,8 +101,10 @@ These are product decisions the code implements without explaining.
   uses, and a test enforces it.
 - A scene (`Look`) records lights, not addresses, and works like a desk
   executor: on, off (lights return to what they were doing), flash, and stepping
-  cues. Scenes can be on together and the one turned on last wins a shared
-  light.
+  cues. Scenes can be on together and the one turned on or stepped last wins a
+  shared light. Turning a scene off hands each light it wins to the scene under
+  it, or back to what the devices last set, so a light touched while a scene
+  holds it keeps the touch.
 - Cues track. A cue holds only the lights and aspects stored into it, the rest
   keeps what earlier cues set, and going back undoes what later cues changed.
   After the last cue, Next wraps to the first.
@@ -133,16 +135,18 @@ controller reported and keeps whichever answers first.
   state. JSON types are strict: a fraction is not an integer, a boolean is not
   `1`.
 - `0x02` frames carry the source, values before master and blackout, and only
-  the channels that changed. `0x03` documents carry one show object. `0x05` is a
-  playback command from a device and the playback state from the controller.
-  `0x06` is the patch map, telling the controller which channels fade and which
-  master scales.
+  the channels that changed, after a 16-bit sequence number. A device numbers
+  its frames, the controller answers each device with the last number it applied
+  from it, and the device ignores values for channels it wrote after that.
+  `0x03` documents carry one show object. `0x05` is a playback command from a
+  device and the playback state from the controller. `0x06` is the patch map,
+  telling the controller which channels fade and which master scales.
 - A document is answered `wrote` or `unwritten`. The app counts an object as
   stored only on `wrote`, reloads the show on `unwritten`, keeps one write per
-  object in flight, and ignores a relayed edit to an object whose own write is
-  still in flight. Objects over 12,000 bytes go over HTTP instead
-  (`/api/show/<id>/<folder>/<objid>`), and other devices then get a `doc` notice
-  and fetch that object.
+  object and at most 12,000 bytes of documents in flight, and ignores a relayed
+  edit to an object whose own write is still in flight. Objects over 12,000
+  bytes go over HTTP instead (`/api/show/<id>/<folder>/<objid>`), and other
+  devices then get a `doc` notice and fetch that object.
 - A playback chain longer than one command's budget is sent in parts. When the
   controller runs out, the state says the scene wants more, and the first device
   to answer continues it.
