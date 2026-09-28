@@ -211,9 +211,10 @@ void start() {
 
 }  // namespace
 
-void showChanged() {
+bool showChanged() {
   g_mine = Shows::activeNamed(HOMEKIT_SHOW);
   if (g_mine && !g_started) start();
+  return g_started && !g_mine;
 }
 
 void report() {

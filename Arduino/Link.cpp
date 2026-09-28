@@ -343,6 +343,13 @@ void protect(uint8_t num, const char *proof, const char *key) {
   relay(NO_CLIENT, false, (const uint8_t *)g_out, n);
 }
 
+void restart() {
+  for (uint32_t since = millis(); !Store::idle() && millis() - since < STORE_WAIT_MS; delay(1)) settle();
+  Serial.println(F("home: the Home show closed, restarting to free Apple Home"));
+  delay(200);
+  ESP.restart();
+}
+
 void onText(uint8_t num, const uint8_t *p, size_t len) {
   JsonDocument doc;
   if (deserializeJson(doc, p, len)) return;
@@ -386,8 +393,8 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strncmp(t, "show.", 5)) {
     char was[Store::NAME_LIMIT];
     snprintf(was, sizeof(was), "%s", Shows::active());
-    Shows::Outcome outcome = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
-    if (outcome == Shows::DONE) HomeKit::showChanged();
+    Shows::Outcome outcome  = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
+    bool           homeless = outcome == Shows::DONE && HomeKit::showChanged();
     if (strcmp(was, Shows::active())) {
       {
         Hold hold;
@@ -408,6 +415,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     String list = Shows::message();
     if (outcome == Shows::DONE) relay(NO_CLIENT, false, (const uint8_t *)list.c_str(), list.length());
     else g_ws.sendTXT(num, list);
+    if (homeless) restart();
   }
 }
 

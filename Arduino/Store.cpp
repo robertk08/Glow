@@ -444,6 +444,8 @@ bool writeList(const String &text) {
   });
 }
 
+bool idle() { return g_backlog == 0; }
+
 bool submit(const Job &job, TickType_t wait) {
   size_t before = g_backlog.fetch_add(job.length);
   if (g_ready && (!before || before + job.length <= BACKLOG_MAX) && xQueueSend(g_jobs, &job, wait) == pdTRUE) return true;

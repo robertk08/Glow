@@ -29,6 +29,7 @@ struct Span {
 bool begin();
 void sweep();
 bool ready();
+bool idle();
 bool safe(const char *name);
 
 bool readList(String &text);

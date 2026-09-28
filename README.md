@@ -210,9 +210,10 @@ again first.
 ## Apple Home
 
 The controller is a HomeKit bridge itself (HomeSpan, default code
-**466-37-726**). It starts the first time the show named **Home** opens and runs
-until the controller restarts, so Apple Home sees the bridge as not responding
-until then. Its accessories drive the moving head defined in `Config.h` and are
+**466-37-726**). It runs only while the show named **Home** is open, so Apple
+Home sees the bridge as not responding otherwise. Leaving **Home** restarts the
+controller to free its memory, which drops every device and the DMX signal for
+about seven seconds. Its accessories drive the moving head defined in `Config.h` and are
 live only while **Home** is active. Pan and tilt are window coverings, not
 lightbulbs, so "turn off the lights" and Good Night scenes leave the head's
 position alone.
