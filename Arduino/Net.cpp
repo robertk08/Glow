@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <esp_eap_client.h>
 #include <esp_mac.h>
+#include <esp_system.h>
 
 namespace Net {
 namespace {
@@ -223,7 +224,8 @@ void begin() {
   WiFi.persistent(false);
   WiFi.setHostname(GLOW_HOSTNAME);
 
-  uint8_t boots = Creds::bumpBootCount();
+  esp_reset_reason_t reason = esp_reset_reason();
+  uint8_t            boots  = reason == ESP_RST_POWERON || reason == ESP_RST_BROWNOUT ? Creds::bumpBootCount() : 0;
   bool    asked = boots >= RECOVERY_BOOTS;
   if (asked) {
     Creds::clearBootCount();

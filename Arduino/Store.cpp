@@ -36,6 +36,8 @@ const int      SLICES_MAX   = 128;
 const uint32_t PUT_BIT      = 0x80000000;
 const int      SHOWS_HASHED = 64;
 const size_t   BACKLOG_MAX  = 16384;
+const uint32_t REST_MAX_MS  = 200;
+const uint32_t FILE_REST_MS = 10;
 
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
@@ -310,6 +312,7 @@ void perform(Job *jobs, int count) {
       if (fileOf(jobs[i]) == file) group[members++] = &jobs[i];
     }
     if (!members) continue;
+    vTaskDelay(pdMS_TO_TICKS(FILE_REST_MS));
 
     bool     erasing = true;
     bool     erased  = false;
@@ -369,8 +372,10 @@ void keeper(void *) {
       xQueueReceive(g_jobs, &jobs[count], 0);
       count++;
     }
+    uint32_t began = millis();
     perform(jobs, count);
     changed = true;
+    vTaskDelay(pdMS_TO_TICKS(std::min(millis() - began, REST_MAX_MS)));
   }
 }
 

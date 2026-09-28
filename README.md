@@ -184,6 +184,12 @@ maximum, so check the binary against `app0`.
 Serial console at 115200: `net`, `setup`, `forget`, `home`, `unpair`,
 `password`, `key`.
 
+**Restarts keep the look.** Before the controller restarts itself it keeps the
+DMX output, the source, master and blackout in memory that survives a restart,
+and sends the same output again as soon as it boots. Running fades and chases
+stop. It also restarts itself when free memory stays under 24 KB for five
+seconds, because the network stops receiving at that point.
+
 **Recovery.** A controller with no stored network raises the open network **Glow
 Setup**, and the app provisions it from Settings › Controller. Three power
 cycles of under five seconds each raise the setup network and remove the
@@ -212,8 +218,7 @@ again first.
 The controller is a HomeKit bridge itself (HomeSpan, default code
 **466-37-726**). It runs only while the show named **Home** is open, so Apple
 Home sees the bridge as not responding otherwise. Leaving **Home** restarts the
-controller to free its memory, which drops every device and the DMX signal for
-about seven seconds. Its accessories drive the moving head defined in `Config.h` and are
+controller to free its memory. Devices reconnect after about seven seconds. Its accessories drive the moving head defined in `Config.h` and are
 live only while **Home** is active. Pan and tilt are window coverings, not
 lightbulbs, so "turn off the lights" and Good Night scenes leave the head's
 position alone.

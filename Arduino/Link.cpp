@@ -11,6 +11,8 @@
 
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
+#include <esp_attr.h>
+#include <esp_system.h>
 #include <string.h>
 
 namespace Link {
@@ -40,8 +42,20 @@ const uint32_t WS_PONG_MS     = 2000;
 const uint32_t WS_SILENCE_MS  = 8000;
 const uint32_t WS_PATIENCE_MS = 1000;
 const uint32_t STORE_WAIT_MS  = 5000;
+const uint32_t STARVED_MS     = 5000;
+const size_t   HEAP_FLOOR     = 24576;
+const uint32_t KEPT           = 0x676C6F77;
+
+struct Kept {
+  uint32_t mark;
+  float    master;
+  bool     blackout;
+  uint8_t  source[STAGE_SLOTS];
+};
+
+RTC_NOINIT_ATTR Kept g_kept;
 const uint32_t STEP_MS        = 5;
-const uint32_t RELAY_MS       = 20;
+const uint32_t RELAY_MS       = 40;
 
 Stage            *g_stage      = nullptr;
 SemaphoreHandle_t g_lock       = nullptr;
@@ -53,6 +67,7 @@ bool              g_restated   = false;
 uint32_t          g_stated     = 0;
 uint32_t          g_stepped    = 0;
 uint32_t          g_relayed    = 0;
+uint32_t          g_fed        = 0;
 portMUX_TYPE      g_sessions   = portMUX_INITIALIZER_UNLOCKED;
 float             g_master     = 1;
 bool              g_blackout   = false;
@@ -343,9 +358,24 @@ void protect(uint8_t num, const char *proof, const char *key) {
   relay(NO_CLIENT, false, (const uint8_t *)g_out, n);
 }
 
-void restart() {
+void write(int start, const uint8_t *values, int length) {
+  uint8_t frame[7 + STAGE_SLOTS] = {STAGE_FRAME, 0, 0, (uint8_t)(start & 0xFF), (uint8_t)(start >> 8), (uint8_t)(length & 0xFF), (uint8_t)(length >> 8)};
+  memcpy(frame + 7, values, length);
+  stage_write(g_stage, frame, 7 + length, NO_CLIENT);
+  g_haveSource = true;
+}
+
+void restart(const char *why) {
   for (uint32_t since = millis(); !Store::idle() && millis() - since < STORE_WAIT_MS; delay(1)) settle();
-  Serial.println(F("home: the Home show closed, restarting to free Apple Home"));
+  Serial.printf("link: restarting, %s\n", why);
+  {
+    Hold hold;
+    memcpy(g_kept.source, stage_source(g_stage) + 1, STAGE_SLOTS);
+    g_kept.master   = g_master;
+    g_kept.blackout = g_blackout;
+    g_kept.mark     = KEPT;
+    DmxBus::keep();
+  }
   delay(200);
   ESP.restart();
 }
@@ -415,7 +445,7 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     String list = Shows::message();
     if (outcome == Shows::DONE) relay(NO_CLIENT, false, (const uint8_t *)list.c_str(), list.length());
     else g_ws.sendTXT(num, list);
-    if (homeless) restart();
+    if (homeless) restart("the Home show closed");
   }
 }
 
@@ -459,6 +489,15 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
 void begin() {
   g_lock  = xSemaphoreCreateMutex();
   g_stage = stage_new();
+  if (g_kept.mark == KEPT && esp_reset_reason() == ESP_RST_SW) {
+    int from, to;
+    g_master   = g_kept.master;
+    g_blackout = g_kept.blackout;
+    stage_levels(g_stage, g_master, g_blackout);
+    write(1, g_kept.source, STAGE_SLOTS);
+    stage_output(g_stage, &from, &to);
+  }
+  g_kept.mark = 0;
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, 0);
@@ -468,6 +507,8 @@ void tick() {
   g_ws.loop();
   step();
   settle();
+  if (ESP.getFreeHeap() >= HEAP_FLOOR) g_fed = millis();
+  if (millis() - g_fed > STARVED_MS) restart("the memory ran out");
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
     if (g_ws.clientIsConnected(i) && millis() - g_heard[i] > WS_SILENCE_MS) g_ws.disconnect(i);
@@ -477,17 +518,9 @@ void tick() {
 int clients() { return g_ws.connectedClients(); }
 
 void apply(int start, const uint8_t *values, int length) {
-  uint8_t frame[7 + STAGE_SLOTS] = {STAGE_FRAME, 0, 0};
   if (start < 1 || length < 1 || start + length - 1 > STAGE_SLOTS) return;
-  frame[3] = (uint8_t)(start & 0xFF);
-  frame[4] = (uint8_t)(start >> 8);
-  frame[5] = (uint8_t)(length & 0xFF);
-  frame[6] = (uint8_t)(length >> 8);
-  memcpy(frame + 7, values, length);
-
   Hold hold;
-  stage_write(g_stage, frame, 7 + length, NO_CLIENT);
-  g_haveSource = true;
+  write(start, values, length);
   light();
 }
 

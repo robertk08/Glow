@@ -3,6 +3,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <esp_attr.h>
+#include <esp_system.h>
 
 #if GLOW_ESP_DMX_PATCHED != 3
 #error "esp_dmx is not patched, run Arduino/patch_esp_dmx.sh"
@@ -11,7 +13,16 @@
 namespace DmxBus {
 namespace {
 
-const int SLOT_MAX = DMX_PACKET_SIZE - 1;
+const int      SLOT_MAX = DMX_PACKET_SIZE - 1;
+const uint32_t KEPT     = 0x676C6F77;
+
+struct Kept {
+  uint32_t mark;
+  int      used;
+  uint8_t  frame[DMX_PACKET_SIZE];
+};
+
+RTC_NOINIT_ATTR Kept g_kept;
 
 uint8_t g_frame[DMX_PACKET_SIZE];
 uint8_t g_wire[DMX_PACKET_SIZE];
@@ -65,6 +76,11 @@ void refreshTask(void *) {
 bool begin() {
   memset(g_frame, 0, sizeof(g_frame));
   memset(g_wire, 0, sizeof(g_wire));
+  if (g_kept.mark == KEPT && esp_reset_reason() == ESP_RST_SW) {
+    memcpy(g_frame, g_kept.frame, sizeof(g_frame));
+    g_used = g_kept.used;
+  }
+  g_kept.mark = 0;
 
   g_lock = xSemaphoreCreateMutex();
   if (!g_lock) return false;
@@ -103,6 +119,13 @@ void setUsed(int slots) {
   if (slots < DMX_MIN_SLOTS) slots = DMX_MIN_SLOTS;
   if (slots > SLOT_MAX) slots = SLOT_MAX;
   g_used = slots;
+}
+
+void keep() {
+  Hold hold;
+  memcpy(g_kept.frame, g_frame, sizeof(g_frame));
+  g_kept.used = g_used;
+  g_kept.mark = KEPT;
 }
 
 void pause() {
