@@ -15,6 +15,8 @@ struct ScenesView: View {
 	@State private var deleting: Look?
 	@State private var isOrdering = false
 	@State private var stored = 0
+	@State private var storing: Bool?
+	@State private var naming = ""
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	@ViewBuilder private var tiles: some View {
@@ -44,14 +46,14 @@ struct ScenesView: View {
 		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
 		let adding = Group {
-			Button(console.selection.isEmpty ? "Store All Lights" : "Store Selected Lights", systemImage: "camera.aperture") {
-				let look = Look.fresh(among: looks, context: context)
-				Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-				stored += 1
+			Button("Store All", systemImage: "camera.aperture") {
+				naming = Look.suggestedName(among: looks)
+				storing = true
 			}
 			
-			Button("Build Cues", systemImage: "list.number") {
-				console.selection.building = Look.fresh(among: looks, context: context).identifier
+			Button("Empty Scene", systemImage: "square.dashed") {
+				naming = Look.suggestedName(among: looks)
+				storing = false
 			}
 		}
 		
@@ -60,7 +62,7 @@ struct ScenesView: View {
 				ContentUnavailableView {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
-					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "Store the stage as it is now, or build a scene cue by cue on the lights.")
+					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "Store the lights as they are now, or start an empty scene and store its cues on the lights.")
 				} actions: {
 					adding
 						.buttonStyle(.glass)
@@ -76,6 +78,27 @@ struct ScenesView: View {
 		.navigationTitle("Scenes")
 		.navigationSubtitle(shows.active.name)
 		.sensoryFeedback(.success, trigger: stored)
+		.alert("New Scene", isPresented: Binding { storing != nil } set: { if !$0 { storing = nil } }) {
+			TextField("Name", text: $naming)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {}
+			
+			Button(storing == true ? "Store" : "Create") {
+				let look = Look.fresh(among: looks, named: naming, context: context)
+				
+				if storing == true {
+					let recording = Recording(.cue(look, after: nil), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+					recording.lights = Set(fixtures.map(\.identifier))
+					recording.store(context: context)
+					stored += 1
+				} else {
+					console.selection.building = look.identifier
+				}
+			}
+		} message: {
+			Text(storing == true ? "Every light as it is now becomes its first cue." : "It opens on the lights, ready for its first cue.")
+		}
 		.toolbar {
 			LinkStatusButton()
 			

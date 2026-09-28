@@ -17,6 +17,10 @@ struct SceneInspector: View {
 			} description: {
 				Text("A scene you store shows its cues here.")
 			}
+			.safeAreaBar(edge: .bottom) {
+				MasterBar(isRaised: true)
+					.padding(.bottom, 8)
+			}
 		}
 	}
 }

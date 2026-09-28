@@ -11,6 +11,8 @@ struct BuilderBar: View {
 	
 	@State private var recording: Recording?
 	@State private var editing: Cue?
+	@State private var renaming: Cue?
+	@State private var label = ""
 	@State private var isRenaming = false
 	@State private var renamed = ""
 	@State private var updates = 0
@@ -84,7 +86,7 @@ struct BuilderBar: View {
 					.buttonStyle(.glass)
 				}
 				
-				HStack(spacing: 8) {
+				HStack(spacing: held.isEmpty ? 0 : 8) {
 					ScrollViewReader { proxy in
 						ScrollView(.horizontal) {
 							HStack(spacing: 6) {
@@ -114,7 +116,12 @@ struct BuilderBar: View {
 									.accessibilityLabel("Cue \(position + 1), \(cue.title(at: position))")
 									.accessibilityAddTraits(position == index ? .isSelected : [])
 									.contextMenu {
-										Button("Edit Cue", systemImage: "slider.horizontal.3") {
+										Button("Rename", systemImage: "pencil") {
+											label = cue.label
+											renaming = cue
+										}
+										
+										Button("Timing and Lights", systemImage: "slider.horizontal.3") {
 											editing = cue
 										}
 										
@@ -140,7 +147,7 @@ struct BuilderBar: View {
 							}
 						}
 					}
-					.frame(maxWidth: .infinity, alignment: .leading)
+					.frame(maxWidth: held.isEmpty ? 0 : .infinity, alignment: .leading)
 					
 					if let current, let index {
 						Button {
@@ -151,23 +158,24 @@ struct BuilderBar: View {
 								.frame(minHeight: 44)
 						}
 						.buttonStyle(.glass)
+						.tint(tint)
 					}
 					
 					Button {
 						next.store(context: context)
 					} label: {
-						Label("Cue \(next.number)", systemImage: "plus")
-							.frame(minHeight: 44)
+						Label(held.isEmpty ? "Store Cue 1" : "Cue \(next.number)", systemImage: "plus")
+							.frame(maxWidth: held.isEmpty ? .infinity : nil, minHeight: 44)
 					}
 					.buttonStyle(.glassProminent)
+					.tint(tint)
 					.accessibilityLabel("Store Cue \(next.number)")
 				}
-				.tint(tint)
 				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
 			}
 			.padding(16)
-			.glassEffect(.regular.tint(Color(.systemBackground).opacity(0.7)), in: .rect(cornerRadius: 28, style: .continuous))
+			.glassEffect(.regular, in: .rect(cornerRadius: 28, style: .continuous))
 			.frame(maxWidth: 640)
 			.padding(.horizontal, 12)
 			.padding(.bottom, 8)
@@ -175,6 +183,15 @@ struct BuilderBar: View {
 			.sensoryFeedback(.success, trigger: updates)
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
+			}
+			.alert("Rename Cue", isPresented: Binding { renaming != nil } set: { if !$0 { renaming = nil } }) {
+				TextField("Name or short description", text: $label)
+				
+				Button("Cancel", role: .cancel) {}
+				
+				Button("Rename") {
+					renaming?.label = label.trimmingCharacters(in: .whitespaces)
+				}
 			}
 			.sheet(item: $editing) { cue in
 				CueEditView(cue: cue, position: held.firstIndex { $0.identifier == cue.identifier } ?? 0)

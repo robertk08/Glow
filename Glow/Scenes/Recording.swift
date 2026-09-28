@@ -165,6 +165,5 @@ final class Recording: Identifiable {
 			console.land(on: stored.cue, of: stored.scene, holding: addresses)
 		}
 		
-		console.selection.clear()
 	}
 }

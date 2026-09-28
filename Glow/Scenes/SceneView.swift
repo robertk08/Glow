@@ -15,6 +15,8 @@ struct SceneView: View {
 	var isSheet = false
 	
 	@State private var editing: Cue?
+	@State private var renaming: Cue?
+	@State private var label = ""
 	@State private var editMode = EditMode.inactive
 	@State private var isDeleting = false
 	
@@ -29,7 +31,6 @@ struct SceneView: View {
 		let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
 		let held = look.cues(among: cues)
 		let index = list.index(of: console.playback.cue(of: look.identifier))
-		let next = index.flatMap { list.next(after: $0) }
 		let tint = look.tint.color ?? .accentColor
 		
 		NavigationStack {
@@ -84,12 +85,6 @@ struct SceneView: View {
 									}
 									
 									Spacer(minLength: 8)
-									
-									if position == next, next != index {
-										Text("Next")
-											.font(.caption.weight(.medium))
-											.foregroundStyle(.secondary)
-									}
 								}
 								.contentShape(.rect)
 							}
@@ -108,7 +103,12 @@ struct SceneView: View {
 								}
 							}
 							.contextMenu {
-								Button("Edit Cue", systemImage: "slider.horizontal.3") {
+								Button("Rename", systemImage: "pencil") {
+									label = cue.label
+									renaming = cue
+								}
+								
+								Button("Timing and Lights", systemImage: "slider.horizontal.3") {
 									editing = cue
 								}
 								
@@ -139,10 +139,17 @@ struct SceneView: View {
 						
 						SceneSettings(look: look)
 					}
-					.scrollEdgeEffectStyle(.hard, for: .bottom)
-					.safeAreaBar(edge: .bottom) {
+				}
+			}
+			.safeAreaBar(edge: .bottom) {
+				VStack(spacing: 0) {
+					if !held.isEmpty {
 						Transport(look: look, list: list, lists: lists)
-							.tint(tint)
+					}
+					
+					if !isSheet {
+						MasterBar(isRaised: true)
+							.padding(.bottom, 8)
 					}
 				}
 			}
@@ -186,6 +193,15 @@ struct SceneView: View {
 							Label("More", systemImage: "ellipsis")
 						}
 					}
+				}
+			}
+			.alert("Rename Cue", isPresented: Binding { renaming != nil } set: { if !$0 { renaming = nil } }) {
+				TextField("Name or short description", text: $label)
+				
+				Button("Cancel", role: .cancel) {}
+				
+				Button("Rename") {
+					renaming?.label = label.trimmingCharacters(in: .whitespaces)
 				}
 			}
 			.sheet(item: $editing) { cue in

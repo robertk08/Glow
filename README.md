@@ -114,7 +114,7 @@ and the buttons ticked in a list, then the name, icon and colour, folded away
 until you open them. Edit puts cues and buttons in order with the usual
 handles, and the menu duplicates
 or deletes the scene. Tap a cue to jump to it, swipe it to update or delete it,
-and hold it to edit its name, fade, delay and follow. On iPad the scene sits in
+and hold it to rename it or set its fade, delay and follow. On iPad the scene sits in
 the sidebar on the right, beside
 the scenes as the programmer sits beside the lights, and stays there until you
 open another, and the arrow keys or a presentation clicker step through its
@@ -125,20 +125,20 @@ run the next cue by itself once it has faded in. Values carry through: a cue
 holds only the lights and aspects stored into it, and everything else keeps
 what the cues before it set. Going back undoes what the later cues changed.
 
-The quickest scene is under the plus button: Store All Lights keeps every light
-as it is now as a new scene with one cue, and with lights selected it reads
-Store Selected Lights and keeps only those. Build Cues, or Add Cues on any
-scene, switches to the Lights page and pins a bar under the lights with the
-scene's cues, Update and Store Cue on one row. Every store follows the same
-rule: the lights you selected, or all lights when none are. The line under the
+A new scene asks for its name first. Under the plus button, Store All keeps
+every light as it is now as a new scene with one cue, whatever is selected, and
+Empty Scene, or Add Cues on any scene, switches to the Lights page and pins a
+bar under the lights with the scene's cues, Update and Store Cue on one row.
+There every store follows one rule: the lights you selected, or all lights when
+none are. The line under the
 scene's name says which it will be, and tapping it opens the options. Done goes
 back to the page you started from, and deleting the cue on stage moves the stage
 to the cue before it, or turns the scene off if it was the last. Store puts the
 new cue right after the one on stage, or at the end, and the stage is then on
 it without a light moving, so the next Store follows it and Update refines it.
-Update stores the same way into the cue on stage. After either, the selection
-clears, as the programmer empties after a store on a desk. Tap a cue in the bar
-to go back to it. Options chooses the lights,
+Update stores the same way into the cue on stage. The selection stays, so the
+next cue can take the same lights. Tap a cue in the bar to go back to it, or
+hold it to rename it. Options chooses the lights,
 the aspects (intensity, colour, position, gobo, beam or control), a name and
 the fade. Cancel on a scene without cues removes it.
 Storing into a cue replaces only what you chose and keeps the rest. All Off on

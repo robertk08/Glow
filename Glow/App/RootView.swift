@@ -76,16 +76,12 @@ struct RootView: View {
 			} else {
 				tabs
 					.inspector(isPresented: .constant(section != "settings")) {
-						VStack(spacing: 0) {
+						Group {
 							if section == "scenes" {
 								SceneInspector()
 							} else {
 								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
 							}
-							
-							MasterBar(isRaised: true)
-								.padding(.top, 4)
-								.padding(.bottom, 8)
 						}
 						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}

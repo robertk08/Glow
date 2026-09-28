@@ -48,6 +48,12 @@ struct ProgrammerView: View {
 			.safeAreaBar(edge: .top) {
 				FeatureGroupPicker(programmer: programmer, group: $group)
 			}
+			.safeAreaBar(edge: .bottom) {
+				if !isSheet {
+					MasterBar(isRaised: true)
+						.padding(.bottom, 8)
+				}
+			}
 			.navigationTitle(programmer.title)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
@@ -251,11 +257,11 @@ private struct BeamRows: View {
 
 private struct GoboRows: View {
 	let programmer: Programmer
-
+	
 	var body: some View {
 		let wheels = programmer.goboWheels
 		let shown = wheels.map(\.id) + wheels.compactMap { programmer.spinner(of: $0)?.id }
-
+		
 		ForEach(wheels) { wheel in
 			if programmer.draws(wheel) {
 				Section(wheel.name) {
@@ -274,7 +280,7 @@ private struct GoboRows: View {
 				}
 			}
 		}
-
+		
 		ChannelRows(programmer: programmer, channels: programmer.channels(in: .gobo).filter { !shown.contains($0.id) })
 	}
 }

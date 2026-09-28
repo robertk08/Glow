@@ -62,8 +62,13 @@ final class Look {
 		cues.filter { $0.lookID == identifier }.sorted { ($0.sortIndex, $0.identifier) < ($1.sortIndex, $1.identifier) }
 	}
 	
-	@MainActor static func fresh(among looks: [Look], context: ModelContext) -> Look {
-		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
+	static func suggestedName(among looks: [Look]) -> String {
+		Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name))
+	}
+	
+	@MainActor static func fresh(among looks: [Look], named name: String = "", context: ModelContext) -> Look {
+		let name = name.trimmingCharacters(in: .whitespaces)
+		let look = Look(name: name.isEmpty ? suggestedName(among: looks) : name, sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
 		let tints = [FixtureTint.blue, .orange, .purple, .green, .pink, .yellow, .indigo, .red, .mint]
 		look.tint = tints.min { first, second in looks.count { $0.tint == first } < looks.count { $0.tint == second } } ?? .blue
 		context.insert(look)

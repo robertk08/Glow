@@ -334,7 +334,7 @@ struct SceneTests {
 		
 		#expect(cue.levels.lights[rig.fixtures[1].identifier]?[1] == 70)
 		#expect(cue.levels.lights[rig.fixtures[0].identifier]?[1] == 200)
-		#expect(rig.console.selection.isEmpty)
+		#expect(!rig.console.selection.isEmpty)
 	}
 	
 	@Test func aNewCueCanGoBetweenTwoOthers() throws {
