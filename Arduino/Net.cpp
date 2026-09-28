@@ -3,6 +3,7 @@
 #include "Access.h"
 #include "Creds.h"
 
+#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <esp_eap_client.h>
 #include <esp_mac.h>
@@ -136,6 +137,7 @@ void lowerAp() {
 }
 
 void joined() {
+  MDNS.begin(GLOW_HOSTNAME);
   Serial.printf("wifi: %s on \"%s\" at %d dBm, %s.local\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str(), (int)WiFi.RSSI(), GLOW_HOSTNAME);
   if (g_ap.lost && !g_join.active) lowerAp();
 }

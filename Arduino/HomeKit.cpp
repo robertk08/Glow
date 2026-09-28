@@ -19,7 +19,8 @@ const int GREEN = HEAD_GREEN - HEAD_DIMMER;
 const int BLUE  = HEAD_BLUE - HEAD_DIMMER;
 const int WHITE = HEAD_WHITE - HEAD_DIMMER;
 
-bool g_mine = false;
+bool g_mine    = false;
+bool g_started = false;
 
 bool unchanged(int first, const uint8_t *values, int length) {
   uint8_t held[HEAD_CHANNELS];
@@ -168,9 +169,8 @@ struct Axis : Service::WindowCovering {
   }
 };
 
-}  // namespace
-
-void begin() {
+void start() {
+  g_started = true;
   homeSpan.setLogLevel(-1);
   homeSpan.setPortNum(HOMEKIT_PORT);
   homeSpan.setHostNameSuffix("");
@@ -199,22 +199,35 @@ void begin() {
   new Axis("Pan", HEAD_ADDRESS + HEAD_PAN - 1, HEAD_INVERTS_PAN);
   new Axis("Tilt", HEAD_ADDRESS + HEAD_TILT - 1, HEAD_INVERTS_TILT);
 
-  showChanged();
   homeSpan.autoPoll(8192, 1, 0);
   Serial.printf("home: HomeKit on port %u, pairing code %s\n", HOMEKIT_PORT, DEFAULT_SETUP_CODE);
+  if (!Net::up()) return;
+
+  arduino_event_t joined = {};
+  joined.event_id        = ARDUINO_EVENT_WIFI_STA_GOT_IP;
+  esp_netif_get_ip_info(WiFi.STA.netif(), &joined.event_info.got_ip.ip_info);
+  Network.postEvent(&joined);
 }
+
+}  // namespace
 
 void showChanged() {
   g_mine = Shows::activeNamed(HOMEKIT_SHOW);
+  if (g_mine && !g_started) start();
 }
 
 void report() {
+  if (!g_started) {
+    Serial.printf("home: off until the show named \"%s\" is open\n", HOMEKIT_SHOW);
+    return;
+  }
   homeSpan.setLogLevel(0);
   homeSpan.processSerialCommand("i");
   homeSpan.setLogLevel(-1);
 }
 
 void unpair() {
+  if (!g_started) start();
   homeSpan.setLogLevel(0);
   homeSpan.processSerialCommand("H");
 }

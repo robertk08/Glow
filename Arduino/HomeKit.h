@@ -2,7 +2,6 @@
 
 namespace HomeKit {
 
-void begin();
 void showChanged();
 void report();
 void unpair();

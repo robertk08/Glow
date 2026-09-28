@@ -72,7 +72,7 @@ void setup() {
   Net::begin();
   Link::begin();
   Http::begin();
-  HomeKit::begin();
+  HomeKit::showChanged();
 
   Serial.println(F("commands: net | setup | forget | home | unpair | password | key"));
 }
