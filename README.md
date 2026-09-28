@@ -147,9 +147,10 @@ controller reported and keeps whichever answers first.
   edit to an object whose own write is still in flight. Objects over 12,000
   bytes go over HTTP instead (`/api/show/<id>/<folder>/<objid>`), and other
   devices then get a `doc` notice and fetch that object.
-- A playback chain longer than one command's budget is sent in parts. When the
-  controller runs out, the state says the scene wants more, and the first device
-  to answer continues it.
+- A playback chain longer than one command's budget (6,000 bytes) is sent in
+  parts. Halfway through a part the state asks the device that last commanded
+  the scene for the next one, and any device once the part has run out. The
+  controller picks the answer up at whichever cue it has reached.
 - The controller owns the show list. Devices send `show.add`, `show.rename`,
   `show.remove` and `show.open`, and the controller broadcasts the whole list.
 - With a password set, `hello` is answered `locked` until the client proves the
@@ -209,10 +210,12 @@ again first.
 ## Apple Home
 
 The controller is a HomeKit bridge itself (HomeSpan, default code
-**466-37-726**). Its accessories drive the moving head defined in `Config.h` and
-are live only while the show named **Home** is active. Pan and tilt are window
-coverings, not lightbulbs, so "turn off the lights" and Good Night scenes leave
-the head's position alone.
+**466-37-726**). It starts the first time the show named **Home** opens and runs
+until the controller restarts, so Apple Home sees the bridge as not responding
+until then. Its accessories drive the moving head defined in `Config.h` and are
+live only while **Home** is active. Pan and tilt are window coverings, not
+lightbulbs, so "turn off the lights" and Good Night scenes leave the head's
+position alone.
 
 Pair with the rig dark, because pairing writes flash. Removing the bridge in
 Home leaves the controller paired, so serial `unpair` is needed before adding it
