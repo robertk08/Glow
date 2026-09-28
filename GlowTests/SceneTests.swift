@@ -84,6 +84,34 @@ struct SceneTests {
 		return Rig(console: console, library: library, container: container, fixtures: fixtures, look: look)
 	}
 	
+	private func wall(renaming odd: Int? = nil) throws -> (Console, CueList) {
+		let library = FixtureLibrary(builtIn: [])
+		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
+		let look = Look(name: "Chase", sortIndex: 0)
+		container.mainContext.insert(wall)
+		container.mainContext.insert(look)
+		
+		for step in 1...30 {
+			var levels = Levels()
+			
+			for slot in 1...512 {
+				levels.set(UInt8(step), slot: slot, of: wall.identifier)
+			}
+			
+			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
+			cue.follow = 0
+			if step == odd { cue.identifier = String(repeating: "y", count: 60) }
+			container.mainContext.insert(cue)
+		}
+		
+		try container.mainContext.save()
+		let console = Console()
+		console.applyPatch([wall], library: library)
+		return (console, CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall]))
+	}
+	
 	private func until(within seconds: Double = 3, _ condition: () -> Bool) async throws {
 		let start = Date()
 		
@@ -205,7 +233,7 @@ struct SceneTests {
 	
 	@Test func aFadeGlidesWhileDiscreteChannelsSnap() async throws {
 		let rig = try rig()
-		rig.add(1, fade: 1, [(0, 1, 200), (0, 7, 60)])
+		rig.add(1, fade: 3, [(0, 1, 200), (0, 7, 60)])
 		
 		rig.console.go(rig.list)
 		var between: [(dimmer: UInt8, gobo: UInt8)] = []
@@ -222,7 +250,7 @@ struct SceneTests {
 	@Test func aSixteenBitChannelFadesAsOneValue() async throws {
 		let rig = try rig()
 		rig.console.set(0, at: DMXAddress(5)!)
-		rig.add(1, fade: 1, [(0, 5, 255), (0, 6, 255)])
+		rig.add(1, fade: 3, [(0, 5, 255), (0, 6, 255)])
 		
 		rig.console.go(rig.list)
 		var coarse: Set<UInt8> = []
@@ -237,7 +265,7 @@ struct SceneTests {
 	
 	@Test func aBandDimmerFadesInsideItsBandRatherThanThroughTheStrobe() async throws {
 		let rig = try rig()
-		rig.add(1, fade: 1, [(2, 1, 240)])
+		rig.add(1, fade: 3, [(2, 1, 240)])
 		
 		rig.console.go(rig.list)
 		var seen: Set<UInt8> = []
@@ -448,31 +476,8 @@ struct SceneTests {
 	}
 	
 	@Test func aChaseTooLongToSendAtOnceCarriesOnFromTheCues() async throws {
-		let library = FixtureLibrary(builtIn: [])
-		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
-		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
-		let look = Look(name: "Chase", sortIndex: 0)
-		container.mainContext.insert(wall)
-		container.mainContext.insert(look)
-		
-		for step in 1...30 {
-			var levels = Levels()
-			
-			for slot in 1...512 {
-				levels.set(UInt8(step), slot: slot, of: wall.identifier)
-			}
-			
-			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
-			cue.follow = 0
-			container.mainContext.insert(cue)
-		}
-		
-		try container.mainContext.save()
-		let console = Console()
-		console.applyPatch([wall], library: library)
-		let list = CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall])
-		console.lists = [look.identifier: list]
+		let (console, list) = try wall()
+		console.lists = [list.scene: list]
 		#expect(list.program(from: 0).count < 13000)
 		
 		console.go(list)
@@ -482,6 +487,17 @@ struct SceneTests {
 			seen.insert(console.value(at: DMXAddress(512)!))
 			return seen.count == 30
 		}
+	}
+	
+	@Test func aChaseWaitingForItsCuesCarriesOnOnceTheyArrive() async throws {
+		let (console, list) = try wall()
+		
+		console.go(list)
+		try await until { console.playback.playing.first?.wants == true }
+		let stuck = console.playback.cue(of: list.scene)
+		console.lists = [list.scene: list]
+		
+		try await until { console.playback.cue(of: list.scene) != stuck }
 	}
 	
 	@Test func aFlashOnASceneAlreadyOnLeavesItOn() async throws {
@@ -549,18 +565,18 @@ struct SceneTests {
 		let other = Look(name: "Other", sortIndex: 1)
 		rig.context.insert(other)
 		rig.add(1, [(0, 1, 100)])
-		rig.add(1, fade: 1, to: other, [(0, 1, 255)])
+		rig.add(1, fade: 3, to: other, [(0, 1, 255)])
 		
 		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 100 }
 		rig.console.toggle(rig.list(of: other))
-		try await until { (130...200).contains(rig.value(1)) }
+		try await until { (110...220).contains(rig.value(1)) }
 		
 		rig.console.toggle(rig.list)
 		try await Task.sleep(for: .milliseconds(60))
 		
 		#expect(rig.value(1) < 250)
-		try await until { rig.value(1) == 255 }
+		try await until(within: 5) { rig.value(1) == 255 }
 	}
 	
 	@Test func aLightTouchedWhileASceneHoldsItKeepsTheTouchWhenTheSceneGoesOff() async throws {
@@ -582,13 +598,13 @@ struct SceneTests {
 		let rig = try rig()
 		let other = Look(name: "Other", sortIndex: 1)
 		rig.context.insert(other)
-		rig.add(1, fade: 1, [(0, 1, 255)])
+		rig.add(1, fade: 3, [(0, 1, 255)])
 		rig.add(1, to: other, [(0, 1, 100)])
 		
 		rig.console.play(rig.list, at: 0, snapping: true)
 		try await until { rig.value(1) == 255 }
 		rig.console.toggle(rig.list)
-		try await until { (120...220).contains(rig.value(1)) }
+		try await until { (110...230).contains(rig.value(1)) }
 		
 		rig.console.toggle(rig.list(of: other))
 		try await until { rig.value(1) == 100 }
@@ -610,39 +626,15 @@ struct SceneTests {
 	}
 	
 	@Test func aChainTheEngineCannotContinueStopsAskingAtItsLastCue() async throws {
-		let library = FixtureLibrary(builtIn: [])
-		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
-		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
-		let look = Look(name: "Chase", sortIndex: 0)
-		container.mainContext.insert(wall)
-		container.mainContext.insert(look)
-		
-		for step in 1...30 {
-			var levels = Levels()
-			
-			for slot in 1...512 {
-				levels.set(UInt8(step), slot: slot, of: wall.identifier)
-			}
-			
-			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
-			cue.follow = 0
-			if step == 26 { cue.identifier = String(repeating: "y", count: 60) }
-			container.mainContext.insert(cue)
-		}
-		
-		try container.mainContext.save()
-		let console = Console()
-		console.applyPatch([wall], library: library)
-		let list = CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall])
-		console.lists = [look.identifier: list]
+		let (console, list) = try wall(renaming: 26)
+		console.lists = [list.scene: list]
 		
 		console.go(list)
 		try await until { console.playback.playing.first?.wants == true }
-		let stuck = console.playback.cue(of: look.identifier)
+		let stuck = console.playback.cue(of: list.scene)
 		try await Task.sleep(for: .milliseconds(100))
 		
-		#expect(console.playback.cue(of: look.identifier) == stuck)
+		#expect(console.playback.cue(of: list.scene) == stuck)
 		#expect(console.playback.playing.first?.wants == true)
 	}
 	

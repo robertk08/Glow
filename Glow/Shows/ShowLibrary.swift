@@ -31,6 +31,8 @@ final class ShowLibrary {
 	private var sent: [String: Data] = [:]
 	private var deferred: Set<String> = []
 	private var waiting: Set<NodeStore.Folder> = []
+	private var touched: Set<PersistentIdentifier> = []
+	private var pruned: Set<NodeStore.Folder> = []
 	private var lastSync = Date.distantPast
 	private var isSettled = false
 	private var queue: Task<Void, Never>?
@@ -62,7 +64,8 @@ final class ShowLibrary {
 		
 		Task { [weak self] in
 			for await note in NotificationCenter.default.notifications(named: ModelContext.didSave) {
-				self?.saved(Self.folders(in: note))
+				let (folders, touched) = Self.changes(in: note)
+				self?.saved(folders, touched: touched)
 			}
 		}
 	}
@@ -311,11 +314,16 @@ final class ShowLibrary {
 		
 		if isArriving { held[show.id] = nil }
 		loadedID = show.id
-		await fill(with: incoming)
-		guard started == epoch else { return }
-		if isArriving { baseline = [:] }
+		fill(with: incoming)
 		isLoaded = true
 		isCurrent = true
+		
+		guard isArriving else {
+			changed([.lights, .groups, .made], pruned: [.scenes, .cues])
+			return
+		}
+		
+		baseline = [:]
 		changed(Self.everything)
 	}
 	
@@ -361,7 +369,13 @@ final class ShowLibrary {
 			}
 			
 			guard deferred.remove(place.key) != nil else { return }
-			changed([folder])
+			let identifier = place.id
+			
+			switch folder {
+			case .scenes: changed([], touched: Set(((try? container.mainContext.fetch(FetchDescriptor<Look>(predicate: #Predicate { $0.identifier == identifier }))) ?? []).map(\.persistentModelID)), pruned: [folder])
+			case .cues: changed([], touched: Set(((try? container.mainContext.fetch(FetchDescriptor<Cue>(predicate: #Predicate { $0.identifier == identifier }))) ?? []).map(\.persistentModelID)), pruned: [folder])
+			case .lights, .groups, .made: changed([folder])
+			}
 		case let .stored(place, body):
 			guard let folder = accepts(place) else { return }
 			var data = body
@@ -418,7 +432,7 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func saved(_ folders: Set<NodeStore.Folder>) {
+	private func saved(_ folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier>?) {
 		let context = container.mainContext
 		canUndo = context.undoManager?.canUndo == true
 		
@@ -434,7 +448,12 @@ final class ShowLibrary {
 			console?.lists = Dictionary(lists.map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
 		}
 		
-		changed(folders)
+		guard let touched else {
+			changed(folders)
+			return
+		}
+		
+		changed(folders.subtracting([.scenes, .cues]), touched: touched, pruned: folders.intersection([.scenes, .cues]))
 	}
 	
 	private func merge(_ incoming: ShowContents) {
@@ -521,22 +540,24 @@ final class ShowLibrary {
 		console?.closeShow(keepingLook: isDemo)
 	}
 	
-	private func fill(with incoming: ShowContents) async {
+	private func fill(with incoming: ShowContents) {
 		merge(incoming)
 		prune(keeping: incoming)
 		container.mainContext.undoManager?.removeAllActions()
 		sent = [:]
 		deferred = []
-		baseline = await Self.snapshot(of: incoming)
+		baseline = incoming.originals
 		
 		for key in incoming.unreadable {
 			baseline[key] = Data()
 		}
 	}
 	
-	private func changed(_ folders: Set<NodeStore.Folder>) {
-		guard isLoaded, !isDemo, !folders.isEmpty else { return }
+	private func changed(_ folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier> = [], pruned: Set<NodeStore.Folder> = []) {
+		guard isLoaded, !isDemo, !folders.isEmpty || !touched.isEmpty || !pruned.isEmpty else { return }
 		waiting.formUnion(folders)
+		self.touched.formUnion(touched)
+		self.pruned.formUnion(pruned)
 		guard pending == nil else { return }
 		let delay = Self.coalesce - Date().timeIntervalSince(lastSync)
 		
@@ -548,25 +569,55 @@ final class ShowLibrary {
 			pending = nil
 			
 			enqueue {
-				let touched = self.waiting
+				let folders = self.waiting
+				let touched = self.touched
+				let pruned = self.pruned
 				self.waiting = []
+				self.touched = []
+				self.pruned = []
 				self.lastSync = Date()
-				await self.synchronise(touched)
+				await self.synchronise(folders, touched: touched, pruned: pruned)
 			}
 		}
 	}
 	
-	private func synchronise(_ folders: Set<NodeStore.Folder>) async {
-		guard isLoaded, isCurrent, !isDemo, !folders.isEmpty else { return }
+	private func synchronise(_ folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier> = [], pruned: Set<NodeStore.Folder> = []) async {
+		guard isLoaded, isCurrent, !isDemo else { return }
 		
+		let context = container.mainContext
 		let showID = loadedID
-		let current = await Self.snapshot(of: contents(folders), folders: folders)
+		var current = folders.isEmpty ? [:] : await Self.snapshot(of: contents(folders), folders: folders)
 		guard showID == loadedID, isCurrent else { return }
+		var present: [NodeStore.Folder: Set<String>] = [:]
+		
+		for folder in folders {
+			present[folder] = Set(current.keys.compactMap { Self.split($0).flatMap { $0.0 == folder ? $0.1 : nil } })
+		}
+		
+		for id in touched {
+			switch id.entityName {
+			case "Look": if !folders.contains(.scenes), let look: Look = context.registeredModel(for: id), !look.isGone { current["\(NodeStore.Folder.scenes.rawValue)/\(look.identifier)"] = look.entry.body }
+			case "Cue": if !folders.contains(.cues), let cue: Cue = context.registeredModel(for: id), !cue.isDeleted { current["\(NodeStore.Folder.cues.rawValue)/\(cue.identifier)"] = cue.entry.body }
+			default: break
+			}
+		}
+		
+		if pruned.contains(.scenes), !folders.contains(.scenes) {
+			var looks = FetchDescriptor<Look>()
+			looks.propertiesToFetch = [\.identifier]
+			present[.scenes] = Set(((try? context.fetch(looks)) ?? []).map(\.identifier))
+		}
+		
+		if pruned.contains(.cues), !folders.contains(.cues) {
+			var cues = FetchDescriptor<Cue>()
+			cues.propertiesToFetch = [\.identifier]
+			present[.cues] = Set(((try? context.fetch(cues)) ?? []).map(\.identifier))
+		}
 		
 		var changes = current.filter { baseline[$0.key] != $0.value }
 		
-		for key in baseline.keys where current[key] == nil {
-			guard let (folder, _) = Self.split(key), folders.contains(folder) else { continue }
+		for key in baseline.keys {
+			guard let (folder, identifier) = Self.split(key), let ids = present[folder], !ids.contains(identifier) else { continue }
 			changes[key] = Data()
 		}
 		
@@ -638,10 +689,11 @@ final class ShowLibrary {
 		return out
 	}
 	
-	nonisolated static func folders(in note: Notification) -> Set<NodeStore.Folder> {
-		guard let info = note.userInfo else { return everything }
+	nonisolated static func changes(in note: Notification) -> (folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier>?) {
+		guard let info = note.userInfo else { return (everything, nil) }
 		
 		var found: Set<NodeStore.Folder> = []
+		var touched: Set<PersistentIdentifier> = []
 		var sawKey = false
 		
 		for key in [ModelContext.NotificationKey.insertedIdentifiers, .updatedIdentifiers, .deletedIdentifiers] {
@@ -657,10 +709,12 @@ final class ShowLibrary {
 				case "Cue": found.insert(.cues)
 				default: break
 				}
+				
+				if key != .deletedIdentifiers, ["Look", "Cue"].contains(id.entityName) { touched.insert(id) }
 			}
 		}
 		
-		return sawKey ? found : everything
+		return sawKey ? (found, touched) : (everything, nil)
 	}
 	
 	nonisolated private static func split(_ key: String) -> (NodeStore.Folder, String)? {

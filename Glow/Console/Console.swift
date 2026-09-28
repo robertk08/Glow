@@ -33,7 +33,9 @@ final class Console {
 		didSet { ring() }
 	}
 	
-	var lists: [String: CueList] = [:]
+	var lists: [String: CueList] = [:] {
+		didSet { resume() }
+	}
 	
 	var endpoint: NodeEndpoint {
 		didSet {
@@ -591,11 +593,16 @@ final class Console {
 		if Int(state[1]) == (isLocal ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
 		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
 		if fresh.playing != playback.playing || fresh.fades.keys != playback.fades.keys { playback = fresh }
-		let wanting = fresh.playing.filter { $0.wants && continued[$0.scene] != $0.cue }
-		continued = Dictionary(fresh.playing.filter(\.wants).map { ($0.scene, $0.cue) }, uniquingKeysWith: { first, _ in first })
+		continued = continued.filter { scene, cue in fresh.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants } }
+		resume()
+	}
+	
+	private func resume() {
+		guard acked == sent else { return }
 		
-		for entry in wanting {
+		for entry in playback.playing where entry.wants && continued[entry.scene] != entry.cue {
 			guard let list = lists[entry.scene], let index = list.index(of: entry.cue) else { continue }
+			continued[entry.scene] = entry.cue
 			var writer = ByteWriter()
 			writer.text(entry.cue)
 			command(.more, scene: entry.scene, body: writer.data + list.program(from: index))

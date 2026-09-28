@@ -207,6 +207,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 	var scenes: [Scene] = []
 	var cues: [Cue] = []
 	var unreadable: Set<String> = []
+	var originals: [String: Data] = [:]
 	
 	private enum CodingKeys: String, CodingKey { case lights, groups, made, scenes, cues }
 	
@@ -233,7 +234,11 @@ nonisolated struct ShowContents: Codable, Sendable {
 			case nil: continue
 			}
 			
-			if count == before { unreadable.insert("\(folder)/\(id)") }
+			if count == before {
+				unreadable.insert("\(folder)/\(id)")
+			} else {
+				originals["\(folder)/\(id)"] = body
+			}
 		}
 	}
 	
