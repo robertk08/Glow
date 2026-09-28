@@ -75,8 +75,7 @@ nonisolated struct ByteReader {
 			return (header >> 2, value)
 		}
 		
-		guard header & 3 < 2, let raw = bytes(8) else { return nil }
-		let value = raw.reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
-		return (header >> 2, Identifier.text(value, short: header & 3 == 1))
+		guard header & 3 == 1, let raw = bytes(8) else { return nil }
+		return (header >> 2, Identifier.text(raw.reduce(UInt64(0)) { $0 << 8 | UInt64($1) }))
 	}
 }

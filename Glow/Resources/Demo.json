@@ -6,150 +6,150 @@
   "cues": [
    {
     "fade": 0.0,
-    "identifier": "8ba88ec403374361",
+    "identifier": "JmB4um3e_fo",
     "label": "",
-    "levels": "BCbptsGygFdL//////8AAAD/BCyLqkK/ANMl//////8AAAD/CCygB87oVqHv/z+AAEzMAPD/////AAAAAAREyKYJtjFreP//////AAAA/wRh+jwI7vi7OP//////AAAA/whl9WfJRWcPqP8/gABMzADw/////wAAAAAIgo+TD/WUYZX/////AP//////////AIAAAAAImAHQAoVET6H/////AP//////////AIAAAAAQs2Uv4dQoOhn/////qqqAAP//AAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "scene": "77768ee2a6e14315",
+    "levels": "BbCg19Yr9Xka//////8AAAD/BTvz2TX7u40p//////8AAAD/CYxqDRSgMjQz/z+AAEzMAPD/////AAAAAAXgHD6o2WUl+P//////AAAA/wXsONqADJmRcP//////AAAA/wncxUp+N4Db2/8/gABMzADw/////wAAAAAJEjroNPCp2An/////AP//////////AIAAAAAJ+V247alAc+H/////AP//////////AIAAAAARddqPyU4EXfH/////qqqAAP//AAAAAAAAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
+    "scene": "hpmpTkoYOxA",
     "sortIndex": 1.0
    },
    {
     "fade": 2.0,
-    "identifier": "97f95ea73b450890",
+    "identifier": "fHv4YCHNZoo",
     "label": "",
-    "levels": "BCbptsGygFdL/wAa/wAAAAD/BCyLqkK/ANMl/wAa/wAAAAD/CCygB87oVqHv/z+AAEzMAPAAGv8AAAAAAAREyKYJtjFreP8AGv8AAAAA/wRh+jwI7vi7OP8AGv8AAAAA/whl9WfJRWcPqP8/gABMzADwABr/AAAAAAAIgo+TD/WUYZX/////AAAAGZr//wAAAIAAAAAImAHQAoVET6H/////AAAAGZr//wAAAIAAAAAQs2Uv4dQoOhn/////qqqAAP//AP//5mYAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "scene": "193cf32c986209cf",
+    "levels": "BbCg19Yr9Xka/wAa/wAAAAD/BTvz2TX7u40p/wAa/wAAAAD/CYxqDRSgMjQz/z+AAEzMAPAAGv8AAAAAAAXgHD6o2WUl+P8AGv8AAAAA/wXsONqADJmRcP8AGv8AAAAA/wncxUp+N4Db2/8/gABMzADwABr/AAAAAAAJEjroNPCp2An/////AAAAGZr//wAAAIAAAAAJ+V247alAc+H/////AAAAGZr//wAAAIAAAAARddqPyU4EXfH/////qqqAAP//AP//5mYAAAAAAAAAAAAAgACAAAAAAAAAAAA=",
+    "scene": "MbNQqHphPXQ",
     "sortIndex": 1.0
    },
    {
     "fade": 3.0,
-    "identifier": "665ec941736e4f54",
+    "identifier": "-YGzhbTLKAI",
     "label": "",
-    "levels": "BCbptsGygFdL//9zDTMAAAD/BCyLqkK/ANMl//9zDTMAAAD/CCygB87oVqHv/z+AAEzMAPD/cw0zAAAAAAREyKYJtjFreP//cw0zAAAA/wRh+jwI7vi7OP//cw0zAAAA/whl9WfJRWcPqP8/gABMzADw/3MNMwAAAAAIgo+TD/WUYZX/////AP//czMMzTMzAIAAAAAImAHQAoVET6H/////AP//czMMzTMzAIAAAAAQs2Uv4dQoOhn/////qqqAAP//AAAAjMzzMgAAAAAAAAAAgACAAAAAAAAAAAA=",
-    "scene": "3c43e200bd4c9106",
+    "levels": "BbCg19Yr9Xka//9zDTMAAAD/BTvz2TX7u40p//9zDTMAAAD/CYxqDRSgMjQz/z+AAEzMAPD/cw0zAAAAAAXgHD6o2WUl+P//cw0zAAAA/wXsONqADJmRcP//cw0zAAAA/wncxUp+N4Db2/8/gABMzADw/3MNMwAAAAAJEjroNPCp2An/////AP//czMMzTMzAIAAAAAJ+V247alAc+H/////AP//czMMzTMzAIAAAAARddqPyU4EXfH/////qqqAAP//AAAAjMzzMgAAAAAAAAAAgACAAAAAAAAAAAA=",
+    "scene": "Wn1rmrDwks8",
     "sortIndex": 1.0
    },
    {
     "fade": 3.0,
-    "identifier": "92cfc9f1aefd8a9b",
+    "identifier": "QdIKk5_Y92w",
     "label": "Audience comes in, washes low and warm",
-    "levels": "BCbptsGygFdLj/+AGkxMBCyLqkK/ANMlj/+AGkxMBCygB87oVqHvIAAERMimCbYxa3iP/4AaTEwEYfo8CO74uziP/4AaTEwEZfVnyUVnD6ggAASCj5MP9ZRhlQMAAASYAdAChURPoQMAAASzZS/h1Cg6GTAAAA==",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9Xkaj/+AGkxMBTvz2TX7u40pj/+AGkxMBYxqDRSgMjQzIAAF4Bw+qNllJfiP/4AaTEwF7DjagAyZkXCP/4AaTEwF3MVKfjeA29sgAAUSOug08KnYCQMAAAX5XbjtqUBz4QMAAAV12o/JTgRd8TAAAA==",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 1.0
    },
    {
     "fade": 8.0,
-    "identifier": "06501db8437ebcf0",
+    "identifier": "eqxlzqn7MtA",
     "label": "Sunrise",
-    "levels": "BCbptsGygFdLj/9ZDQCyBCyLqkK/ANMlj/9ZDQCyBETIpgm2MWt4j/9ZDQCyBGH6PAju+Ls4j/9ZDQCyCIKPkw/1lGGV+weZmf//mZlAAGZmCJgB0AKFRE+h+weZmf//mZlAAGZm",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9Xkaj/9ZDQCyBTvz2TX7u40pj/9ZDQCyBeAcPqjZZSX4j/9ZDQCyBew42oAMmZFwj/9ZDQCyCRI66DTwqdgJ+weZmf//mZlAAGZmCflduO2pQHPh+weZmf//mZlAAGZm",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 2.0
    },
    {
     "fade": 5.0,
-    "identifier": "b3ff906d74bcabbf",
+    "identifier": "ueGodF_VDvo",
     "label": "Midday",
-    "levels": "BCbptsGygFdLj5nM////BCyLqkK/ANMlj5nM////BETIpgm2MWt4j5nM////BGH6PAju+Ls4j5nM////CIKPkw/1lGGV+wf/////////////CJgB0AKFRE+h+wf/////////////",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9Xkaj5nM////BTvz2TX7u40pj5nM////BeAcPqjZZSX4j5nM////Bew42oAMmZFwj5nM////CRI66DTwqdgJ+wf/////////////CflduO2pQHPh+wf/////////////",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 3.0
    },
    {
     "fade": 6.0,
-    "identifier": "88b35d0f8b18982c",
+    "identifier": "45Q_-9-aq_k",
     "label": "Dusk",
-    "levels": "BCbptsGygFdLj4AA/wCZBCyLqkK/ANMlj4AA/wCZCCygB87oVqHv7wOmZkAA8P8AmQAERMimCbYxa3iPgAD/AJkEYfo8CO74uziPgAD/AJkIZfVnyUVnD6jvA1mZQADw/wCZAASCj5MP9ZRhlQNmZgSYAdAChURPoQNmZg==",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9Xkaj4AA/wCZBTvz2TX7u40pj4AA/wCZCYxqDRSgMjQz7wOmZkAA8P8AmQAF4Bw+qNllJfiPgAD/AJkF7DjagAyZkXCPgAD/AJkJ3MVKfjeA29vvA1mZQADw/wCZAAUSOug08KnYCQNmZgX5XbjtqUBz4QNmZg==",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 4.0
    },
    {
     "fade": 4.0,
-    "identifier": "2f78bdd74ee4bef7",
+    "identifier": "aM9cbyYSs-U",
     "label": "Moonlight",
-    "levels": "BCbptsGygFdLjwAz/wAzBCyLqkK/ANMljwAz/wAzCCygB87oVqHvwANmmf//BETIpgm2MWt4jwAz/wAzBGH6PAju+Ls4jwAz/wAzCGX1Z8lFZw+owANmmf//BIKPkw/1lGGVAwAABJgB0AKFRE+hAwAADLNlL+HUKDoZMABg//8Zmg==",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9XkajwAz/wAzBTvz2TX7u40pjwAz/wAzCYxqDRSgMjQzwANmmf//BeAcPqjZZSX4jwAz/wAzBew42oAMmZFwjwAz/wAzCdzFSn43gNvbwANmmf//BRI66DTwqdgJAwAABflduO2pQHPhAwAADXXaj8lOBF3xMABg//8Zmg==",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 5.0
    },
    {
     "fade": 2.0,
-    "identifier": "245887574ed7e1cf",
+    "identifier": "nMV_auOXbfQ",
     "label": "Blackout",
-    "levels": "BCbptsGygFdLgAAELIuqQr8A0yWAAAQsoAfO6Fah7yAABETIpgm2MWt4gAAEYfo8CO74uziAAARl9WfJRWcPqCAABIKPkw/1lGGVAwAABJgB0AKFRE+hAwAABLNlL+HUKDoZMAAA",
-    "scene": "d7c3d10a8590ccee",
+    "levels": "BbCg19Yr9XkagAAFO/PZNfu7jSmAAAWMag0UoDI0MyAABeAcPqjZZSX4gAAF7DjagAyZkXCAAAXcxUp+N4Db2yAABRI66DTwqdgJAwAABflduO2pQHPhAwAABXXaj8lOBF3xMAAA",
+    "scene": "B_uxdiVUb30",
     "sortIndex": 6.0
    },
    {
     "fade": 2.0,
-    "identifier": "8d6e70a38aa751ec",
+    "identifier": "wl0aN1BjEp0",
     "label": "Dark",
-    "levels": "BCbptsGygFdLgAAELIuqQr8A0yWAAAQsoAfO6Fah7yAABETIpgm2MWt4gAAEYfo8CO74uziAAARl9WfJRWcPqCAABIKPkw/1lGGVAwAABJgB0AKFRE+hAwAABLNlL+HUKDoZMAAA",
-    "scene": "77b2ee07d9d2a24b",
+    "levels": "BbCg19Yr9XkagAAFO/PZNfu7jSmAAAWMag0UoDI0MyAABeAcPqjZZSX4gAAF7DjagAyZkXCAAAXcxUp+N4Db2yAABRI66DTwqdgJAwAABflduO2pQHPhAwAABXXaj8lOBF3xMAAA",
+    "scene": "w6dWp8l5N3w",
     "sortIndex": 1.0
    },
    {
     "fade": 3.0,
-    "identifier": "ca7e47614b06176a",
+    "identifier": "ZB-PgqhHmSw",
     "label": "Full stage",
-    "levels": "BCbptsGygFdLj//Zsv//BCyLqkK/ANMlj//Zsv//BETIpgm2MWt4j//Zsv//BGH6PAju+Ls4j//Zsv//CIKPkw/1lGGV+wf/////2ZmzMv//CJgB0AKFRE+h+wf/////2ZmzMv//",
-    "scene": "77b2ee07d9d2a24b",
+    "levels": "BbCg19Yr9Xkaj//Zsv//BTvz2TX7u40pj//Zsv//BeAcPqjZZSX4j//Zsv//Bew42oAMmZFwj//Zsv//CRI66DTwqdgJ+wf/////2ZmzMv//CflduO2pQHPh+wf/////2ZmzMv//",
+    "scene": "w6dWp8l5N3w",
     "sortIndex": 2.0
    },
    {
     "fade": 3.0,
-    "identifier": "ba86934a5347e839",
+    "identifier": "e8u7dQ6QzaI",
     "label": "The reader alone in one light",
-    "levels": "BCbptsGygFdLgAAELIuqQr8A0yWAAAREyKYJtjFreIAABGH6PAju+Ls4gAAIZfVnyUVnD6jvA4AAWZnw/+bM/wSCj5MP9ZRhlQMAAASYAdAChURPoQMAAA==",
-    "scene": "77b2ee07d9d2a24b",
+    "levels": "BbCg19Yr9XkagAAFO/PZNfu7jSmAAAXgHD6o2WUl+IAABew42oAMmZFwgAAJ3MVKfjeA29vvA4AAWZnw/+bM/wUSOug08KnYCQMAAAX5XbjtqUBz4QMAAA==",
+    "scene": "w6dWp8l5N3w",
     "sortIndex": 3.0
    },
    {
     "fade": 0.0,
-    "identifier": "bfe815fe97ae710e",
+    "identifier": "ZPIIP-7DKOQ",
     "label": "",
-    "levels": "BCbptsGygFdLj///////BCyLqkK/ANMlj///////BETIpgm2MWt4j///////BGH6PAju+Ls4j///////CIKPkw/1lGGV+wf/////////////CJgB0AKFRE+h+wf/////////////",
-    "scene": "2ca8c6a4dc130952",
+    "levels": "BbCg19Yr9Xkaj///////BTvz2TX7u40pj///////BeAcPqjZZSX4j///////Bew42oAMmZFwj///////CRI66DTwqdgJ+wf/////////////CflduO2pQHPh+wf/////////////",
+    "scene": "LFDuXPmz4N0",
     "sortIndex": 1.0
    },
    {
     "fade": 0.5,
-    "identifier": "2244bc056e9983bc",
+    "identifier": "WTrOro1Jo5o",
     "label": "",
-    "levels": "BCbptsGygFdLjwD/AAD/BCyLqkK/ANMlj/8A/wD/BETIpgm2MWt4j/8AAAD/BGH6PAju+Ls4jwAA/wD/",
-    "scene": "4146a4d32e185f8f",
+    "levels": "BbCg19Yr9XkajwD/AAD/BTvz2TX7u40pj/8A/wD/BeAcPqjZZSX4j/8AAAD/Bew42oAMmZFwjwAA/wD/",
+    "scene": "6ykcwi-fkNM",
     "sortIndex": 1.0
    },
    {
     "fade": 0.5,
-    "identifier": "7f05f2a9cca20c97",
+    "identifier": "Y7woFX5yyBk",
     "label": "",
-    "levels": "BCbptsGygFdLjwAA/wD/BCyLqkK/ANMlj/8AAAD/BETIpgm2MWt4jwD/AAD/BGH6PAju+Ls4j/8A/wD/",
-    "scene": "4146a4d32e185f8f",
+    "levels": "BbCg19Yr9XkajwAA/wD/BTvz2TX7u40pj/8AAAD/BeAcPqjZZSX4jwD/AAD/Bew42oAMmZFwj/8A/wD/",
+    "scene": "6ykcwi-fkNM",
     "sortIndex": 2.0
    },
    {
     "fade": 0.5,
-    "identifier": "57faca56cb85a86a",
+    "identifier": "OJKjUYtSZ8o",
     "label": "",
-    "levels": "BCbptsGygFdLj/8A/wD/BCyLqkK/ANMljwD/AAD/BETIpgm2MWt4jwAA/wD/BGH6PAju+Ls4j/8AAAD/",
-    "scene": "4146a4d32e185f8f",
+    "levels": "BbCg19Yr9Xkaj/8A/wD/BTvz2TX7u40pjwD/AAD/BeAcPqjZZSX4jwAA/wD/Bew42oAMmZFwj/8AAAD/",
+    "scene": "6ykcwi-fkNM",
     "sortIndex": 3.0
    },
    {
     "fade": 0.5,
-    "identifier": "85abe7c2ee70ab89",
+    "identifier": "mh9FdJS_TjM",
     "label": "",
-    "levels": "BCbptsGygFdLj/8AAAD/BCyLqkK/ANMljwAA/wD/BETIpgm2MWt4j/8A/wD/BGH6PAju+Ls4jwD/AAD/",
-    "scene": "4146a4d32e185f8f",
+    "levels": "BbCg19Yr9Xkaj/8AAAD/BTvz2TX7u40pjwAA/wD/BeAcPqjZZSX4j/8A/wD/Bew42oAMmZFwjwD/AAD/",
+    "scene": "6ykcwi-fkNM",
     "sortIndex": 4.0
    }
   ],
   "groups": [
    {
-    "identifier": "eee37f0e4d24b493",
+    "identifier": "9kyjJUyKZzY",
     "name": "Wash",
     "sortIndex": 0,
     "tint": "orange"
    },
    {
-    "identifier": "66e48d6f7ac16f67",
+    "identifier": "CF3RpXFmAZo",
     "name": "Movers",
     "sortIndex": 1,
     "tint": "blue"
@@ -159,9 +159,9 @@
    {
     "address": 1,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "44c8a609b6316b78",
+    "identifier": "4Bw-qNllJfg",
     "name": "Wash 1",
     "sortIndex": 0,
     "typeID": "stairville-hl-x180-8ch"
@@ -169,9 +169,9 @@
    {
     "address": 9,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "26e9b6c1b280574b",
+    "identifier": "sKDX1iv1eRo",
     "name": "Wash 2",
     "sortIndex": 1,
     "typeID": "stairville-hl-x180-8ch"
@@ -179,9 +179,9 @@
    {
     "address": 17,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "61fa3c08eef8bb38",
+    "identifier": "7DjagAyZkXA",
     "name": "Wash 3",
     "sortIndex": 2,
     "typeID": "stairville-hl-x180-8ch"
@@ -189,9 +189,9 @@
    {
     "address": 25,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "2c8baa42bf00d325",
+    "identifier": "O_PZNfu7jSk",
     "name": "Wash 4",
     "sortIndex": 3,
     "typeID": "stairville-hl-x180-8ch"
@@ -199,9 +199,9 @@
    {
     "address": 33,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "828f930ff5946195",
+    "identifier": "EjroNPCp2Ak",
     "name": "Front Left",
     "sortIndex": 4,
     "typeID": "cameo-f2-fc-16ch"
@@ -209,9 +209,9 @@
    {
     "address": 49,
     "groups": [
-     "eee37f0e4d24b493"
+     "9kyjJUyKZzY"
     ],
-    "identifier": "9801d00285444fa1",
+    "identifier": "-V247alAc-E",
     "name": "Front Right",
     "sortIndex": 5,
     "typeID": "cameo-f2-fc-16ch"
@@ -219,9 +219,9 @@
    {
     "address": 65,
     "groups": [
-     "66e48d6f7ac16f67"
+     "CF3RpXFmAZo"
     ],
-    "identifier": "65f567c945670fa8",
+    "identifier": "3MVKfjeA29s",
     "name": "Mover Left",
     "sortIndex": 6,
     "typeID": "mini-moving-head-14ch"
@@ -229,9 +229,9 @@
    {
     "address": 79,
     "groups": [
-     "66e48d6f7ac16f67"
+     "CF3RpXFmAZo"
     ],
-    "identifier": "2ca007cee856a1ef",
+    "identifier": "jGoNFKAyNDM",
     "name": "Mover Right",
     "sortIndex": 7,
     "typeID": "mini-moving-head-14ch"
@@ -239,9 +239,9 @@
    {
     "address": 93,
     "groups": [
-     "66e48d6f7ac16f67"
+     "CF3RpXFmAZo"
     ],
-    "identifier": "b3652fe1d4283a19",
+    "identifier": "ddqPyU4EXfE",
     "name": "Beam",
     "sortIndex": 8,
     "typeID": "stairville-bsw350-32ch"
@@ -250,20 +250,20 @@
   "made": [],
   "scenes": [
    {
-    "identifier": "77768ee2a6e14315",
+    "identifier": "hpmpTkoYOxA",
     "name": "Open White",
     "sortIndex": 0,
     "symbol": "lightbulb.max"
    },
    {
-    "identifier": "193cf32c986209cf",
+    "identifier": "MbNQqHphPXQ",
     "name": "Deep Blue",
     "sortIndex": 1,
     "symbol": "sparkles",
     "tint": "blue"
    },
    {
-    "identifier": "3c43e200bd4c9106",
+    "identifier": "Wn1rmrDwks8",
     "name": "Warm Amber",
     "sortIndex": 2,
     "symbol": "flame",
@@ -275,7 +275,7 @@
      0,
      4
     ],
-    "identifier": "d7c3d10a8590ccee",
+    "identifier": "B_uxdiVUb30",
     "name": "Evening",
     "sortIndex": 3,
     "symbol": "theatermasks",
@@ -287,7 +287,7 @@
      3,
      0
     ],
-    "identifier": "77b2ee07d9d2a24b",
+    "identifier": "w6dWp8l5N3w",
     "name": "Reading",
     "sortIndex": 4,
     "symbol": "book",
@@ -295,7 +295,7 @@
     "tint": "teal"
    },
    {
-    "identifier": "2ca8c6a4dc130952",
+    "identifier": "LFDuXPmz4N0",
     "name": "Blinder",
     "sortIndex": 5,
     "symbol": "bolt",
@@ -306,7 +306,7 @@
     "buttons": [
      0
     ],
-    "identifier": "4146a4d32e185f8f",
+    "identifier": "6ykcwi-fkNM",
     "name": "Color Steps",
     "sortIndex": 6,
     "symbol": "circle.hexagongrid",

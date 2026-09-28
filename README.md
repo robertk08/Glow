@@ -80,8 +80,8 @@ bridge.
   `version` match `ShowFile` exactly. There is no migration. An object the app
   cannot read in a known folder is erased from the controller when its show
   opens.
-- **Ids are random**, eleven base64url characters (older ones sixteen hex
-  digits). **Order is a fractional `Double`**, so a drag writes one object.
+- **Ids are random**, eleven base64url characters. **Order is a fractional
+  `Double`**, so a drag writes one object.
 
 ## Behaviour
 

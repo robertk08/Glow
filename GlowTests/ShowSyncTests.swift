@@ -60,7 +60,7 @@ struct ShowSyncTests {
 			let identifier = Identifier.fresh()
 			#expect(identifier.count == 11)
 			#expect(identifier.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") })
-			#expect(Identifier.value(identifier).map { Identifier.text($0.value, short: true) } == identifier)
+			#expect(Identifier.value(identifier).map(Identifier.text) == identifier)
 			seen.insert(identifier)
 		}
 		
@@ -108,10 +108,10 @@ struct ShowSyncTests {
 	
 	@Test func aCueHoldsOnlyTheChannelsItStores() {
 		var levels = Levels()
-		levels.set(255, slot: 6, of: "0123456789abcdef")
+		levels.set(255, slot: 6, of: "A0b1C2d3E4Q")
 		
 		#expect(levels.data.count == 11)
-		#expect(Levels(levels.data)?.lights["0123456789abcdef"] == [6: 255])
+		#expect(Levels(levels.data)?.lights["A0b1C2d3E4Q"] == [6: 255])
 	}
 	
 	@Test func aLargeCueIsKeptSqueezed() throws {
@@ -164,6 +164,20 @@ struct ShowSyncTests {
 		#expect(!file.show.lights.isEmpty)
 		#expect(!file.show.scenes.isEmpty)
 		#expect(file.show.cues.contains { !$0.label.isEmpty })
+		
+		let lights = Set(file.show.lights.map(\.identifier))
+		let scenes = Set(file.show.scenes.map(\.identifier))
+		
+		for cue in file.show.cues {
+			let levels = try #require(Levels(cue.levels))
+			#expect(!levels.isEmpty)
+			#expect(Set(levels.lights.keys).isSubset(of: lights))
+			#expect(scenes.contains(cue.scene))
+		}
+		
+		for identifier in lights.union(scenes).union(file.show.cues.map(\.identifier)) {
+			#expect(Identifier.value(identifier) != nil)
+		}
 		
 		var used: Set<Int> = []
 		

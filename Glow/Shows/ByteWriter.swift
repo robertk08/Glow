@@ -65,10 +65,10 @@ nonisolated struct ByteWriter {
 			return
 		}
 		
-		number(tag << 2 | (packed.short ? 1 : 0))
+		number(tag << 2 | 1)
 		
 		for shift in stride(from: 56, through: 0, by: -8) {
-			data.append(UInt8(truncatingIfNeeded: packed.value >> UInt64(shift)))
+			data.append(UInt8(truncatingIfNeeded: packed >> UInt64(shift)))
 		}
 	}
 }
