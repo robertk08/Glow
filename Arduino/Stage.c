@@ -481,7 +481,7 @@ void stage_map(Stage *stage, const uint8_t *message, size_t length) {
     if (flags & BAND) c.from = byte(&r);
     if (flags & BAND) c.to = byte(&r);
     if (flags & OPEN) c.open = byte(&r);
-    bool fits = a >= 1 && a <= SLOTS && (!(flags & WIDE) || (c.partner >= 1 && c.partner <= SLOTS && c.partner != a));
+    bool fits = a >= 1 && a <= SLOTS && (!(flags & WIDE) || (c.partner >= 1 && c.partner <= SLOTS && c.partner != a)) && c.from <= c.to;
     if (!r.ok || !fits) break;
     stage->channels[a] = c;
     if (flags & WIDE) stage->channels[c.partner] = (Channel){FINE, 0, 0, 0, a};
