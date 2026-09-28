@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SceneBar: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
@@ -11,7 +10,7 @@ struct SceneBar: View {
 	let transition: Namespace.ID
 	
 	var body: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
+		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures) }
 		let playing = console.playback.playing.map(\.scene)
 		let shown = console.shownScene(among: lists.map(\.scene).filter(playing.contains))
 		
@@ -65,7 +64,7 @@ struct SceneBar: View {
 						}
 						
 						Button("Turn Off", systemImage: "stop.fill") {
-							console.toggle(list, among: lists)
+							console.toggle(list)
 						}
 					}
 					.labelStyle(.iconOnly)

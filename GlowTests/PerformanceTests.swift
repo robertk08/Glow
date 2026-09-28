@@ -45,7 +45,7 @@ struct PerformanceTests {
 	}
 	
 	@Test func planningTheLastOfFortyCuesFitsInAFrame() {
-		let (_, fixtures, library) = rig(60)
+		let (_, fixtures, _) = rig(60)
 		let look = Look(name: "Look", sortIndex: 0)
 		var cues: [Cue] = []
 		
@@ -62,15 +62,15 @@ struct PerformanceTests {
 		
 		let clock = ContinuousClock()
 		var best = Duration.seconds(60)
-		var ramps: [Ramp] = []
+		var program = Data()
 		
 		for _ in 0..<5 {
-			best = min(best, clock.measure { ramps = CueList(look, cues: cues, fixtures: fixtures, library: library).ramps(at: 39, holding: [:]) })
+			best = min(best, clock.measure { program = CueList(look, cues: cues, fixtures: fixtures).program(from: 39) })
 		}
 		
 		#expect(best < .milliseconds(16))
-		#expect(ramps.count == 120)
-		#expect(ramps.contains { $0.target == 39 })
+		#expect(program.count < 400)
+		#expect(program.contains(39))
 	}
 	
 	@Test func aFullSnapshotOfACrowdedShowStaysUnderAFrame() async {

@@ -455,16 +455,5 @@ struct ShowSyncTests {
 		#expect(show.scenes.isEmpty)
 		#expect(show.unreadable == ["scenes/look"])
 	}
-	
-	@Test func aSourceFrameReadsBackAsWritten() throws {
-		guard case let .frame(start, values) = try #require(Wire.event(.data(Wire.frame(Wire.sourceOpcode, start: DMXAddress(510)!, values: [1, 2, 3])))) else {
-			Issue.record("expected a frame")
-			return
-		}
-		
-		#expect(start.value == 510)
-		#expect(values == [1, 2, 3])
-		#expect(Wire.event(.data(Wire.frame(Wire.outputOpcode, start: DMXAddress(1)!, values: [1]))) == nil)
-	}
 }
 

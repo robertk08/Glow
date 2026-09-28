@@ -1,42 +1,19 @@
 import Foundation
 
 nonisolated struct CueList: Sendable {
-	nonisolated struct Light: Sendable {
-		let start: DMXAddress
-		let type: FixtureType
-	}
-	
 	let scene: String
 	let tap: SceneAction
-	let cues: [ShowContents.Cue]
+	private(set) var cues: [ShowContents.Cue]
 	
-	private let states: [Levels]
-	private let owned: Levels
-	private let lights: [String: Light]
+	private let starts: [String: DMXAddress]
 	
-	@MainActor init(_ look: Look, cues: [Cue], fixtures: [Fixture], library: FixtureLibrary) {
+	private static let budget = 12000
+	
+	@MainActor init(_ look: Look, cues: [Cue], fixtures: [Fixture]) {
 		scene = look.identifier
 		tap = look.tap
 		self.cues = look.cues(among: cues).map(\.entry)
-		
-		var lights: [String: Light] = [:]
-		
-		for fixture in fixtures {
-			guard let type = library.type(fixture.typeID) else { continue }
-			lights[fixture.identifier] = Light(start: fixture.start, type: type)
-		}
-		
-		var tracked = Levels()
-		var states: [Levels] = []
-		
-		for cue in self.cues {
-			tracked = tracked.merging(Levels(cue.levels) ?? Levels())
-			states.append(tracked)
-		}
-		
-		self.lights = lights
-		self.states = states
-		owned = tracked
+		starts = Dictionary(fixtures.map { ($0.identifier, $0.start) }, uniquingKeysWith: { first, _ in first })
 	}
 	
 	func index(of identifier: String?) -> Int? {
@@ -60,64 +37,135 @@ nonisolated struct CueList: Sendable {
 	
 	func status(at index: Int?) -> String {
 		guard !cues.isEmpty else { return "Tap to build" }
-		guard let index else { return tap == .flash ? "Hold to flash" : cues.count > 1 ? "\(cues.count) cues" : owned.lights.count == 1 ? "1 light" : "\(owned.lights.count) lights" }
+		
+		guard let index else {
+			if tap == .flash { return "Hold to flash" }
+			if cues.count > 1 { return "\(cues.count) cues" }
+			let lights = Levels(cues[0].levels)?.lights.count ?? 0
+			return lights == 1 ? "1 light" : "\(lights) lights"
+		}
+		
 		guard cues.count > 1 else { return "On" }
 		return cues[index].label.isEmpty ? "Cue \(index + 1) of \(cues.count)" : "\(index + 1) · \(cues[index].label)"
 	}
 	
-	var addresses: Set<Int> {
-		var found: Set<Int> = []
-		
-		for (identifier, slots) in owned.lights {
-			guard let light = lights[identifier] else { continue }
-			
-			for slot in slots.keys {
-				guard let address = light.start.offset(by: slot - 1) else { continue }
-				found.insert(address.value)
-			}
-		}
-		
-		return found
+	func fade(of identifier: String?) -> Double {
+		index(of: identifier).map { cues[$0].fade } ?? 0
 	}
 	
-	func ramps(at index: Int?, holding held: [Int: UInt8]) -> [Ramp] {
-		let state = index.map { states[$0] } ?? Levels()
-		var ramps: [Ramp] = []
+	func removing(_ identifier: String) -> CueList {
+		var trimmed = self
+		trimmed.cues.removeAll { $0.identifier == identifier }
+		return trimmed
+	}
+	
+	func program(from index: Int, snapping: Bool = false) -> Data {
+		let levels = cues.map { Levels($0.levels) ?? Levels() }
+		var owned = [Bool](repeating: false, count: Universe.channelCount + 1)
 		
-		for (identifier, slots) in owned.lights {
-			guard let light = lights[identifier] else { continue }
-			let stored = state.lights[identifier] ?? [:]
-			var covered: Set<Int> = []
-			
-			for channel in light.type.channels {
-				let offsets = channel.offsets.filter { slots[$0] != nil }
-				covered.formUnion(channel.offsets)
-				guard !offsets.isEmpty else { continue }
+		for level in levels {
+			for (light, slots) in level.lights {
+				guard let start = starts[light] else { continue }
 				
-				var kind = channel.attribute.fades ? Ramp.Kind.fade : .snap
-				
-				if case let .band(dimmer, from, to, open) = light.type.dimming, dimmer.offset == channel.offset {
-					kind = .band(from: from, to: to, open: open)
+				for slot in slots.keys {
+					guard let address = start.offset(by: slot - 1) else { continue }
+					owned[address.value] = true
 				}
-				
-				guard offsets.count == 2, let fine = channel.fineOffset, let coarse = light.start.offset(by: channel.offset - 1), let low = light.start.offset(by: fine - 1) else {
-					for slot in offsets {
-						guard let address = light.start.offset(by: slot - 1), let target = stored[slot] ?? held[address.value] else { continue }
-						ramps.append(Ramp(address: address, target: Int(target), kind: kind))
-					}
-					continue
-				}
-				
-				guard let high = stored[channel.offset] ?? held[coarse.value], let small = stored[fine] ?? held[low.value] else { continue }
-				ramps.append(Ramp(address: coarse, fine: low, target: Int(high) * 256 + Int(small), kind: kind))
-			}
-			
-			for slot in slots.keys where !covered.contains(slot) {
-				guard let address = light.start.offset(by: slot - 1), let target = stored[slot] ?? held[address.value] else { continue }
-				ramps.append(Ramp(address: address, target: Int(target), kind: .snap))
 			}
 		}
 		
-		return ramps
+		var order = [index]
+		var loop: Int?
+		
+		while !snapping, order.count < 255, cues[order[order.count - 1]].follow != nil, let next = next(after: order[order.count - 1]) {
+			if let seen = order.firstIndex(of: next) {
+				loop = seen
+				break
+			}
+			
+			order.append(next)
+		}
+		
+		var steps = Data()
+		var count = 0
+		var state: [Int] = []
+		var folded = -1
+		
+		for position in order {
+			if position <= folded {
+				state = []
+				folded = -1
+			}
+			
+			if state.isEmpty {
+				state = [Int](repeating: -1, count: Universe.channelCount + 1)
+			}
+			
+			while folded < position {
+				folded += 1
+				
+				for (light, slots) in levels[folded].lights {
+					guard let start = starts[light] else { continue }
+					
+					for (slot, value) in slots {
+						guard let address = start.offset(by: slot - 1) else { continue }
+						state[address.value] = Int(value)
+					}
+				}
+			}
+			
+			let step = step(position, state: state, owned: owned, snapping: snapping)
+			
+			guard count == 0 || steps.count + step.count <= Self.budget else {
+				loop = nil
+				break
+			}
+			
+			steps.append(step)
+			count += 1
+		}
+		
+		var writer = ByteWriter()
+		writer.byte(UInt8(loop ?? 0xFF))
+		writer.byte(UInt8(count))
+		return writer.data + steps
+	}
+	
+	private func step(_ position: Int, state: [Int], owned: [Bool], snapping: Bool) -> Data {
+		let cue = cues[position]
+		var runs = ByteWriter()
+		var address = 1
+		
+		while address <= Universe.channelCount {
+			guard owned[address] else {
+				address += 1
+				continue
+			}
+			
+			let start = address
+			let isHeld = state[address] < 0
+			var values: [UInt8] = []
+			
+			while address <= Universe.channelCount, owned[address], (state[address] < 0) == isHeld {
+				if !isHeld { values.append(UInt8(state[address])) }
+				address += 1
+			}
+			
+			runs.word(start | (isHeld ? 0x8000 : 0))
+			runs.word(address - start)
+			runs.bytes(values)
+		}
+		
+		var writer = ByteWriter()
+		writer.text(cue.identifier)
+		writer.number(snapping ? 0 : Self.milliseconds(cue.delay))
+		writer.number(snapping ? 0 : Self.milliseconds(cue.fade))
+		writer.number(snapping ? 0 : cue.follow.map { Self.milliseconds($0) + 1 } ?? 0)
+		writer.number(runs.data.count)
+		return writer.data + runs.data
+	}
+	
+	static func milliseconds(_ seconds: Double) -> Int {
+		max(0, Int((seconds * 1000).rounded()))
 	}
 }

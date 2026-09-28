@@ -27,8 +27,7 @@ struct SceneView: View {
 	}
 	
 	@ViewBuilder private var content: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
-		let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
+		let list = CueList(look, cues: cues, fixtures: fixtures)
 		let held = look.cues(among: cues)
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let tint = look.tint.color ?? .accentColor
@@ -78,7 +77,7 @@ struct SceneView: View {
 												.foregroundStyle(.secondary)
 										}
 										
-										if position == index, let fade = console.fades[look.identifier] {
+										if position == index, let fade = console.playback.fades[look.identifier] {
 											FadeBar(fade: fade, tint: tint)
 												.padding(.vertical, 2)
 										}
@@ -99,7 +98,7 @@ struct SceneView: View {
 							}
 							.swipeActions(edge: .trailing) {
 								Button("Delete", systemImage: "trash", role: .destructive) {
-									console.delete(cue, from: list, among: lists, context: context)
+									console.delete(cue, from: list, context: context)
 								}
 							}
 							.contextMenu {
@@ -123,7 +122,7 @@ struct SceneView: View {
 								}
 								
 								Button("Delete Cue", systemImage: "trash", role: .destructive) {
-									console.delete(cue, from: list, among: lists, context: context)
+									console.delete(cue, from: list, context: context)
 								}
 							}
 						}
@@ -144,7 +143,7 @@ struct SceneView: View {
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 0) {
 					if !held.isEmpty {
-						Transport(look: look, list: list, lists: lists)
+						Transport(look: look, list: list)
 					}
 					
 					if !isSheet {
@@ -208,7 +207,7 @@ struct SceneView: View {
 			}
 			.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
 				Button("Delete Scene", role: .destructive) {
-					look.remove(with: cues, context: context)
+					console.remove(look, with: cues, context: context)
 				}
 			}
 			.sensoryFeedback(.selection, trigger: console.playback)
@@ -225,7 +224,6 @@ private struct Transport: View {
 	
 	let look: Look
 	let list: CueList
-	let lists: [CueList]
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
@@ -251,7 +249,7 @@ private struct Transport: View {
 					if steps {
 						console.go(list)
 					} else {
-						console.toggle(list, among: lists)
+						console.toggle(list)
 					}
 				} label: {
 					Label(steps ? (index == nil ? "Start" : "Next Cue") : (index == nil ? "Turn On" : "Turn Off"), systemImage: steps ? "forward.end.fill" : "power")
@@ -264,7 +262,7 @@ private struct Transport: View {
 				
 				if steps {
 					Button {
-						console.toggle(list, among: lists)
+						console.toggle(list)
 					} label: {
 						Image(systemName: "stop.fill")
 							.frame(width: height, height: height)

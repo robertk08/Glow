@@ -1,24 +1,51 @@
 import Foundation
 
 nonisolated enum Wire {
-	static let outputOpcode: UInt8 = 0x01
-	static let sourceOpcode: UInt8 = 0x02
+	static let frameOpcode: UInt8 = 0x02
 	static let documentOpcode: UInt8 = 0x03
-	static let bothOpcode: UInt8 = 0x04
-	static let playbackOpcode: UInt8 = 0x05
+	static let commandOpcode: UInt8 = 0x05
+	static let mapOpcode: UInt8 = 0x06
 	static let documentHeader = 7
 	static let recordHeader = 5
 	
-	static func frame(_ opcode: UInt8, start: DMXAddress, values: [UInt8]) -> Data {
-		var data = Data(capacity: values.count + 6)
-		data.append(opcode)
-		data.append(0)
-		data.append(UInt8(start.value & 0xFF))
-		data.append(UInt8((start.value >> 8) & 0xFF))
-		data.append(UInt8(values.count & 0xFF))
-		data.append(UInt8((values.count >> 8) & 0xFF))
-		data.append(contentsOf: values)
-		return data
+	nonisolated enum Action: UInt8, Sendable {
+		case play, land, stop, more
+	}
+	
+	static func frame(_ runs: [(start: DMXAddress, values: [UInt8])]) -> Data {
+		var writer = ByteWriter()
+		writer.byte(frameOpcode)
+		writer.byte(0)
+		
+		for run in runs {
+			writer.word(run.start.value)
+			writer.word(run.values.count)
+			writer.bytes(run.values)
+		}
+		
+		return writer.data
+	}
+	
+	static func runs(in bytes: [UInt8]) -> [(start: DMXAddress, values: [UInt8])]? {
+		var reader = ByteReader(Data(bytes))
+		guard reader.byte() == frameOpcode, reader.byte() == 0, !reader.isAtEnd else { return nil }
+		var runs: [(start: DMXAddress, values: [UInt8])] = []
+		
+		while !reader.isAtEnd {
+			guard let first = reader.word(), let count = reader.word(), count > 0, let start = DMXAddress(first), DMXAddress(first + count - 1) != nil, let values = reader.bytes(count) else { return nil }
+			runs.append((start, values))
+		}
+		
+		return runs
+	}
+	
+	static func command(_ action: Action, seq: Int, scene: String, body: Data) -> Data {
+		var writer = ByteWriter()
+		writer.byte(commandOpcode)
+		writer.word(seq)
+		writer.byte(action.rawValue)
+		writer.text(scene)
+		return writer.data + body
 	}
 	
 	nonisolated enum Command: Sendable {
@@ -153,10 +180,6 @@ nonisolated enum Wire {
 		return data
 	}
 	
-	static func playback(_ state: Data) -> Data {
-		Data([playbackOpcode]) + state
-	}
-	
 	static func objects(in log: Data) -> [(folder: String, id: String, body: Data)] {
 		let bytes = [UInt8](log)
 		var latest: [String: (folder: String, id: String, body: Data)] = [:]
@@ -204,13 +227,11 @@ nonisolated enum Wire {
 				return .notice(bytes[1] == 1 ? .erased(place) : .stored(place, parts[3]))
 			}
 			
-			if bytes.first == playbackOpcode {
-				return .playback(Data(bytes.dropFirst()))
+			if bytes.first == commandOpcode {
+				return .playback(bytes)
 			}
 			
-			guard bytes.count > 6, bytes[0] == sourceOpcode, bytes[1] == 0, bytes.count == 6 + (Int(bytes[4]) | (Int(bytes[5]) << 8)) else { return nil }
-			guard let start = DMXAddress(Int(bytes[2]) | (Int(bytes[3]) << 8)) else { return nil }
-			return .frame(start: start, values: Array(bytes[6...]))
+			return runs(in: bytes).map { .frame($0) }
 		case let .string(text):
 			struct Envelope: Decodable {
 				var t: String

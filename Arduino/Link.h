@@ -9,10 +9,8 @@ void begin();
 void tick();
 int  clients();
 
-void  apply(int start, const uint8_t *source, const uint8_t *output, int length);
-void  source(int start, uint8_t *out, int length);
-float master();
-bool  blackout();
+void apply(int start, const uint8_t *values, int length);
+void source(int start, uint8_t *out, int length);
 
 void adopt(Outlet *tcp, const char *url);
 bool admits(const char *session);

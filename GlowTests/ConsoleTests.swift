@@ -22,21 +22,38 @@ struct ConsoleTests {
 		#expect(universe[DMXAddress(512)!] == 2)
 	}
 	
-	@MainActor @Test func masterScalesALinearDimmer() {
-		let dimmer = Dimmer(address: DMXAddress(1)!, kind: .linear)
+	@MainActor @Test func masterScalesALinearDimmerAndLeavesColourAlone() {
+		let console = patched(FixtureType(id: "par", model: "Par", channels: [FixtureChannel(offset: 1, attribute: .dimmer), FixtureChannel(offset: 2, attribute: .red)]))
+		console.set([200, 200], at: DMXAddress(1)!)
 		
-		#expect(dimmer.scale(200, by: 1) == 200)
-		#expect(dimmer.scale(200, by: 0.5) == 100)
-		#expect(dimmer.scale(200, by: 0) == 0)
+		#expect(Array(console.output.prefix(2)) == [200, 200])
+		console.master = 0.5
+		#expect(Array(console.output.prefix(2)) == [100, 200])
+		console.master = 0
+		#expect(Array(console.output.prefix(2)) == [0, 200])
 	}
 	
 	@MainActor @Test func masterScalesInsideADimBandOnly() {
-		let dimmer = Dimmer(address: DMXAddress(1)!, kind: .band(from: 10, to: 210, open: 255))
+		let console = patched(FixtureType(id: "head", model: "Head", channels: [FixtureChannel(offset: 1, attribute: .shutter, functions: [
+			ChannelFunction(from: 0, to: 9, label: "Closed", purpose: .closed),
+			ChannelFunction(from: 10, to: 210, label: "Dimmer", kind: .proportional, purpose: .dim),
+			ChannelFunction(from: 211, to: 254, label: "Strobe", kind: .proportional),
+			ChannelFunction(from: 255, to: 255, label: "Open", purpose: .open),
+		])]))
+		console.master = 0.5
 		
-		#expect(dimmer.scale(5, by: 0.5) == 5)
-		#expect(dimmer.scale(110, by: 0.5) == 60)
-		#expect(dimmer.scale(255, by: 0.5) == 110)
-		#expect(dimmer.scale(110, by: 1) == 110)
+		for (value, scaled) in [(5, 5), (110, 60), (255, 110), (230, 230)] as [(UInt8, UInt8)] {
+			console.set(value, at: DMXAddress(1)!)
+			#expect(console.output[0] == scaled)
+		}
+	}
+	
+	@MainActor private func patched(_ type: FixtureType) -> Console {
+		let library = FixtureLibrary(builtIn: [])
+		library.setMade([type])
+		let console = Console()
+		console.applyPatch([Fixture(typeID: type.id, name: type.model, address: DMXAddress(1)!, sortIndex: 0)], library: library)
+		return console
 	}
 	
 	@MainActor @Test func aSortIndexFollowsTheHighestSoFar() {

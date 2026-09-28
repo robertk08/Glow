@@ -34,15 +34,14 @@ struct SceneTests {
 		var context: ModelContext { container.mainContext }
 		var cues: [Cue] { (try? context.fetch(FetchDescriptor<Cue>())) ?? [] }
 		var looks: [Look] { (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
-		var list: CueList { CueList(look, cues: cues, fixtures: fixtures, library: library) }
-		var lists: [CueList] { looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) } }
+		var list: CueList { CueList(look, cues: cues, fixtures: fixtures) }
 		
 		func value(_ address: Int) -> UInt8 {
 			console.value(at: DMXAddress(address)!)
 		}
 		
 		func list(of look: Look) -> CueList {
-			CueList(look, cues: cues, fixtures: fixtures, library: library)
+			CueList(look, cues: cues, fixtures: fixtures)
 		}
 		
 		@discardableResult func add(_ sortIndex: Double, fade: Double = 0, to look: Look? = nil, _ values: [(light: Int, slot: Int, value: UInt8)]) -> Cue {
@@ -101,14 +100,13 @@ struct SceneTests {
 		rig.console.set(40, at: DMXAddress(1)!)
 		rig.add(1, [(0, 1, 255), (0, 2, 200)])
 		
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 255 && rig.value(2) == 200 }
 		#expect(rig.console.playback.cue(of: rig.look.identifier) != nil)
 		
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 40 && rig.value(2) == 0 }
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
-		#expect(rig.console.playback.held.isEmpty)
 	}
 	
 	@Test func turningOneSceneOffLeavesTheOtherOneHolding() async throws {
@@ -118,18 +116,17 @@ struct SceneTests {
 		rig.add(1, [(0, 1, 100), (1, 1, 100)])
 		rig.add(1, to: other, [(0, 1, 200)])
 		
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 100 && rig.value(11) == 100 }
-		rig.console.toggle(rig.list(of: other), among: rig.lists)
+		rig.console.toggle(rig.list(of: other))
 		try await until { rig.value(1) == 200 }
 		
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.value(11) == 0 }
 		#expect(rig.value(1) == 200)
 		
-		rig.console.toggle(rig.list(of: other), among: rig.lists)
+		rig.console.toggle(rig.list(of: other))
 		try await until { rig.value(1) == 0 }
-		#expect(rig.console.playback.held.isEmpty)
 	}
 	
 	@Test func cuesStepForwardAndBackAndValuesCarryThrough() async throws {
@@ -187,10 +184,10 @@ struct SceneTests {
 		rig.console.set(40, at: DMXAddress(1)!)
 		rig.add(1, fade: 5, [(0, 1, 255)])
 		
-		rig.console.flash(rig.list, among: rig.lists, isHeld: true)
+		rig.console.flash(rig.list, isHeld: true)
 		try await until { rig.value(1) == 255 }
 		
-		rig.console.flash(rig.list, among: rig.lists, isHeld: false)
+		rig.console.flash(rig.list, isHeld: false)
 		try await until { rig.value(1) == 40 }
 		#expect(rig.console.playback.playing.isEmpty)
 	}
@@ -310,13 +307,13 @@ struct SceneTests {
 		rig.add(1, [(0, 1, 10)])
 		let second = rig.add(2, [(0, 1, 20)])
 		rig.console.play(rig.list, at: 1, snapping: true)
-		rig.console.delete(second, from: rig.list, among: rig.lists, context: rig.context)
+		rig.console.delete(second, from: rig.list, context: rig.context)
 		
 		let held = rig.look.cues(among: rig.cues)
 		#expect(held.count == 1)
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[0].identifier)
 		
-		rig.console.delete(held[0], from: rig.list, among: rig.lists, context: rig.context)
+		rig.console.delete(held[0], from: rig.list, context: rig.context)
 		
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
 	}
@@ -407,40 +404,104 @@ struct SceneTests {
 		rig.context.insert(other)
 		rig.add(1, [(0, 1, 100)])
 		rig.add(1, to: other, [(1, 1, 200)])
-		rig.console.toggle(rig.list, among: rig.lists)
-		rig.console.toggle(rig.list(of: other), among: rig.lists)
+		rig.console.toggle(rig.list)
+		rig.console.toggle(rig.list(of: other))
 		try await until { rig.value(1) == 100 && rig.value(11) == 200 }
 		
-		rig.console.stopAll(among: rig.lists)
+		rig.console.stopAll()
 		try await until { rig.value(1) == 0 && rig.value(11) == 0 }
 		#expect(rig.console.playback.playing.isEmpty)
-		#expect(rig.console.playback.held.isEmpty)
 	}
 	
 	@Test func deletingTheCueOnStageLeavesTheSceneAbleToStartAgain() async throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 100)])
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 100 }
 		rig.context.delete(first)
 		try rig.context.save()
 		let second = rig.add(2, [(0, 1, 50)])
 		
-		rig.console.toggle(rig.list, among: rig.lists)
+		rig.console.toggle(rig.list)
 		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier && rig.value(1) == 50 }
 	}
 	
-	@Test func whatIsPlayingReadsBackAsWritten() {
-		var playback = Playback()
-		playback.play("0123456789abcdef", of: "fedcba9876543210")
-		playback.play("cue", of: "scene")
-		playback.held = [1: 40, 512: 255]
-		let read = Playback(playback.data)
+	@Test func aChaseKeepsGoingRoundByItself() async throws {
+		let rig = try rig()
 		
-		#expect(read == playback)
-		#expect(read?.cue(of: "scene") == "cue")
+		for step in 1...3 {
+			let cue = rig.add(Double(step), [(0, 1, UInt8(step * 10))])
+			cue.follow = 0.05
+		}
 		
-		playback.stop("scene")
-		#expect(playback.playing.map(\.scene) == ["fedcba9876543210"])
+		try rig.context.save()
+		rig.console.go(rig.list)
+		var seen: [UInt8] = []
+		
+		try await until(within: 5) {
+			if seen.last != rig.value(1) { seen.append(rig.value(1)) }
+			return seen.count >= 8
+		}
+		
+		#expect(Set(seen) == [10, 20, 30])
+		#expect(rig.console.playback.cue(of: rig.look.identifier) != nil)
+	}
+	
+	@Test func aFlashOnASceneAlreadyOnLeavesItOn() async throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 200)])
+		rig.console.toggle(rig.list)
+		try await until { rig.value(1) == 200 }
+		
+		rig.console.flash(rig.list, isHeld: true)
+		rig.console.flash(rig.list, isHeld: false)
+		
+		try await Task.sleep(for: .milliseconds(50))
+		#expect(rig.value(1) == 200)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) != nil)
+	}
+	
+	@Test func deletingTheFirstCueOnStageMovesTheStageToTheNextOne() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 2, 20)])
+		rig.add(3, [(0, 1, 30)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		try await until { rig.value(1) == 10 }
+		
+		rig.console.delete(first, from: rig.list, context: rig.context)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == second.identifier)
+		try await until { rig.value(1) == 0 && rig.value(2) == 20 }
+	}
+	
+	@Test func deletingASceneThatIsOnPutsItsLightsBack() async throws {
+		let rig = try rig()
+		rig.console.set(40, at: DMXAddress(1)!)
+		rig.add(1, [(0, 1, 255)])
+		rig.console.toggle(rig.list)
+		try await until { rig.value(1) == 255 }
+		
+		rig.console.remove(rig.look, with: rig.cues, context: rig.context)
+		
+		try await until { rig.value(1) == 40 }
+		#expect(rig.console.playback.playing.isEmpty)
+	}
+	
+	@Test func storingCueAfterCueAtOneSpotKeepsTheirOrder() throws {
+		let rig = try rig()
+		var after = rig.add(1, [(0, 1, 1)])
+		rig.add(2, [(0, 1, 2)])
+		
+		for step in 0..<30 {
+			rig.console.set(UInt8(step + 3), at: DMXAddress(1)!)
+			rig.recording(.cue(rig.look, after: after)).store(context: rig.context)
+			after = try #require(rig.look.cues(among: rig.cues).first { $0.levels.lights[rig.fixtures[0].identifier]?[1] == UInt8(step + 3) })
+		}
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(held.compactMap { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [1] + (3...32).map(UInt8.init) + [2])
+		#expect(Set(held.map(\.sortIndex)).count == held.count)
+		#expect(held.allSatisfy { ($0.sortIndex * 256).rounded() == $0.sortIndex * 256 })
 	}
 }

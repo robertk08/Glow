@@ -33,12 +33,13 @@ const size_t   BATCH        = 4096;
 const int      SORTED       = 2048;
 const int      SLICES_MAX   = 64;
 const uint32_t PUT_BIT      = 0x80000000;
+const int      SHOWS_HASHED = 64;
 
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
 size_t            g_total      = 0;
 char              g_spent[NAME_LIMIT];
-volatile uint32_t g_generation = 0;
+uint32_t          g_generations[SHOWS_HASHED] = {};
 int               g_readers    = 0;
 SemaphoreHandle_t g_lock       = nullptr;
 QueueHandle_t     g_jobs       = nullptr;
@@ -89,6 +90,8 @@ uint64_t key(const char *folder, const char *id) {
 }
 
 uint64_t key(const Record &r) { return key(r.folder, r.id); }
+
+uint32_t &generation(const char *show) { return g_generations[hash(1469598103934665603ULL, show) % SHOWS_HASHED]; }
 
 uint32_t sizeOf(int fd) {
   struct stat st;
@@ -269,7 +272,7 @@ bool review(const char *show, int file, bool always, uint32_t room = UINT32_MAX)
   if (to >= 0) copied = Flash::guarded([&] { return ::close(to) == 0; }) && copied;
   if (copied) copied = Flash::guarded([&] { return ::rename(spare, name) == 0; });
   if (!copied) Flash::guarded([&] { return ::unlink(spare) == 0; });
-  if (copied) g_generation++;
+  if (copied) generation(show)++;
   Serial.printf("store: %s.%d kept %u of %u bytes in %u ms\n", show, file, (unsigned)holding, (unsigned)size, (unsigned)(millis() - began));
   return copied;
 }
@@ -288,7 +291,7 @@ void perform(Job *jobs, int count) {
         char name[PATH_LIMIT];
         if (path(name, show, file, "")) Flash::guarded([&] { return ::unlink(name) == 0; });
       }
-      g_generation++;
+      generation(show)++;
     }
     free(jobs[0].frame);
     return;
@@ -460,7 +463,7 @@ void drop(const char *show) {
 
 bool whole(const char *show, Span &span) {
   Hold hold;
-  span = {0, 0, g_generation, {}};
+  span = {0, 0, generation(show), {}};
   for (int file = 0; file < FILES; file++) {
     char        name[PATH_LIMIT];
     struct stat st;
@@ -487,7 +490,7 @@ bool locate(const char *show, const char *folder, const char *id, Span &span) {
     for (uint32_t at = 0; at < c.size && record(c, at, r); at = r.next) {
       if (strcmp(r.folder, folder) || strcmp(r.id, id)) continue;
       found            = r.op == PUT;
-      span             = {r.body, r.next, g_generation, {}};
+      span             = {r.body, r.next, generation(show), {}};
       span.sizes[file] = r.next;
     }
     ::close(fd);
@@ -498,7 +501,7 @@ bool locate(const char *show, const char *folder, const char *id, Span &span) {
 
 long read(const char *show, Span &span, uint8_t *into, size_t max) {
   Hold hold;
-  if (span.generation != g_generation) return -1;
+  if (span.generation != generation(show)) return -1;
 
   uint32_t offset = span.from;
   int      file   = 0;

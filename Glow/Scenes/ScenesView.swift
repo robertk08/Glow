@@ -20,9 +20,9 @@ struct ScenesView: View {
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	@ViewBuilder private var tiles: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
+		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures) }
 		let items = ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
-			SceneTile(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+			SceneTile(look: look, list: list, recording: $recording, deleting: $deleting)
 		}
 		let grid = TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			if #available(iOS 27.0, *) {
@@ -43,7 +43,6 @@ struct ScenesView: View {
 	}
 	
 	var body: some View {
-		let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
 		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
 		let adding = Group {
 			Button("Store All", systemImage: "camera.aperture") {
@@ -106,7 +105,7 @@ struct ScenesView: View {
 			
 			ToolbarItem(placement: .topBarTrailing) {
 				Button("All Off", systemImage: "power") {
-					console.stopAll(among: lists)
+					console.stopAll()
 				}
 				.disabled(!isPlaying)
 			}
@@ -162,7 +161,6 @@ struct SceneTile: View {
 	
 	let look: Look
 	let list: CueList
-	let lists: [CueList]
 	
 	@Binding var recording: Recording?
 	@Binding var deleting: Look?
@@ -177,7 +175,7 @@ struct SceneTile: View {
 	
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
-		let buttons = TileButtons(look: look, list: list, lists: lists)
+		let buttons = TileButtons(look: look, list: list)
 			.padding(.leading, 140)
 			.padding([.trailing, .bottom], 14)
 			.padding(.bottom, 26)
@@ -189,17 +187,17 @@ struct SceneTile: View {
 			} else if list.cues.isEmpty {
 				console.selection.building = look.identifier
 			} else {
-				console.run(look.tap, on: list, among: lists)
+				console.run(look.tap, on: list)
 			}
 		} label: {
 			SceneFace(look: look, list: list)
 		}
 		.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
-			console.flash(list, among: lists, isHeld: isHeld)
+			console.flash(list, isHeld: isHeld)
 		})
 		.accessibilityHint(look.tap.tapName)
 		.modifier(SceneMenu(isShown: look.tap != .flash) {
-			SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+			SceneActions(look: look, list: list, recording: $recording, deleting: $deleting)
 		} preview: {
 			SceneFace(look: look, list: list)
 				.overlay(alignment: .bottomTrailing) {
@@ -227,7 +225,7 @@ struct SceneTile: View {
 			.padding(11)
 			.accessibilityLabel("Open \(look.name)")
 			.modifier(SceneMenu(isShown: look.tap == .flash) {
-				SceneActions(look: look, list: list, lists: lists, recording: $recording, deleting: $deleting)
+				SceneActions(look: look, list: list, recording: $recording, deleting: $deleting)
 			} preview: {
 				SceneFace(look: look, list: list)
 					.frame(width: size.width, height: size.height)
@@ -236,7 +234,7 @@ struct SceneTile: View {
 		}
 		.confirmationDialog("Delete \(look.name)?", isPresented: Binding { deleting?.identifier == look.identifier } set: { if !$0 { deleting = nil } }, titleVisibility: .visible) {
 			Button("Delete Scene", role: .destructive) {
-				look.remove(with: cues, context: context)
+				console.remove(look, with: cues, context: context)
 			}
 		}
 		.onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
@@ -287,7 +285,7 @@ private struct SceneFace: View {
 			HStack(spacing: list.cues.count > 16 ? 1 : 3) {
 				ForEach(list.cues.indices, id: \.self) { position in
 					if position == index {
-						FadeBar(fade: console.fades[look.identifier], tint: tint)
+						FadeBar(fade: console.playback.fades[look.identifier], tint: tint)
 					} else {
 						Capsule()
 							.fill(index.map { position < $0 } == true ? tint : Color(.tertiarySystemFill))
@@ -347,7 +345,6 @@ struct TileButtons: View {
 	
 	let look: Look
 	let list: CueList
-	let lists: [CueList]
 	
 	var body: some View {
 		if !look.isGone {
@@ -372,7 +369,7 @@ struct TileButtons: View {
 					if action == .update, let current {
 						Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 					} else if action != .flash {
-						console.run(action, on: list, among: lists)
+						console.run(action, on: list)
 					}
 				} label: {
 					Label(action == .toggle ? (index == nil ? "Turn On" : "Turn Off") : action.name, systemImage: action.symbol)
@@ -384,7 +381,7 @@ struct TileButtons: View {
 						.contentShape(.capsule)
 				}
 				.buttonStyle(PressStyle(flashes: action == .flash) { isHeld in
-					console.flash(list, among: lists, isHeld: isHeld)
+					console.flash(list, isHeld: isHeld)
 				})
 				.disabled(!isEnabled)
 			}
@@ -459,7 +456,6 @@ private struct SceneActions: View {
 	
 	let look: Look
 	let list: CueList
-	let lists: [CueList]
 	
 	@Binding var recording: Recording?
 	@Binding var deleting: Look?
@@ -481,7 +477,7 @@ private struct SceneActions: View {
 			
 			if !list.cues.isEmpty {
 				Button(index != nil ? "Turn Off" : list.cues.count > 1 ? "Start" : "Turn On", systemImage: index != nil ? "stop.fill" : "play.fill") {
-					console.toggle(list, among: lists)
+					console.toggle(list)
 				}
 			}
 			

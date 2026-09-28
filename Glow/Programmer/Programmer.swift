@@ -405,33 +405,6 @@ struct Programmer {
 		Binding { brightness } set: { brightness = $0 }
 	}
 	
-	var dimmers: [Dimmer] {
-		var found: [Dimmer] = []
-		
-		for target in targets {
-			switch target.type.dimming {
-			case let .channel(channel):
-				if let coarse = address(channel.offset, in: target) {
-					found.append(Dimmer(address: coarse, kind: .linear, fineAddress: channel.fineOffset.flatMap { address($0, in: target) }))
-				}
-			case let .band(channel, from, to, open):
-				if let coarse = address(channel.offset, in: target) {
-					found.append(Dimmer(address: coarse, kind: .band(from: from, to: to, open: open)))
-				}
-			case let .emitters(channels):
-				for channel in channels {
-					if let coarse = address(channel.offset, in: target) {
-						found.append(Dimmer(address: coarse, kind: .linear, fineAddress: channel.fineOffset.flatMap { address($0, in: target) }))
-					}
-				}
-			case .none:
-				break
-			}
-		}
-		
-		return found
-	}
-	
 	private func mix(of target: Target) -> EmitterMix {
 		var mix = EmitterMix()
 		

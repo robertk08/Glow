@@ -4,55 +4,38 @@ nonisolated struct Playback: Sendable, Equatable {
 	nonisolated struct Playing: Sendable, Equatable {
 		var scene: String
 		var cue: String
+		var wants = false
 	}
 	
 	private(set) var playing: [Playing] = []
-	var held: [Int: UInt8] = [:]
+	private(set) var fades: [String: Fade] = [:]
 	
 	init() {}
 	
-	init?(_ data: Data) {
-		var reader = ByteReader(data)
-		guard let count = reader.number() else { return nil }
+	init?(_ state: [UInt8], at date: Date) {
+		var reader = ByteReader(Data(state))
+		guard reader.byte() == Wire.commandOpcode, reader.byte() != nil, reader.word() != nil, let count = reader.number() else { return nil }
 		
 		for _ in 0..<count {
-			guard let (_, scene) = reader.identifier(), let (_, cue) = reader.identifier() else { return nil }
-			playing.append(Playing(scene: scene, cue: cue))
+			guard let scene = reader.text(), let cue = reader.text(), let delay = reader.number(), let fade = reader.number(), let elapsed = reader.number(), let wants = reader.byte() else { return nil }
+			playing.append(Playing(scene: scene, cue: cue, wants: wants == 1))
+			let start = date.addingTimeInterval(Double(delay - elapsed) / 1000)
+			if elapsed < delay + fade { fades[scene] = Fade(start: start, end: start.addingTimeInterval(Double(fade) / 1000)) }
 		}
-		
-		while !reader.isAtEnd {
-			guard let address = reader.number(), let value = reader.byte() else { return nil }
-			held[address] = value
-		}
-	}
-	
-	var data: Data {
-		var writer = ByteWriter()
-		writer.number(playing.count)
-		
-		for entry in playing {
-			writer.identifier(entry.scene, tag: 0)
-			writer.identifier(entry.cue, tag: 0)
-		}
-		
-		for address in held.keys.sorted() {
-			writer.number(address)
-			writer.byte(held[address] ?? 0)
-		}
-		
-		return writer.data
 	}
 	
 	func cue(of scene: String) -> String? {
 		playing.first { $0.scene == scene }?.cue
 	}
 	
-	mutating func play(_ cue: String, of scene: String) {
+	mutating func play(_ cue: String, of scene: String, fade: Fade?) {
 		playing.removeAll { $0.scene == scene }
 		playing.append(Playing(scene: scene, cue: cue))
+		fades[scene] = fade
 	}
 	
 	mutating func stop(_ scene: String) {
 		playing.removeAll { $0.scene == scene }
+		fades[scene] = nil
 	}
 }

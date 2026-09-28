@@ -6,6 +6,7 @@
 #include "Net.h"
 #include "Outlet.h"
 #include "Shows.h"
+#include "Stage.h"
 #include "Store.h"
 
 #include <ArduinoJson.h>
@@ -30,51 +31,48 @@ class Sockets : public WebSocketsServerCore {
 
 Sockets g_ws;
 
-const uint8_t  OP_OUTPUT   = 0x01;
-const uint8_t  OP_SOURCE   = 0x02;
 const uint8_t  OP_DOCUMENT = 0x03;
-const uint8_t  OP_BOTH     = 0x04;
-const uint8_t  OP_PLAYBACK = 0x05;
-const size_t   STATE_MAX   = 2560;
-const size_t   DMX_HEADER  = 6;
-const uint16_t SLOTS       = 512;
+const size_t   FRAME_MAX   = 2 + 4 + STAGE_SLOTS + 4 * STAGE_SLOTS / 2;
 const uint8_t  NO_CLIENT   = 0xFF;
+const uint8_t  EMPTY_MAP[]     = {STAGE_MAP};
 
 const uint32_t WS_PING_MS     = 4000;
 const uint32_t WS_PONG_MS     = 2000;
 const uint32_t WS_SILENCE_MS  = 8000;
 const uint32_t WS_PATIENCE_MS = 1000;
 const uint32_t STORE_WAIT_MS  = 5000;
+const uint32_t STEP_MS        = 5;
+const uint32_t RELAY_MS       = 20;
 
-uint8_t      g_source[DMX_HEADER + SLOTS];
-uint8_t      g_frame[DMX_HEADER + SLOTS];
-bool         g_haveSource  = false;
-int          g_changedFrom = 0;
-int          g_changedTo   = 0;
-portMUX_TYPE g_lock        = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE g_sessions    = portMUX_INITIALIZER_UNLOCKED;
-uint8_t      g_playback[STATE_MAX];
-size_t       g_playbackLength = 0;
-float        g_master   = 1;
-bool         g_blackout = false;
-char         g_out[512];
+Stage            *g_stage      = nullptr;
+SemaphoreHandle_t g_lock       = nullptr;
+uint8_t           g_frame[FRAME_MAX];
+bool              g_haveSource = false;
+uint32_t          g_stepped    = 0;
+uint32_t          g_relayed    = 0;
+portMUX_TYPE      g_sessions   = portMUX_INITIALIZER_UNLOCKED;
+float             g_master     = 1;
+bool              g_blackout   = false;
+char              g_out[512];
 bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
+bool         g_greeted[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
 char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 uint32_t     g_heard[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
 
+struct Hold {
+  Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
+  ~Hold() { xSemaphoreGive(g_lock); }
+};
+
 bool admitted(uint8_t num) {
   return !Access::guarded() || g_admitted[num];
 }
 
-bool inUniverse(int start, int length) {
-  return start >= 1 && length >= 1 && start + length - 1 <= SLOTS;
-}
-
 void relay(uint8_t from, bool binary, const uint8_t *p, size_t len) {
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (i == from || !admitted(i)) continue;
+    if (i == from || !admitted(i) || !g_greeted[i]) continue;
     if (binary) g_ws.sendBIN(i, const_cast<uint8_t *>(p), len);
     else g_ws.sendTXT(i, const_cast<uint8_t *>(p), len);
   }
@@ -85,33 +83,56 @@ void reply(uint8_t num, JsonDocument &doc) {
   g_ws.sendTXT(num, g_out, n);
 }
 
-void sendFrame(uint8_t to, int start, int length) {
-  portENTER_CRITICAL(&g_lock);
-  memcpy(g_frame + DMX_HEADER, g_source + DMX_HEADER + (start - 1), length);
-  portEXIT_CRITICAL(&g_lock);
-
-  g_frame[0] = OP_SOURCE;
-  g_frame[1] = 0;
-  g_frame[2] = (uint8_t)(start & 0xFF);
-  g_frame[3] = (uint8_t)(start >> 8);
-  g_frame[4] = (uint8_t)(length & 0xFF);
-  g_frame[5] = (uint8_t)(length >> 8);
-
-  if (to == NO_CLIENT) relay(NO_CLIENT, true, g_frame, DMX_HEADER + length);
-  else g_ws.sendBIN(to, g_frame, DMX_HEADER + length);
+void light() {
+  int            from, to;
+  const uint8_t *output = stage_output(g_stage, &from, &to);
+  if (to) DmxBus::writeRange(from, output + from, to - from + 1);
 }
 
-void relayChanges() {
-  if (!g_changedTo) return;
+void announce(uint8_t to) {
+  uint8_t *state;
+  size_t   n;
+  {
+    Hold hold;
+    size_t room = stage_state(g_stage, millis(), nullptr, 0);
+    state       = (uint8_t *)malloc(room);
+    n           = state ? stage_state(g_stage, millis(), state, room) : 0;
+  }
+  if (n && to == NO_CLIENT) relay(NO_CLIENT, true, state, n);
+  else if (n) g_ws.sendBIN(to, state, n);
+  free(state);
+}
 
-  portENTER_CRITICAL(&g_lock);
-  int start  = g_changedFrom;
-  int length = g_changedTo - g_changedFrom + 1;
-  g_changedFrom = 0;
-  g_changedTo   = 0;
-  portEXIT_CRITICAL(&g_lock);
+void step(bool urgent) {
+  uint32_t now = millis();
+  if (!urgent && now - g_stepped < STEP_MS) return;
+  g_stepped = now;
 
-  sendFrame(NO_CLIENT, start, length);
+  bool   restated;
+  size_t n = 0;
+  {
+    Hold hold;
+    restated = stage_tick(g_stage, now);
+    light();
+    if (urgent || now - g_relayed >= RELAY_MS) n = stage_frame(g_stage, g_frame, sizeof(g_frame));
+  }
+  if (n) g_relayed = now;
+  if (n) relay(NO_CLIENT, true, g_frame, n);
+  if (restated) announce(NO_CLIENT);
+}
+
+void greetFrame(uint8_t num) {
+  g_frame[0] = STAGE_FRAME;
+  g_frame[1] = 0;
+  g_frame[2] = 1;
+  g_frame[3] = 0;
+  g_frame[4] = STAGE_SLOTS & 0xFF;
+  g_frame[5] = STAGE_SLOTS >> 8;
+  {
+    Hold hold;
+    memcpy(g_frame + 6, stage_source(g_stage) + 1, STAGE_SLOTS);
+  }
+  g_ws.sendBIN(num, g_frame, 6 + STAGE_SLOTS);
 }
 
 const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
@@ -184,32 +205,37 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
 }
 
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
-  if (!admitted(num)) return;
-  if (len >= 1 && p[0] == OP_DOCUMENT) return onDocument(num, p, len);
-  if (len >= 1 && p[0] == OP_PLAYBACK) {
-    if (len > STATE_MAX) return;
-    memcpy(g_playback, p, len);
-    g_playbackLength = len;
-    return relay(num, true, p, len);
+  if (!admitted(num) || !len) return;
+  if (p[0] == OP_DOCUMENT) return onDocument(num, p, len);
+
+  if (p[0] == STAGE_COMMAND) {
+    {
+      Hold hold;
+      stage_command(g_stage, num, p, len, millis());
+    }
+    step(true);
+    return announce(NO_CLIENT);
   }
-  if (len < DMX_HEADER || p[1] != 0 || (p[0] != OP_OUTPUT && p[0] != OP_SOURCE && p[0] != OP_BOTH)) return;
 
-  int start  = p[2] | (p[3] << 8);
-  int length = p[4] | (p[5] << 8);
-  if (len - DMX_HEADER != (size_t)length || !inUniverse(start, length)) return;
+  if (p[0] == STAGE_MAP) {
+    Hold hold;
+    stage_map(g_stage, p, len);
+    return light();
+  }
 
-  if (p[0] != OP_SOURCE) DmxBus::writeRange(start, p + DMX_HEADER, length);
-  if (p[0] == OP_OUTPUT) return;
-
-  p[0] = OP_SOURCE;
-  portENTER_CRITICAL(&g_lock);
-  memcpy(g_source + DMX_HEADER + (start - 1), p + DMX_HEADER, length);
+  bool written;
+  {
+    Hold hold;
+    written = stage_write(g_stage, p, len, true);
+    light();
+  }
+  if (!written) return;
   g_haveSource = true;
-  portEXIT_CRITICAL(&g_lock);
   relay(num, true, p, len);
 }
 
 void greet(uint8_t num) {
+  g_greeted[num] = true;
   JsonDocument out;
   out["t"] = "status";
   out["fw"] = GLOW_FW_VERSION;
@@ -225,8 +251,8 @@ void greet(uint8_t num) {
   reply(num, out);
   String list = Shows::message();
   g_ws.sendTXT(num, list);
-  if (g_haveSource) sendFrame(num, 1, SLOTS);
-  if (g_playbackLength) g_ws.sendBIN(num, g_playback, g_playbackLength);
+  if (g_haveSource) greetFrame(num);
+  announce(num);
 }
 
 void release() {
@@ -315,12 +341,14 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     out["storeTotal"] = Store::capacity();
     reply(num, out);
 
-  } else if (!strcmp(t, "blackout") && doc["on"].is<bool>()) {
-    g_blackout = doc["on"];
-    relay(num, false, p, len);
-
-  } else if (!strcmp(t, "master") && doc["level"].is<float>()) {
-    g_master = doc["level"];
+  } else if ((!strcmp(t, "blackout") && doc["on"].is<bool>()) || (!strcmp(t, "master") && doc["level"].is<float>())) {
+    g_blackout = doc["on"] | g_blackout;
+    g_master   = doc["level"] | g_master;
+    {
+      Hold hold;
+      stage_levels(g_stage, g_master, g_blackout);
+      light();
+    }
     relay(num, false, p, len);
 
   } else if (!strcmp(t, "span") && doc["slots"].is<int>()) {
@@ -330,8 +358,16 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
     char was[Store::NAME_LIMIT];
     snprintf(was, sizeof(was), "%s", Shows::active());
     Shows::Outcome outcome = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
-    if (strcmp(was, Shows::active())) g_playbackLength = 0;
     if (outcome == Shows::DONE) HomeKit::showChanged();
+    if (strcmp(was, Shows::active())) {
+      {
+        Hold hold;
+        stage_clear(g_stage);
+        stage_map(g_stage, EMPTY_MAP, sizeof(EMPTY_MAP));
+        light();
+      }
+      announce(NO_CLIENT);
+    }
 
     if (outcome == Shows::LIMIT || outcome == Shows::STORAGE) {
       JsonDocument out;
@@ -353,6 +389,7 @@ void arrive(uint8_t num) {
   g_arrival[num]++;
   portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = false;
+  g_greeted[num]  = false;
   memcpy(g_session[num], session, sizeof(session));
   portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u joined from %s\n", num, g_ws.remoteIP(num).toString().c_str());
@@ -361,6 +398,7 @@ void arrive(uint8_t num) {
 void leave(uint8_t num) {
   portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = false;
+  g_greeted[num]  = false;
   g_session[num][0] = '\0';
   portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u left\n", num);
@@ -380,6 +418,8 @@ void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
 }  // namespace
 
 void begin() {
+  g_lock  = xSemaphoreCreateMutex();
+  g_stage = stage_new();
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, 0);
@@ -387,7 +427,7 @@ void begin() {
 
 void tick() {
   g_ws.loop();
-  relayChanges();
+  step(false);
   settle();
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
@@ -397,30 +437,28 @@ void tick() {
 
 int clients() { return g_ws.connectedClients(); }
 
-void apply(int start, const uint8_t *source, const uint8_t *output, int length) {
-  if (!inUniverse(start, length)) return;
-  int last = start + length - 1;
+void apply(int start, const uint8_t *values, int length) {
+  uint8_t frame[6 + STAGE_SLOTS];
+  if (start < 1 || length < 1 || start + length - 1 > STAGE_SLOTS) return;
+  frame[0] = STAGE_FRAME;
+  frame[1] = 0;
+  frame[2] = (uint8_t)(start & 0xFF);
+  frame[3] = (uint8_t)(start >> 8);
+  frame[4] = (uint8_t)(length & 0xFF);
+  frame[5] = (uint8_t)(length >> 8);
+  memcpy(frame + 6, values, length);
 
-  portENTER_CRITICAL(&g_lock);
-  memcpy(g_source + DMX_HEADER + (start - 1), source, length);
+  Hold hold;
+  stage_write(g_stage, frame, 6 + length, false);
   g_haveSource = true;
-  if (!g_changedTo || start < g_changedFrom) g_changedFrom = start;
-  if (last > g_changedTo) g_changedTo = last;
-  portEXIT_CRITICAL(&g_lock);
-
-  DmxBus::writeRange(start, output, length);
+  light();
 }
 
 void source(int start, uint8_t *out, int length) {
-  if (!inUniverse(start, length)) return;
-  portENTER_CRITICAL(&g_lock);
-  memcpy(out, g_source + DMX_HEADER + (start - 1), length);
-  portEXIT_CRITICAL(&g_lock);
+  if (start < 1 || length < 1 || start + length - 1 > STAGE_SLOTS) return;
+  Hold hold;
+  memcpy(out, stage_source(g_stage) + start, length);
 }
-
-float master() { return g_master; }
-
-bool blackout() { return g_blackout; }
 
 void adopt(Outlet *tcp, const char *url) {
   tcp->patience = WS_PATIENCE_MS;

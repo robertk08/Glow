@@ -2,54 +2,54 @@ import Foundation
 
 nonisolated struct FrameStream: Sendable {
 	private var last: [UInt8] = []
-	private var needsEverything = true
 	private var reach = Universe.channelCount
 	
 	mutating func cover(_ slots: Int) {
-		guard slots != reach else { return }
 		reach = slots
-		needsEverything = true
 	}
 	
 	mutating func startOver() {
-		needsEverything = true
+		last = []
 	}
 	
-	mutating func adopt(_ whole: [UInt8], start: DMXAddress, count: Int) {
-		let frame = Array(whole.prefix(reach))
-		let first = start.value - 1
-		let end = min(first + count, frame.count)
-		
-		guard !needsEverything, last.count == frame.count else {
-			guard first == 0, end == frame.count else { return }
-			last = frame
-			needsEverything = false
+	mutating func adopt(_ values: [UInt8], at start: DMXAddress, into whole: [UInt8]) {
+		if last.isEmpty, start.value == 1, values.count == Universe.channelCount {
+			last = whole
 			return
 		}
 		
-		for index in first..<max(first, end) {
-			last[index] = frame[index]
+		guard !last.isEmpty else { return }
+		
+		for (offset, value) in values.enumerated() where start.value - 1 + offset < last.count {
+			last[start.value - 1 + offset] = value
 		}
 	}
 	
-	mutating func next(_ whole: [UInt8]) -> (start: DMXAddress, values: [UInt8])? {
-		let frame = Array(whole.prefix(reach))
-		defer { last = frame }
-		
-		guard !needsEverything, last.count == frame.count else {
-			needsEverything = false
-			return (DMXAddress(1)!, frame)
+	mutating func next(_ whole: [UInt8]) -> [(start: DMXAddress, values: [UInt8])] {
+		guard !last.isEmpty else {
+			last = whole
+			return [(DMXAddress(1)!, Array(whole.prefix(reach)))]
 		}
 		
-		var first: Int?
-		var end = 0
+		var runs: [(start: DMXAddress, values: [UInt8])] = []
+		var index = 0
 		
-		for index in frame.indices where last[index] != frame[index] {
-			if first == nil { first = index }
-			end = index
+		while index < whole.count {
+			guard whole[index] != last[index] else {
+				index += 1
+				continue
+			}
+			
+			let first = index
+			
+			while index < whole.count, whole[index] != last[index] {
+				last[index] = whole[index]
+				index += 1
+			}
+			
+			runs.append((DMXAddress(first + 1)!, Array(whole[first..<index])))
 		}
 		
-		guard let first, let start = DMXAddress(first + 1) else { return nil }
-		return (start, Array(frame[first...end]))
+		return runs
 	}
 }

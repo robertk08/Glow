@@ -173,7 +173,7 @@ struct ControllerTests {
 		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
 		let light = try #require(Rig.first.lights.first)
 		let dimmer = try #require(DMXAddress(light.address + 7))
-		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
 		try #require(list.cues.count == 2)
 		
 		let before = Rig.first.console.value(at: dimmer)
@@ -186,12 +186,142 @@ struct ControllerTests {
 		#expect(took != nil)
 		print("HARDWARE a 0.3 s fade on one device finished on the other in \(String(format: "%.2f", took ?? -1))s")
 		
-		let others = Rig.second.looks.map { CueList($0, cues: Rig.second.cues, fixtures: Rig.second.lights, library: Rig.second.library) }
-		let theirs = try #require(others.first { $0.scene == look.identifier })
-		Rig.second.console.toggle(theirs, among: others)
+		let theirs = CueList(look, cues: Rig.second.cues, fixtures: Rig.second.lights)
+		Rig.second.console.toggle(theirs)
 		let back = await eventually { Rig.first.console.playback.cue(of: look.identifier) == nil && Rig.first.console.value(at: dimmer) == before }
 		#expect(back != nil)
 		print("HARDWARE turning it off on the other device put the light back in \(String(format: "%.2f", back ?? -1))s")
+	}
+	
+	@Test func aCueReachesTheOtherDeviceQuickly() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Steps", sortIndex: 2)
+		var high = Levels()
+		high.set(200, slot: 8, of: light.identifier)
+		var low = Levels()
+		low.set(100, slot: 8, of: light.identifier)
+		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 0, levels: high))
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 2, fade: 0, levels: low))
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.count { $0.lookID == look.identifier } == 2 } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		var took: [Double] = []
+		
+		for step in 0..<40 {
+			Rig.first.console.go(list)
+			let wanted: UInt8 = step % 2 == 0 ? 200 : 100
+			let start = Date()
+			
+			while Rig.second.console.value(at: dimmer) != wanted, Date().timeIntervalSince(start) < 2 {
+				try await Task.sleep(for: .milliseconds(1))
+			}
+			
+			took.append(Date().timeIntervalSince(start) * 1000)
+			try await Task.sleep(for: .milliseconds(30))
+		}
+		
+		let sorted = took.sorted()
+		#expect(sorted[35] < 150)
+		print("HARDWARE a cue reached the other device in p50 \(Int(sorted[20])) ms, p90 \(Int(sorted[36])) ms, worst \(Int(sorted[39])) ms, controller RAM \(Rig.first.console.usage.map { "\($0.memory / 1024) KB of \($0.memoryTotal / 1024) KB" } ?? "unknown")")
+		
+		Rig.first.console.stop(list, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
+	}
+	
+	@Test func aFadeGlidesSmoothlyOnTheOtherDevice() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Fade", sortIndex: 3)
+		var up = Levels()
+		up.set(255, slot: 8, of: light.identifier)
+		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 1, levels: up))
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.contains { $0.lookID == look.identifier } } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		let before = Rig.second.console.value(at: dimmer)
+		
+		Rig.first.console.go(list)
+		let start = Date()
+		var changes: [Double] = []
+		var last = before
+		
+		while Date().timeIntervalSince(start) < 2.5 {
+			let now = Rig.second.console.value(at: dimmer)
+			if now != last { changes.append(Date().timeIntervalSince(start) * 1000) }
+			last = now
+			try await Task.sleep(for: .milliseconds(1))
+		}
+		
+		let gaps = zip(changes.dropFirst(), changes).map { $0 - $1 }.sorted()
+		#expect(last == 255)
+		#expect(changes.count > 15)
+		print("HARDWARE a 1 s fade showed \(changes.count) steps on the other device, gap p90 \(gaps.isEmpty ? -1 : Int(gaps[gaps.count * 9 / 10])) ms, worst \(Int(gaps.last ?? -1)) ms, done after \(Int(changes.last ?? -1)) ms")
+		
+		Rig.first.console.stop(list, snapping: true)
+		#expect(await eventually { Rig.second.console.value(at: dimmer) == before } != nil)
+	}
+	
+	@Test func aFadeCarriesOnWhenTheDeviceThatStartedItDrops() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = try #require(Rig.first.looks.first { $0.name == "Probe Fade" })
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		let before = Rig.second.console.value(at: dimmer)
+		
+		Rig.first.console.go(list)
+		try await Task.sleep(for: .milliseconds(100))
+		Rig.first.console.connect()
+		#expect(await eventually { !Rig.first.console.link.isConnected } != nil)
+		var seen: Set<UInt8> = []
+		
+		let took = await eventually(within: 3) {
+			seen.insert(Rig.second.console.value(at: dimmer))
+			return Rig.second.console.value(at: dimmer) == 255
+		}
+		
+		#expect(took != nil)
+		#expect(seen.count > 5)
+		print("HARDWARE a fade went on to the end on the other device \(String(format: "%.2f", took ?? -1))s after the device that started it dropped, through \(seen.count) steps")
+		
+		#expect(await eventually { Rig.first.console.link.isConnected && Rig.first.shows.isLoaded } != nil)
+		Rig.first.console.stop(CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights), snapping: true)
+		#expect(await eventually { Rig.second.console.value(at: dimmer) == before } != nil)
+	}
+	
+	@Test func twoDevicesStartingCuesTogetherEndOnTheLastOne() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Race", sortIndex: 4)
+		var bright = Levels()
+		bright.set(250, slot: 8, of: light.identifier)
+		var dim = Levels()
+		dim.set(60, slot: 8, of: light.identifier)
+		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 1.5, levels: bright))
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 2, fade: 1, levels: dim))
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.count { $0.lookID == look.identifier } == 2 } != nil)
+		let mine = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		let theirs = CueList(look, cues: Rig.second.cues, fixtures: Rig.second.lights)
+		
+		Rig.first.console.go(mine)
+		try await Task.sleep(for: .milliseconds(500))
+		Rig.second.console.go(theirs)
+		try await Task.sleep(for: .milliseconds(2500))
+		
+		print("HARDWARE two devices stepping one scene ended on \(Rig.first.console.value(at: dimmer)) and \(Rig.second.console.value(at: dimmer)), wanted 60")
+		#expect(Rig.both.allSatisfy { $0.console.value(at: dimmer) == 60 })
+		#expect(Rig.both.allSatisfy { $0.console.playback.cue(of: look.identifier) == mine.cues[1].identifier })
+		
+		Rig.first.console.stop(mine, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
 	}
 	
 	@Test func aCueStoredOnOneDeviceIsOnStageOnTheOther() async throws {
@@ -199,7 +329,7 @@ struct ControllerTests {
 		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
 		let light = try #require(Rig.first.lights.first)
 		let dimmer = try #require(DMXAddress(light.address + 7))
-		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
 		let first = try #require(Rig.first.cues.first { $0.identifier == list.cues[0].identifier })
 		
 		Rig.first.console.play(list, at: 0, snapping: true)
@@ -212,7 +342,7 @@ struct ControllerTests {
 		#expect(look.cues(among: Rig.first.cues).map(\.identifier) == [list.cues[0].identifier, stored, list.cues[1].identifier])
 		print("HARDWARE a cue stored between two others was on stage on the other device in \(String(format: "%.2f", took ?? -1))s")
 		
-		Rig.first.console.stop(CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights, library: Rig.first.library), among: [], snapping: true)
+		Rig.first.console.stop(CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights), snapping: true)
 		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
 	}
 	

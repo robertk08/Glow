@@ -414,9 +414,16 @@ final class ShowLibrary {
 		let context = container.mainContext
 		canUndo = context.undoManager?.canUndo == true
 		
-		if let types, !folders.isDisjoint(with: [.lights, .made]) {
-			types.setMade(((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition))
-			console?.applyPatch((try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [], library: types)
+		if let types, !folders.isDisjoint(with: [.lights, .made, .scenes, .cues]) {
+			let fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+			let cues = Dictionary(grouping: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], by: \.lookID)
+			
+			if !folders.isDisjoint(with: [.lights, .made]) {
+				types.setMade(((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition))
+				console?.applyPatch(fixtures, library: types)
+			}
+			
+			console?.lists = Dictionary(((try? context.fetch(FetchDescriptor<Look>())) ?? []).map { ($0.identifier, CueList($0, cues: cues[$0.identifier] ?? [], fixtures: fixtures)) }, uniquingKeysWith: { first, _ in first })
 		}
 		
 		changed(folders)

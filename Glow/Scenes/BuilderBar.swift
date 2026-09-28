@@ -19,8 +19,7 @@ struct BuilderBar: View {
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
-			let lists = looks.map { CueList($0, cues: cues, fixtures: fixtures, library: library) }
-			let list = CueList(look, cues: cues, fixtures: fixtures, library: library)
+			let list = CueList(look, cues: cues, fixtures: fixtures)
 			let held = look.cues(among: cues)
 			let index = list.index(of: console.playback.cue(of: look.identifier))
 			let current = index.map { held[$0] }
@@ -134,7 +133,7 @@ struct BuilderBar: View {
 										}
 										
 										Button("Delete Cue", systemImage: "trash", role: .destructive) {
-											console.delete(cue, from: list, among: lists, context: context)
+											console.delete(cue, from: list, context: context)
 										}
 									}
 								}

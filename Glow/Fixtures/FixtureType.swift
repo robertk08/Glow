@@ -69,6 +69,32 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 	
 	var dims: Bool { dimming != .none }
 	
+	func map(at start: DMXAddress, into writer: inout ByteWriter) {
+		let dimming = dimming
+		
+		for channel in channels {
+			guard let address = start.offset(by: channel.offset - 1) else { continue }
+			var flags: UInt8 = channel.attribute.fades ? 1 : 0
+			var band: [UInt8] = []
+			
+			switch dimming {
+			case let .channel(dimmer) where dimmer.offset == channel.offset: flags |= 2
+			case let .band(dimmer, from, to, open) where dimmer.offset == channel.offset:
+				flags |= open == nil ? 6 : 14
+				band = [from, to] + (open.map { [$0] } ?? [])
+			case let .emitters(emitters) where emitters.contains { $0.offset == channel.offset }: flags |= 2
+			default: break
+			}
+			
+			let fine = band.isEmpty && flags != 0 ? channel.fineOffset.flatMap { start.offset(by: $0 - 1) } : nil
+			guard flags != 0 else { continue }
+			writer.word(address.value)
+			writer.byte(fine == nil ? flags : flags | 16)
+			if let fine { writer.word(fine.value) }
+			writer.bytes(band)
+		}
+	}
+	
 	mutating func renumber() {
 		var next = 1
 		

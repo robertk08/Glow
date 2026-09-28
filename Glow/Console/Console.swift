@@ -13,7 +13,6 @@ final class Console {
 	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
 	private(set) var playback = Playback()
-	private(set) var fades: [String: Fade] = [:]
 	private(set) var lock: Wire.Lock?
 	private(set) var lockedUntil: Date?
 	private(set) var isUnlocking = false
@@ -23,16 +22,18 @@ final class Console {
 	let notices: AsyncStream<Wire.Notice>
 	
 	var master: Double = 1 {
-		didSet { ring() }
+		didSet { level() }
 	}
 	
 	var blackout = false {
-		didSet { ring() }
+		didSet { level() }
 	}
 	
 	var isMuted = false {
 		didSet { ring() }
 	}
+	
+	var lists: [String: CueList] = [:]
 	
 	var endpoint: NodeEndpoint {
 		didSet {
@@ -55,9 +56,8 @@ final class Console {
 	private let bell: AsyncStream<Void>
 	private let ringer: AsyncStream<Void>.Continuation
 	private let noticer: AsyncStream<Wire.Notice>.Continuation
-	private var dimmers: [Dimmer] = [] {
-		didSet { ring() }
-	}
+	private let stage = stage_new()!
+	private let born = ContinuousClock.now
 	private var outbox: [URLSessionWebSocketTask.Message] = [] {
 		didSet { ring() }
 	}
@@ -65,8 +65,8 @@ final class Console {
 		didSet { ring() }
 	}
 	private var events: Task<Void, Never>?
-	private var sourceFrames = FrameStream()
-	private var outputFrames = FrameStream()
+	private var frames = FrameStream()
+	private var map = Data([Wire.mapOpcode])
 	private var announcedMaster: Double?
 	private var announcedBlackout: Bool?
 	private var hasAdoptedSource = false
@@ -74,12 +74,14 @@ final class Console {
 	private var offered: Data?
 	private var proposed: Data?
 	private var pause: Task<Void, Never>?
-	private var motions: [Int: (ramp: Ramp, from: Int, written: Int, started: ContinuousClock.Instant, length: Double)] = [:]
-	private var gliding: Task<Void, Never>?
-	private var followers: [String: Task<Void, Never>] = [:]
+	private var running: Task<Void, Never>?
+	private var sent = 0
+	private var acked = 0
+	private var flashing: Set<String> = []
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
+	private static let ownClient = 0xFE
 	
 	init() {
 		(bell, ringer) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -91,6 +93,10 @@ final class Console {
 		} else {
 			endpoint = .fallback
 		}
+	}
+	
+	isolated deinit {
+		stage_free(stage)
 	}
 	
 	func start() {
@@ -139,11 +145,11 @@ final class Console {
 			hasAdoptedSource = false
 			announcedMaster = nil
 			announcedBlackout = nil
-			sourceFrames.cover(span)
-			outputFrames.cover(span)
-			sourceFrames.startOver()
-			outputFrames.startOver()
-			outbox = [Wire.Command.span(span).message]
+			acked = sent
+			stage_clear(stage)
+			frames.cover(span)
+			frames.startOver()
+			outbox = [Wire.Command.span(span).message] + (map.count > 1 ? [.data(map)] : [])
 		case let .status(info):
 			node = info
 			
@@ -217,10 +223,9 @@ final class Console {
 			usage = value
 		case .pong:
 			break
-		case let .frame(start, values):
-			universe.set(values, at: start)
-			sourceFrames.adopt(universe.values, start: start, count: values.count)
-			outputFrames.adopt(output, start: start, count: values.count)
+		case let .frame(runs):
+			adopt(runs)
+			guard runs.count == 1, runs[0].start.value == 1, runs[0].values.count == Universe.channelCount else { return }
 			hasAdoptedSource = true
 			isSynced = true
 		case let .master(level):
@@ -230,8 +235,7 @@ final class Console {
 			blackout = on
 			announcedBlackout = on
 		case let .playback(state):
-			playback = Playback(state) ?? Playback()
-			fades = [:]
+			take(state)
 		case let .notice(notice):
 			noticer.yield(notice)
 		}
@@ -281,13 +285,25 @@ final class Console {
 	private func cover(_ reach: Int) {
 		guard reach != span else { return }
 		span = reach
-		sourceFrames.cover(reach)
-		outputFrames.cover(reach)
+		frames.cover(reach)
 		outbox.append(Wire.Command.span(reach).message)
 	}
 	
 	private func ring() {
 		ringer.yield()
+	}
+	
+	private func level() {
+		stage_levels(stage, Float(master), blackout)
+		ring()
+	}
+	
+	private var isLocal: Bool {
+		isMuted || !link.isConnected
+	}
+	
+	private var now: UInt32 {
+		UInt32(truncatingIfNeeded: Int((ContinuousClock.now - born) / .milliseconds(1)))
 	}
 	
 	func value(at address: DMXAddress) -> UInt8 {
@@ -334,16 +350,8 @@ final class Console {
 	
 	func closeShow(keepingLook: Bool = false) {
 		playback = Playback()
-		fades = [:]
-		motions = [:]
-		gliding?.cancel()
-		gliding = nil
-		
-		for follower in followers.values {
-			follower.cancel()
-		}
-		
-		followers = [:]
+		flashing = []
+		stage_clear(stage)
 		
 		if !keepingLook || !hasAdoptedSource {
 			universe = Universe()
@@ -351,7 +359,7 @@ final class Console {
 		}
 		
 		active = []
-		dimmers = []
+		map = Data([Wire.mapOpcode])
 		patched = []
 		cover(Universe.minimumSlots)
 		hasLoadedPatch = false
@@ -409,6 +417,11 @@ final class Console {
 		(items.map { $0[keyPath: sortIndex] }.max() ?? 0) + 1
 	}
 	
+	static func sortIndex(between low: Double, and high: Double) -> Double? {
+		let middle = ((low + high) * 128).rounded(.down) / 256
+		return middle > low && middle < high ? middle : nil
+	}
+	
 	@available(iOS 27.0, *)
 	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
 		var destination = items.endIndex
@@ -437,7 +450,7 @@ final class Console {
 		}
 		
 		if position > 0, position < ordered.count {
-			step = (ordered[position][keyPath: sortIndex] - low) / Double(lifted.count + 1)
+			step = ((ordered[position][keyPath: sortIndex] - low) / Double(lifted.count + 1) * 256).rounded(.down) / 256
 		}
 		
 		guard step > 0 else {
@@ -454,18 +467,18 @@ final class Console {
 		}
 	}
 	
-	func run(_ action: SceneAction, on list: CueList, among lists: [CueList]) {
+	func run(_ action: SceneAction, on list: CueList) {
 		switch action {
-		case .toggle: toggle(list, among: lists)
+		case .toggle: toggle(list)
 		case .next: go(list)
 		case .back: back(list)
 		case .flash, .update, .open: break
 		}
 	}
 	
-	func toggle(_ list: CueList, among lists: [CueList]) {
+	func toggle(_ list: CueList) {
 		guard list.index(of: playback.cue(of: list.scene)) == nil else {
-			stop(list, among: lists)
+			stop(list)
 			return
 		}
 		
@@ -476,24 +489,22 @@ final class Console {
 		[selection.scene, playback.playing.last?.scene].compactMap { $0 }.first(where: scenes.contains) ?? scenes.first
 	}
 	
-	func stopAll(among lists: [CueList]) {
+	func stopAll() {
 		for entry in playback.playing.reversed() {
-			guard let list = lists.first(where: { $0.scene == entry.scene }) else {
-				playback.stop(entry.scene)
-				continue
-			}
-			
-			stop(list, among: lists)
+			stop(entry.scene, fade: lists[entry.scene]?.fade(of: entry.cue) ?? 0)
 		}
 	}
 	
-	func flash(_ list: CueList, among lists: [CueList], isHeld: Bool) {
+	func flash(_ list: CueList, isHeld: Bool) {
 		guard isHeld else {
-			stop(list, among: lists, snapping: true)
+			guard flashing.remove(list.scene) != nil else { return }
+			stop(list, snapping: true)
 			return
 		}
 		
-		play(list, at: list.index(of: playback.cue(of: list.scene)) ?? 0, snapping: true)
+		guard playback.cue(of: list.scene) == nil, !list.cues.isEmpty else { return }
+		play(list, at: 0, snapping: true)
+		flashing.insert(list.scene)
 	}
 	
 	func go(_ list: CueList) {
@@ -509,144 +520,126 @@ final class Console {
 	func play(_ list: CueList, at index: Int, snapping: Bool = false) {
 		guard list.cues.indices.contains(index) else { return }
 		let cue = list.cues[index]
-		
-		for address in list.addresses where playback.held[address] == nil {
-			playback.held[address] = universe.values[address - 1]
-		}
-		
-		playback.play(cue.identifier, of: list.scene)
-		glide(list.ramps(at: index, holding: playback.held), over: snapping ? 0 : cue.fade, after: snapping ? 0 : cue.delay)
-		fade(list.scene, over: snapping ? 0 : cue.fade, after: snapping ? 0 : cue.delay)
-		outbox.append(.data(Wire.playback(playback.data)))
-		followers[list.scene]?.cancel()
-		followers[list.scene] = nil
-		guard let follow = cue.follow, !snapping else { return }
-		
-		followers[list.scene] = Task { [weak self] in
-			try? await Task.sleep(for: .seconds(cue.delay + cue.fade + follow))
-			guard !Task.isCancelled, let self, playback.cue(of: list.scene) == cue.identifier else { return }
-			followers[list.scene] = nil
-			go(list)
-		}
+		let start = Date.now.addingTimeInterval(cue.delay)
+		flashing.remove(list.scene)
+		playback.play(cue.identifier, of: list.scene, fade: snapping || cue.fade + cue.delay == 0 ? nil : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
+		command(.play, scene: list.scene, body: list.program(from: index, snapping: snapping))
 	}
 	
-	func land(on cue: String, of scene: String, holding addresses: Set<Int>) {
-		for address in addresses where playback.held[address] == nil {
-			playback.held[address] = universe.values[address - 1]
-		}
-		
-		for address in addresses {
-			motions[address] = nil
-		}
-		
-		playback.play(cue, of: scene)
-		fades[scene] = nil
-		followers[scene]?.cancel()
-		followers[scene] = nil
-		outbox.append(.data(Wire.playback(playback.data)))
+	func land(_ list: CueList, at index: Int) {
+		guard list.cues.indices.contains(index) else { return }
+		flashing.remove(list.scene)
+		playback.play(list.cues[index].identifier, of: list.scene, fade: nil)
+		command(.land, scene: list.scene, body: list.program(from: index, snapping: true))
 	}
 	
-	func delete(_ cue: Cue, from list: CueList, among lists: [CueList], context: ModelContext) {
-		if playback.cue(of: list.scene) == cue.identifier {
-			if list.cues.count > 1 {
-				back(list)
+	func stop(_ list: CueList, snapping: Bool = false) {
+		stop(list.scene, fade: snapping ? 0 : list.fade(of: playback.cue(of: list.scene)))
+	}
+	
+	func delete(_ cue: Cue, from list: CueList, context: ModelContext) {
+		if let index = list.index(of: cue.identifier), playback.cue(of: list.scene) == cue.identifier {
+			let trimmed = list.removing(cue.identifier)
+			
+			if trimmed.cues.isEmpty {
+				stop(list)
 			} else {
-				stop(list, among: lists)
+				play(trimmed, at: max(index - 1, 0))
 			}
 		}
 		
 		context.delete(cue)
 	}
 	
-	func stop(_ list: CueList, among lists: [CueList], snapping: Bool = false) {
-		guard playback.cue(of: list.scene) != nil else { return }
-		let current = list.index(of: playback.cue(of: list.scene))
-		playback.stop(list.scene)
-		fades[list.scene] = nil
-		followers[list.scene]?.cancel()
-		followers[list.scene] = nil
-		
-		let mine = list.addresses
-		var kept: Set<Int> = []
-		var ramps: [Ramp] = []
-		
-		for entry in playback.playing.reversed() {
-			guard let other = lists.first(where: { $0.scene == entry.scene }), let index = other.index(of: entry.cue) else { continue }
-			kept.formUnion(other.addresses)
-			
-			for ramp in other.ramps(at: index, holding: playback.held) where mine.contains(ramp.address.value) && !ramps.contains(where: { $0.address == ramp.address }) {
-				ramps.append(ramp)
-			}
-		}
-		
-		for ramp in list.ramps(at: nil, holding: playback.held) where !ramps.contains(where: { $0.address == ramp.address }) {
-			ramps.append(ramp)
-		}
-		
-		for address in mine.subtracting(kept) {
-			playback.held[address] = nil
-		}
-		
-		if playback.playing.isEmpty {
-			playback.held = [:]
-		}
-		
-		glide(ramps, over: snapping ? 0 : current.map { list.cues[$0].fade } ?? 0, after: 0)
-		outbox.append(.data(Wire.playback(playback.data)))
+	func remove(_ look: Look, with cues: [Cue], context: ModelContext) {
+		stop(look.identifier, fade: lists[look.identifier]?.fade(of: playback.cue(of: look.identifier)) ?? 0)
+		look.remove(with: cues, context: context)
 	}
 	
-	private func fade(_ scene: String, over length: Double, after delay: Double) {
-		guard length + delay > 0 else {
-			fades[scene] = nil
+	private func stop(_ scene: String, fade: Double) {
+		guard playback.cue(of: scene) != nil else { return }
+		flashing.remove(scene)
+		playback.stop(scene)
+		var writer = ByteWriter()
+		writer.number(CueList.milliseconds(fade))
+		command(.stop, scene: scene, body: writer.data)
+	}
+	
+	private func command(_ action: Wire.Action, scene: String, body: Data) {
+		sent = (sent + 1) & 0xFFFF
+		let message = Wire.command(action, seq: sent, scene: scene, body: body)
+		flush()
+		
+		guard isLocal else {
+			outbox.append(.data(message))
 			return
 		}
 		
-		let start = Date.now.addingTimeInterval(delay)
-		let fade = Fade(start: start, end: start.addingTimeInterval(length))
-		fades[scene] = fade
+		let bytes = [UInt8](message)
+		stage_command(stage, UInt8(Self.ownClient), bytes, bytes.count, now)
+		advance()
+		announce()
+	}
+	
+	private func take(_ state: [UInt8]) {
+		guard state.count >= 4 else { return }
+		if Int(state[1]) == (isLocal ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
+		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
+		if fresh.playing != playback.playing { playback = fresh }
 		
-		Task { [weak self] in
-			try? await Task.sleep(for: .seconds(delay + length))
-			guard let self, fades[scene] == fade else { return }
-			fades[scene] = nil
+		for entry in fresh.playing where entry.wants {
+			guard let list = lists[entry.scene], let index = list.index(of: entry.cue) else { continue }
+			var writer = ByteWriter()
+			writer.text(entry.cue)
+			command(.more, scene: entry.scene, body: writer.data + list.program(from: index))
 		}
 	}
 	
-	private func glide(_ ramps: [Ramp], over length: Double, after delay: Double) {
-		let start = ContinuousClock.now + .seconds(delay)
+	private func adopt(_ runs: [(start: DMXAddress, values: [UInt8])]) {
+		for run in runs {
+			universe.set(run.values, at: run.start)
+			frames.adopt(run.values, at: run.start, into: universe.values)
+		}
+	}
+	
+	private func flush() {
+		guard isLocal || isSynced else { return }
+		let runs = frames.next(universe.values)
+		guard !runs.isEmpty else { return }
+		let frame = Wire.frame(runs)
 		
-		for ramp in ramps {
-			let level = ramp.level(in: universe)
-			motions[ramp.address.value] = (ramp, level, level, start, length)
+		guard isLocal else {
+			outbox.append(.data(frame))
+			return
 		}
 		
-		guard gliding == nil else { return }
+		let bytes = [UInt8](frame)
+		stage_write(stage, bytes, bytes.count, true)
+	}
+	
+	private func advance() {
+		flush()
+		let restated = stage_tick(stage, now)
+		var frame = [UInt8](repeating: 0, count: 2 + 4 + Universe.channelCount * 3)
+		let count = stage_frame(stage, &frame, frame.count)
+		if count > 0, let runs = Wire.runs(in: Array(frame.prefix(count))) { adopt(runs) }
+		if restated { announce() }
+		guard running == nil, stage_busy(stage) else { return }
 		
-		gliding = Task { [weak self] in
-			while let self, !Task.isCancelled, !motions.isEmpty {
-				let now = ContinuousClock.now
-				var next = universe
-				
-				for (address, motion) in motions {
-					guard motion.ramp.level(in: next) == motion.written else {
-						motions[address] = nil
-						continue
-					}
-					
-					guard now >= motion.started else { continue }
-					let progress = motion.length > 0 ? min((now - motion.started) / .seconds(motion.length), 1) : 1
-					let value = motion.ramp.value(from: motion.from, at: progress)
-					motion.ramp.write(value, into: &next)
-					motions[address]?.written = value
-					if progress >= 1 { motions[address] = nil }
-				}
-				
-				universe = next
-				try? await Task.sleep(for: .milliseconds(20))
+		running = Task { [weak self] in
+			while let self, stage_busy(stage), !Task.isCancelled {
+				try? await Task.sleep(for: .milliseconds(10))
+				advance()
 			}
 			
-			self?.gliding = nil
+			self?.running = nil
 		}
+	}
+	
+	private func announce() {
+		var state = [UInt8](repeating: 0, count: stage_state(stage, now, nil, 0))
+		let count = stage_state(stage, now, &state, state.count)
+		take(Array(state.prefix(count)))
 	}
 	
 	func applyPatch(_ fixtures: [Fixture], library: FixtureLibrary) {
@@ -681,68 +674,48 @@ final class Console {
 		
 		cover(max(covered.max() ?? 0, Universe.minimumSlots))
 		
-		let rebuilt = fixtures.flatMap { Programmer(fixture: $0, library: library, console: self)?.dimmers ?? [] }
-		guard rebuilt != dimmers else { return }
-		dimmers = rebuilt
+		var writer = ByteWriter()
+		writer.byte(Wire.mapOpcode)
+		
+		for fixture in fixtures {
+			library.type(fixture.typeID)?.map(at: fixture.start, into: &writer)
+		}
+		
+		guard writer.data != map else { return }
+		map = writer.data
+		let bytes = [UInt8](map)
+		stage_map(stage, bytes, bytes.count)
+		if !isLocal { outbox.append(.data(map)) }
 	}
 	
 	var output: [UInt8] {
-		let level = blackout ? 0 : master
-		guard level < 1 else { return universe.values }
-		
 		var values = universe.values
-		
-		for dimmer in dimmers {
-			let index = dimmer.address.value - 1
-			if let fine = dimmer.fineAddress {
-				let fineIndex = fine.value - 1
-				let combined = Double(Int(values[index]) * 256 + Int(values[fineIndex]))
-				let scaled = UInt16((combined * level).rounded())
-				values[index] = UInt8(scaled >> 8)
-				values[fineIndex] = UInt8(scaled & 0xFF)
-			} else {
-				values[index] = dimmer.scale(values[index], by: level)
-			}
-		}
-		
+		stage_scale(stage, &values)
 		return values
 	}
 	
 	private func tick() async {
-		guard link.isConnected, isSynced else { return }
-		
-		guard !isMuted else {
+		guard !isLocal else {
+			advance()
 			if !outbox.isEmpty { outbox = [] }
 			return
 		}
 		
-		var messages = outbox
-		outbox = []
+		guard isSynced else { return }
 		
 		if master != announcedMaster {
 			announcedMaster = master
-			messages.append(Wire.Command.master(master).message)
+			outbox.append(Wire.Command.master(master).message)
 		}
 		
 		if blackout != announcedBlackout {
 			announcedBlackout = blackout
-			messages.append(Wire.Command.blackout(blackout).message)
+			outbox.append(Wire.Command.blackout(blackout).message)
 		}
 		
-		let source = sourceFrames.next(universe.values)
-		let lit = outputFrames.next(output)
-		
-		if let source, let lit, source.start == lit.start, source.values == lit.values {
-			messages.append(.data(Wire.frame(Wire.bothOpcode, start: source.start, values: source.values)))
-		} else {
-			if let source {
-				messages.append(.data(Wire.frame(Wire.sourceOpcode, start: source.start, values: source.values)))
-			}
-			
-			if let lit {
-				messages.append(.data(Wire.frame(Wire.outputOpcode, start: lit.start, values: lit.values)))
-			}
-		}
+		flush()
+		let messages = outbox
+		outbox = []
 		
 		for message in messages {
 			await connection.send(message)

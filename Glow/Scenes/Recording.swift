@@ -102,7 +102,7 @@ final class Recording: Identifiable {
 	func store(context: ModelContext) {
 		let levels = levels
 		let label = label.trimmingCharacters(in: .whitespaces)
-		var stored: (cue: String, scene: String)?
+		var landing: (cue: String, look: Look)?
 		
 		switch destination {
 		case let .cue(look, after):
@@ -110,13 +110,19 @@ final class Recording: Identifiable {
 			var sortIndex = Console.nextSortIndex(held, sortIndex: \.sortIndex)
 			
 			if let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), held.indices.contains(position + 1) {
-				sortIndex = (held[position].sortIndex + held[position + 1].sortIndex) / 2
+				sortIndex = Console.sortIndex(between: held[position].sortIndex, and: held[position + 1].sortIndex) ?? held[position].sortIndex + 1
+				
+				if sortIndex > held[position + 1].sortIndex {
+					for (offset, later) in held[(position + 1)...].enumerated() {
+						later.sortIndex = sortIndex + 1 + Double(offset)
+					}
+				}
 			}
 			
 			let cue = Cue(lookID: look.identifier, sortIndex: sortIndex, fade: fade, levels: levels)
 			cue.label = label
 			context.insert(cue)
-			stored = (cue.identifier, look.identifier)
+			landing = (cue.identifier, look)
 			
 			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {
 				look.tap = .next
@@ -126,10 +132,10 @@ final class Recording: Identifiable {
 			cue.levels = cue.levels.merging(levels)
 			cue.label = label
 			cue.fade = fade
+			if console.playback.cue(of: cue.lookID) == cue.identifier, let look = looks.first(where: { $0.identifier == cue.lookID }) { landing = (cue.identifier, look) }
 		}
 		
 		try? context.save()
-		var addresses: Set<Int> = []
 		
 		for fixture in fixtures {
 			guard let slots = levels.lights[fixture.identifier] else { continue }
@@ -137,13 +143,12 @@ final class Recording: Identifiable {
 			for slot in slots.keys {
 				guard let address = fixture.start.offset(by: slot - 1) else { continue }
 				console.release(address.value...address.value)
-				addresses.insert(address.value)
 			}
 		}
 		
-		if let stored {
-			console.land(on: stored.cue, of: stored.scene, holding: addresses)
-		}
-		
+		guard let landing else { return }
+		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
+		guard let index = list.index(of: landing.cue) else { return }
+		console.land(list, at: index)
 	}
 }

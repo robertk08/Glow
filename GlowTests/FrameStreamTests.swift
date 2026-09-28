@@ -5,10 +5,11 @@ import Testing
 struct FrameStreamTests {
 	@Test func theFirstFrameGoesOutWhole() {
 		var stream = FrameStream()
-		let frame = stream.next([UInt8](repeating: 0, count: 512))
+		let runs = stream.next([UInt8](repeating: 0, count: 512))
 		
-		#expect(frame?.start.value == 1)
-		#expect(frame?.values.count == 512)
+		#expect(runs.count == 1)
+		#expect(runs.first?.start.value == 1)
+		#expect(runs.first?.values.count == 512)
 	}
 	
 	@Test func anUnchangedFrameIsNotSentAgain() {
@@ -16,19 +17,20 @@ struct FrameStreamTests {
 		let values = [UInt8](repeating: 0, count: 512)
 		_ = stream.next(values)
 		
-		#expect(stream.next(values) == nil)
+		#expect(stream.next(values).isEmpty)
 	}
 	
-	@Test func onlyTheChangedSpanGoesOut() {
+	@Test func onlyTheChangedChannelsGoOutWithoutWhatLiesBetween() {
 		var stream = FrameStream()
 		var values = [UInt8](repeating: 0, count: 512)
 		_ = stream.next(values)
 		values[9] = 5
-		values[11] = 7
-		let frame = stream.next(values)
+		values[10] = 6
+		values[12] = 7
+		let runs = stream.next(values)
 		
-		#expect(frame?.start.value == 10)
-		#expect(frame?.values == [5, 0, 7])
+		#expect(runs.map(\.start.value) == [10, 13])
+		#expect(runs.map(\.values) == [[5, 6], [7]])
 	}
 	
 	@Test func startingOverSendsEverythingEvenWhenNothingMoved() {
@@ -37,7 +39,7 @@ struct FrameStreamTests {
 		_ = stream.next(values)
 		stream.startOver()
 		
-		#expect(stream.next(values)?.values.count == 512)
+		#expect(stream.next(values).first?.values.count == 512)
 	}
 	
 	@Test func anAdoptedFrameIsNotEchoedBack() {
@@ -45,9 +47,9 @@ struct FrameStreamTests {
 		var values = [UInt8](repeating: 0, count: 512)
 		_ = stream.next(values)
 		values[4] = 99
-		stream.adopt(values, start: DMXAddress(5)!, count: 1)
+		stream.adopt([99], at: DMXAddress(5)!, into: values)
 		
-		#expect(stream.next(values) == nil)
+		#expect(stream.next(values).isEmpty)
 	}
 	
 	@Test func theLastChannelIsReachable() {
@@ -55,59 +57,30 @@ struct FrameStreamTests {
 		var values = [UInt8](repeating: 0, count: 512)
 		_ = stream.next(values)
 		values[511] = 1
-		let frame = stream.next(values)
+		let runs = stream.next(values)
 		
-		#expect(frame?.start.value == 512)
-		#expect(frame?.values == [1])
-	}
-}
-
-@Suite struct FrameEchoTests {
-	@Test func adoptingWhatAnotherDeviceSentSendsNothingBack() {
-		var stream = FrameStream()
-		stream.cover(120)
-		var universe = [UInt8](repeating: 0, count: 512)
-		universe[4] = 200
-		
-		_ = stream.next(universe)
-		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
-		
-		#expect(stream.next(universe) == nil)
+		#expect(runs.first?.start.value == 512)
+		#expect(runs.first?.values == [1])
 	}
 	
-	@Test func adoptingAWholeUniverseStillMatchesACoveredSpan() {
-		var stream = FrameStream()
-		stream.cover(120)
-		let universe = [UInt8](repeating: 9, count: 512)
-		
-		_ = stream.next(universe)
-		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
-		
-		#expect(stream.next(universe) == nil)
-	}
-	
-	@Test func aFrameNeverReachesPastTheCoveredSpan() {
+	@Test func theFirstFrameCoversOnlyTheSpan() {
 		var stream = FrameStream()
 		stream.cover(120)
 		var universe = [UInt8](repeating: 0, count: 512)
 		universe[300] = 255
 		
-		let first = stream.next(universe)
-		
-		#expect(first?.values.count == 120)
-		#expect(stream.next(universe) == nil)
+		#expect(stream.next(universe).first?.values.count == 120)
+		#expect(stream.next(universe).isEmpty)
 	}
 	
-	@Test func wideningTheSpanResendsEverything() {
+	@Test func wideningTheSpanSendsNothingThatDidNotChange() {
 		var stream = FrameStream()
 		stream.cover(24)
 		let universe = [UInt8](repeating: 5, count: 512)
 		_ = stream.next(universe)
-		
 		stream.cover(120)
-		let after = stream.next(universe)
 		
-		#expect(after?.values.count == 120)
+		#expect(stream.next(universe).isEmpty)
 	}
 	
 	@Test func adoptingAnotherDevicesSlotKeepsALocalChangeElsewherePending() {
@@ -116,28 +89,37 @@ struct FrameStreamTests {
 		_ = stream.next(universe)
 		universe[2] = 7
 		universe[9] = 5
-		stream.adopt(universe, start: DMXAddress(10)!, count: 1)
-		let frame = stream.next(universe)
+		stream.adopt([5], at: DMXAddress(10)!, into: universe)
+		let runs = stream.next(universe)
 		
-		#expect(frame?.start.value == 3)
-		#expect(frame?.values == [7])
+		#expect(runs.map(\.start.value) == [3])
+		#expect(runs.map(\.values) == [[7]])
 	}
 	
 	@Test func aWholeUniverseAdoptedOnConnectIsNotSentBack() {
 		var stream = FrameStream()
 		stream.cover(120)
 		let universe = [UInt8](repeating: 4, count: 512)
-		stream.adopt(universe, start: DMXAddress(1)!, count: 512)
+		stream.adopt(universe, at: DMXAddress(1)!, into: universe)
 		
-		#expect(stream.next(universe) == nil)
+		#expect(stream.next(universe).isEmpty)
 	}
 	
 	@Test func aPartialAdoptOnConnectStillSendsEverything() {
 		var stream = FrameStream()
 		stream.cover(120)
 		let universe = [UInt8](repeating: 4, count: 512)
-		stream.adopt(universe, start: DMXAddress(10)!, count: 5)
+		stream.adopt([4, 4, 4, 4, 4], at: DMXAddress(10)!, into: universe)
 		
-		#expect(stream.next(universe)?.values.count == 120)
+		#expect(stream.next(universe).first?.values.count == 120)
+	}
+	
+	@Test func runsReadBackAsWritten() throws {
+		let frame = Wire.frame([(DMXAddress(1)!, [9]), (DMXAddress(510)!, [1, 2, 3])])
+		let runs = try #require(Wire.runs(in: [UInt8](frame)))
+		
+		#expect(runs.map(\.start.value) == [1, 510])
+		#expect(runs.map(\.values) == [[9], [1, 2, 3]])
+		#expect(Wire.runs(in: [UInt8](Wire.frame([(DMXAddress(511)!, [1, 2, 3])]))) == nil)
 	}
 }

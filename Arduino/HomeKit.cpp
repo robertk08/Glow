@@ -27,15 +27,6 @@ bool unchanged(int first, const uint8_t *values, int length) {
   return !memcmp(held, values, length);
 }
 
-uint8_t scaled(uint8_t level) {
-  if (Link::blackout()) return 0;
-  float master = Link::master();
-  if (master >= 1) return level;
-  if (master <= 0) return 0;
-  if (level < HEAD_DIM_FROM) return level;
-  return HEAD_DIM_FROM + (uint8_t)lround((level - HEAD_DIM_FROM) * master);
-}
-
 double component(double hue, double index) {
   double k = fmod(index + hue / 60.0, 6.0);
   double dip = fmin(fmin(k, 4.0 - k), 1.0);
@@ -92,12 +83,8 @@ struct Head : Service::LightBulb {
 
     if (unchanged(COLOUR_FIRST, values, COLOUR_LENGTH)) return true;
 
-    uint8_t wire[COLOUR_LENGTH];
-    memcpy(wire, values, sizeof(values));
-    wire[DIM] = scaled(values[DIM]);
-
     memcpy(known, values, sizeof(values));
-    Link::apply(COLOUR_FIRST, values, wire, COLOUR_LENGTH);
+    Link::apply(COLOUR_FIRST, values, COLOUR_LENGTH);
     return true;
   }
 
@@ -159,7 +146,7 @@ struct Axis : Service::WindowCovering {
     if (unchanged(coarse, values, sizeof(values))) return true;
 
     memcpy(known, values, sizeof(values));
-    Link::apply(coarse, values, values, sizeof(values));
+    Link::apply(coarse, values, sizeof(values));
     return true;
   }
 

@@ -11,6 +11,11 @@ nonisolated struct ByteWriter {
 		data.append(contentsOf: values)
 	}
 	
+	mutating func word(_ value: Int) {
+		data.append(UInt8(value & 0xFF))
+		data.append(UInt8((value >> 8) & 0xFF))
+	}
+	
 	mutating func number(_ value: Int) {
 		var rest = UInt(max(0, value))
 		

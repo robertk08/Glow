@@ -24,6 +24,11 @@ nonisolated struct ByteReader {
 		return Array(bytes[(cursor - count)..<cursor])
 	}
 	
+	mutating func word() -> Int? {
+		guard let low = byte(), let high = byte() else { return nil }
+		return Int(low) | Int(high) << 8
+	}
+	
 	mutating func number() -> Int? {
 		var value = 0
 		
