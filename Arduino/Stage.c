@@ -569,7 +569,7 @@ bool stage_tick(Stage *stage, uint32_t now) {
     int      value  = done ? m->to : between(&stage->channels[a], m, (float)since / length);
     if (done) m->length &= ~LIVE;
 
-    if (m->length & PAIRED) {
+    if ((m->length & PAIRED) && (stage->channels[a].flags & WIDE)) {
       put(stage, a, (uint8_t)(value >> 8));
       put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF));
     } else {
