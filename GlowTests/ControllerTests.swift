@@ -324,6 +324,39 @@ struct ControllerTests {
 		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
 	}
 	
+	@Test func twoDevicesHammeringOneSceneStillAgree() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = try #require(Rig.first.looks.first { $0.name == "Probe Steps" })
+		let mine = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		let theirs = CueList(look, cues: Rig.second.cues, fixtures: Rig.second.lights)
+		
+		for step in 0..<60 {
+			if step % 2 == 0 {
+				Rig.first.console.go(mine)
+			} else {
+				Rig.second.console.go(theirs)
+			}
+			
+			try await Task.sleep(for: .milliseconds(step % 3 == 0 ? 1 : 12))
+		}
+		
+		try await Task.sleep(for: .milliseconds(400))
+		let took = await eventually {
+			let cue = Rig.first.console.playback.cue(of: look.identifier)
+			return cue != nil && cue == Rig.second.console.playback.cue(of: look.identifier) && Rig.first.console.value(at: dimmer) == Rig.second.console.value(at: dimmer) && [100, 200].contains(Rig.first.console.value(at: dimmer))
+		}
+		
+		#expect(took != nil)
+		let cue = Rig.first.console.playback.cue(of: look.identifier)
+		#expect(Rig.first.console.value(at: dimmer) == (cue == mine.cues[0].identifier ? 200 : 100))
+		print("HARDWARE 60 steps from two devices settled on one cue everywhere, controller RAM \(Rig.first.console.usage.map { "\($0.memory / 1024) KB" } ?? "unknown")")
+		
+		Rig.first.console.stop(mine, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
+	}
+	
 	@Test func aCueStoredOnOneDeviceIsOnStageOnTheOther() async throws {
 		try inScratch()
 		let look = try #require(Rig.first.looks.first { $0.name == "Probe Scene" })
