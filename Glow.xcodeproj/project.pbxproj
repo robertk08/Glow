@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		23F1A0022F00000000A1B0C1 /* Stage.c in Sources */ = {isa = PBXBuildFile; fileRef = 23F1A0012F00000000A1B0C1 /* Stage.c */; };
+		23F1A0022F00000000A1B0C1 /* Arduino/Stage.c in Sources */ = {isa = PBXBuildFile; fileRef = 23F1A0012F00000000A1B0C1 /* Arduino/Stage.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,7 +23,7 @@
 /* Begin PBXFileReference section */
 		23332B29305C6492000BD28E /* GlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		23A53D09305AA40D00460BBB /* Glow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		23F1A0012F00000000A1B0C1 /* Stage.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = Arduino/Stage.c; sourceTree = "<group>"; };
+		23F1A0012F00000000A1B0C1 /* Arduino/Stage.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = Arduino/Stage.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -71,7 +71,7 @@
 			children = (
 				23A53D0B305AA40D00460BBB /* Glow */,
 				23332B2A305C6492000BD28E /* GlowTests */,
-				23F1A0012F00000000A1B0C1 /* Stage.c */,
+				23F1A0012F00000000A1B0C1 /* Arduino/Stage.c */,
 				23A53D0A305AA40D00460BBB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -188,7 +188,7 @@
 		23A53D05305AA40D00460BBB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
-				23F1A0022F00000000A1B0C1 /* Stage.c in Sources */,
+				23F1A0022F00000000A1B0C1 /* Arduino/Stage.c in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
