@@ -179,8 +179,18 @@ final class ShowLibrary {
 		if !folders.isDisjoint(with: [.lights, .made]) { fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
 		if folders.contains(.lights) { show.lights = fixtures.map(\.entry) }
 		if folders.contains(.groups) { show.groups = ((try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
-		if folders.contains(.scenes) { show.scenes = ((try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
-		if folders.contains(.cues) { show.cues = ((try? context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
+		
+		if folders.contains(.scenes) {
+			var looks = FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)])
+			if let identifier { looks.predicate = #Predicate { $0.identifier == identifier } }
+			show.scenes = ((try? context.fetch(looks)) ?? []).map(\.entry)
+		}
+		
+		if folders.contains(.cues) {
+			var cues = FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)])
+			if let identifier { cues.predicate = #Predicate { $0.identifier == identifier } }
+			show.cues = ((try? context.fetch(cues)) ?? []).map(\.entry)
+		}
 		
 		if folders.contains(.made) {
 			show.made = ((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition)
@@ -195,8 +205,6 @@ final class ShowLibrary {
 		show.lights.removeAll { $0.identifier != identifier }
 		show.groups.removeAll { $0.identifier != identifier }
 		show.made.removeAll { $0.id != identifier }
-		show.scenes.removeAll { $0.identifier != identifier }
-		show.cues.removeAll { $0.identifier != identifier }
 		return show
 	}
 	
@@ -437,8 +445,10 @@ final class ShowLibrary {
 		var groups = Dictionary(((try? context.fetch(FetchDescriptor<FixtureGroup>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let fixtures = Dictionary(((try? context.fetch(FetchDescriptor<Fixture>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let made = Dictionary(((try? context.fetch(FetchDescriptor<StoredFixtureType>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
-		let looks = Dictionary(((try? context.fetch(FetchDescriptor<Look>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
-		let cues = Dictionary(((try? context.fetch(FetchDescriptor<Cue>())) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let lookIDs = incoming.scenes.map(\.identifier)
+		let cueIDs = incoming.cues.map(\.identifier)
+		let looks = Dictionary((lookIDs.isEmpty ? [] : (try? context.fetch(FetchDescriptor<Look>(predicate: #Predicate { lookIDs.contains($0.identifier) }))) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
+		let cues = Dictionary((cueIDs.isEmpty ? [] : (try? context.fetch(FetchDescriptor<Cue>(predicate: #Predicate { cueIDs.contains($0.identifier) }))) ?? []).map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
 		let shipped = Set((types?.builtIn ?? []).map(\.id))
 		
 		for entry in incoming.groups {
