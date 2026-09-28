@@ -65,6 +65,7 @@ struct Stage {
   uint8_t  output[SLOTS + 1];
   uint8_t  held[SLOTS + 1];
   uint8_t  target[SLOTS + 1];
+  uint8_t  writer[SLOTS + 1];
   uint8_t  holding[BYTES];
   uint8_t  changed[BYTES];
   uint8_t  wanted[BYTES];
@@ -221,9 +222,10 @@ static void shineAll(Stage *stage) {
   for (int a = 1; a <= SLOTS; a++) shine(stage, a);
 }
 
-static void put(Stage *stage, int a, uint8_t value) {
+static void put(Stage *stage, int a, uint8_t value, uint8_t writer) {
   if (stage->source[a] == value) return;
   stage->source[a] = value;
+  stage->writer[a] = writer;
   mark(stage->changed, a);
   shine(stage, a);
 }
@@ -508,7 +510,7 @@ void stage_levels(Stage *stage, float master, bool blackout) {
   shineAll(stage);
 }
 
-bool stage_write(Stage *stage, const uint8_t *message, size_t length, bool relayed) {
+bool stage_write(Stage *stage, const uint8_t *message, size_t length, uint8_t writer) {
   Reader r = {message, message + length, true};
   if (byte(&r) != STAGE_FRAME || byte(&r) != 0 || r.at == r.end || !runsValid(r.at, (size_t)(r.end - r.at), false)) return false;
 
@@ -525,9 +527,10 @@ bool stage_write(Stage *stage, const uint8_t *message, size_t length, bool relay
     for (int i = 0; i < count; i++) {
       int a = start + i;
       cancel(stage, a);
-      put(stage, a, values[i]);
-      if (bit(stage->kept, a)) mark(stage->changed, a);
-      else if (relayed) unmark(stage->changed, a);
+      put(stage, a, values[i], writer);
+      if (!bit(stage->kept, a)) continue;
+      mark(stage->changed, a);
+      stage->writer[a] = NONE;
     }
   }
   memset(stage->kept, 0, BYTES);
@@ -570,10 +573,10 @@ bool stage_tick(Stage *stage, uint32_t now) {
     if (done) m->length &= ~LIVE;
 
     if ((m->length & PAIRED) && (stage->channels[a].flags & WIDE)) {
-      put(stage, a, (uint8_t)(value >> 8));
-      put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF));
+      put(stage, a, (uint8_t)(value >> 8), NONE);
+      put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF), NONE);
     } else {
-      put(stage, a, (uint8_t)value);
+      put(stage, a, (uint8_t)value, NONE);
     }
   }
 
@@ -611,19 +614,23 @@ bool stage_busy(const Stage *stage) {
   return false;
 }
 
-size_t stage_frame(Stage *stage, uint8_t *out, size_t room) {
+static bool owed(const Stage *stage, int a, uint8_t client) {
+  return bit(stage->changed, a) && (stage->writer[a] != client || client == NONE);
+}
+
+size_t stage_frame(const Stage *stage, uint8_t client, uint8_t *out, size_t room) {
   size_t n = 2;
   if (room < 2 + 4 + SLOTS + 4 * (SLOTS / 2)) return 0;
   out[0] = STAGE_FRAME;
   out[1] = 0;
 
   for (int a = 1; a <= SLOTS;) {
-    if (!bit(stage->changed, a)) {
+    if (!owed(stage, a, client)) {
       a++;
       continue;
     }
     int start = a;
-    while (a <= SLOTS && bit(stage->changed, a)) a++;
+    while (a <= SLOTS && owed(stage, a, client)) a++;
     int count  = a - start;
     out[n++]   = (uint8_t)(start & 0xFF);
     out[n++]   = (uint8_t)(start >> 8);
@@ -633,9 +640,10 @@ size_t stage_frame(Stage *stage, uint8_t *out, size_t room) {
     n += (size_t)count;
   }
 
-  memset(stage->changed, 0, BYTES);
   return n > 2 ? n : 0;
 }
+
+void stage_relayed(Stage *stage) { memset(stage->changed, 0, BYTES); }
 
 static size_t writeNumber(uint8_t *out, uint32_t value) {
   size_t n = 0;

@@ -19,6 +19,7 @@ namespace {
 const uint32_t REQUEST_MS     = 1500;
 const uint32_t DOCUMENT_MS    = 8000;
 const uint32_t PATIENCE_MS    = 3000;
+const uint32_t STORE_WAIT_MS  = 5000;
 const size_t   REQUEST_LINE_MAX       = 256;
 const size_t   REQUEST_BODY_MAX       = 512;
 const size_t   DOCUMENT_MAX   = 65535;
@@ -154,7 +155,11 @@ void document(Outlet &c, const char *method, char *path, size_t length, int exce
 
   bool       stored = false;
   Store::Job job    = {frame, front + length, except, false, g_stored, &stored};
-  if (!readBody(c, frame + front, length, deadline) || !Store::submit(job, pdMS_TO_TICKS(5000))) {
+  bool       queued = readBody(c, frame + front, length, deadline);
+  for (uint32_t since = millis(); queued && !Store::submit(job); delay(10)) {
+    if (millis() - since >= STORE_WAIT_MS) queued = false;
+  }
+  if (!queued) {
     free(frame);
     return answer(c, 503);
   }

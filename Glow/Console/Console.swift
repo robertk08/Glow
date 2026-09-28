@@ -614,14 +614,15 @@ final class Console {
 		}
 		
 		let bytes = [UInt8](frame)
-		stage_write(stage, bytes, bytes.count, true)
+		stage_write(stage, bytes, bytes.count, UInt8(Self.ownClient))
 	}
 	
 	private func advance() {
 		flush()
 		let restated = stage_tick(stage, now)
 		var frame = [UInt8](repeating: 0, count: 2 + 4 + Universe.channelCount * 3)
-		let count = stage_frame(stage, &frame, frame.count)
+		let count = stage_frame(stage, UInt8(Self.ownClient), &frame, frame.count)
+		stage_relayed(stage)
 		if count > 0, let runs = Wire.runs(in: Array(frame.prefix(count))) { adopt(runs) }
 		if restated { announce() }
 		guard running == nil, stage_busy(stage) else { return }

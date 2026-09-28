@@ -108,16 +108,20 @@ void step(bool urgent) {
   if (!urgent && now - g_stepped < STEP_MS) return;
   g_stepped = now;
 
-  bool   restated;
-  size_t n = 0;
+  bool restated;
   {
     Hold hold;
     restated = stage_tick(g_stage, now);
     light();
-    if (urgent || now - g_relayed >= RELAY_MS) n = stage_frame(g_stage, g_frame, sizeof(g_frame));
+    if (urgent || now - g_relayed >= RELAY_MS) {
+      for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+        size_t n = admitted(i) && g_greeted[i] ? stage_frame(g_stage, i, g_frame, sizeof(g_frame)) : 0;
+        if (n) g_ws.sendBIN(i, g_frame, n);
+        if (n) g_relayed = now;
+      }
+      stage_relayed(g_stage);
+    }
   }
-  if (n) g_relayed = now;
-  if (n) relay(NO_CLIENT, true, g_frame, n);
   if (restated) announce(NO_CLIENT);
 }
 
@@ -227,12 +231,12 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
   bool written;
   {
     Hold hold;
-    written = stage_write(g_stage, p, len, true);
+    written = stage_write(g_stage, p, len, num);
     light();
   }
   if (!written) return;
   g_haveSource = true;
-  relay(num, true, p, len);
+  step(false);
 }
 
 void greet(uint8_t num) {
@@ -450,7 +454,7 @@ void apply(int start, const uint8_t *values, int length) {
   memcpy(frame + 6, values, length);
 
   Hold hold;
-  stage_write(g_stage, frame, 6 + length, false);
+  stage_write(g_stage, frame, 6 + length, NO_CLIENT);
   g_haveSource = true;
   light();
 }

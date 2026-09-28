@@ -12,8 +12,8 @@
 static void report() {
   Serial.printf("glow %s  id %s  %s  %d phone(s)  dmx %d Hz\n", GLOW_FW_VERSION, Net::id(),
                 Net::up() ? Net::ip().toString().c_str() : "offline", Link::clients(), DMX_REFRESH_HZ);
-  Serial.printf("memory %u KB free of %u KB, loop stack %u bytes spare\n", (unsigned)(ESP.getFreeHeap() / 1024),
-                (unsigned)(ESP.getHeapSize() / 1024), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
+  Serial.printf("memory %u KB free of %u KB, largest block %u KB, loop stack %u bytes spare\n", (unsigned)(ESP.getFreeHeap() / 1024),
+                (unsigned)(ESP.getHeapSize() / 1024), (unsigned)(ESP.getMaxAllocHeap() / 1024), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
   Serial.printf("store %u KB of %u KB used\n", (unsigned)(Store::used() / 1024), (unsigned)(Store::capacity() / 1024));
   Serial.println(Access::guarded() ? F("password set") : F("no password"));
   Serial.print(Net::provisioned() ? F("wifi stored") : F("wifi none stored"));

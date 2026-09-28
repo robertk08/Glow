@@ -5,6 +5,7 @@
 
 #include <LittleFS.h>
 #include <algorithm>
+#include <atomic>
 #include <dirent.h>
 #include <fcntl.h>
 #include <freertos/queue.h>
@@ -30,16 +31,18 @@ const int      JOBS_WAITING = 32;
 const int      KEEPER_STACK = 6144;
 const size_t   PIECE        = 1024;
 const size_t   BATCH        = 4096;
-const int      SORTED       = 2048;
-const int      SLICES_MAX   = 64;
+const int      SORTED       = 1024;
+const int      SLICES_MAX   = 128;
 const uint32_t PUT_BIT      = 0x80000000;
 const int      SHOWS_HASHED = 64;
+const size_t   BACKLOG_MAX  = 16384;
 
 bool              g_ready      = false;
 volatile size_t   g_used       = 0;
 size_t            g_total      = 0;
 char              g_spent[NAME_LIMIT];
 uint32_t          g_generations[SHOWS_HASHED] = {};
+std::atomic<size_t> g_backlog{0};
 int               g_readers    = 0;
 SemaphoreHandle_t g_lock       = nullptr;
 QueueHandle_t     g_jobs       = nullptr;
@@ -293,6 +296,7 @@ void perform(Job *jobs, int count) {
       }
       generation(show)++;
     }
+    g_backlog -= jobs[0].length;
     free(jobs[0].frame);
     return;
   }
@@ -441,11 +445,16 @@ bool writeList(const String &text) {
 }
 
 bool submit(const Job &job, TickType_t wait) {
-  return g_ready && xQueueSend(g_jobs, &job, wait) == pdTRUE;
+  size_t before = g_backlog.fetch_add(job.length);
+  if (g_ready && (!before || before + job.length <= BACKLOG_MAX) && xQueueSend(g_jobs, &job, wait) == pdTRUE) return true;
+  g_backlog -= job.length;
+  return false;
 }
 
 bool settled(Job &job) {
-  return g_settled && xQueueReceive(g_settled, &job, 0) == pdTRUE;
+  if (!g_settled || xQueueReceive(g_settled, &job, 0) != pdTRUE) return false;
+  g_backlog -= job.length;
+  return true;
 }
 
 void drop(const char *show) {
