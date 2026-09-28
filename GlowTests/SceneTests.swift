@@ -276,7 +276,7 @@ struct SceneTests {
 		
 		#expect(fresh.name == "Scene 2")
 		#expect(recording.number == 1)
-		#expect(recording.hint == "All lights for cue 1")
+		#expect(recording.hint == "All lights")
 		#expect(recording.lights == Set(rig.fixtures.map(\.identifier)))
 		
 		recording.lights = [rig.fixtures[0].identifier]
@@ -298,7 +298,7 @@ struct SceneTests {
 		let recording = rig.recording(.cue(rig.look, after: nil))
 		
 		#expect(recording.lights == [rig.fixtures[0].identifier])
-		#expect(recording.hint == "1 selected light for cue 1")
+		#expect(recording.hint == "1 light")
 		
 		rig.console.selection.clear()
 		
@@ -328,7 +328,7 @@ struct SceneTests {
 		rig.console.release(11...11)
 		rig.console.selection.toggle(rig.fixtures[1])
 		
-		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 selected light for cue 2")
+		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 light")
 		
 		rig.recording(.into(cue)).store(context: rig.context)
 		

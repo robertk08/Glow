@@ -45,7 +45,7 @@ final class Cue {
 	}
 	
 	var timing: String {
-		var parts = [fade > 0 ? "\(Self.seconds(fade)) fade" : "No fade"]
+		var parts = fade > 0 ? ["\(Self.seconds(fade)) fade"] : []
 		if delay > 0 { parts.append("\(Self.seconds(delay)) delay") }
 		if let follow { parts.append(follow > 0 ? "next after \(Self.seconds(follow))" : "next right after") }
 		return parts.joined(separator: ", ")

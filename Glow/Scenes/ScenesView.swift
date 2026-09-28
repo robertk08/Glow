@@ -62,7 +62,9 @@ struct ScenesView: View {
 				ContentUnavailableView {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
-					Text(fixtures.isEmpty ? "Patch a light first, then come back to store how it looks." : "Store the lights as they are now, or start an empty scene and store its cues on the lights.")
+					if fixtures.isEmpty {
+						Text("Patch a light first.")
+					}
 				} actions: {
 					adding
 						.buttonStyle(.glass)
@@ -96,8 +98,6 @@ struct ScenesView: View {
 					console.selection.building = look.identifier
 				}
 			}
-		} message: {
-			Text(storing == true ? "Every light as it is now becomes its first cue." : "It opens on the lights, ready for its first cue.")
 		}
 		.toolbar {
 			LinkStatusButton()
@@ -238,8 +238,6 @@ struct SceneTile: View {
 			Button("Delete Scene", role: .destructive) {
 				look.remove(with: cues, context: context)
 			}
-		} message: {
-			Text("The lights stay as they are.")
 		}
 		.onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))

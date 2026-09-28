@@ -175,7 +175,6 @@ struct BuilderBar: View {
 				.lineLimit(1)
 			}
 			.padding(16)
-			.glassEffect(.regular, in: .rect(cornerRadius: 28, style: .continuous))
 			.frame(maxWidth: 640)
 			.padding(.horizontal, 12)
 			.padding(.bottom, 8)

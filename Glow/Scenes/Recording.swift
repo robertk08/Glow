@@ -58,32 +58,12 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		guard !selected.isEmpty else { return "All lights for cue \(number)" }
-		return selected.count == 1 ? "1 selected light for cue \(number)" : "\(selected.count) selected lights for cue \(number)"
-	}
-	
-	var place: String {
-		switch destination {
-		case let .cue(look, after):
-			let held = look.cues(among: cues)
-			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), position + 1 < held.count else { return "At the end of \(look.name)" }
-			return "In \(look.name), after \(after.title(at: position))"
-		case let .into(cue):
-			let position = looks.first { $0.identifier == cue.lookID }?.cues(among: cues).firstIndex { $0.identifier == cue.identifier } ?? 0
-			return cue.title(at: position)
-		}
+		guard !selected.isEmpty else { return "All lights" }
+		return selected.count == 1 ? "1 light" : "\(selected.count) lights"
 	}
 	
 	var isReady: Bool {
 		!levels.isEmpty
-	}
-	
-	var summary: String {
-		let count = levels.lights.count
-		guard count > 0 else { return "Choose at least one light and one aspect." }
-		let lights = count == 1 ? "1 light" : "\(count) lights"
-		guard features.count < FeatureGroup.allCases.count else { return "Stores everything \(lights) \(count == 1 ? "is" : "are") doing." }
-		return "Stores \(FeatureGroup.allCases.filter(features.contains).map(\.name).formatted(.list(type: .and)).lowercased()) of \(lights)."
 	}
 	
 	var levels: Levels {

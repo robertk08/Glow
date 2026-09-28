@@ -38,8 +38,6 @@ struct SceneView: View {
 				if held.isEmpty {
 					ContentUnavailableView {
 						Label("No Cues Yet", systemImage: look.symbol)
-					} description: {
-						Text("Set the lights, store a cue, change them and store the next.")
 					} actions: {
 						Button("Add Cues", systemImage: "plus") {
 							console.selection.building = look.identifier
@@ -74,9 +72,11 @@ struct SceneView: View {
 											.fontWeight(position == index ? .semibold : .regular)
 											.lineLimit(2)
 										
-										Text(cue.timing)
-											.font(.caption)
-											.foregroundStyle(.secondary)
+										if !cue.timing.isEmpty {
+											Text(cue.timing)
+												.font(.caption)
+												.foregroundStyle(.secondary)
+										}
 										
 										if position == index, let fade = console.fades[look.identifier] {
 											FadeBar(fade: fade, tint: tint)
@@ -211,8 +211,6 @@ struct SceneView: View {
 				Button("Delete Scene", role: .destructive) {
 					look.remove(with: cues, context: context)
 				}
-			} message: {
-				Text("The lights stay as they are.")
 			}
 			.sensoryFeedback(.selection, trigger: console.playback)
 			.onChange(of: looks.contains { $0.identifier == look.identifier }) {
@@ -300,7 +298,7 @@ private struct SceneSettings: View {
 		Section {
 			Picker("Tap", selection: $look.tap) {
 				ForEach(SceneAction.taps) { action in
-					Text(action.tapName)
+					Text(action.name)
 						.tag(action)
 				}
 			}
@@ -335,8 +333,6 @@ private struct SceneSettings: View {
 			}
 		} header: {
 			Text("Tile")
-		} footer: {
-			Text("Ticked buttons sit on the tile, and Edit puts them in order. Everything else is in the tile's menu.")
 		}
 		.animation(.snappy, value: look.buttons)
 		

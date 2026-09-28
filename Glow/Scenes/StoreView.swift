@@ -54,8 +54,6 @@ struct StoreView: View {
 					}
 				} header: {
 					Text("Store")
-				} footer: {
-					Text(recording.summary)
 				}
 				
 				Section {
@@ -66,7 +64,6 @@ struct StoreView: View {
 				}
 			}
 			.navigationTitle(recording.title)
-			.navigationSubtitle(recording.place)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {

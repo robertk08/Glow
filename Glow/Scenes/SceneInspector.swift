@@ -14,8 +14,6 @@ struct SceneInspector: View {
 		} else {
 			ContentUnavailableView {
 				Label("No Scenes Yet", systemImage: "theatermasks")
-			} description: {
-				Text("A scene you store shows its cues here.")
 			}
 			.safeAreaBar(edge: .bottom) {
 				MasterBar(isRaised: true)

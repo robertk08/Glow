@@ -46,8 +46,7 @@ struct CueEditView: View {
 					}
 				} header: {
 					Text("Timing")
-				} footer: {
-					Text("The delay waits before the fade starts. The next cue can follow by itself once this one has faded in.")
+					
 				}
 				
 				Section {
@@ -69,8 +68,7 @@ struct CueEditView: View {
 					}
 				} header: {
 					Text("Lights")
-				} footer: {
-					Text("Swipe a light to take it out of this cue. It then keeps what the cues before gave it.")
+					
 				}
 			}
 			.navigationTitle("Cue \(position + 1)")
