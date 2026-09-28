@@ -132,6 +132,18 @@ struct FrameStreamTests {
 		#expect(stream.next(universe.values).isEmpty)
 	}
 	
+	@Test func aLocalChangeNotSentYetIsNotOverwrittenByAnIncomingValue() {
+		var stream = FrameStream()
+		var universe = Universe()
+		_ = stream.next(universe.values)
+		universe[DMXAddress(8)!] = 77
+		stream.adopt([(DMXAddress(8)!, [150]), (DMXAddress(9)!, [30])], ack: stream.sent, into: &universe)
+		
+		#expect(universe[DMXAddress(8)!] == 77)
+		#expect(universe[DMXAddress(9)!] == 30)
+		#expect(stream.next(universe.values).map(\.values) == [[77]])
+	}
+	
 	@Test func anAcknowledgementPastTheSixteenBitWrapStillCounts() {
 		var stream = FrameStream()
 		var universe = Universe()

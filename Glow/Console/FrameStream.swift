@@ -24,7 +24,7 @@ nonisolated struct FrameStream: Sendable {
 		for run in runs {
 			for (offset, value) in run.values.enumerated() {
 				let index = run.start.value - 1 + offset
-				guard written[index] <= acked, let address = run.start.offset(by: offset) else { continue }
+				guard written[index] <= acked, let address = run.start.offset(by: offset), last.isEmpty || universe[address] == last[index] else { continue }
 				universe[address] = value
 				if !last.isEmpty { last[index] = value }
 			}
