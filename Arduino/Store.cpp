@@ -24,8 +24,8 @@ const uint8_t  PUT          = 0;
 const uint8_t  ERASE        = 1;
 const uint8_t  DROP         = 2;
 const size_t   HEAD         = 5;
-const uint32_t REVIEW_FROM  = 32768;
-const uint32_t REVIEW_EVERY = 16384;
+const uint32_t REVIEW_FROM  = 4096;
+const uint32_t REVIEW_EVERY = 4096;
 const uint32_t MEASURE_MS   = 500;
 const int      JOBS_WAITING = 32;
 const int      KEEPER_STACK = 6144;
@@ -52,6 +52,8 @@ QueueHandle_t     g_settled    = nullptr;
 uint8_t           g_piece[BATCH];
 uint8_t           g_scan[PIECE];
 uint32_t          g_pieces     = 0;
+int               g_reader     = -1;
+char              g_reading[PATH_LIMIT];
 
 struct Hold {
   Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -83,6 +85,11 @@ bool path(char *out, const char *show, int file, const char *suffix) {
 
 void breathe() {
   if (++g_pieces % 16 == 0) vTaskDelay(1);
+}
+
+void letGo() {
+  if (g_reader >= 0) ::close(g_reader);
+  g_reader = -1;
 }
 
 uint64_t hash(uint64_t h, const char *text) {
@@ -163,6 +170,7 @@ bool sameShow(const Job &a, const Job &b) {
 
 bool append(const char *file, Job **jobs, int count, uint32_t &before, uint32_t &after) {
   Hold hold;
+  letGo();
   return Flash::guarded([&] {
     int fd = ::open(file, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) return false;
@@ -221,6 +229,7 @@ bool review(const char *show, int file, bool always, uint32_t room = UINT32_MAX)
   Hold     hold;
   uint32_t began = millis();
   if (!always && g_readers) return false;
+  letGo();
   int from = ::open(name, O_RDONLY);
   if (from < 0) return false;
   uint32_t size = sizeOf(from);
@@ -292,6 +301,7 @@ void perform(Job *jobs, int count) {
   if (jobs[0].frame[1] == DROP) {
     if (safe(show)) {
       Hold hold;
+      letGo();
       for (int file = 0; file < FILES; file++) {
         char name[PATH_LIMIT];
         if (path(name, show, file, "")) Flash::guarded([&] { return ::unlink(name) == 0; });
@@ -529,10 +539,13 @@ long read(const char *show, Span &span, uint8_t *into, size_t max) {
 
   char name[PATH_LIMIT];
   if (!path(name, show, file, "")) return -1;
-  int fd = ::open(name, O_RDONLY);
-  if (fd < 0) return -1;
-  ssize_t n = ::pread(fd, into, want, offset);
-  ::close(fd);
+  if (g_reader < 0 || strcmp(name, g_reading)) {
+    letGo();
+    g_reader = ::open(name, O_RDONLY);
+    if (g_reader < 0) return -1;
+    strcpy(g_reading, name);
+  }
+  ssize_t n = ::pread(g_reader, into, want, offset);
   if (n <= 0) return -1;
   span.from += n;
   return n;
@@ -540,6 +553,7 @@ long read(const char *show, Span &span, uint8_t *into, size_t max) {
 
 void finish() {
   Hold hold;
+  letGo();
   g_readers--;
 }
 
