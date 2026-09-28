@@ -45,6 +45,7 @@ final class ShowLibrary {
 	nonisolated static let everything = Set(NodeStore.Folder.allCases)
 	private static let nothing = Show(name: "")
 	private static let frameLimit = 12000
+	private static let segment = 1600
 	private static let coalesce: TimeInterval = 0.25
 	private static let commitEvery: Duration = .milliseconds(100)
 	
@@ -671,7 +672,7 @@ final class ShowLibrary {
 	}
 	
 	private func weight(_ key: String, _ data: Data) -> Int {
-		Wire.documentHeader + loadedID.utf8.count + key.utf8.count + data.count
+		max(Wire.documentHeader + loadedID.utf8.count + key.utf8.count + data.count, Self.segment)
 	}
 	
 	@concurrent nonisolated static func snapshot(of contents: ShowContents, folders: Set<NodeStore.Folder> = everything) async -> [String: Data] {
