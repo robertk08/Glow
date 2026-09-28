@@ -77,8 +77,7 @@ struct Stage {
   uint8_t output[SLOTS + 1];
   uint8_t base[SLOTS + 1];
   uint8_t target[SLOTS + 1];
-  uint8_t writer[SLOTS + 1];
-  uint8_t changed[BYTES];
+  uint8_t owed[SLOTS + 1];
   uint8_t wanted[BYTES];
   Channel channels[SLOTS + 1];
   Motion  motions[SLOTS + 1];
@@ -176,7 +175,7 @@ static bool program(Reader *r, Program *p) {
     if (!step(r, &s)) r->ok = false;
   }
   p->size = (size_t)(r->at - p->steps);
-  return r->ok && r->at == r->end && p->count && (p->loop >= ONWARD || p->loop < p->count);
+  return r->ok && r->at == r->end && p->count && p->count <= ONWARD && (p->loop >= ONWARD || p->loop < p->count);
 }
 
 static float level(const Stage *stage) {
@@ -236,11 +235,12 @@ static void shineAll(Stage *stage) {
   for (int a = 1; a <= SLOTS; a++) shine(stage, a);
 }
 
+static uint8_t except(uint8_t client) { return client < STAGE_CLIENTS ? (uint8_t)~(1u << client) : 0xFF; }
+
 static void put(Stage *stage, int a, uint8_t value, uint8_t writer) {
   if (stage->source[a] == value) return;
   stage->source[a] = value;
-  stage->writer[a] = writer;
-  mark(stage->changed, a);
+  stage->owed[a]   = except(writer);
   shine(stage, a);
 }
 
@@ -411,7 +411,7 @@ static void play(Stage *stage, const char *id, Reader *r, uint8_t caller, uint32
   }
 }
 
-static void more(Scene *scene, Reader *r, uint8_t caller) {
+static void more(Stage *stage, Scene *scene, Reader *r, uint8_t caller, uint32_t now) {
   Program p;
   if (!program(r, &p) || !scene || !scene->wants) return;
 
@@ -423,6 +423,12 @@ static void more(Scene *scene, Reader *r, uint8_t caller) {
 
     uint8_t *steps = (uint8_t *)malloc(p.size);
     if (!steps) return;
+    mention(stage, &scene->current, true, true);
+    Reader kept = runs(&found);
+    Run    x;
+    while (run(&kept, true, &x)) {
+      for (int a = x.start; a < x.start + x.count; a++) unmark(stage->wanted, a);
+    }
     load(scene, &p, steps);
     scene->current.runs = steps + (found.runs - p.steps);
     scene->current.size = found.size;
@@ -430,6 +436,8 @@ static void more(Scene *scene, Reader *r, uint8_t caller) {
     scene->step         = i;
     scene->caller       = caller;
     scene->wants        = wanting(scene);
+    settle(stage, scene);
+    aim(stage, now, scene->current.fade);
     return;
   }
 }
@@ -524,7 +532,7 @@ void stage_command(Stage *stage, const uint8_t *message, size_t length, uint8_t 
       if (r.ok && r.at == r.end && fade <= SPAN) stop(stage, find(stage, id), fade, now);
       break;
     }
-    case MORE: more(find(stage, id), &r, caller); break;
+    case MORE: more(stage, find(stage, id), &r, caller, now); break;
     default: break;
   }
 }
@@ -540,12 +548,9 @@ bool stage_tick(Stage *stage, uint32_t now) {
     int      value  = done ? m->to : between(&stage->channels[a], m, (float)since / length);
     if (done) m->length &= ~LIVE;
 
-    if ((m->length & PAIRED) && (stage->channels[a].flags & WIDE)) {
-      put(stage, a, (uint8_t)(value >> 8), NONE);
-      put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF), NONE);
-    } else {
-      put(stage, a, (uint8_t)value, NONE);
-    }
+    bool paired = m->length & PAIRED;
+    put(stage, a, (uint8_t)(paired ? value >> 8 : value), NONE);
+    if (paired && (stage->channels[a].flags & WIDE)) put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF), NONE);
   }
 
   bool   restated = false;
@@ -557,7 +562,8 @@ bool stage_tick(Stage *stage, uint32_t now) {
     bool     overdue = scene->current.follow && (int32_t)(now - due) >= 0;
     uint32_t start   = now - due < scene->current.follow ? due : now;
     if (overdue && advancing(scene)) {
-      enter(stage, scene, scene->step + 1 < scene->count ? scene->nextAt : scene->loopAt, scene->step + 1 < scene->count ? scene->step + 1 : scene->loop, start);
+      bool last = scene->step + 1 == scene->count;
+      enter(stage, scene, last ? scene->loopAt : scene->nextAt, last ? scene->loop : scene->step + 1, start);
       move(stage, scene);
       restated = true;
     } else if (overdue && scene->wants && scene->caller != NONE) {
@@ -579,24 +585,31 @@ bool stage_busy(const Stage *stage) {
   return false;
 }
 
-static bool owed(const Stage *stage, int a, uint8_t client) {
-  return bit(stage->changed, a) && (stage->writer[a] != client || client == NONE);
+bool stage_forget(Stage *stage, uint8_t client) {
+  bool released = false;
+  for (Scene *scene = stage->scenes; scene; scene = scene->next) {
+    if (scene->caller != client) continue;
+    scene->caller = NONE;
+    released      = true;
+  }
+  return released;
 }
 
-size_t stage_frame(const Stage *stage, uint8_t client, uint8_t *out, size_t room) {
-  size_t n = 3;
-  if (room < STAGE_FRAME_MAX) return 0;
+size_t stage_frame(Stage *stage, uint8_t client, bool whole, uint8_t *out, size_t room) {
+  uint8_t mine = (uint8_t)(1u << client);
+  size_t  n    = 3;
+  if (room < STAGE_FRAME_MAX || client >= STAGE_CLIENTS) return 0;
   out[0] = STAGE_FRAME;
   out[1] = 0;
   out[2] = 0;
 
   for (int a = 1; a <= SLOTS;) {
-    if (!owed(stage, a, client)) {
+    if (!whole && !(stage->owed[a] & mine)) {
       a++;
       continue;
     }
     int start = a;
-    while (a <= SLOTS && owed(stage, a, client)) a++;
+    while (a <= SLOTS && (whole || (stage->owed[a] & mine))) stage->owed[a++] &= (uint8_t)~mine;
     int count = a - start;
     out[n++]  = (uint8_t)(start & 0xFF);
     out[n++]  = (uint8_t)(start >> 8);
@@ -608,8 +621,6 @@ size_t stage_frame(const Stage *stage, uint8_t client, uint8_t *out, size_t room
 
   return n > 3 ? n : 0;
 }
-
-void stage_relayed(Stage *stage) { memset(stage->changed, 0, BYTES); }
 
 static size_t writeNumber(uint8_t *out, uint32_t value) {
   size_t n = 0;

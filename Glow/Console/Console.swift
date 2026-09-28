@@ -60,9 +60,8 @@ final class Console {
 	private let noticer: AsyncStream<Wire.Notice>.Continuation
 	private let stage = stage_new()!
 	private let born = ContinuousClock.now
-	private var outbox: [URLSessionWebSocketTask.Message] = [] {
-		didSet { ring() }
-	}
+	private var outbox: [URLSessionWebSocketTask.Message] = []
+	private var draining: Task<Void, Never>?
 	private var isSynced = false {
 		didSet { ring() }
 	}
@@ -85,7 +84,7 @@ final class Console {
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
-	private static let ownClient = 0xFE
+	private static let ownClient = 0
 	
 	init() {
 		(bell, ringer) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -118,7 +117,7 @@ final class Console {
 			guard let bell = self?.bell else { return }
 			
 			for await _ in bell {
-				await self?.tick()
+				self?.tick()
 				try? await Task.sleep(for: .milliseconds(10))
 			}
 		}
@@ -292,7 +291,7 @@ final class Console {
 		guard reach != span else { return }
 		span = reach
 		frames.cover(reach)
-		outbox.append(Wire.Command.span(reach).message)
+		post(Wire.Command.span(reach).message)
 	}
 	
 	private func ring() {
@@ -302,10 +301,6 @@ final class Console {
 	private func level() {
 		stage_levels(stage, Float(master), blackout)
 		ring()
-	}
-	
-	private var isLocal: Bool {
-		isMuted || !link.isConnected
 	}
 	
 	private var now: UInt32 {
@@ -347,11 +342,11 @@ final class Console {
 	}
 	
 	func send(document frame: Data) {
-		outbox.append(.data(frame))
+		post(.data(frame))
 	}
 	
 	func send(_ command: Wire.Command) {
-		outbox.append(command.message)
+		post(command.message)
 	}
 	
 	func closeShow(keepingLook: Bool = false) {
@@ -525,19 +520,17 @@ final class Console {
 	}
 	
 	func play(_ list: CueList, at index: Int, snapping: Bool = false) {
-		guard list.cues.indices.contains(index) else { return }
+		guard list.cues.indices.contains(index), command(.play, scene: list.scene, body: list.program(from: index, snapping: snapping)) else { return }
 		let cue = list.cues[index]
 		let start = Date.now.addingTimeInterval(cue.delay)
 		flashing.remove(list.scene)
 		playback.play(cue.identifier, of: list.scene, fade: snapping || cue.fade + cue.delay == 0 ? nil : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
-		command(.play, scene: list.scene, body: list.program(from: index, snapping: snapping))
 	}
 	
 	func land(_ list: CueList, at index: Int) {
-		guard list.cues.indices.contains(index) else { return }
+		guard list.cues.indices.contains(index), command(.land, scene: list.scene, body: list.program(from: index, snapping: true)) else { return }
 		flashing.remove(list.scene)
 		playback.play(list.cues[index].identifier, of: list.scene, fade: nil)
-		command(.land, scene: list.scene, body: list.program(from: index, snapping: true))
 	}
 	
 	func stop(_ list: CueList, snapping: Bool = false) {
@@ -565,32 +558,34 @@ final class Console {
 	
 	private func stop(_ scene: String, fade: Double) {
 		guard playback.cue(of: scene) != nil else { return }
-		flashing.remove(scene)
-		playback.stop(scene)
 		var writer = ByteWriter()
 		writer.number(CueList.milliseconds(fade))
-		command(.stop, scene: scene, body: writer.data)
+		guard command(.stop, scene: scene, body: writer.data) else { return }
+		flashing.remove(scene)
+		playback.stop(scene)
 	}
 	
-	private func command(_ action: Wire.Action, scene: String, body: Data) {
+	@discardableResult private func command(_ action: Wire.Action, scene: String, body: Data) -> Bool {
+		guard isMuted || link.isConnected else { return false }
 		sent = (sent + 1) & 0xFFFF
 		let message = Wire.command(action, seq: sent, scene: scene, body: body)
 		flush()
 		
-		guard isLocal else {
-			outbox.append(.data(message))
-			return
+		guard isMuted else {
+			post(.data(message))
+			return true
 		}
 		
 		let bytes = [UInt8](message)
 		stage_command(stage, bytes, bytes.count, UInt8(Self.ownClient), now)
 		advance()
 		announce()
+		return true
 	}
 	
 	private func take(_ state: [UInt8]) {
 		guard state.count >= 4 else { return }
-		if Int(state[1]) == (isLocal ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
+		if Int(state[1]) == (isMuted ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
 		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
 		if fresh.playing != playback.playing || fresh.fades.keys != playback.fades.keys { playback = fresh }
 		continued = continued.filter { scene, cue in fresh.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants } }
@@ -599,7 +594,7 @@ final class Console {
 	
 	private func resume() {
 		guard acked == sent else { return }
-		let own = isLocal ? Self.ownClient : node?.client
+		let own = isMuted ? Self.ownClient : node?.client
 		
 		for entry in playback.playing where entry.wants && [0xFF, own].contains(entry.caller) && continued[entry.scene] != entry.cue {
 			guard let list = lists[entry.scene], let index = list.index(of: entry.cue) else { continue }
@@ -609,7 +604,7 @@ final class Console {
 	}
 	
 	private func flush() {
-		guard isLocal else {
+		guard isMuted else {
 			guard isSynced else { return }
 			let runs = frames.next(universe.values)
 			guard !runs.isEmpty else { return }
@@ -626,8 +621,7 @@ final class Console {
 	private func advance() {
 		flush()
 		let restated = stage_tick(stage, now)
-		let count = stage_frame(stage, UInt8(Self.ownClient), &scratch, scratch.count)
-		stage_relayed(stage)
+		let count = stage_frame(stage, UInt8(Self.ownClient), false, &scratch, scratch.count)
 		
 		if count > 0, let (_, runs) = Wire.runs(in: Array(scratch.prefix(count))) {
 			var next = universe
@@ -704,7 +698,7 @@ final class Console {
 		map = writer.data
 		let bytes = [UInt8](map)
 		stage_map(stage, bytes, bytes.count)
-		if !isLocal { outbox.append(.data(map)) }
+		post(.data(map))
 	}
 	
 	var output: [UInt8] {
@@ -713,10 +707,9 @@ final class Console {
 		return values
 	}
 	
-	private func tick() async {
-		guard !isLocal else {
+	private func tick() {
+		guard !isMuted else {
 			advance()
-			if !outbox.isEmpty { outbox = [] }
 			return
 		}
 		
@@ -733,11 +726,24 @@ final class Console {
 		}
 		
 		flush()
-		let messages = outbox
-		outbox = []
+		drain()
+	}
+	
+	private func post(_ message: URLSessionWebSocketTask.Message) {
+		guard !isMuted else { return }
+		outbox.append(message)
+		drain()
+	}
+	
+	private func drain() {
+		guard draining == nil, isSynced else { return }
 		
-		for message in messages {
-			await connection.send(message)
+		draining = Task {
+			while isSynced, !outbox.isEmpty {
+				await connection.send(outbox.removeFirst())
+			}
+			
+			draining = nil
 		}
 	}
 }

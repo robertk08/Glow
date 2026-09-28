@@ -80,34 +80,39 @@ struct SceneTests {
 		container.mainContext.insert(look)
 		try container.mainContext.save()
 		let console = Console()
+		console.isMuted = true
 		console.applyPatch(fixtures, library: library)
 		return Rig(console: console, library: library, container: container, fixtures: fixtures, look: look)
 	}
 	
-	private func wall(renaming odd: Int? = nil) throws -> (Console, CueList) {
+	private func wall(renaming odd: Int? = nil, slots: ClosedRange<Int> = 1...512) throws -> (Console, CueList) {
 		let library = FixtureLibrary(builtIn: [])
 		library.setMade([FixtureType(id: "wall", model: "Wall", channels: (1...512).map { FixtureChannel(offset: $0, attribute: .red) })])
 		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
 		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
 		let look = Look(name: "Chase", sortIndex: 0)
+		wall.identifier = "wall"
+		look.identifier = "chase"
 		container.mainContext.insert(wall)
 		container.mainContext.insert(look)
 		
 		for step in 1...30 {
 			var levels = Levels()
 			
-			for slot in 1...512 {
+			for slot in slots {
 				levels.set(UInt8(step), slot: slot, of: wall.identifier)
 			}
 			
 			let cue = Cue(lookID: look.identifier, sortIndex: Double(step), fade: 0, levels: levels)
 			cue.follow = 0.03
+			cue.identifier = "cue\(step)"
 			if step == odd { cue.identifier = String(repeating: "y", count: 60) }
 			container.mainContext.insert(cue)
 		}
 		
 		try container.mainContext.save()
 		let console = Console()
+		console.isMuted = true
 		console.applyPatch([wall], library: library)
 		return (console, CueList(look, cues: try container.mainContext.fetch(FetchDescriptor<Cue>()), fixtures: [wall]))
 	}
@@ -512,6 +517,43 @@ struct SceneTests {
 		
 		#expect(try #require(list.index(of: stuck)) < 29)
 		try await until { console.value(at: DMXAddress(512)!) == 30 }
+	}
+	
+	@Test func aChaseContinuedWithoutALightLetsThatLightGo() async throws {
+		let (console, list) = try wall()
+		let (_, trimmed) = try wall(slots: 1...511)
+		
+		console.go(list)
+		_ = try await settled(console, scene: list.scene)
+		console.lists = [trimmed.scene: trimmed]
+		
+		try await until { console.value(at: DMXAddress(512)!) == 0 }
+		#expect(console.value(at: DMXAddress(511)!) != 0)
+	}
+	
+	@Test func aSceneTappedWhileTheControllerIsLostDoesNothing() async throws {
+		let rig = try rig()
+		rig.console.isMuted = false
+		rig.add(1, [(0, 1, 255)])
+		
+		rig.console.toggle(rig.list)
+		rig.console.flash(rig.list, isHeld: true)
+		try await Task.sleep(for: .milliseconds(50))
+		
+		#expect(rig.value(1) == 0)
+		#expect(rig.console.playback.playing.isEmpty)
+	}
+	
+	@Test func aSixteenBitFadeThatLosesItsFineChannelEndsOnTheCoarseValue() async throws {
+		let rig = try rig()
+		rig.add(1, fade: 0.3, [(0, 5, 200), (0, 6, 0)])
+		
+		rig.console.go(rig.list)
+		try await Task.sleep(for: .milliseconds(100))
+		rig.library.setMade([FixtureType(id: "wash", model: "Wash", channels: [FixtureChannel(offset: 1, attribute: .dimmer), FixtureChannel(offset: 5, attribute: .pan, defaultValue: 128)]), Self.head])
+		rig.console.applyPatch(rig.fixtures, library: rig.library)
+		
+		try await until { rig.value(5) == 200 }
 	}
 	
 	@Test func aFlashOnASceneAlreadyOnLeavesItOn() async throws {

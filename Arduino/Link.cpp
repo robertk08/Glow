@@ -36,6 +36,7 @@ Sockets g_ws;
 const uint8_t OP_DOCUMENT = 0x03;
 const uint8_t NO_CLIENT   = 0xFF;
 const uint8_t EMPTY_MAP[] = {STAGE_MAP};
+const size_t  HEADROOM    = WEBSOCKETS_MAX_HEADER_SIZE;
 
 const uint32_t WS_PING_MS     = 4000;
 const uint32_t WS_PONG_MS     = 2000;
@@ -56,14 +57,19 @@ struct Kept {
 RTC_NOINIT_ATTR Kept g_kept;
 const uint32_t STEP_MS        = 5;
 const uint32_t RELAY_MS       = 40;
+const int      PLAY_STACK     = 2048;
+const int      PLAY_PRIORITY  = 4;
+const int      PLAY_CORE      = 1;
+
+static_assert(WEBSOCKETS_SERVER_CLIENT_MAX <= STAGE_CLIENTS, "every phone needs its own bit in the stage");
 
 Stage            *g_stage      = nullptr;
 SemaphoreHandle_t g_lock       = nullptr;
-uint8_t           g_frame[STAGE_FRAME_MAX];
+uint8_t           g_frame[HEADROOM + STAGE_FRAME_MAX];
 uint8_t          *g_state      = nullptr;
 size_t            g_stateRoom  = 0;
 bool              g_haveSource = false;
-bool              g_restated   = false;
+volatile bool     g_restated   = false;
 uint32_t          g_stated     = 0;
 uint32_t          g_stepped    = 0;
 uint32_t          g_relayed    = 0;
@@ -118,19 +124,42 @@ void announce(uint8_t to) {
   size_t n;
   {
     Hold   hold;
-    size_t need = stage_state(g_stage, millis(), nullptr, 0);
+    size_t need = HEADROOM + stage_state(g_stage, millis(), nullptr, 0);
     if (need > g_stateRoom) {
       free(g_state);
       g_state     = (uint8_t *)malloc(need);
       g_stateRoom = g_state ? need : 0;
     }
-    n = stage_state(g_stage, millis(), g_state, g_stateRoom);
+    n = g_state ? stage_state(g_stage, millis(), g_state + HEADROOM, g_stateRoom - HEADROOM) : 0;
   }
   for (uint8_t i = 0; n && i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
     if ((to != NO_CLIENT && i != to) || !admitted(i) || !g_greeted[i]) continue;
-    g_state[1] = i;
-    stamp(g_state + 2, g_seq[i]);
-    g_ws.sendBIN(i, g_state, n);
+    g_state[HEADROOM + 1] = i;
+    stamp(g_state + HEADROOM + 2, g_seq[i]);
+    g_ws.sendBIN(i, g_state, n, true);
+  }
+}
+
+bool refresh(uint8_t num, bool whole) {
+  size_t n;
+  {
+    Hold hold;
+    n = stage_frame(g_stage, num, whole, g_frame + HEADROOM, STAGE_FRAME_MAX);
+  }
+  if (!n) return false;
+  stamp(g_frame + HEADROOM + 1, g_framed[num]);
+  return g_ws.sendBIN(num, g_frame, n, true);
+}
+
+void play(void *) {
+  TickType_t woke = xTaskGetTickCount();
+  for (;;) {
+    {
+      Hold hold;
+      if (stage_tick(g_stage, millis())) g_restated = true;
+      light();
+    }
+    xTaskDelayUntil(&woke, pdMS_TO_TICKS(STEP_MS));
   }
 }
 
@@ -139,41 +168,14 @@ void step(bool forced = false) {
   if (!forced && at - g_stepped < STEP_MS) return;
   g_stepped = at;
 
-  bool restated;
-  {
-    Hold hold;
-    restated = stage_tick(g_stage, at);
-    light();
-    if (at - g_relayed >= RELAY_MS) {
-      for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-        size_t n = admitted(i) && g_greeted[i] ? stage_frame(g_stage, i, g_frame, sizeof(g_frame)) : 0;
-        if (!n) continue;
-        stamp(g_frame + 1, g_framed[i]);
-        g_ws.sendBIN(i, g_frame, n);
-        g_relayed = at;
-      }
-      stage_relayed(g_stage);
-    }
+  bool due = at - g_relayed >= RELAY_MS;
+  for (uint8_t i = 0; due && i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (admitted(i) && g_greeted[i] && refresh(i, false)) g_relayed = at;
   }
-  g_restated = g_restated || restated;
   if (!g_restated || at - g_stated < RELAY_MS) return;
   g_restated = false;
   g_stated   = at;
   announce(NO_CLIENT);
-}
-
-void greetFrame(uint8_t num) {
-  g_frame[0] = STAGE_FRAME;
-  g_frame[3] = 1;
-  g_frame[4] = 0;
-  g_frame[5] = STAGE_SLOTS & 0xFF;
-  g_frame[6] = STAGE_SLOTS >> 8;
-  stamp(g_frame + 1, g_framed[num]);
-  {
-    Hold hold;
-    memcpy(g_frame + 7, stage_source(g_stage) + 1, STAGE_SLOTS);
-  }
-  g_ws.sendBIN(num, g_frame, 7 + STAGE_SLOTS);
 }
 
 const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
@@ -254,6 +256,8 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
     {
       Hold hold;
       stage_command(g_stage, p, len, num, millis());
+      stage_tick(g_stage, millis());
+      light();
     }
     if (len >= 3) g_seq[num] = p[1] | p[2] << 8;
     g_restated = true;
@@ -266,7 +270,6 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
     return light();
   }
 
-  if (len >= 3) g_framed[num] = p[1] | p[2] << 8;
   bool written;
   {
     Hold hold;
@@ -274,7 +277,8 @@ void onBinary(uint8_t num, uint8_t *p, size_t len) {
     light();
   }
   if (!written) return;
-  g_haveSource = true;
+  g_framed[num] = p[1] | p[2] << 8;
+  g_haveSource  = true;
   step();
 }
 
@@ -295,7 +299,7 @@ void greet(uint8_t num) {
   reply(num, out);
   String list = Shows::message();
   g_ws.sendTXT(num, list);
-  if (g_haveSource) greetFrame(num);
+  if (g_haveSource) refresh(num, true);
   announce(num);
 }
 
@@ -465,6 +469,10 @@ void arrive(uint8_t num) {
 }
 
 void leave(uint8_t num) {
+  {
+    Hold hold;
+    if (stage_forget(g_stage, num)) g_restated = true;
+  }
   portENTER_CRITICAL(&g_sessions);
   g_admitted[num] = false;
   g_greeted[num]  = false;
@@ -501,6 +509,7 @@ void begin() {
   g_ws.begin();
   g_ws.onEvent(onEvent);
   g_ws.enableHeartbeat(WS_PING_MS, WS_PONG_MS, 0);
+  xTaskCreatePinnedToCore(play, "play", PLAY_STACK, nullptr, PLAY_PRIORITY, nullptr, PLAY_CORE);
 }
 
 void tick() {

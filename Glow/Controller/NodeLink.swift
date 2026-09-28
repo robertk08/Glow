@@ -23,6 +23,7 @@ actor NodeLink {
 	
 	private let continuation: AsyncStream<Event>.Continuation
 	private static let silenceLimit: TimeInterval = 5
+	private static let stagger: TimeInterval = 0.5
 	private var connection: NWConnection?
 	private var supervisor: Task<Void, Never>?
 	private var heartbeat: Task<Void, Never>?
@@ -145,58 +146,67 @@ actor NodeLink {
 	}
 	
 	private func first(of links: [NWConnection]) async -> NWConnection? {
-		let race = OSAllocatedUnfairLock(initialState: (isOver: false, failed: Set<ObjectIdentifier>()))
+		let queue = queue
+		let race = OSAllocatedUnfairLock(initialState: (done: CheckedContinuation<NWConnection?, Never>?.none, started: 0, failed: Set<ObjectIdentifier>()))
+		
+		@Sendable func finish(_ winner: NWConnection?) {
+			guard let done = race.withLock({ race in
+				defer { race.done = nil }
+				return race.done
+			}) else {
+				winner?.cancel()
+				return
+			}
+			
+			for link in links where link !== winner {
+				link.cancel()
+			}
+			
+			done.resume(returning: winner)
+		}
+		
+		@Sendable func startNext() {
+			let next: NWConnection? = race.withLock { race in
+				guard race.done != nil, race.started < links.count else { return nil }
+				race.started += 1
+				return links[race.started - 1]
+			}
+			
+			next?.start(queue: queue)
+		}
 		
 		return await withTaskCancellationHandler {
 			await withCheckedContinuation { (done: CheckedContinuation<NWConnection?, Never>) in
+				race.withLock { $0.done = done }
+				
 				for link in links {
 					link.stateUpdateHandler = { state in
-						let isReady: Bool
-						
 						switch state {
-						case .ready: isReady = true
-						case .failed, .cancelled, .waiting: isReady = false
-						default: return
-						}
-						
-						let winner: NWConnection?? = race.withLock { race in
-							guard !race.isOver else { return nil }
-							
-							if isReady {
-								race.isOver = true
-								return .some(link)
+						case .ready: finish(link)
+						case .failed, .cancelled, .waiting:
+							let isLost = race.withLock { race in
+								race.failed.insert(ObjectIdentifier(link))
+								return race.failed.count == links.count
 							}
 							
-							race.failed.insert(ObjectIdentifier(link))
-							guard race.failed.count == links.count else { return nil }
-							race.isOver = true
-							return .some(nil)
+							if isLost {
+								finish(nil)
+							} else {
+								startNext()
+							}
+						default: return
 						}
-						
-						guard let winner else { return }
-						
-						for other in links where other !== winner {
-							other.cancel()
-						}
-						
-						done.resume(returning: winner)
 					}
-					
-					link.start(queue: queue)
 				}
 				
-				queue.asyncAfter(deadline: .now() + 5) {
-					guard !race.withLock({ $0.isOver }) else { return }
-					
-					for link in links {
-						link.cancel()
-					}
+				for index in links.indices {
+					queue.asyncAfter(deadline: .now() + Self.stagger * Double(index)) { startNext() }
 				}
+				
+				queue.asyncAfter(deadline: .now() + 5) { finish(nil) }
 			}
 		} onCancel: {
-			for link in links {
-				link.cancel()
-			}
+			finish(nil)
 		}
 	}
 	

@@ -11,6 +11,7 @@ typedef struct Stage Stage;
 
 enum {
   STAGE_SLOTS     = 512,
+  STAGE_CLIENTS   = 8,
   STAGE_FRAME     = 0x02,
   STAGE_COMMAND   = 0x05,
   STAGE_MAP       = 0x06,
@@ -26,8 +27,8 @@ bool           stage_write(Stage *stage, const uint8_t *message, size_t length, 
 void           stage_command(Stage *stage, const uint8_t *message, size_t length, uint8_t caller, uint32_t now);
 bool           stage_tick(Stage *stage, uint32_t now);
 bool           stage_busy(const Stage *stage);
-size_t         stage_frame(const Stage *stage, uint8_t client, uint8_t *out, size_t room);
-void           stage_relayed(Stage *stage);
+bool           stage_forget(Stage *stage, uint8_t client);
+size_t         stage_frame(Stage *stage, uint8_t client, bool whole, uint8_t *out, size_t room);
 size_t         stage_state(const Stage *stage, uint32_t now, uint8_t *out, size_t room);
 const uint8_t *stage_source(const Stage *stage);
 const uint8_t *stage_output(Stage *stage, int *from, int *to);
