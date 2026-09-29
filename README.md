@@ -113,8 +113,14 @@ These are product decisions the code implements without explaining.
   After the last cue, Next wraps to the first.
 - A tap on a cue in a scene's list only marks it as the next cue, and Go plays
   it, so a stray tap never changes the stage mid show.
+- Playing and arranging are separate. In the Scenes edit mode a tap customizes
+  a tile and never plays it, which is also where flash tiles are set up, since
+  holding them flashes.
 - A store takes the selected lights, or every light when none is selected.
-  Storing into a cue replaces only the chosen aspects.
+  Storing into a cue replaces only the chosen aspects and keeps its name and
+  timing. Updating is offered only for the live cue once a light was touched.
+- The aspects chosen for one store stay chosen for the next, until the builder
+  opens for another scene.
 - Fades, delays and follows run on the controller, so they carry on when the
   device that started them sleeps or drops. Touching a channel mid-fade, on any
   device, releases it from the fade.

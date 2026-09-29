@@ -1,9 +1,18 @@
+import SwiftData
 import SwiftUI
 
 struct SceneSettings: View {
+	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
+	@Environment(\.modelContext) private var context
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
+	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
+	@ScaledMetric(relativeTo: .headline) private var tileHeight = 150
 	
 	@Bindable var look: Look
+	
+	@State private var isDeleting = false
 	
 	var body: some View {
 		NavigationStack {
@@ -17,6 +26,16 @@ struct SceneSettings: View {
 		let tint = look.tint.color ?? .accentColor
 		
 		Form {
+			Section {
+				SceneFace(look: look, list: CueList(look, cues: cues, fixtures: fixtures), showsButtons: true)
+					.frame(width: look.size == .small ? tileWidth : nil, height: look.size == .large ? tileHeight * 2 + 12 : nil)
+					.frame(maxWidth: .infinity)
+					.allowsHitTesting(false)
+					.accessibilityHidden(true)
+			}
+			.listRowBackground(Color.clear)
+			.listRowInsets(EdgeInsets())
+			
 			Section {
 				TextField("Name", text: $look.name)
 					.autocorrectionDisabled()
@@ -33,7 +52,7 @@ struct SceneSettings: View {
 				
 				Picker("Tap", selection: $look.tap) {
 					ForEach(SceneAction.taps) { action in
-						Text(action.name)
+						Label(action.name, systemImage: action.symbol)
 							.tag(action)
 					}
 				}
@@ -81,6 +100,12 @@ struct SceneSettings: View {
 			} header: {
 				Text("Icon and Colour")
 			}
+			
+			Section {
+				Button("Delete Scene", systemImage: "trash", role: .destructive) {
+					isDeleting = true
+				}
+			}
 		}
 		.environment(\.editMode, .constant(.active))
 		.animation(.snappy, value: look.buttons)
@@ -92,6 +117,12 @@ struct SceneSettings: View {
 				Button(role: .confirm) {
 					dismiss()
 				}
+			}
+		}
+		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+			Button("Delete Scene", role: .destructive) {
+				console.remove(look, with: cues, context: context)
+				dismiss()
 			}
 		}
 	}

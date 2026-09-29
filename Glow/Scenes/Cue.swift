@@ -44,14 +44,14 @@ final class Cue {
 		label.isEmpty ? "Cue \(position + 1)" : label
 	}
 	
-	var timing: String {
-		var parts = fade > 0 ? ["\(Self.seconds(fade)) fade"] : []
-		if delay > 0 { parts.append("\(Self.seconds(delay)) delay") }
-		if let follow { parts.append(follow > 0 ? "next after \(Self.seconds(follow))" : "next right after") }
-		return parts.joined(separator: ", ")
+	var times: [(time: CueTime, seconds: Double)] {
+		var times: [(time: CueTime, seconds: Double)] = fade > 0 ? [(.fade, fade)] : []
+		if delay > 0 { times.append((.delay, delay)) }
+		if let follow { times.append((.follow, follow)) }
+		return times
 	}
 	
-	private static func seconds(_ value: Double) -> String {
+	static func seconds(_ value: Double) -> String {
 		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
 	}
 }

@@ -460,6 +460,57 @@ struct SceneTests {
 		#expect(cue.levels.lights[rig.fixtures[1].identifier] == [1: 255])
 	}
 	
+	@Test func aNewCueTakesItsTimingFromTheStoreAndAnUpdateLeavesItAlone() throws {
+		let rig = try rig()
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		recording.label = "Storm"
+		recording.fade = 2
+		recording.delay = 1
+		recording.follow = 0.5
+		recording.store(context: rig.context)
+		
+		let cue = rig.look.cues(among: rig.cues)[0]
+		#expect(cue.delay == 1)
+		#expect(cue.follow == 0.5)
+		
+		rig.console.set(40, at: DMXAddress(1)!)
+		let update = rig.recording(.into(cue))
+		update.store(context: rig.context)
+		
+		#expect(update.title == "Update Cue 1")
+		#expect(cue.label == "Storm")
+		#expect(cue.fade == 2)
+		#expect(cue.levels.lights[rig.fixtures[0].identifier]?[1] == 40)
+	}
+	
+	@Test func theBuilderKeepsTheAspectsChosenUntilAnotherSceneIsBuilt() throws {
+		let rig = try rig()
+		rig.console.selection.building = rig.look.identifier
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		recording.features = [.dimmer]
+		recording.store(context: rig.context)
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).features == [.dimmer])
+		
+		rig.console.selection.building = nil
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).features == Set(FeatureGroup.allCases))
+	}
+	
+	@Test func updatingIsOfferedOnlyForTheLiveCueOnceALightWasTouched() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		
+		#expect(!rig.console.canUpdate(first))
+		
+		rig.console.set(55, at: DMXAddress(1)!)
+		
+		#expect(rig.console.canUpdate(first))
+		#expect(!rig.console.canUpdate(second))
+	}
+	
 	@Test func allOffPutsBackEveryScene() async throws {
 		let rig = try rig()
 		let other = Look(name: "Other", sortIndex: 1)

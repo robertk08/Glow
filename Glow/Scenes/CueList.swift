@@ -2,7 +2,6 @@ import Foundation
 
 nonisolated struct CueList: Sendable {
 	let scene: String
-	let tap: SceneAction
 	private(set) var cues: [ShowContents.Cue]
 	
 	private let starts: [String: DMXAddress]
@@ -15,7 +14,6 @@ nonisolated struct CueList: Sendable {
 	
 	@MainActor private init(_ look: Look, cues: [Cue], starts: [String: DMXAddress]) {
 		scene = look.identifier
-		tap = look.tap
 		self.cues = look.cues(among: cues).map(\.entry)
 		self.starts = starts
 	}
@@ -54,18 +52,10 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	func status(at index: Int?) -> String {
-		guard !cues.isEmpty else { return "Tap to build" }
-		
-		guard let index else {
-			if tap == .flash { return "Hold to flash" }
-			if cues.count > 1 { return "\(cues.count) cues" }
-			var lights = 0
-			Levels.read(cues[0].levels) { _, _, _ in lights += 1 }
-			return lights == 1 ? "1 light" : "\(lights) lights"
-		}
-		
+		guard !cues.isEmpty else { return "No Cues" }
+		guard let index else { return "Off" }
 		guard cues.count > 1 else { return "On" }
-		return cues[index].label.isEmpty ? "Cue \(index + 1) of \(cues.count)" : heading(at: index)
+		return heading(at: index)
 	}
 	
 	func fade(of identifier: String?) -> Double {

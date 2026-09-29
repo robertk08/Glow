@@ -7,13 +7,11 @@ struct RootView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(\.scenePhase) private var scenePhase
-	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	@State private var section = "lights"
 	@State private var returning: String?
-	@State private var naming = ""
 	@Namespace private var transition
 	
 	private var tabs: some View {
@@ -86,19 +84,6 @@ struct RootView: View {
 						}
 						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
 					}
-			}
-		}
-		.alert("New Scene", isPresented: $selection.isNaming) {
-			TextField(Look.suggestedName(among: looks), text: $naming)
-				.autocorrectionDisabled()
-			
-			Button("Cancel", role: .cancel) {
-				naming = ""
-			}
-			
-			Button("Create") {
-				console.selection.building = Look.fresh(among: looks, named: naming, context: context).identifier
-				naming = ""
 			}
 		}
 		.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)

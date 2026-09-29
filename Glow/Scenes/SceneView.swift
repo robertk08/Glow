@@ -15,8 +15,6 @@ struct SceneView: View {
 	var isSheet = false
 	
 	@State private var editing: Cue?
-	@State private var renaming: Cue?
-	@State private var label = ""
 	@State private var editMode = EditMode.inactive
 	@State private var isDeleting = false
 	@State private var isCustomizing = false
@@ -55,65 +53,22 @@ struct SceneView: View {
 						List {
 							ForEach(Array(held.enumerated()), id: \.element.identifier) { position, cue in
 								Button {
-									console.selection.arm(cue.identifier, of: look.identifier)
-								} label: {
-									HStack(spacing: 14) {
-										Group {
-											if position == index {
-												Image(systemName: "play.fill")
-													.foregroundStyle(tint)
-													.accessibilityLabel("Live")
-											} else {
-												Text("\(position + 1)")
-													.foregroundStyle(.secondary)
-											}
-										}
-										.font(.subheadline.weight(.semibold))
-										.monospacedDigit()
-										.frame(width: 28)
-										
-										VStack(alignment: .leading, spacing: 3) {
-											Text(cue.title(at: position))
-												.fontWeight(position == index ? .semibold : .regular)
-												.lineLimit(2)
-											
-											if position == index {
-												CueStatus(text: cue.timing, fade: fade, follow: cue.follow)
-													.font(.caption)
-													.foregroundStyle(.secondary)
-												
-												if cue.fade + cue.delay > 0 {
-													FadeBar(fade: fade, tint: tint)
-														.padding(.vertical, 2)
-												}
-											} else if !cue.timing.isEmpty {
-												Text(cue.timing)
-													.font(.caption)
-													.foregroundStyle(.secondary)
-											}
-										}
-										
-										Spacer(minLength: 8)
-										
-										if position == upcoming {
-											Text("Next")
-												.font(.caption.weight(.semibold))
-												.foregroundStyle(armed == cue.identifier ? AnyShapeStyle(.white) : AnyShapeStyle(tint))
-												.padding(.horizontal, 8)
-												.padding(.vertical, 3)
-												.background(armed == cue.identifier ? tint : tint.opacity(0.15), in: .capsule)
-										}
+									if editMode.isEditing {
+										editing = cue
+									} else {
+										console.selection.arm(cue.identifier, of: look.identifier)
 									}
-									.contentShape(.rect)
+								} label: {
+									CueRow(cue: cue, position: position, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
 								}
 								.buttonStyle(.plain)
 								.id(cue.identifier)
 								.listRowBackground(position == index ? tint.opacity(0.14) : nil)
 								.accessibilityAddTraits(position == index ? .isSelected : [])
 								.accessibilityValue(position == upcoming ? "Next" : "")
-								.accessibilityHint("Makes it the next cue.")
+								.accessibilityHint(editMode.isEditing ? "Edits it." : "Makes it the next cue.")
 								.swipeActions(edge: .leading) {
-									Button("Timing", systemImage: "slider.horizontal.3") {
+									Button("Edit", systemImage: "slider.horizontal.3") {
 										editing = cue
 									}
 									.tint(tint)
@@ -128,12 +83,7 @@ struct SceneView: View {
 										console.play(list, at: position)
 									}
 									
-									Button("Rename", systemImage: "pencil") {
-										label = cue.label
-										renaming = cue
-									}
-									
-									Button("Timing and Lights", systemImage: "slider.horizontal.3") {
+									Button("Edit", systemImage: "slider.horizontal.3") {
 										editing = cue
 									}
 									
@@ -143,8 +93,10 @@ struct SceneView: View {
 										console.selection.isSceneOpen = false
 									}
 									
-									Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
-										Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+									if console.canUpdate(cue) {
+										Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
+											Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+										}
 									}
 									
 									Button("Delete Cue", systemImage: "trash", role: .destructive) {
@@ -232,17 +184,8 @@ struct SceneView: View {
 					}
 				}
 			}
-			.alert("Rename Cue", isPresented: Binding { renaming != nil } set: { if !$0 { renaming = nil } }) {
-				TextField("Name or short description", text: $label)
-				
-				Button("Cancel", role: .cancel) {}
-				
-				Button("Rename") {
-					renaming?.label = label.trimmingCharacters(in: .whitespaces)
-				}
-			}
 			.sheet(item: $editing) { cue in
-				CueEditView(cue: cue, position: held.firstIndex { $0.identifier == cue.identifier } ?? 0)
+				CueEditView(cue: cue)
 			}
 			.sheet(isPresented: $isCustomizing) {
 				SceneSettings(look: look)
@@ -256,6 +199,66 @@ struct SceneView: View {
 				dismiss()
 			}
 		}
+	}
+}
+
+private struct CueRow: View {
+	let cue: Cue
+	let position: Int
+	let isLive: Bool
+	let isNext: Bool
+	let isArmed: Bool
+	let fade: Fade?
+	let tint: Color
+	
+	var body: some View {
+		HStack(spacing: 14) {
+			Text("\(position + 1)")
+				.font(.subheadline.weight(.semibold))
+				.monospacedDigit()
+				.foregroundStyle(isLive ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+				.lineLimit(1)
+				.padding(.horizontal, 8)
+				.frame(minWidth: 32, minHeight: 28)
+				.background(isLive ? tint : .clear, in: .capsule)
+				.accessibilityLabel(isLive ? "Live, cue \(position + 1)" : "Cue \(position + 1)")
+			
+			VStack(alignment: .leading, spacing: 3) {
+				Text(cue.title(at: position))
+					.fontWeight(isLive ? .semibold : .regular)
+					.lineLimit(2)
+				
+				Group {
+					if isLive {
+						CueStatus(fade: fade, follow: cue.follow) {
+							CueTimes(cue: cue)
+						}
+					} else {
+						CueTimes(cue: cue)
+					}
+				}
+				.font(.caption)
+				.foregroundStyle(.secondary)
+				
+				if isLive, cue.fade + cue.delay > 0 {
+					FadeBar(fade: fade, tint: tint)
+						.padding(.vertical, 2)
+				}
+			}
+			
+			Spacer(minLength: 8)
+			
+			if isNext {
+				Text("Next")
+					.font(.caption.weight(.semibold))
+					.foregroundStyle(isArmed ? AnyShapeStyle(.white) : AnyShapeStyle(tint))
+					.padding(.horizontal, 8)
+					.padding(.vertical, 3)
+					.background(isArmed ? tint : tint.opacity(0.15), in: .capsule)
+			}
+		}
+		.contentShape(.rect)
+		.animation(.snappy, value: isLive)
 	}
 }
 
@@ -278,7 +281,7 @@ private struct Transport: View {
 					Button {
 						console.back(list)
 					} label: {
-						Image(systemName: "backward.end.fill")
+						Image(systemName: SceneAction.back.symbol)
 							.frame(width: height, height: height)
 							.glassEffect(.regular.interactive(index != nil), in: .circle)
 					}
@@ -297,15 +300,18 @@ private struct Transport: View {
 					Group {
 						if steps, let upcoming {
 							VStack(spacing: 1) {
-								Label("Go", systemImage: "forward.end.fill")
+								Label("Go", systemImage: SceneAction.next.symbol)
 								
-								Text(list.heading(at: upcoming))
-									.font(.caption)
-									.opacity(0.85)
-									.contentTransition(.numericText())
+								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
+									Text(list.heading(at: upcoming))
+								}
+								.font(.caption)
+								.opacity(0.85)
+								.contentTransition(.numericText())
 							}
 						} else {
-							Label(index == nil ? "Turn On" : "Turn Off", systemImage: "power")
+							Label(SceneAction.toggle.name(isOn: index != nil), systemImage: SceneAction.toggle.symbol(isOn: index != nil))
+								.contentTransition(.symbolEffect(.replace))
 						}
 					}
 					.foregroundStyle(.white)

@@ -7,9 +7,14 @@ final class Selection {
 	var isProgrammerOpen = false
 	var isSceneOpen = false
 	var scene: String?
-	var building: String?
 	var armed: [String: String] = [:]
-	var isNaming = false
+	var aspects = Set(FeatureGroup.allCases)
+	
+	var building: String? {
+		didSet {
+			if building != oldValue { aspects = Set(FeatureGroup.allCases) }
+		}
+	}
 	
 	var isEmpty: Bool { identifiers.isEmpty }
 	

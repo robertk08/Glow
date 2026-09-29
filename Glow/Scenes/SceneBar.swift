@@ -35,10 +35,12 @@ struct SceneBar: View {
 								Text(look.name)
 									.font(.subheadline.weight(.medium))
 								
-								CueStatus(text: list.status(at: index), fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow })
-									.font(.caption)
-									.foregroundStyle(.secondary)
-									.contentTransition(.numericText())
+								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
+									Text(list.status(at: index))
+								}
+								.font(.caption)
+								.foregroundStyle(.secondary)
+								.contentTransition(.numericText())
 							}
 							.lineLimit(1)
 							

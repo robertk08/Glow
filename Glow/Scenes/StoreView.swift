@@ -6,30 +6,69 @@ struct StoreView: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
 	
 	@Bindable var recording: Recording
+	
+	private let aspects = [GridItem(.adaptive(minimum: 112), spacing: 8)]
 	
 	var body: some View {
 		NavigationStack {
 			Form {
-				Section {
-					TextField("Name or short description", text: $recording.label, axis: .vertical)
-						.lineLimit(1...3)
-						.autocorrectionDisabled()
+				if recording.isNew {
+					Section {
+						TextField(recording.title, text: $recording.label, axis: .vertical)
+							.lineLimit(1...3)
+							.autocorrectionDisabled()
+					}
+					
+					Section {
+						CueTiming(fade: $recording.fade, delay: $recording.delay, follow: $recording.follow)
+					}
 				}
 				
 				Section {
+					LazyVGrid(columns: aspects, spacing: 8) {
+						ForEach(FeatureGroup.allCases) { feature in
+							Toggle(isOn: Binding { recording.features.contains(feature) } set: { _ in recording.toggle(feature) }) {
+								Label(feature.name, systemImage: feature.symbol)
+									.frame(maxWidth: .infinity)
+							}
+						}
+					}
+					.toggleStyle(.button)
+					.buttonStyle(.bordered)
+					.buttonBorderShape(.capsule)
+					.font(.subheadline)
+					.lineLimit(1)
+					.padding(.vertical, 4)
+				} header: {
+					Text("Store")
+				}
+				
+				Section {
+					if !groups.isEmpty {
+						ScrollView(.horizontal) {
+							HStack(spacing: 8) {
+								ForEach(groups) { group in
+									Toggle(isOn: Binding { recording.contains(group) } set: { _ in recording.toggle(group) }) {
+										Label(group.name, systemImage: group.symbol)
+									}
+									.tint(group.tint.color ?? .accentColor)
+								}
+							}
+							.padding(.vertical, 4)
+						}
+						.scrollIndicators(.hidden)
+						.toggleStyle(.button)
+						.buttonStyle(.bordered)
+						.buttonBorderShape(.capsule)
+						.font(.subheadline)
+					}
+					
 					ForEach(fixtures) { fixture in
 						Toggle(isOn: Binding { recording.lights.contains(fixture.identifier) } set: { _ in recording.toggle(fixture) }) {
-							Label {
-								Text(fixture.name)
-								
-								if recording.selected.contains(fixture.identifier) {
-									Text("Selected")
-								}
-							} icon: {
-								Image(systemName: fixture.symbol(library.type(fixture.typeID)))
-							}
+							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
 						}
 					}
 				} header: {
@@ -45,20 +84,6 @@ struct StoreView: View {
 						.textCase(nil)
 					}
 				}
-				
-				Section {
-					ForEach(FeatureGroup.allCases) { feature in
-						Toggle(isOn: Binding { recording.features.contains(feature) } set: { _ in recording.toggle(feature) }) {
-							Label(feature.name, systemImage: feature.symbol)
-						}
-					}
-				} header: {
-					Text("Store")
-				}
-				
-				Section {
-					SecondsField(title: "Fade", seconds: $recording.fade)
-				}
 			}
 			.navigationTitle(recording.title)
 			.navigationBarTitleDisplayMode(.inline)
@@ -70,7 +95,7 @@ struct StoreView: View {
 				}
 				
 				ToolbarItem(placement: .confirmationAction) {
-					Button("Store", role: .confirm) {
+					Button(recording.isNew ? "Store" : "Update", role: .confirm) {
 						recording.store(context: context)
 						dismiss()
 					}
@@ -78,6 +103,7 @@ struct StoreView: View {
 				}
 			}
 			.sensoryFeedback(.selection, trigger: recording.lights)
+			.sensoryFeedback(.selection, trigger: recording.features)
 		}
 	}
 }

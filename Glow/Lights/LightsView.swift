@@ -9,6 +9,7 @@ struct LightsView: View {
 	@Environment(\.dynamicTypeSize) private var typeSize
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	@State private var isOrdering = false
 	@State private var isAdding = false
@@ -152,7 +153,7 @@ struct LightsView: View {
 					}
 					
 					Button("New Scene", systemImage: "theatermasks") {
-						console.selection.isNaming = true
+						console.selection.building = Look.fresh(among: looks, context: context).identifier
 					}
 					
 					Button("New Group", systemImage: "square.stack.3d.up") {

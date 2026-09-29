@@ -1,16 +1,17 @@
 import SwiftUI
 
-struct CueStatus: View {
-	let text: String
+struct CueStatus<Rest: View>: View {
 	let fade: Fade?
 	let follow: Double?
+	
+	@ViewBuilder let rest: Rest
 	
 	var body: some View {
 		TimelineView(.explicit([.now] + (fade?.moments(follow: follow) ?? []))) { context in
 			switch fade?.phase(at: context.date, follow: follow) {
-			case let .waiting(until): Text("Waits \(Text(timerInterval: context.date...until))")
-			case let .following(until): Text("Next in \(Text(timerInterval: context.date...until))")
-			default: Text(text)
+			case let .waiting(until): Label { Text(timerInterval: context.date...until) } icon: { Image(systemName: CueTime.delay.symbol) }
+			case let .following(until): Label { Text(timerInterval: context.date...until) } icon: { Image(systemName: CueTime.follow.symbol) }
+			default: rest
 			}
 		}
 		.monospacedDigit()

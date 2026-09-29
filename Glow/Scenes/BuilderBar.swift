@@ -11,13 +11,10 @@ struct BuilderBar: View {
 	
 	@State private var recording: Recording?
 	@State private var editing: Cue?
-	@State private var renaming: Cue?
-	@State private var label = ""
-	@State private var isRenaming = false
-	@State private var renamed = ""
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
+			@Bindable var look = look
 			let list = CueList(look, cues: cues, fixtures: fixtures)
 			let held = look.cues(among: cues)
 			let index = list.index(of: console.playback.cue(of: look.identifier))
@@ -34,29 +31,25 @@ struct BuilderBar: View {
 						.background(tint, in: .circle)
 					
 					VStack(alignment: .leading, spacing: 1) {
-						Button {
-							renamed = look.name
-							isRenaming = true
-						} label: {
-							HStack(spacing: 4) {
-								Text(look.name)
-									.font(.headline)
-									.lineLimit(1)
-								
-								Image(systemName: "pencil")
-									.font(.caption)
-									.foregroundStyle(.secondary)
-							}
-							.contentShape(.rect)
-						}
-						.buttonStyle(.plain)
-						.accessibilityHint("Renames the scene.")
+						TextField("Name", text: $look.name)
+							.font(.headline)
+							.autocorrectionDisabled()
+							.submitLabel(.done)
 						
-						Text(next.hint)
-							.font(.caption)
-							.foregroundStyle(.secondary)
-							.lineLimit(1)
-							.contentTransition(.numericText())
+						HStack(spacing: 6) {
+							Text(next.hint)
+								.contentTransition(.numericText())
+							
+							if next.features.count < FeatureGroup.allCases.count {
+								ForEach(FeatureGroup.allCases.filter(next.features.contains)) { feature in
+									Image(systemName: feature.symbol)
+										.accessibilityLabel(feature.name)
+								}
+							}
+						}
+						.font(.caption)
+						.foregroundStyle(.secondary)
+						.lineLimit(1)
 					}
 					
 					Spacer(minLength: 0)
@@ -101,22 +94,19 @@ struct BuilderBar: View {
 											}
 										}
 										.font(.subheadline)
+										.foregroundStyle(position == index ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
 										.padding(.horizontal, 12)
 										.frame(minWidth: 40, minHeight: 40)
-										.background(position == index ? tint.opacity(0.3) : Color(.tertiarySystemFill), in: .capsule)
+										.background(position == index ? tint : Color(.tertiarySystemFill), in: .capsule)
 										.contentShape(.capsule)
 									}
 									.buttonStyle(.plain)
 									.id(cue.identifier)
+									.transition(.scale.combined(with: .opacity))
 									.accessibilityLabel("Cue \(position + 1), \(cue.title(at: position))")
 									.accessibilityAddTraits(position == index ? .isSelected : [])
 									.contextMenu {
-										Button("Rename", systemImage: "pencil") {
-											label = cue.label
-											renaming = cue
-										}
-										
-										Button("Timing and Lights", systemImage: "slider.horizontal.3") {
+										Button("Edit", systemImage: "slider.horizontal.3") {
 											editing = cue
 										}
 										
@@ -124,8 +114,10 @@ struct BuilderBar: View {
 											recording = Recording(.cue(look, after: cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 										}
 										
-										Button("Store into Cue", systemImage: "square.and.arrow.down") {
-											recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+										if console.canUpdate(cue) {
+											Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
+												recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+											}
 										}
 										
 										Button("Delete Cue", systemImage: "trash", role: .destructive) {
@@ -144,20 +136,23 @@ struct BuilderBar: View {
 					}
 					.frame(maxWidth: held.isEmpty ? 0 : .infinity, alignment: .leading)
 					
-					Menu {
-						Button("Choose Lights and Aspects", systemImage: "slider.horizontal.3") {
-							recording = next
-						}
+					Button("Choose Lights and Aspects", systemImage: "slider.horizontal.3") {
+						recording = next
+					}
+					.labelStyle(.iconOnly)
+					.buttonStyle(.glass)
+					.buttonBorderShape(.circle)
+					.controlSize(.large)
+					
+					Button {
+						next.store(context: context)
 					} label: {
 						Label(held.isEmpty ? "Store Cue 1" : "Cue \(next.number)", systemImage: "plus")
 							.frame(maxWidth: held.isEmpty ? .infinity : nil, minHeight: 44)
-					} primaryAction: {
-						next.store(context: context)
 					}
 					.buttonStyle(.glassProminent)
 					.tint(tint)
 					.accessibilityLabel("Store Cue \(next.number)")
-					.accessibilityHint("Touch and hold to choose the lights, aspects, name and fade.")
 				}
 				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
@@ -167,32 +162,13 @@ struct BuilderBar: View {
 			.frame(maxWidth: 560)
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
+			.animation(.snappy, value: held.count)
 			.sensoryFeedback(.success, trigger: held.count)
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
 			}
-			.alert("Rename Cue", isPresented: Binding { renaming != nil } set: { if !$0 { renaming = nil } }) {
-				TextField("Name or short description", text: $label)
-				
-				Button("Cancel", role: .cancel) {}
-				
-				Button("Rename") {
-					renaming?.label = label.trimmingCharacters(in: .whitespaces)
-				}
-			}
 			.sheet(item: $editing) { cue in
-				CueEditView(cue: cue, position: held.firstIndex { $0.identifier == cue.identifier } ?? 0)
-			}
-			.alert("Rename Scene", isPresented: $isRenaming) {
-				TextField("Name", text: $renamed)
-					.autocorrectionDisabled()
-				
-				Button("Cancel", role: .cancel) {}
-				
-				Button("Rename") {
-					look.name = renamed.trimmingCharacters(in: .whitespaces)
-				}
-				.disabled(renamed.trimmingCharacters(in: .whitespaces).isEmpty)
+				CueEditView(cue: cue)
 			}
 		}
 	}

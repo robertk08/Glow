@@ -11,10 +11,12 @@ final class Recording: Identifiable {
 	
 	let destination: Destination
 	let selected: Set<String>
-	var label: String
+	var label = ""
 	var lights: Set<String>
 	var features = Set(FeatureGroup.allCases)
-	var fade: Double
+	var fade = 0.0
+	var delay = 0.0
+	var follow: Double?
 	
 	private let console: Console
 	private let fixtures: [Fixture]
@@ -33,28 +35,34 @@ final class Recording: Identifiable {
 		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
 		lights = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		
-		switch destination {
-		case let .cue(look, _):
-			label = ""
+		if case let .cue(look, _) = destination {
+			features = console.selection.aspects
 			fade = look.cues(among: cues).last?.fade ?? 0
-		case let .into(cue):
-			label = cue.label
-			fade = cue.fade
 		}
+	}
+	
+	var isNew: Bool {
+		guard case .cue = destination else { return false }
+		return true
 	}
 	
 	var title: String {
 		switch destination {
 		case .cue: "Cue \(number)"
-		case .into: "Store into Cue"
+		case .into: "Update Cue \(number)"
 		}
 	}
 	
 	var number: Int {
-		guard case let .cue(look, after) = destination else { return 0 }
-		let held = look.cues(among: cues)
-		guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }) else { return held.count + 1 }
-		return position + 2
+		switch destination {
+		case let .cue(look, after):
+			let held = look.cues(among: cues)
+			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }) else { return held.count + 1 }
+			return position + 2
+		case let .into(cue):
+			let held = looks.first { $0.identifier == cue.lookID }?.cues(among: cues) ?? []
+			return (held.firstIndex { $0.identifier == cue.identifier } ?? 0) + 1
+		}
 	}
 	
 	var hint: String {
@@ -91,6 +99,21 @@ final class Recording: Identifiable {
 		}
 	}
 	
+	func contains(_ group: FixtureGroup) -> Bool {
+		let members = Set(group.members.map(\.identifier))
+		return !members.isEmpty && members.isSubset(of: lights)
+	}
+	
+	func toggle(_ group: FixtureGroup) {
+		let members = Set(group.members.map(\.identifier))
+		
+		if members.isSubset(of: lights) {
+			lights.subtract(members)
+		} else {
+			lights.formUnion(members)
+		}
+	}
+	
 	func toggle(_ feature: FeatureGroup) {
 		if features.contains(feature) {
 			features.remove(feature)
@@ -121,8 +144,11 @@ final class Recording: Identifiable {
 			
 			let cue = Cue(lookID: look.identifier, sortIndex: sortIndex, fade: fade, levels: levels)
 			cue.label = label
+			cue.delay = delay
+			cue.follow = follow
 			context.insert(cue)
 			landing = (cue.identifier, look)
+			console.selection.aspects = features
 			
 			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {
 				look.tap = .next
@@ -130,8 +156,6 @@ final class Recording: Identifiable {
 			}
 		case let .into(cue):
 			cue.levels = cue.levels.merging(levels)
-			cue.label = label
-			cue.fade = fade
 			if console.playback.cue(of: cue.lookID) == cue.identifier, let look = looks.first(where: { $0.identifier == cue.lookID }) { landing = (cue.identifier, look) }
 		}
 		
