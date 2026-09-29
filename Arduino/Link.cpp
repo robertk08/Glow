@@ -49,6 +49,16 @@ class Sockets : public WebSocketsServerCore {
 
   void keep() { _kept = true; }
 
+  size_t queued(uint8_t num) {
+    WSclient_t *client = &_clients[num];
+    return clientIsConnected(client) ? static_cast<Outlet *>(client->tcp)->queued() : 0;
+  }
+
+  bool pour(uint8_t num, uint8_t *p, size_t n) {
+    WSclient_t *client = &_clients[num];
+    return clientIsConnected(client) && write(client, p, n) == n;
+  }
+
  private:
   static const size_t LINE_LIMIT = 1024;
 
@@ -144,7 +154,8 @@ Sockets g_ws;
 const uint8_t OP_DOCUMENT = 0x03;
 const uint8_t NO_CLIENT   = 0xFF;
 const uint8_t EMPTY_MAP[] = {STAGE_MAP};
-const size_t  HEADROOM    = WEBSOCKETS_MAX_HEADER_SIZE;
+const size_t  HEADER      = 4;
+const size_t  STATED_AT   = 2 * HEADER + STAGE_FRAME_MAX;
 
 const uint32_t WS_PING_MS     = 4000;
 const uint32_t WS_PONG_MS     = 2000;
@@ -164,7 +175,7 @@ struct Kept {
 
 RTC_NOINIT_ATTR Kept g_kept;
 const uint32_t STEP_MS        = 5;
-const uint32_t RELAY_MS       = 40;
+const uint32_t RELAY_MS       = 20;
 const int      PLAY_STACK     = 2048;
 const int      PLAY_PRIORITY  = 4;
 const int      PLAY_CORE      = 1;
@@ -173,14 +184,12 @@ static_assert(WEBSOCKETS_SERVER_CLIENT_MAX <= STAGE_CLIENTS, "every phone needs 
 
 Stage            *g_stage      = nullptr;
 SemaphoreHandle_t g_lock       = nullptr;
-uint8_t           g_frame[HEADROOM + STAGE_FRAME_MAX];
-uint8_t          *g_state      = nullptr;
-size_t            g_stateRoom  = 0;
+uint8_t           g_frame[STAGE_FRAME_MAX];
+uint8_t          *g_batch      = nullptr;
+size_t            g_batchRoom  = 0;
 bool              g_haveSource = false;
 volatile bool     g_restated   = false;
-uint32_t          g_stated     = 0;
 uint32_t          g_stepped    = 0;
-uint32_t          g_relayed    = 0;
 uint32_t          g_fed        = 0;
 portMUX_TYPE      g_sessions   = portMUX_INITIALIZER_UNLOCKED;
 float             g_master     = 1;
@@ -190,6 +199,8 @@ bool         g_admitted[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 bool         g_greeted[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
 uint16_t     g_seq[WEBSOCKETS_SERVER_CLIENT_MAX]      = {};
 uint16_t     g_framed[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
+bool         g_behind[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
+uint32_t     g_relayed[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
 char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
@@ -229,35 +240,44 @@ void stamp(uint8_t *at, uint16_t seq) {
   at[1] = (uint8_t)(seq >> 8);
 }
 
-void announce(uint8_t to) {
-  size_t n;
-  {
-    Hold   hold;
-    size_t need = HEADROOM + stage_state(g_stage, millis(), nullptr, 0);
-    if (need > g_stateRoom) {
-      free(g_state);
-      g_state     = (uint8_t *)malloc(need);
-      g_stateRoom = g_state ? need : 0;
-    }
-    n = g_state ? stage_state(g_stage, millis(), g_state + HEADROOM, g_stateRoom - HEADROOM) : 0;
+size_t put(uint8_t *at, const uint8_t *body, size_t length) {
+  size_t n = 0;
+  at[n++] = 0x82;
+  if (length >= 126) {
+    at[n++] = 126;
+    at[n++] = (uint8_t)(length >> 8);
   }
-  for (uint8_t i = 0; n && i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if ((to != NO_CLIENT && i != to) || !admitted(i) || !g_greeted[i]) continue;
-    g_state[HEADROOM + 1] = i;
-    stamp(g_state + HEADROOM + 2, g_seq[i]);
-    g_ws.sendBIN(i, g_state, n, true);
-  }
+  at[n++] = (uint8_t)length;
+  memmove(at + n, body, length);
+  return n + length;
 }
 
-bool refresh(uint8_t num, bool whole) {
-  size_t n;
+bool deliver(uint8_t num, bool whole) {
+  size_t framed, stated = 0;
   {
-    Hold hold;
-    n = stage_frame(g_stage, num, whole, g_frame + HEADROOM, STAGE_FRAME_MAX);
+    Hold   hold;
+    size_t need = STATED_AT + stage_state(g_stage, millis(), nullptr, 0);
+    if (need > g_batchRoom) {
+      free(g_batch);
+      g_batch     = (uint8_t *)malloc(need);
+      g_batchRoom = g_batch ? need : 0;
+    }
+    if (!g_batch) return false;
+    framed = stage_frame(g_stage, num, whole, g_frame, sizeof(g_frame));
+    if (g_behind[num]) stated = stage_state(g_stage, millis(), g_batch + STATED_AT, g_batchRoom - STATED_AT);
   }
-  if (!n) return false;
-  stamp(g_frame + HEADROOM + 1, g_framed[num]);
-  return g_ws.sendBIN(num, g_frame, n, true);
+  size_t n = 0;
+  if (framed) {
+    stamp(g_frame + 1, g_framed[num]);
+    n = put(g_batch, g_frame, framed);
+  }
+  if (stated) {
+    g_batch[STATED_AT + 1] = num;
+    stamp(g_batch + STATED_AT + 2, g_seq[num]);
+    n += put(g_batch + n, g_batch + STATED_AT, stated);
+    g_behind[num] = false;
+  }
+  return n && g_ws.pour(num, g_batch, n);
 }
 
 void play(void *) {
@@ -277,14 +297,14 @@ void step(bool forced = false) {
   if (!forced && at - g_stepped < STEP_MS) return;
   g_stepped = at;
 
-  bool due = at - g_relayed >= RELAY_MS;
-  for (uint8_t i = 0; due && i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (admitted(i) && g_greeted[i] && refresh(i, false)) g_relayed = at;
+  if (g_restated) {
+    g_restated = false;
+    for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) g_behind[i] = true;
   }
-  if (!g_restated || at - g_stated < RELAY_MS) return;
-  g_restated = false;
-  g_stated   = at;
-  announce(NO_CLIENT);
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (!admitted(i) || !g_greeted[i] || at - g_relayed[i] < RELAY_MS || g_ws.queued(i)) continue;
+    if (deliver(i, false)) g_relayed[i] = at;
+  }
 }
 
 const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
@@ -400,8 +420,9 @@ void greet(uint8_t num) {
   reply(num, out);
   String list = Shows::message();
   g_ws.sendTXT(num, list);
-  if (g_haveSource) refresh(num, true);
-  announce(num);
+  g_behind[num] = true;
+  deliver(num, g_haveSource);
+  g_relayed[num] = millis();
 }
 
 void release() {

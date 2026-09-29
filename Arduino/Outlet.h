@@ -7,6 +7,7 @@ class Outlet : public NetworkClient {
 
   using NetworkClient::write;
   size_t write(const uint8_t *data, size_t size) override;
+  size_t queued();
 
   uint32_t patience;
 };

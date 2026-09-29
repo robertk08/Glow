@@ -142,6 +142,9 @@ whichever answers first.
   the channels that changed, after a 16-bit sequence number. A device numbers
   its frames, the controller answers each device with the last number it applied
   from it, and the device ignores values for channels it wrote after that.
+  The controller sends a device its changed channels and the playback state in
+  one write, at most every 20 ms and only once the device has acknowledged
+  everything sent to it before, so a slow device gets fewer, newer frames.
   `0x03` documents carry one show object. `0x05` is a playback command from a
   device and the playback state from the controller. `0x06` is the patch map,
   telling the controller which channels fade and which master scales.
