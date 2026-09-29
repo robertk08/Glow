@@ -138,6 +138,8 @@ whichever answers first.
   `shows`, the source frame when the controller has one, and the playback
   state. JSON types are strict: a fraction is not an integer, a boolean is not
   `1`.
+- The controller takes five devices. A sixth gets `full` and is closed, and
+  the app says so and tries again every 3 s.
 - `0x02` frames carry the source, values before master and blackout, and only
   the channels that changed, after a 16-bit sequence number. A device numbers
   its frames, the controller answers each device with the last number it applied

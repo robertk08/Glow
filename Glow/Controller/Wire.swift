@@ -270,6 +270,8 @@ nonisolated enum Wire {
 			case "locked":
 				guard let lock = try? JSONDecoder().decode(Lock.self, from: data) else { return nil }
 				return .locked(lock)
+			case "full":
+				return .state(.full)
 			case "password":
 				if let set = envelope.set { return .password(isSet: set) }
 				return .passwordRefused(envelope.refused == "wrong" ? .wrong(wait: envelope.wait ?? 0) : .failed)

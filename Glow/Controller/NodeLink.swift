@@ -73,6 +73,7 @@ actor NodeLink {
 	
 	private func supervise(_ endpoint: NodeEndpoint) async {
 		var failures = 0
+		var ended: LinkState?
 		while !Task.isCancelled {
 			var hosts: [String] = []
 			
@@ -87,11 +88,16 @@ actor NodeLink {
 				return target.url(scheme: "ws", path: "/ws")
 			}
 			
-			continuation.yield(.state(.connecting))
-			let reachedNode = await run(urls)
+			if ended != .full { continuation.yield(.state(.connecting)) }
+			ended = await run(urls)
 			if Task.isCancelled { return }
 			
-			failures = reachedNode ? 0 : failures + 1
+			failures = ended == nil ? failures + 1 : 0
+			if ended == .full {
+				try? await Task.sleep(for: .seconds(3))
+				continue
+			}
+			
 			for remaining in stride(from: min(3, failures), to: 0, by: -1) {
 				if Task.isCancelled { return }
 				continuation.yield(.state(.retrying(seconds: remaining)))
@@ -100,8 +106,8 @@ actor NodeLink {
 		}
 	}
 	
-	private func run(_ urls: [URL]) async -> Bool {
-		guard let link = await first(of: urls.map { NWConnection(to: .url($0), using: Self.parameters()) }), !Task.isCancelled else { return false }
+	private func run(_ urls: [URL]) async -> LinkState? {
+		guard let link = await first(of: urls.map { NWConnection(to: .url($0), using: Self.parameters()) }), !Task.isCancelled else { return nil }
 		connection = link
 		await send(Wire.Command.hello.message)
 		startHeartbeat()
@@ -115,6 +121,7 @@ actor NodeLink {
 			
 			switch event {
 			case .locked: arrived = .locked
+			case let .state(next): arrived = next
 			case .some: arrived = .connected
 			case nil: break
 			}
@@ -128,7 +135,7 @@ actor NodeLink {
 		}
 		
 		if connection === link { close() }
-		return reached
+		return reached ? state : nil
 	}
 	
 	private static func parameters() -> NWParameters {

@@ -5,6 +5,7 @@ nonisolated enum LinkState: Sendable, Equatable {
 	case connecting
 	case connected
 	case locked
+	case full
 	case retrying(seconds: Int)
 	
 	var isConnected: Bool { self == .connected }
@@ -15,6 +16,7 @@ nonisolated enum LinkState: Sendable, Equatable {
 		case .connecting: "Connecting"
 		case .connected: "Connected"
 		case .locked: "Locked"
+		case .full: "Controller full, waiting for a device to leave"
 		case let .retrying(seconds): "Reconnecting in \(seconds)s"
 		}
 	}
@@ -30,6 +32,7 @@ nonisolated enum LinkState: Sendable, Equatable {
 		case .connecting: "wifi"
 		case .connected: "wifi"
 		case .locked: "lock.fill"
+		case .full: "person.3.fill"
 		case .retrying: "wifi.exclamationmark"
 		}
 	}
@@ -40,6 +43,7 @@ nonisolated enum LinkState: Sendable, Equatable {
 		case .connecting: .orange
 		case .connected: .green
 		case .locked: .orange
+		case .full: .orange
 		case .retrying: .orange
 		}
 	}

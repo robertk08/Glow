@@ -18,9 +18,16 @@
 namespace Link {
 namespace {
 
+const uint8_t FULL[] = {0x81, 12, '{', '"', 't', '"', ':', '"', 'f', 'u', 'l', 'l', '"', '}', 0x88, 0};
+
 class Sockets : public WebSocketsServerCore {
  public:
   int adopt(Outlet *tcp, const char *url) {
+    if (full()) {
+      turnAway(tcp);
+      return -1;
+    }
+
     WSclient_t *client = handleNewClient(tcp);
     if (!client) return -1;
 
@@ -66,6 +73,36 @@ class Sockets : public WebSocketsServerCore {
   size_t   _got[WEBSOCKETS_SERVER_CLIENT_MAX]    = {};
   String   _lines[WEBSOCKETS_SERVER_CLIENT_MAX];
   bool     _kept = false;
+
+  bool full() {
+    for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+      if (!clientIsConnected(&_clients[i])) return false;
+    }
+    return true;
+  }
+
+  void turnAway(Outlet *tcp) {
+    String line, key;
+    for (int c; (c = tcp->read()) >= 0;) {
+      if (c != '\n') {
+        line += (char)c;
+        continue;
+      }
+      line.trim();
+      if (!strncasecmp(line.c_str(), "Sec-WebSocket-Key:", 18)) key = line.substring(18);
+      if (!line.length()) break;
+      line = String();
+    }
+    key.trim();
+
+    if (key.length()) {
+      String answer = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + acceptKey(key) + "\r\n\r\n";
+      tcp->write((const uint8_t *)answer.c_str(), answer.length());
+      tcp->write(FULL, sizeof(FULL));
+    }
+    tcp->stop();
+    delete tcp;
+  }
 
   static size_t span(const WSclient_t *client) {
     const uint8_t *head = client->cWsHeader;
