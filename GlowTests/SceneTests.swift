@@ -311,6 +311,21 @@ struct SceneTests {
 		#expect(rig.value(1) == 50)
 	}
 	
+	@Test func aCueWithADelayLetsTheFadeBeforeItRunOnUntilItStarts() async throws {
+		let rig = try rig()
+		rig.add(1, fade: 3, [(0, 1, 250)])
+		rig.add(2, fade: 1, [(0, 1, 0)]).delay = 1
+		
+		rig.console.go(rig.list)
+		try await until { (40...120).contains(rig.value(1)) }
+		rig.console.go(rig.list)
+		let paused = rig.value(1)
+		try await Task.sleep(for: .milliseconds(500))
+		
+		#expect(rig.value(1) > paused + 20)
+		try await until(within: 5) { rig.value(1) == 0 }
+	}
+	
 	@Test func aSceneStoresOnlyTheLightsAndAspectsChosen() throws {
 		let rig = try rig()
 		rig.console.set(255, at: DMXAddress(1)!)

@@ -68,6 +68,7 @@ typedef struct Scene {
   uint8_t       step;
   uint8_t       caller;
   bool          wants;
+  bool          waiting;
   uint32_t      started;
   Step          current;
 } Scene;
@@ -300,6 +301,14 @@ static void mention(Stage *stage, const Step *s, bool held, bool valued) {
   }
 }
 
+static void unmention(Stage *stage, const Step *s) {
+  Reader r = runs(s);
+  Run    x;
+  while (run(&r, true, &x)) {
+    for (int a = x.start; a < x.start + x.count; a++) unmark(stage->wanted, a);
+  }
+}
+
 static void settle(Stage *stage, const Scene *skip) {
   for (int a = 1; a <= SLOTS; a++) {
     if (bit(stage->wanted, a)) stage->target[a] = stage->base[a];
@@ -359,6 +368,7 @@ static void enter(Stage *stage, Scene *scene, size_t at, uint8_t index, uint32_t
   scene->nextAt  = (size_t)(r.at - scene->steps);
   scene->started = now;
   scene->wants   = wanting(scene);
+  scene->waiting = false;
 
   unlink(stage, scene);
   Scene **link = &stage->scenes;
@@ -366,11 +376,19 @@ static void enter(Stage *stage, Scene *scene, size_t at, uint8_t index, uint32_t
   *link = scene;
 }
 
-static void move(Stage *stage, Scene *scene) {
+static void move(Stage *stage, Scene *scene, uint32_t now) {
+  uint32_t start = scene->started + scene->current.delay;
+  scene->waiting = (int32_t)(now - start) < 0;
+  if (scene->waiting) {
+    unmention(stage, &scene->current);
+    settle(stage, scene);
+    return aim(stage, start, scene->current.fade);
+  }
+
   mention(stage, &scene->current, true, false);
   settle(stage, scene);
   mention(stage, &scene->current, false, true);
-  aim(stage, scene->started + scene->current.delay, scene->current.fade);
+  aim(stage, start, scene->current.fade);
 }
 
 static void load(Scene *scene, const Program *p, uint8_t *steps) {
@@ -402,7 +420,7 @@ static void play(Stage *stage, const char *id, Reader *r, uint8_t caller, uint32
   scene->caller = caller;
   load(scene, &p, steps);
   enter(stage, scene, 0, 0, now);
-  if (moving) return move(stage, scene);
+  if (moving) return move(stage, scene, now);
 
   Reader values = runs(&scene->current);
   Run    x;
@@ -424,11 +442,7 @@ static void more(Stage *stage, Scene *scene, Reader *r, uint8_t caller, uint32_t
     uint8_t *steps = (uint8_t *)malloc(p.size);
     if (!steps) return;
     mention(stage, &scene->current, true, true);
-    Reader kept = runs(&found);
-    Run    x;
-    while (run(&kept, true, &x)) {
-      for (int a = x.start; a < x.start + x.count; a++) unmark(stage->wanted, a);
-    }
+    unmention(stage, &found);
     load(scene, &p, steps);
     scene->current.runs = steps + (found.runs - p.steps);
     scene->current.size = found.size;
@@ -553,6 +567,10 @@ bool stage_tick(Stage *stage, uint32_t now) {
     if (paired && (stage->channels[a].flags & WIDE)) put(stage, stage->channels[a].partner, (uint8_t)(value & 0xFF), NONE);
   }
 
+  for (Scene *scene = stage->scenes; scene; scene = scene->next) {
+    if (scene->waiting) move(stage, scene, now);
+  }
+
   bool   restated = false;
   size_t left     = 0;
   for (Scene *scene = stage->scenes; scene; scene = scene->next) left++;
@@ -564,7 +582,7 @@ bool stage_tick(Stage *stage, uint32_t now) {
     if (overdue && advancing(scene)) {
       bool last = scene->step + 1 == scene->count;
       enter(stage, scene, last ? scene->loopAt : scene->nextAt, last ? scene->loop : scene->step + 1, start);
-      move(stage, scene);
+      move(stage, scene, now);
       restated = true;
     } else if (overdue && scene->wants && scene->caller != NONE) {
       scene->caller = NONE;
@@ -580,7 +598,7 @@ bool stage_busy(const Stage *stage) {
     if (stage->motions[a].length & LIVE) return true;
   }
   for (const Scene *scene = stage->scenes; scene; scene = scene->next) {
-    if (advancing(scene)) return true;
+    if (advancing(scene) || scene->waiting) return true;
   }
   return false;
 }
