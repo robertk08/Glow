@@ -29,6 +29,92 @@ class Sockets : public WebSocketsServerCore {
     handleHeader(client, &requestLine);
     return client->num;
   }
+
+  bool serve(uint8_t num, bool reading) {
+    WSclient_t *client = &_clients[num];
+    if (!clientIsConnected(client)) return false;
+
+    bool heard = reading && client->tcp->available() > 0;
+    if (heard && client->status == WSC_HEADER) handshake(client);
+    else if (heard) take(client);
+    handleHBPing(client);
+    handleHBTimeout(client);
+    return heard;
+  }
+
+  void drop(uint8_t num) {
+    free(_bodies[num]);
+    _bodies[num] = nullptr;
+    _lines[num]  = String();
+  }
+
+ private:
+  static const size_t LINE_LIMIT = 1024;
+
+  uint8_t *_bodies[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
+  size_t   _got[WEBSOCKETS_SERVER_CLIENT_MAX]    = {};
+  String   _lines[WEBSOCKETS_SERVER_CLIENT_MAX];
+
+  static size_t span(const WSclient_t *client) {
+    const uint8_t *head = client->cWsHeader;
+    if (client->cWsRXsize < 2) return 2;
+
+    size_t size = head[1] & 0x80 ? 6 : 2;
+    if ((head[1] & 0x7F) == 126) size += 2;
+    if ((head[1] & 0x7F) == 127) size += 8;
+    return size;
+  }
+
+  void handshake(WSclient_t *client) {
+    String &line = _lines[client->num];
+    for (int c; client->status == WSC_HEADER && (c = client->tcp->read()) >= 0;) {
+      if (c == '\n') {
+        handleHeader(client, &line);
+        line = String();
+      } else if (line.length() < LINE_LIMIT) {
+        line += (char)c;
+      } else {
+        return clientDisconnect(client);
+      }
+    }
+  }
+
+  void take(WSclient_t *client) {
+    uint8_t            num    = client->num;
+    uint8_t           *head   = client->cWsHeader;
+    WSMessageHeader_t *header = &client->cWsHeaderDecode;
+
+    if (!_bodies[num]) {
+      for (size_t need = span(client); client->cWsRXsize < need; need = span(client)) {
+        int n = client->tcp->read(head + client->cWsRXsize, need - client->cWsRXsize);
+        if (n <= 0) return;
+        client->cWsRXsize += n;
+      }
+
+      size_t length = head[1] & 0x7F;
+      if (length == 126) length = (size_t)head[2] << 8 | head[3];
+      if (length == 127) length = head[2] | head[3] | head[4] | head[5] ? SIZE_MAX : (size_t)head[6] << 24 | (size_t)head[7] << 16 | (size_t)head[8] << 8 | head[9];
+      header->fin        = head[0] >> 7;
+      header->opCode     = (WSopcode_t)(head[0] & 0x0F);
+      header->mask       = head[1] >> 7;
+      header->payloadLen = length;
+      header->maskKey    = header->mask ? head + client->cWsRXsize - 4 : nullptr;
+
+      if (length > WEBSOCKETS_MAX_DATA_SIZE) return WebSockets::clientDisconnect(client, 1009);
+      if (!length) return handleWebsocketPayloadCb(client, true, nullptr);
+      _bodies[num] = (uint8_t *)malloc(length + 1);
+      _got[num]    = 0;
+      if (!_bodies[num]) return WebSockets::clientDisconnect(client, 1011);
+    }
+
+    int n = client->tcp->read(_bodies[num] + _got[num], header->payloadLen - _got[num]);
+    if (n > 0) _got[num] += n;
+    if (_got[num] < header->payloadLen) return;
+
+    uint8_t *payload = _bodies[num];
+    _bodies[num]     = nullptr;
+    handleWebsocketPayloadCb(client, true, payload);
+  }
 };
 
 Sockets g_ws;
@@ -86,6 +172,7 @@ char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 uint32_t     g_heard[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
+Store::Job   g_parked[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
 
 struct Hold {
   Hold() { xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -233,19 +320,14 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   char id[Store::NAME_LIMIT];
   if (showLen >= Store::NAME_LIMIT || folderLen >= Store::NAME_LIMIT || idLen >= Store::NAME_LIMIT) return;
   names(p, show, folder, id);
-  if (!Store::safe(show) || !Store::safe(folder) || !Store::safe(id)) return answer(num, p, false);
+  if (!Store::ready() || !Store::safe(show) || !Store::safe(folder) || !Store::safe(id)) return answer(num, p, false);
 
-  uint8_t   *frame = (uint8_t *)malloc(len);
-  Store::Job job   = {frame, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
-  if (frame) memcpy(frame, p, len);
+  uint8_t *frame = (uint8_t *)malloc(len);
+  if (!frame) return answer(num, p, false);
+  memcpy(frame, p, len);
 
-  for (uint32_t since = millis(); frame && millis() - since < STORE_WAIT_MS; delay(1)) {
-    if (Store::submit(job)) return;
-    settle();
-    step();
-  }
-  free(frame);
-  answer(num, p, false);
+  Store::Job job = {frame, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
+  if (!Store::submit(job)) g_parked[num] = job;
 }
 
 void onBinary(uint8_t num, uint8_t *p, size_t len) {
@@ -469,6 +551,9 @@ void arrive(uint8_t num) {
 }
 
 void leave(uint8_t num) {
+  free(g_parked[num].frame);
+  g_parked[num].frame = nullptr;
+  g_ws.drop(num);
   {
     Hold hold;
     if (stage_forget(g_stage, num)) g_restated = true;
@@ -479,6 +564,13 @@ void leave(uint8_t num) {
   g_session[num][0] = '\0';
   portEXIT_CRITICAL(&g_sessions);
   Serial.printf("link: phone %u left\n", num);
+}
+
+void listen() {
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (g_parked[i].frame && Store::submit(g_parked[i])) g_parked[i].frame = nullptr;
+    if (g_ws.serve(i, !g_parked[i].frame) || g_parked[i].frame) g_heard[i] = millis();
+  }
 }
 
 void onEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
@@ -513,7 +605,7 @@ void begin() {
 }
 
 void tick() {
-  g_ws.loop();
+  listen();
   step();
   settle();
   if (ESP.getFreeHeap() >= HEAP_FLOOR) g_fed = millis();

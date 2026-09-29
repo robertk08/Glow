@@ -413,23 +413,43 @@ struct ControllerTests {
 		let started = Date()
 		try await Task.sleep(for: .milliseconds(300))
 		let stalled = try await stall()
-		try await Task.sleep(for: .milliseconds(200))
-		let frozen = Rig.second.console.value(at: dimmer)
-		var moved = false
-		
-		for _ in 0..<250 {
-			moved = moved || Rig.second.console.value(at: dimmer) != frozen
-			try await Task.sleep(for: .milliseconds(10))
-		}
-		
+		try await Task.sleep(for: .milliseconds(2700))
 		stalled.cancel()
 		try await Task.sleep(for: .milliseconds(150))
 		let expected = Int(Date().timeIntervalSince(started) / 0.2) % 10
 		let reached = try #require(list.index(of: Rig.second.console.playback.cue(of: look.identifier)))
 		
-		#expect(!moved, "the controller never stalled, so this proves nothing")
 		#expect([9, 0, 1].contains((reached - expected + 10) % 10))
-		print("HARDWARE after a phone held the controller mid message for 2.5 s the chase was on cue \(reached + 1) of 10, its clock said \(expected + 1)")
+		print("HARDWARE after a phone held the controller mid message for 2.7 s the chase was on cue \(reached + 1) of 10, its clock said \(expected + 1)")
+		
+		Rig.first.console.stop(list, snapping: true)
+		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
+	}
+	
+	@Test func theOtherDeviceKeepsGettingFramesAndStatesWhileAPhoneHoldsTheControllerMidMessage() async throws {
+		try inScratch()
+		let light = try #require(Rig.first.lights.first)
+		let dimmer = try #require(DMXAddress(light.address + 7))
+		let look = Look(name: "Probe Held", sortIndex: 8)
+		var levels = Levels()
+		levels.set(140, slot: 8, of: light.identifier)
+		Rig.first.context.insert(look)
+		Rig.first.context.insert(Cue(lookID: look.identifier, sortIndex: 1, fade: 0, levels: levels))
+		try Rig.first.context.save()
+		#expect(await eventually { Rig.second.cues.contains { $0.lookID == look.identifier } } != nil)
+		let list = CueList(look, cues: Rig.first.cues, fixtures: Rig.first.lights)
+		
+		let stalled = try await stall()
+		try await Task.sleep(for: .milliseconds(200))
+		Rig.first.console.set(33, at: dimmer)
+		let framed = await eventually(within: 2) { Rig.second.console.value(at: dimmer) == 33 }
+		Rig.first.console.go(list)
+		let stated = await eventually(within: 2) { Rig.second.console.playback.cue(of: look.identifier) != nil && Rig.second.console.value(at: dimmer) == 140 }
+		stalled.cancel()
+		
+		#expect(framed != nil)
+		#expect(stated != nil)
+		print("HARDWARE while a phone held the controller mid message the other device got a frame in \(Int((framed ?? -1) * 1000)) ms and a cue in \(Int((stated ?? -1) * 1000)) ms")
 		
 		Rig.first.console.stop(list, snapping: true)
 		#expect(await eventually { Rig.second.console.playback.cue(of: look.identifier) == nil } != nil)
@@ -657,6 +677,66 @@ struct ControllerTests {
 		
 		Rig.second.shows.delete(Rig.first.shows.active)
 		#expect(await eventually { Rig.both.allSatisfy { !$0.shows.shows.contains { $0.id == imported } } } != nil)
+	}
+	
+	@Test func twoImportsAtOnceArriveWholeWhileAPhoneHoldsTheControllerMidMessage() async throws {
+		try #require(!Rig.scratch.isEmpty)
+		let url = try #require(Bundle.main.url(forResource: "Demo", withExtension: "json"))
+		var file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
+		
+		for index in file.show.cues.indices {
+			var levels = Levels()
+			
+			for _ in 0..<120 {
+				let light = Identifier.fresh()
+				
+				for slot in 1...12 {
+					levels.set(UInt8.random(in: 0...255), slot: slot, of: light)
+				}
+			}
+			
+			file.show.cues[index].levels = levels.data
+		}
+		
+		let encoder = JSONEncoder()
+		encoder.dateEncodingStrategy = .iso8601
+		let stalled = try await stall()
+		let trickle = Task {
+			while !Task.isCancelled {
+				try? await Task.sleep(for: .seconds(1))
+				try? await stalled.write(Data([0]), timeout: 1)
+			}
+		}
+		
+		for (device, name) in zip(Rig.both, ["Probe Import A", "Probe Import B"]) {
+			file.name = name
+			let saved = FileManager.default.temporaryDirectory.appending(path: "\(name).json")
+			try encoder.encode(file).write(to: saved)
+			#expect(device.shows.adopt(contentsOf: saved))
+		}
+		
+		let took = await eventually(within: 20) {
+			try? await Task.sleep(for: .milliseconds(500))
+			let imported = Rig.first.shows.shows.filter { $0.name.hasPrefix("Probe Import") }
+			guard imported.count == 2 else { return false }
+			
+			for show in imported {
+				guard await NodeStore().show(show.id, at: Rig.first.console.reachable)?.cues.count == file.show.cues.count else { return false }
+			}
+			
+			return true
+		}
+		
+		trickle.cancel()
+		stalled.cancel()
+		#expect(took != nil)
+		print("HARDWARE two imports of \(file.show.cues.count) cues of \(file.show.cues.first?.levels.count ?? 0) bytes each were whole on the controller in \(String(format: "%.2f", took ?? -1))s while a phone held it mid message")
+		
+		for show in Rig.first.shows.shows where show.name.hasPrefix("Probe Import") {
+			Rig.first.shows.delete(show)
+		}
+		
+		#expect(await eventually { Rig.both.allSatisfy { !$0.shows.shows.contains { $0.name.hasPrefix("Probe Import") } && $0.shows.isLoaded } } != nil)
 	}
 	
 	@Test func deletingTheOpenShowMovesEveryoneBack() async throws {

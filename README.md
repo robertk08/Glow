@@ -72,7 +72,10 @@ bridge.
   the controller, and on reconnect the show reloads as the controller holds it.
 - **Nothing on the firmware's main loop waits on flash or a slow client.** HTTP,
   show writes and playback have their own tasks, and a client that accepts
-  nothing for a second is dropped.
+  nothing for a second is dropped. The loop reads each device only as far as
+  its bytes have arrived, so a device that stops mid message holds up nobody
+  else. A document the store has no room for yet waits on its device, which is
+  not read again until the store takes it.
 - **Writing flash pauses DMX** (`Flash::guarded`), so the app writes only on
   change, never on a timer.
 - **Decoders are additive.** Every field decodes with a fallback, so a missing
@@ -201,6 +204,11 @@ password. Networks and the password live in NVS and survive reflashing.
 
 arduino-esp32 core 3.3.12, ESP-IDF 5.5.5, esp_dmx 4.1.0, WebSockets 2.7.2,
 ArduinoJson 7.4.3, HomeSpan 2.1.8.
+
+**Never call the WebSockets library's `loop()`.** It reads a whole message at
+once and waits up to five seconds for a device that stops halfway, which holds
+the loop and every other device. `Link.cpp` reads handshakes and frames itself
+(`Sockets::serve`) and hands finished messages back to the library.
 
 **esp_dmx must be patched.** `Arduino/patch_esp_dmx.sh` (idempotent, defaults
 to `~/Documents/Arduino/libraries/esp_dmx/src`) makes it build against ESP-IDF
