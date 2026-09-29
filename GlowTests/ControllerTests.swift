@@ -715,6 +715,11 @@ struct ControllerTests {
 			try encoder.encode(file).write(to: saved)
 			#expect(device.shows.adopt(contentsOf: saved))
 			#expect(await eventually { Rig.both.allSatisfy { $0.shows.active.name == name && $0.shows.isLoaded } } != nil)
+			#expect(await eventually {
+				try? await Task.sleep(for: .milliseconds(200))
+				let held = await NodeStore().show(device.shows.activeID, at: Rig.first.console.reachable)
+				return (held?.lights.count ?? 0) + (held?.scenes.count ?? 0) + (held?.cues.count ?? 0) > 0
+			} != nil)
 		}
 		
 		#expect(await eventually { Rig.first.shows.shows.count { $0.name.hasPrefix("Probe Import") } == 2 } != nil)

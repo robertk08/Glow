@@ -160,6 +160,7 @@ const size_t  STATED_AT   = 2 * HEADER + STAGE_FRAME_MAX;
 const uint32_t WS_PING_MS     = 4000;
 const uint32_t WS_PONG_MS     = 2000;
 const uint32_t WS_SILENCE_MS  = 8000;
+const size_t   UNACKED_MAX    = 1;
 const uint32_t WS_PATIENCE_MS = 1000;
 const uint32_t STORE_WAIT_MS  = 5000;
 const uint32_t STARVED_MS     = 5000;
@@ -205,6 +206,7 @@ char         g_nonce[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 char         g_session[WEBSOCKETS_SERVER_CLIENT_MAX][Access::TOKEN_SIZE];
 uint16_t     g_arrival[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 uint32_t     g_heard[WEBSOCKETS_SERVER_CLIENT_MAX]   = {};
+uint32_t     g_drained[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 Store::Job   g_parked[WEBSOCKETS_SERVER_CLIENT_MAX]  = {};
 
 struct Hold {
@@ -292,21 +294,6 @@ void play(void *) {
   }
 }
 
-void step(bool forced = false) {
-  uint32_t at = millis();
-  if (!forced && at - g_stepped < STEP_MS) return;
-  g_stepped = at;
-
-  if (g_restated) {
-    g_restated = false;
-    for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) g_behind[i] = true;
-  }
-  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (!admitted(i) || !g_greeted[i] || at - g_relayed[i] < RELAY_MS || g_ws.queued(i)) continue;
-    if (deliver(i, false)) g_relayed[i] = at;
-  }
-}
-
 const uint8_t *name(const uint8_t *cursor, size_t len, char *out) {
   memcpy(out, cursor, len);
   out[len] = '\0';
@@ -327,9 +314,18 @@ void answer(uint8_t num, const uint8_t *p, bool stored) {
   g_ws.sendTXT(num, g_out, n);
 }
 
+bool drained() {
+  bool all = true;
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (!admitted(i) || !g_greeted[i] || g_ws.queued(i) <= UNACKED_MAX) g_drained[i] = millis();
+    else all = false;
+  }
+  return all;
+}
+
 void settle() {
   Store::Job job;
-  while (Store::settled(job)) {
+  if (drained() && Store::settled(job)) {
     if (job.done && job.stored) {
       char show[Store::NAME_LIMIT];
       char folder[Store::NAME_LIMIT];
@@ -345,6 +341,22 @@ void settle() {
     }
     free(job.frame);
   }
+}
+
+void step(bool forced = false) {
+  uint32_t at = millis();
+  if (!forced && at - g_stepped < STEP_MS) return;
+  g_stepped = at;
+
+  if (g_restated) {
+    g_restated = false;
+    for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) g_behind[i] = true;
+  }
+  for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
+    if (!admitted(i) || !g_greeted[i] || at - g_relayed[i] < RELAY_MS || g_ws.queued(i)) continue;
+    if (deliver(i, false)) g_relayed[i] = at;
+  }
+  settle();
 }
 
 void onDocument(uint8_t num, uint8_t *p, size_t len) {
@@ -647,12 +659,11 @@ void begin() {
 void tick() {
   listen();
   step();
-  settle();
   if (ESP.getFreeHeap() >= HEAP_FLOOR) g_fed = millis();
   if (millis() - g_fed > STARVED_MS) restart("the memory ran out");
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
-    if (g_ws.clientIsConnected(i) && millis() - g_heard[i] > WS_SILENCE_MS) g_ws.disconnect(i);
+    if (g_ws.clientIsConnected(i) && (millis() - g_heard[i] > WS_SILENCE_MS || millis() - g_drained[i] > WS_SILENCE_MS)) g_ws.disconnect(i);
   }
 }
 

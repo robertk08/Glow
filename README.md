@@ -153,7 +153,11 @@ whichever answers first.
   object and at most 12,000 bytes of documents in flight, and ignores a relayed
   edit to an object whose own write is still in flight. Objects over 12,000
   bytes go over HTTP instead (`/api/show/<id>/<folder>/<objid>`), and other
-  devices then get a `doc` notice and fetch that object.
+  devices then get a `doc` notice and fetch that object. The controller answers
+  and relays one stored document at a time, only while every device has
+  acknowledged all but one segment sent to it, so slow devices pause the
+  writers through the full store instead of filling memory. A device that
+  acknowledges nothing for eight seconds is dropped.
 - A playback chain longer than one command's budget (6,000 bytes) is sent in
   parts. Halfway through a part the state asks the device that last commanded
   the scene for the next one, and any device once the part has run out or that
