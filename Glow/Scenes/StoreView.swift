@@ -57,10 +57,7 @@ struct StoreView: View {
 				}
 				
 				Section {
-					Stepper(value: $recording.fade, in: 0...600, step: 0.5) {
-						LabeledContent("Fade", value: Cue.seconds(recording.fade))
-							.monospacedDigit()
-					}
+					SecondsField(title: "Fade", seconds: $recording.fade)
 				}
 			}
 			.navigationTitle(recording.title)

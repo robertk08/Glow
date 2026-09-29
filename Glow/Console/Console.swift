@@ -53,6 +53,7 @@ final class Console {
 	private(set) var patched: Set<Int> = []
 	private(set) var span = Universe.minimumSlots
 	private(set) var resets = 0
+	private(set) var commands = 0
 	
 	private let connection = NodeLink()
 	private let bell: AsyncStream<Void>
@@ -474,7 +475,7 @@ final class Console {
 		case .toggle: toggle(list)
 		case .next: go(list)
 		case .back: back(list)
-		case .flash, .update, .open: break
+		case .flash, .open: break
 		}
 	}
 	
@@ -510,8 +511,12 @@ final class Console {
 	}
 	
 	func go(_ list: CueList) {
-		guard let index = list.next(after: list.index(of: playback.cue(of: list.scene))) else { return }
+		guard let index = upcoming(list) else { return }
 		play(list, at: index)
+	}
+	
+	func upcoming(_ list: CueList) -> Int? {
+		list.index(of: selection.armed[list.scene]) ?? list.next(after: list.index(of: playback.cue(of: list.scene)))
 	}
 	
 	func back(_ list: CueList) {
@@ -524,13 +529,14 @@ final class Console {
 		let cue = list.cues[index]
 		let start = Date.now.addingTimeInterval(cue.delay)
 		flashing.remove(list.scene)
-		playback.play(cue.identifier, of: list.scene, fade: snapping || cue.fade + cue.delay == 0 ? nil : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
+		selection.armed[list.scene] = nil
+		playback.play(cue.identifier, of: list.scene, fade: snapping ? Fade(start: .now, end: .now, follows: false) : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
 	}
 	
 	func land(_ list: CueList, at index: Int) {
 		guard list.cues.indices.contains(index), command(.land, scene: list.scene, body: list.program(from: index, snapping: true)) else { return }
 		flashing.remove(list.scene)
-		playback.play(list.cues[index].identifier, of: list.scene, fade: nil)
+		playback.play(list.cues[index].identifier, of: list.scene, fade: Fade(start: .now, end: .now, follows: false))
 	}
 	
 	func stop(_ list: CueList, snapping: Bool = false) {
@@ -568,6 +574,7 @@ final class Console {
 	@discardableResult private func command(_ action: Wire.Action, scene: String, body: Data) -> Bool {
 		guard isMuted || link.isConnected else { return false }
 		sent = (sent + 1) & 0xFFFF
+		if action == .play || action == .stop { commands += 1 }
 		let message = Wire.command(action, seq: sent, scene: scene, body: body)
 		flush()
 		

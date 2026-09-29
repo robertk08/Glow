@@ -13,6 +13,7 @@ struct RootView: View {
 	
 	@State private var section = "lights"
 	@State private var returning: String?
+	@State private var naming = ""
 	@Namespace private var transition
 	
 	private var tabs: some View {
@@ -87,6 +88,20 @@ struct RootView: View {
 					}
 			}
 		}
+		.alert("New Scene", isPresented: $selection.isNaming) {
+			TextField(Look.suggestedName(among: looks), text: $naming)
+				.autocorrectionDisabled()
+			
+			Button("Cancel", role: .cancel) {
+				naming = ""
+			}
+			
+			Button("Create") {
+				console.selection.building = Look.fresh(among: looks, named: naming, context: context).identifier
+				naming = ""
+			}
+		}
+		.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)
 		.task {
 			shows.reach(console, library: library)
 		}

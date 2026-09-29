@@ -88,10 +88,11 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var tint: String?
 		var tap = SceneAction.toggle
 		var buttons: [SceneAction] = []
+		var size: TileSize?
 		
-		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint, tap, buttons }
+		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint, tap, buttons, size }
 		
-		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil, tap: SceneAction = .toggle, buttons: [SceneAction] = []) {
+		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil, tap: SceneAction = .toggle, buttons: [SceneAction] = [], size: TileSize? = nil) {
 			self.identifier = identifier
 			self.name = name
 			self.sortIndex = sortIndex
@@ -99,13 +100,15 @@ nonisolated struct ShowContents: Codable, Sendable {
 			self.tint = tint
 			self.tap = tap
 			self.buttons = buttons
+			self.size = size
 		}
 		
 		init?(identifier: String, body: Data) {
 			var reader = ByteReader(body)
 			guard reader.byte() == 4, let tap = reader.byte().flatMap({ SceneAction(rawValue: Int($0)) }), let count = reader.byte(), let buttons = reader.bytes(Int(count)) else { return nil }
 			guard let sortIndex = reader.order(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
-			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) })
+			let size = reader.byte().flatMap { TileSize(rawValue: Int($0)) }
+			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) }, size: size)
 		}
 		
 		init(from decoder: any Decoder) throws {
@@ -116,7 +119,8 @@ nonisolated struct ShowContents: Codable, Sendable {
 			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
 			tint = try container.decodeIfPresent(String.self, forKey: .tint)
 			tap = try container.decodeIfPresent(SceneAction.self, forKey: .tap) ?? .toggle
-			buttons = try container.decodeIfPresent([SceneAction].self, forKey: .buttons) ?? []
+			buttons = (try container.decodeIfPresent([Int].self, forKey: .buttons) ?? []).compactMap(SceneAction.init(rawValue:))
+			size = try container.decodeIfPresent(Int.self, forKey: .size).flatMap(TileSize.init(rawValue:))
 		}
 		
 		var body: Data {
@@ -129,6 +133,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 			writer.text(name)
 			writer.text(symbol ?? "")
 			writer.text(tint ?? "")
+			if let size { writer.byte(UInt8(size.rawValue)) }
 			return writer.data
 		}
 	}

@@ -8,6 +8,8 @@ final class Selection {
 	var isSceneOpen = false
 	var scene: String?
 	var building: String?
+	var armed: [String: String] = [:]
+	var isNaming = false
 	
 	var isEmpty: Bool { identifiers.isEmpty }
 	
@@ -45,6 +47,10 @@ final class Selection {
 		guard !identifiers.isSubset(of: patched) else { return }
 		identifiers.formIntersection(patched)
 		isProgrammerOpen = isProgrammerOpen && !isEmpty
+	}
+	
+	func arm(_ cue: String, of scene: String) {
+		armed[scene] = armed[scene] == cue ? nil : cue
 	}
 	
 	func clear() {

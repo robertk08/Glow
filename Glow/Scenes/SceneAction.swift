@@ -1,10 +1,14 @@
 import Foundation
 
 nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable {
-	case toggle, flash, next, back, update, open
+	case toggle = 0
+	case flash = 1
+	case next = 2
+	case back = 3
+	case open = 5
 	
 	static let taps: [SceneAction] = [.next, .toggle, .flash, .open]
-	static let buttons: [SceneAction] = [.toggle, .flash, .next, .back, .update]
+	static let buttons: [SceneAction] = [.toggle, .flash, .next, .back]
 	
 	var id: Int { rawValue }
 	
@@ -14,7 +18,6 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		case .flash: "Flash"
 		case .next: "Next"
 		case .back: "Back"
-		case .update: "Update"
 		case .open: "Open"
 		}
 	}
@@ -34,7 +37,6 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		case .flash: "bolt.fill"
 		case .next: "forward.end.fill"
 		case .back: "backward.end.fill"
-		case .update: "arrow.triangle.2.circlepath"
 		case .open: "list.bullet"
 		}
 	}

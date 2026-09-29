@@ -5,18 +5,15 @@ struct FadeBar: View {
 	let tint: Color
 	
 	var body: some View {
-		TimelineView(.animation(paused: fade == nil)) { context in
-			GeometryReader { proxy in
-				Capsule()
-					.fill(Color(.tertiarySystemFill))
-					.overlay(alignment: .leading) {
-						Capsule()
-							.fill(tint)
-							.frame(width: proxy.size.width * (fade?.fraction(at: context.date) ?? 1))
-					}
+		TimelineView(.explicit([.now] + (fade?.moments(follow: nil) ?? []))) { context in
+			switch fade?.phase(at: context.date, follow: nil) {
+			case .waiting: ProgressView(value: 0)
+			case let .fading(span): ProgressView(timerInterval: span, countsDown: false) {} currentValueLabel: {}
+			default: ProgressView(value: 1)
 			}
 		}
-		.frame(height: 6)
+		.progressViewStyle(.linear)
+		.tint(tint)
 		.accessibilityHidden(true)
 	}
 }

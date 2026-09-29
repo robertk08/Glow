@@ -15,7 +15,6 @@ struct BuilderBar: View {
 	@State private var label = ""
 	@State private var isRenaming = false
 	@State private var renamed = ""
-	@State private var updates = 0
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
@@ -26,7 +25,7 @@ struct BuilderBar: View {
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let tint = look.tint.color ?? .accentColor
 			
-			VStack(alignment: .leading, spacing: 12) {
+			VStack(alignment: .leading, spacing: 14) {
 				HStack(spacing: 12) {
 					Image(systemName: look.symbol)
 						.font(.body.weight(.semibold))
@@ -53,39 +52,36 @@ struct BuilderBar: View {
 						.buttonStyle(.plain)
 						.accessibilityHint("Renames the scene.")
 						
-						Button {
-							recording = next
-						} label: {
-							HStack(spacing: 2) {
-								Text(next.hint)
-									.contentTransition(.numericText())
-								
-								Image(systemName: "chevron.right")
-									.font(.caption2.weight(.semibold))
-									.foregroundStyle(.tertiary)
-							}
+						Text(next.hint)
 							.font(.caption)
 							.foregroundStyle(.secondary)
 							.lineLimit(1)
-							.contentShape(.rect)
-						}
-						.buttonStyle(.plain)
-						.accessibilityHint("Chooses the lights, aspects, name and fade.")
+							.contentTransition(.numericText())
 					}
 					
 					Spacer(minLength: 0)
 					
-					Button(held.isEmpty ? "Cancel" : "Done") {
+					Group {
 						if held.isEmpty {
-							look.remove(with: cues, context: context)
+							Button(role: .close) {
+								look.remove(with: cues, context: context)
+								console.selection.building = nil
+							}
+							.buttonStyle(.glass)
+						} else {
+							Button(role: .confirm) {
+								console.selection.building = nil
+							}
+							.buttonStyle(.glassProminent)
+							.tint(tint)
 						}
-						
-						console.selection.building = nil
 					}
-					.buttonStyle(.glass)
+					.labelStyle(.iconOnly)
+					.buttonBorderShape(.circle)
+					.controlSize(.large)
 				}
 				
-				HStack(spacing: held.isEmpty ? 0 : 8) {
+				HStack(spacing: held.isEmpty ? 0 : 10) {
 					ScrollViewReader { proxy in
 						ScrollView(.horizontal) {
 							HStack(spacing: 6) {
@@ -106,7 +102,7 @@ struct BuilderBar: View {
 										}
 										.font(.subheadline)
 										.padding(.horizontal, 12)
-										.frame(minWidth: 36, minHeight: 34)
+										.frame(minWidth: 40, minHeight: 40)
 										.background(position == index ? tint.opacity(0.3) : Color(.tertiarySystemFill), in: .capsule)
 										.contentShape(.capsule)
 									}
@@ -148,37 +144,30 @@ struct BuilderBar: View {
 					}
 					.frame(maxWidth: held.isEmpty ? 0 : .infinity, alignment: .leading)
 					
-					if let current, let index {
-						Button {
-							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-							updates += 1
-						} label: {
-							Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
-								.frame(minHeight: 44)
+					Menu {
+						Button("Choose Lights and Aspects", systemImage: "slider.horizontal.3") {
+							recording = next
 						}
-						.buttonStyle(.glass)
-						.tint(tint)
-					}
-					
-					Button {
-						next.store(context: context)
 					} label: {
 						Label(held.isEmpty ? "Store Cue 1" : "Cue \(next.number)", systemImage: "plus")
 							.frame(maxWidth: held.isEmpty ? .infinity : nil, minHeight: 44)
+					} primaryAction: {
+						next.store(context: context)
 					}
 					.buttonStyle(.glassProminent)
 					.tint(tint)
 					.accessibilityLabel("Store Cue \(next.number)")
+					.accessibilityHint("Touch and hold to choose the lights, aspects, name and fade.")
 				}
 				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
 			}
 			.padding(16)
-			.frame(maxWidth: 640)
-			.padding(.horizontal, 12)
+			.glassEffect(.regular, in: .rect(cornerRadius: 30, style: .continuous))
+			.frame(maxWidth: 560)
+			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
 			.sensoryFeedback(.success, trigger: held.count)
-			.sensoryFeedback(.success, trigger: updates)
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
 			}

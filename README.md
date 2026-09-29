@@ -111,6 +111,8 @@ These are product decisions the code implements without explaining.
 - Cues track. A cue holds only the lights and aspects stored into it, the rest
   keeps what earlier cues set, and going back undoes what later cues changed.
   After the last cue, Next wraps to the first.
+- A tap on a cue in a scene's list only marks it as the next cue, and Go plays
+  it, so a stray tap never changes the stage mid show.
 - A store takes the selected lights, or every light when none is selected.
   Storing into a cue replaces only the chosen aspects.
 - Fades, delays and follows run on the controller, so they carry on when the

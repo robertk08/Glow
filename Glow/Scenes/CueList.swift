@@ -45,8 +45,12 @@ nonisolated struct CueList: Sendable {
 		return (index + cues.count - 1) % cues.count
 	}
 	
-	func title(at index: Int) -> String {
-		cues[index].label.isEmpty ? "Cue \(index + 1)" : cues[index].label
+	func heading(at index: Int) -> String {
+		cues[index].label.isEmpty ? "Cue \(index + 1)" : "\(index + 1) · \(cues[index].label)"
+	}
+	
+	var isLong: Bool {
+		cues.count > 12
 	}
 	
 	func status(at index: Int?) -> String {
@@ -61,7 +65,7 @@ nonisolated struct CueList: Sendable {
 		}
 		
 		guard cues.count > 1 else { return "On" }
-		return cues[index].label.isEmpty ? "Cue \(index + 1) of \(cues.count)" : "\(index + 1) · \(cues[index].label)"
+		return cues[index].label.isEmpty ? "Cue \(index + 1) of \(cues.count)" : heading(at: index)
 	}
 	
 	func fade(of identifier: String?) -> Double {

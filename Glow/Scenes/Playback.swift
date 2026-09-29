@@ -21,7 +21,7 @@ nonisolated struct Playback: Sendable, Equatable {
 			guard let scene = reader.text(), let cue = reader.text(), let delay = reader.number(), let fade = reader.number(), let elapsed = reader.number(), let wants = reader.byte(), let caller = reader.byte() else { return nil }
 			playing.append(Playing(scene: scene, cue: cue, wants: wants == 1, caller: Int(caller)))
 			let start = date.addingTimeInterval(Double(delay - elapsed) / 1000)
-			if elapsed < delay + fade { fades[scene] = Fade(start: start, end: start.addingTimeInterval(Double(fade) / 1000)) }
+			fades[scene] = Fade(start: start, end: start.addingTimeInterval(Double(fade) / 1000))
 		}
 	}
 	
@@ -29,7 +29,7 @@ nonisolated struct Playback: Sendable, Equatable {
 		playing.first { $0.scene == scene }?.cue
 	}
 	
-	mutating func play(_ cue: String, of scene: String, fade: Fade?) {
+	mutating func play(_ cue: String, of scene: String, fade: Fade) {
 		playing.removeAll { $0.scene == scene }
 		playing.append(Playing(scene: scene, cue: cue))
 		fades[scene] = fade

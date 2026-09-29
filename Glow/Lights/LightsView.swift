@@ -118,7 +118,7 @@ struct LightsView: View {
 				grid
 			}
 		}
-		.safeAreaBar(edge: .bottom) {
+		.safeAreaInset(edge: .bottom) {
 			BuilderBar()
 		}
 		.navigationTitle("Lights")
@@ -149,6 +149,10 @@ struct LightsView: View {
 				Menu("Add", systemImage: "plus") {
 					Button("Add Light", systemImage: "lightbulb") {
 						isAdding = true
+					}
+					
+					Button("New Scene", systemImage: "theatermasks") {
+						console.selection.isNaming = true
 					}
 					
 					Button("New Group", systemImage: "square.stack.3d.up") {

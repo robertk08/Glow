@@ -10,6 +10,7 @@ final class Look {
 	var tintName: String?
 	var tapValue: Int = 0
 	var buttonValues: [Int] = []
+	var sizeValue: Int?
 	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
@@ -18,7 +19,7 @@ final class Look {
 	}
 	
 	var entry: ShowContents.Scene {
-		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons)
+		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons, size: sizeValue.flatMap(TileSize.init(rawValue:)))
 	}
 	
 	func take(_ entry: ShowContents.Scene) {
@@ -29,6 +30,7 @@ final class Look {
 		tintName = entry.tint
 		tap = entry.tap
 		buttons = entry.buttons
+		sizeValue = entry.size?.rawValue
 	}
 	
 	var isGone: Bool {
@@ -43,6 +45,11 @@ final class Look {
 	var buttons: [SceneAction] {
 		get { buttonValues.compactMap(SceneAction.init(rawValue:)) }
 		set { buttonValues = newValue.map(\.rawValue) }
+	}
+	
+	var size: TileSize {
+		get { sizeValue.flatMap(TileSize.init(rawValue:)) ?? (buttons.isEmpty ? .small : .wide) }
+		set { sizeValue = newValue.rawValue }
 	}
 	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
@@ -90,6 +97,7 @@ final class Look {
 		copy.tintName = tintName
 		copy.tapValue = tapValue
 		copy.buttonValues = buttonValues
+		copy.sizeValue = sizeValue
 		context.insert(copy)
 		
 		for cue in self.cues(among: cues) {

@@ -35,12 +35,10 @@ struct SceneBar: View {
 								Text(look.name)
 									.font(.subheadline.weight(.medium))
 								
-								if list.cues.count > 1, let index {
-									Text(list.title(at: index))
-										.font(.caption)
-										.foregroundStyle(.secondary)
-										.contentTransition(.numericText())
-								}
+								CueStatus(text: list.status(at: index), fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow })
+									.font(.caption)
+									.foregroundStyle(.secondary)
+									.contentTransition(.numericText())
 							}
 							.lineLimit(1)
 							
@@ -78,6 +76,5 @@ struct SceneBar: View {
 				MasterBar()
 			}
 		}
-		.sensoryFeedback(.selection, trigger: console.playback)
 	}
 }

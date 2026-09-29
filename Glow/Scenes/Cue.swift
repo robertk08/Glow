@@ -51,7 +51,7 @@ final class Cue {
 		return parts.joined(separator: ", ")
 	}
 	
-	static func seconds(_ value: Double, zero: String = "None") -> String {
-		value > 0 ? "\(value.formatted(.number.precision(.fractionLength(0...1)))) s" : zero
+	private static func seconds(_ value: Double) -> String {
+		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
 	}
 }
