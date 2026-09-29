@@ -7,8 +7,8 @@ struct SceneSettings: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
+	@Environment(\.dynamicTypeSize) private var typeSize
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
-	@ScaledMetric(relativeTo: .headline) private var tileHeight = 150
 	
 	@Bindable var look: Look
 	
@@ -24,17 +24,23 @@ struct SceneSettings: View {
 	
 	@ViewBuilder private var content: some View {
 		let tint = look.tint.color ?? .accentColor
+		let list = CueList(look, cues: cues, fixtures: fixtures)
+		let column = typeSize.isAccessibilitySize ? 300 : tileWidth
 		
 		Form {
 			Section {
-				SceneFace(look: look, list: CueList(look, cues: cues, fixtures: fixtures), showsButtons: true)
-					.frame(width: look.size == .small ? tileWidth : nil, height: look.size == .large ? tileHeight * 2 + 12 : nil)
-					.frame(maxWidth: .infinity)
-					.allowsHitTesting(false)
-					.accessibilityHidden(true)
+				TileLayout(minimum: column, spacing: 12) {
+					SceneFace(look: look, list: list, showsButtons: true)
+						.layoutValue(key: TileSpan.self, value: look.size)
+				}
+				.frame(width: look.size == .small ? column : column * 2 + 12)
+				.frame(maxWidth: .infinity)
+				.padding(.vertical, 8)
+				.allowsHitTesting(false)
+				.accessibilityHidden(true)
+				.listRowBackground(Color.clear)
+				.listRowInsets(EdgeInsets())
 			}
-			.listRowBackground(Color.clear)
-			.listRowInsets(EdgeInsets())
 			
 			Section {
 				TextField("Name", text: $look.name)
@@ -58,6 +64,14 @@ struct SceneSettings: View {
 				}
 			} header: {
 				Text("Tile")
+			}
+			
+			if list.cues.count > 1 {
+				Section {
+					Toggle(isOn: $look.loops) {
+						Label("Loop", systemImage: "repeat")
+					}
+				}
 			}
 			
 			if look.size != .small {
@@ -105,6 +119,7 @@ struct SceneSettings: View {
 				Button("Delete Scene", systemImage: "trash", role: .destructive) {
 					isDeleting = true
 				}
+				.foregroundStyle(.red)
 			}
 		}
 		.environment(\.editMode, .constant(.active))

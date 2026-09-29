@@ -53,10 +53,9 @@ struct SceneFace: View {
 						Text(list.status(at: index))
 					}
 				}
-				.font(isLarge ? .title3.weight(.semibold) : .subheadline)
+				.font(isLarge && isOn ? .title3.weight(.semibold) : .subheadline)
 				.foregroundStyle(isLarge && isOn ? .primary : .secondary)
 				.lineLimit(isLarge ? 2 : 1)
-				.contentTransition(.numericText())
 				
 				if isLarge, list.cues.count > 1, let upcoming {
 					HStack(spacing: 4) {
@@ -67,7 +66,6 @@ struct SceneFace: View {
 					.font(.footnote)
 					.foregroundStyle(.secondary)
 					.lineLimit(1)
-					.contentTransition(.numericText())
 				}
 			}
 			

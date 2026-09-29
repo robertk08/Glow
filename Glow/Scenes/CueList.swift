@@ -2,6 +2,7 @@ import Foundation
 
 nonisolated struct CueList: Sendable {
 	let scene: String
+	let loops: Bool
 	private(set) var cues: [ShowContents.Cue]
 	
 	private let starts: [String: DMXAddress]
@@ -14,6 +15,7 @@ nonisolated struct CueList: Sendable {
 	
 	@MainActor private init(_ look: Look, cues: [Cue], starts: [String: DMXAddress]) {
 		scene = look.identifier
+		loops = look.loops
 		self.cues = look.cues(among: cues).map(\.entry)
 		self.starts = starts
 	}
@@ -35,6 +37,7 @@ nonisolated struct CueList: Sendable {
 	func next(after index: Int?) -> Int? {
 		guard !cues.isEmpty else { return nil }
 		guard let index else { return 0 }
+		guard index + 1 < cues.count || loops else { return nil }
 		return (index + 1) % cues.count
 	}
 	
@@ -43,8 +46,12 @@ nonisolated struct CueList: Sendable {
 		return (index + cues.count - 1) % cues.count
 	}
 	
+	func number(at index: Int) -> String {
+		Cue.number(cues[index].sortIndex)
+	}
+	
 	func heading(at index: Int) -> String {
-		cues[index].label.isEmpty ? "Cue \(index + 1)" : "\(index + 1) · \(cues[index].label)"
+		cues[index].label.isEmpty ? "Cue \(number(at: index))" : "\(number(at: index)) · \(cues[index].label)"
 	}
 	
 	var isLong: Bool {

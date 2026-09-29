@@ -20,7 +20,11 @@ struct TileButtons: View {
 		
 		HStack(spacing: isLarge ? 10 : 6) {
 			ForEach(look.buttons) { action in
-				let isEnabled = action == .back ? list.cues.count > 1 && index != nil : !list.cues.isEmpty
+				let isEnabled = switch action {
+				case .back: list.cues.count > 1 && index != nil
+				case .next: console.upcoming(list) != nil
+				default: !list.cues.isEmpty
+				}
 				let isProminent = isLarge && action == .next && isEnabled
 				
 				Button {

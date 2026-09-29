@@ -110,15 +110,19 @@ These are product decisions the code implements without explaining.
   holds it keeps the touch.
 - Cues track. A cue holds only the lights and aspects stored into it, the rest
   keeps what earlier cues set, and going back undoes what later cues changed.
-  After the last cue, Next wraps to the first.
+  After the last cue Go does nothing, unless the scene loops.
+- A cue's number is its sort index, so inserting between 1 and 2 gives 1.5 and
+  no other cue is renumbered. A scene written before loops existed reads as not
+  looping.
 - A tap on a cue in a scene's list only marks it as the next cue, and Go plays
   it, so a stray tap never changes the stage mid show.
 - Playing and arranging are separate. In the Scenes edit mode a tap customizes
-  a tile and never plays it, which is also where flash tiles are set up, since
-  holding them flashes.
+  a tile and never plays it, tiles are dragged into order, and flash tiles are
+  set up, since holding them flashes.
 - A store takes the selected lights, or every light when none is selected.
   Storing into a cue replaces only the chosen aspects and keeps its name and
-  timing. Updating is offered only for the live cue once a light was touched.
+  timing. Updating is offered only for the live cue once a light was touched,
+  and with nothing selected it takes only the touched lights.
 - The aspects chosen for one store stay chosen for the next, until the builder
   opens for another scene.
 - Fades, delays and follows run on the controller, so they carry on when the

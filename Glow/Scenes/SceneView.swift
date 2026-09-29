@@ -59,9 +59,21 @@ struct SceneView: View {
 										console.selection.arm(cue.identifier, of: look.identifier)
 									}
 								} label: {
-									CueRow(cue: cue, position: position, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
+									CueRow(cue: cue, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
 								}
 								.buttonStyle(.plain)
+								.overlay(alignment: .trailing) {
+									if position == index, console.canUpdate(cue) {
+										Button("Update", systemImage: "arrow.triangle.2.circlepath") {
+											Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+										}
+										.buttonStyle(.borderedProminent)
+										.buttonBorderShape(.capsule)
+										.controlSize(.small)
+										.tint(tint)
+										.transition(.scale.combined(with: .opacity))
+									}
+								}
 								.id(cue.identifier)
 								.listRowBackground(position == index ? tint.opacity(0.14) : nil)
 								.accessibilityAddTraits(position == index ? .isSelected : [])
@@ -204,7 +216,6 @@ struct SceneView: View {
 
 private struct CueRow: View {
 	let cue: Cue
-	let position: Int
 	let isLive: Bool
 	let isNext: Bool
 	let isArmed: Bool
@@ -212,21 +223,25 @@ private struct CueRow: View {
 	let tint: Color
 	
 	var body: some View {
-		HStack(spacing: 14) {
-			Text("\(position + 1)")
+		HStack(spacing: 10) {
+			Text(cue.number)
 				.font(.subheadline.weight(.semibold))
 				.monospacedDigit()
 				.foregroundStyle(isLive ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
 				.lineLimit(1)
-				.padding(.horizontal, 8)
-				.frame(minWidth: 32, minHeight: 28)
+				.minimumScaleFactor(0.7)
+				.padding(.horizontal, 6)
+				.frame(minWidth: 40, minHeight: 28)
 				.background(isLive ? tint : .clear, in: .capsule)
-				.accessibilityLabel(isLive ? "Live, cue \(position + 1)" : "Cue \(position + 1)")
+				.frame(width: 52)
+				.accessibilityLabel(isLive ? "Live, cue \(cue.number)" : "Cue \(cue.number)")
 			
 			VStack(alignment: .leading, spacing: 3) {
-				Text(cue.title(at: position))
-					.fontWeight(isLive ? .semibold : .regular)
-					.lineLimit(2)
+				if !cue.label.isEmpty {
+					Text(cue.label)
+						.fontWeight(isLive ? .semibold : .regular)
+						.lineLimit(2)
+				}
 				
 				Group {
 					if isLive {
@@ -258,7 +273,6 @@ private struct CueRow: View {
 			}
 		}
 		.contentShape(.rect)
-		.animation(.snappy, value: isLive)
 	}
 }
 
@@ -274,6 +288,7 @@ private struct Transport: View {
 		let upcoming = console.upcoming(list)
 		let tint = look.tint.color ?? .accentColor
 		let steps = list.cues.count > 1
+		let isAtEnd = steps && upcoming == nil
 		
 		GlassEffectContainer(spacing: 12) {
 			HStack(spacing: 12) {
@@ -298,29 +313,29 @@ private struct Transport: View {
 					}
 				} label: {
 					Group {
-						if steps, let upcoming {
+						if steps {
 							VStack(spacing: 1) {
 								Label("Go", systemImage: SceneAction.next.symbol)
 								
 								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
-									Text(list.heading(at: upcoming))
+									Text(upcoming.map(list.heading(at:)) ?? "End")
 								}
 								.font(.caption)
 								.opacity(0.85)
-								.contentTransition(.numericText())
 							}
 						} else {
 							Label(SceneAction.toggle.name(isOn: index != nil), systemImage: SceneAction.toggle.symbol(isOn: index != nil))
 								.contentTransition(.symbolEffect(.replace))
 						}
 					}
-					.foregroundStyle(.white)
+					.foregroundStyle(isAtEnd ? AnyShapeStyle(.secondary) : AnyShapeStyle(.white))
 					.padding(.horizontal)
 					.frame(maxWidth: .infinity)
 					.frame(height: height)
-					.glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+					.glassEffect(.regular.tint(isAtEnd ? nil : tint).interactive(!isAtEnd), in: .capsule)
 				}
 				.keyboardShortcut(.rightArrow, modifiers: [])
+				.disabled(isAtEnd)
 				
 				if steps {
 					Button {

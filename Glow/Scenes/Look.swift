@@ -11,6 +11,7 @@ final class Look {
 	var tapValue: Int = 0
 	var buttonValues: [Int] = []
 	var sizeValue: Int?
+	var loops = false
 	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
@@ -19,7 +20,7 @@ final class Look {
 	}
 	
 	var entry: ShowContents.Scene {
-		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons, size: sizeValue.flatMap(TileSize.init(rawValue:)))
+		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons, size: sizeValue.flatMap(TileSize.init(rawValue:)), loops: loops)
 	}
 	
 	func take(_ entry: ShowContents.Scene) {
@@ -31,6 +32,7 @@ final class Look {
 		tap = entry.tap
 		buttons = entry.buttons
 		sizeValue = entry.size?.rawValue
+		loops = entry.loops
 	}
 	
 	var isGone: Bool {
@@ -93,6 +95,7 @@ final class Look {
 		copy.tapValue = tapValue
 		copy.buttonValues = buttonValues
 		copy.sizeValue = sizeValue
+		copy.loops = loops
 		context.insert(copy)
 		
 		for cue in self.cues(among: cues) {

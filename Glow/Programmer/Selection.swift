@@ -6,6 +6,7 @@ final class Selection {
 	private(set) var identifiers: Set<String> = []
 	var isProgrammerOpen = false
 	var isSceneOpen = false
+	var section = "lights"
 	var scene: String?
 	var armed: [String: String] = [:]
 	var aspects = Set(FeatureGroup.allCases)

@@ -10,7 +10,7 @@ struct StoreView: View {
 	
 	@Bindable var recording: Recording
 	
-	private let aspects = [GridItem(.adaptive(minimum: 112), spacing: 8)]
+	private let aspects = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
 	
 	var body: some View {
 		NavigationStack {
@@ -30,40 +30,26 @@ struct StoreView: View {
 				Section {
 					LazyVGrid(columns: aspects, spacing: 8) {
 						ForEach(FeatureGroup.allCases) { feature in
-							Toggle(isOn: Binding { recording.features.contains(feature) } set: { _ in recording.toggle(feature) }) {
-								Label(feature.name, systemImage: feature.symbol)
-									.frame(maxWidth: .infinity)
+							ChoiceTile(name: feature.name, symbol: feature.symbol, tint: .accentColor, isOn: recording.features.contains(feature)) {
+								recording.toggle(feature)
 							}
 						}
 					}
-					.toggleStyle(.button)
-					.buttonStyle(.bordered)
-					.buttonBorderShape(.capsule)
-					.font(.subheadline)
-					.lineLimit(1)
-					.padding(.vertical, 4)
+					.listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
 				} header: {
 					Text("Store")
 				}
 				
 				Section {
 					if !groups.isEmpty {
-						ScrollView(.horizontal) {
-							HStack(spacing: 8) {
-								ForEach(groups) { group in
-									Toggle(isOn: Binding { recording.contains(group) } set: { _ in recording.toggle(group) }) {
-										Label(group.name, systemImage: group.symbol)
-									}
-									.tint(group.tint.color ?? .accentColor)
+						LazyVGrid(columns: aspects, spacing: 8) {
+							ForEach(groups) { group in
+								ChoiceTile(name: group.name, symbol: group.symbol, tint: group.tint.color ?? .accentColor, isOn: recording.contains(group)) {
+									recording.toggle(group)
 								}
 							}
-							.padding(.vertical, 4)
 						}
-						.scrollIndicators(.hidden)
-						.toggleStyle(.button)
-						.buttonStyle(.bordered)
-						.buttonBorderShape(.capsule)
-						.font(.subheadline)
+						.listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
 					}
 					
 					ForEach(fixtures) { fixture in
@@ -105,5 +91,35 @@ struct StoreView: View {
 			.sensoryFeedback(.selection, trigger: recording.lights)
 			.sensoryFeedback(.selection, trigger: recording.features)
 		}
+	}
+}
+
+private struct ChoiceTile: View {
+	let name: String
+	let symbol: String
+	let tint: Color
+	let isOn: Bool
+	let toggle: () -> Void
+	
+	var body: some View {
+		Button(action: toggle) {
+			VStack(spacing: 6) {
+				Image(systemName: symbol)
+					.font(.title3)
+					.frame(height: 26)
+				
+				Text(name)
+					.font(.caption.weight(.medium))
+					.lineLimit(1)
+					.minimumScaleFactor(0.8)
+			}
+			.foregroundStyle(isOn ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+			.frame(maxWidth: .infinity, minHeight: 64)
+			.background(isOn ? tint : Color(.tertiarySystemFill), in: .rect(cornerRadius: 14, style: .continuous))
+			.contentShape(.rect(cornerRadius: 14, style: .continuous))
+		}
+		.buttonStyle(.plain)
+		.accessibilityAddTraits(isOn ? .isSelected : [])
+		.animation(.snappy(duration: 0.2), value: isOn)
 	}
 }

@@ -13,29 +13,20 @@ struct ScenesView: View {
 	@State private var customizing: Look?
 	@State private var isOrdering = false
 	@State private var isEditing = false
+	@State private var dragging: String?
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
-	@ViewBuilder private var tiles: some View {
+	private var tiles: some View {
 		let lists = CueList.all(looks, cues: cues, fixtures: fixtures)
-		let items = ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
-			SceneTile(look: look, list: list, isEditing: $isEditing, customizing: $customizing)
-		}
-		let grid = TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
-			if #available(iOS 27.0, *) {
-				items.reorderable()
-			} else {
-				items
+		
+		return TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
+			ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
+				SceneTile(look: look, list: list, isEditing: $isEditing, customizing: $customizing, dragging: $dragging)
 			}
 		}
 		.padding(.horizontal)
-		
-		if #available(iOS 27.0, *) {
-			grid.reorderContainer(for: Look.self) { difference in
-				console.move(difference, among: looks, sortIndex: \.sortIndex)
-			}
-		} else {
-			grid
-		}
+		.padding(.bottom, 24)
+		.animation(.snappy, value: looks.map(\.identifier))
 	}
 	
 	var body: some View {
@@ -74,10 +65,18 @@ struct ScenesView: View {
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			
 			ToolbarItem(placement: .topBarTrailing) {
-				Button("All Off", systemImage: "stop.circle") {
-					console.stopAll()
+				if isPlaying {
+					Button("All Off", systemImage: "stop.fill") {
+						console.stopAll()
+					}
+					.buttonStyle(.glassProminent)
+					.tint(.red)
+				} else {
+					Button("All Off", systemImage: "stop.fill") {
+						console.stopAll()
+					}
+					.disabled(true)
 				}
-				.disabled(!isPlaying)
 			}
 			
 			ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -89,6 +88,8 @@ struct ScenesView: View {
 					}
 					.disabled(looks.count < 2)
 				}
+				
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
 				
 				ToolbarItem(placement: .topBarTrailing) {
 					Button("Done", role: .confirm) {
@@ -103,9 +104,15 @@ struct ScenesView: View {
 					.disabled(looks.isEmpty)
 				}
 				
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				
 				ToolbarItem(placement: .topBarTrailing) {
 					Button("New Scene", systemImage: "plus") {
-						console.selection.building = Look.fresh(among: looks, context: context).identifier
+						if console.selection.building == nil {
+							console.selection.building = Look.fresh(among: looks, context: context).identifier
+						} else {
+							console.selection.section = "lights"
+						}
 					}
 					.disabled(fixtures.isEmpty)
 				}

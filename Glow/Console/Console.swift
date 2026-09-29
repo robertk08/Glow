@@ -421,7 +421,7 @@ final class Console {
 	}
 	
 	static func sortIndex(between low: Double, and high: Double) -> Double? {
-		let next = low + max(((high - low) * 32).rounded(.down), 1) / 256
+		let next = low + max(((high - low) * 128).rounded(.down), 1) / 256
 		return next < high ? next : nil
 	}
 	
@@ -448,11 +448,11 @@ final class Console {
 		
 		if position > 0 {
 			low = ordered[position - 1][keyPath: sortIndex]
-		} else if position < ordered.count {
+		} else if position < ordered.count, ordered[position][keyPath: sortIndex] <= 0 {
 			low = ordered[position][keyPath: sortIndex] - Double(lifted.count) - 1
 		}
 		
-		if position > 0, position < ordered.count {
+		if position < ordered.count, position > 0 || ordered[position][keyPath: sortIndex] > 0 {
 			step = ((ordered[position][keyPath: sortIndex] - low) / Double(lifted.count + 1) * 256).rounded(.down) / 256
 		}
 		

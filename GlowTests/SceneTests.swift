@@ -91,6 +91,7 @@ struct SceneTests {
 		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
 		let wall = Fixture(typeID: "wall", name: "Wall", address: DMXAddress(1)!, sortIndex: 0)
 		let look = Look(name: "Chase", sortIndex: 0)
+		look.loops = true
 		wall.identifier = "wall"
 		look.identifier = "chase"
 		container.mainContext.insert(wall)
@@ -192,7 +193,7 @@ struct SceneTests {
 		try await until { rig.value(2) == 255 && rig.value(11) == 0 }
 	}
 	
-	@Test func afterTheLastCueTheNextTapStartsAgainAtTheFirst() async throws {
+	@Test func afterTheLastCueGoWaitsUnlessTheSceneLoops() async throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 10)])
 		let second = rig.add(2, [(0, 1, 20)])
@@ -201,6 +202,13 @@ struct SceneTests {
 		rig.console.go(rig.list)
 		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier }
 		
+		#expect(rig.console.upcoming(rig.list) == nil)
+		
+		rig.console.go(rig.list)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == second.identifier)
+		
+		rig.look.loops = true
 		rig.console.go(rig.list)
 		try await until { rig.console.playback.cue(of: rig.look.identifier) == first.identifier && rig.value(1) == 10 }
 		
@@ -334,7 +342,7 @@ struct SceneTests {
 		let recording = rig.recording(.cue(fresh, after: nil))
 		
 		#expect(fresh.name == "Scene 2")
-		#expect(recording.number == 1)
+		#expect(recording.number == "1")
 		#expect(recording.hint == "All lights")
 		#expect(recording.lights == Set(rig.fixtures.map(\.identifier)))
 		
@@ -407,10 +415,12 @@ struct SceneTests {
 		recording.store(context: rig.context)
 		
 		let held = rig.look.cues(among: rig.cues)
-		#expect(held.map(\.sortIndex) == [1, 1.125, 2])
-		#expect(held[1].title(at: 1) == "Storm rolls in")
+		#expect(held.map(\.sortIndex) == [1, 1.5, 2])
+		#expect(held[1].title == "Storm rolls in")
 		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[2] == 77)
-		#expect(held[0].title(at: 0) == "Cue 1")
+		#expect(held[0].title == "Cue 1")
+		#expect(rig.recording(.cue(rig.look, after: held[1])).slot == 1.75)
+		#expect(rig.recording(.cue(rig.look, after: nil)).slot == 3)
 	}
 	
 	@Test func aStoredCueIsOnStageWithoutMovingTheLights() throws {
@@ -541,6 +551,7 @@ struct SceneTests {
 	
 	@Test func aChaseKeepsGoingRoundByItself() async throws {
 		let rig = try rig()
+		rig.look.loops = true
 		
 		for step in 1...3 {
 			let cue = rig.add(Double(step), [(0, 1, UInt8(step * 10))])

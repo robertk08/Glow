@@ -7,15 +7,18 @@ struct RootView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(\.scenePhase) private var scenePhase
+	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
-	@State private var section = "lights"
 	@State private var returning: String?
 	@Namespace private var transition
 	
 	private var tabs: some View {
-		TabView(selection: $section) {
+		@Bindable var selection = console.selection
+		
+		return TabView(selection: $selection.section) {
 			Tab("Lights", systemImage: "lightbulb", value: "lights") {
 				NavigationStack {
 					LightsView()
@@ -49,7 +52,7 @@ struct RootView: View {
 			} else if sizeClass == .compact {
 				tabs
 					.tabViewBottomAccessory {
-						if section == "scenes" {
+						if console.selection.section == "scenes" {
 							SceneBar(transition: transition)
 						} else {
 							ConsoleBar(transition: transition)
@@ -74,9 +77,9 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: .constant(section != "settings")) {
+					.inspector(isPresented: .constant(console.selection.section != "settings")) {
 						Group {
-							if section == "scenes" {
+							if console.selection.section == "scenes" {
 								SceneInspector()
 							} else {
 								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
@@ -100,12 +103,18 @@ struct RootView: View {
 			if !looks.contains(where: { $0.identifier == console.selection.scene }) { console.selection.isSceneOpen = false }
 		}
 		.onChange(of: console.selection.building) { before, after in
+			if let abandoned = looks.first(where: { $0.identifier == before }), after != nil, abandoned.cues(among: cues).isEmpty {
+				console.remove(abandoned, with: cues, context: context)
+			}
+			
 			if before == nil, after != nil {
-				returning = section
-				section = "lights"
+				returning = console.selection.section
+				console.selection.section = "lights"
 			} else if after == nil, let returning {
-				section = returning
+				console.selection.section = returning
 				self.returning = nil
+			} else if after != nil {
+				console.selection.section = "lights"
 			}
 		}
 		.onChange(of: scenePhase) {

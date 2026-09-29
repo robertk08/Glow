@@ -12,6 +12,7 @@ struct SceneTile: View {
 	
 	@Binding var isEditing: Bool
 	@Binding var customizing: Look?
+	@Binding var dragging: String?
 	
 	@State private var isDeleting = false
 	@State private var size = CGSize.zero
@@ -97,9 +98,39 @@ struct SceneTile: View {
 		}
 		.onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
 		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.animation(.snappy, value: console.playback.cue(of: look.identifier))
 		.animation(.snappy, value: isEditing)
+		.modifier(Arranging(look: look, isOn: isEditing, dragging: $dragging))
 		.layoutValue(key: TileSpan.self, value: look.size)
+	}
+}
+
+private struct Arranging: ViewModifier {
+	@Environment(Console.self) private var console
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
+	
+	let look: Look
+	let isOn: Bool
+	
+	@Binding var dragging: String?
+	
+	func body(content: Content) -> some View {
+		if isOn {
+			content
+				.opacity(dragging == look.identifier ? 0.4 : 1)
+				.onDrag {
+					dragging = look.identifier
+					return NSItemProvider(object: look.identifier as NSString)
+				}
+				.dropDestination(for: String.self) { _, _ in
+					dragging = nil
+					return true
+				} isTargeted: { isTargeted in
+					guard isTargeted, let from = looks.firstIndex(where: { $0.identifier == dragging }), let to = looks.firstIndex(where: { $0.identifier == look.identifier }), from != to else { return }
+					console.move(IndexSet(integer: from), to: to > from ? to + 1 : to, among: looks, sortIndex: \.sortIndex)
+				}
+		} else {
+			content
+		}
 	}
 }
 
@@ -130,10 +161,12 @@ private struct SceneMenu<Items: View, Preview: View>: ViewModifier {
 
 private struct SceneActions: View {
 	@Environment(Console.self) private var console
+	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
+	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	let look: Look
 	let list: CueList
@@ -144,12 +177,20 @@ private struct SceneActions: View {
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
+		let live = cues.first { $0.identifier == console.playback.cue(of: look.identifier) }
+		
+		if let live, console.canUpdate(live) {
+			Button("Update Cue \(live.number)", systemImage: "arrow.triangle.2.circlepath") {
+				Recording(.into(live), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+			}
+		}
 		
 		Section {
 			if list.cues.count > 1, index != nil {
 				Button("Next Cue", systemImage: SceneAction.next.symbol) {
 					console.go(list)
 				}
+				.disabled(console.upcoming(list) == nil)
 				
 				Button("Previous Cue", systemImage: SceneAction.back.symbol) {
 					console.back(list)

@@ -27,7 +27,7 @@ struct BuilderBar: View {
 					Image(systemName: look.symbol)
 						.font(.body.weight(.semibold))
 						.foregroundStyle(.white)
-						.frame(width: 36, height: 36)
+						.frame(width: 40, height: 40)
 						.background(tint, in: .circle)
 					
 					VStack(alignment: .leading, spacing: 1) {
@@ -74,7 +74,7 @@ struct BuilderBar: View {
 					.controlSize(.large)
 				}
 				
-				HStack(spacing: held.isEmpty ? 0 : 10) {
+				if !held.isEmpty {
 					ScrollViewReader { proxy in
 						ScrollView(.horizontal) {
 							HStack(spacing: 6) {
@@ -83,7 +83,7 @@ struct BuilderBar: View {
 										console.play(list, at: position)
 									} label: {
 										HStack(spacing: 6) {
-											Text("\(position + 1)")
+											Text(cue.number)
 												.fontWeight(.bold)
 												.monospacedDigit()
 											
@@ -95,15 +95,15 @@ struct BuilderBar: View {
 										}
 										.font(.subheadline)
 										.foregroundStyle(position == index ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-										.padding(.horizontal, 12)
-										.frame(minWidth: 40, minHeight: 40)
+										.padding(.horizontal, 14)
+										.frame(minWidth: 44, minHeight: 36)
 										.background(position == index ? tint : Color(.tertiarySystemFill), in: .capsule)
 										.contentShape(.capsule)
 									}
 									.buttonStyle(.plain)
 									.id(cue.identifier)
 									.transition(.scale.combined(with: .opacity))
-									.accessibilityLabel("Cue \(position + 1), \(cue.title(at: position))")
+									.accessibilityLabel(cue.title)
 									.accessibilityAddTraits(position == index ? .isSelected : [])
 									.contextMenu {
 										Button("Edit", systemImage: "slider.horizontal.3") {
@@ -114,46 +114,54 @@ struct BuilderBar: View {
 											recording = Recording(.cue(look, after: cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 										}
 										
-										if console.canUpdate(cue) {
-											Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
-												recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
-											}
-										}
-										
 										Button("Delete Cue", systemImage: "trash", role: .destructive) {
 											console.delete(cue, from: list, context: context)
 										}
 									}
 								}
 							}
+							.padding(.horizontal, 2)
 						}
 						.scrollIndicators(.hidden)
+						.scrollClipDisabled()
 						.onChange(of: current?.identifier) {
 							withAnimation {
 								proxy.scrollTo(current?.identifier, anchor: .center)
 							}
 						}
 					}
-					.frame(maxWidth: held.isEmpty ? 0 : .infinity, alignment: .leading)
-					
+				}
+				
+				HStack(spacing: 10) {
 					Button("Choose Lights and Aspects", systemImage: "slider.horizontal.3") {
 						recording = next
 					}
 					.labelStyle(.iconOnly)
 					.buttonStyle(.glass)
 					.buttonBorderShape(.circle)
-					.controlSize(.large)
+					
+					if let current, console.canUpdate(current) {
+						Button {
+							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+						} label: {
+							Label("Update \(current.number)", systemImage: "arrow.triangle.2.circlepath")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.glass)
+						.transition(.scale.combined(with: .opacity))
+					}
 					
 					Button {
 						next.store(context: context)
 					} label: {
-						Label(held.isEmpty ? "Store Cue 1" : "Cue \(next.number)", systemImage: "plus")
-							.frame(maxWidth: held.isEmpty ? .infinity : nil, minHeight: 44)
+						Label("Cue \(next.number)", systemImage: "plus")
+							.frame(maxWidth: .infinity)
 					}
 					.buttonStyle(.glassProminent)
 					.tint(tint)
 					.accessibilityLabel("Store Cue \(next.number)")
 				}
+				.controlSize(.large)
 				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
 			}
@@ -163,6 +171,7 @@ struct BuilderBar: View {
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
 			.animation(.snappy, value: held.count)
+			.animation(.snappy, value: current.map(console.canUpdate))
 			.sensoryFeedback(.success, trigger: held.count)
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)

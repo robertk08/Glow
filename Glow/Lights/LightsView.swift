@@ -152,16 +152,17 @@ struct LightsView: View {
 						isAdding = true
 					}
 					
-					Button("New Scene", systemImage: "theatermasks") {
-						console.selection.building = Look.fresh(among: looks, context: context).identifier
-					}
-					
 					Button("New Group", systemImage: "square.stack.3d.up") {
 						let group = FixtureGroup(name: "", sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
 						context.insert(group)
 						try? context.save()
 						editingGroup = group
 					}
+					
+					Button("New Scene", systemImage: "theatermasks") {
+						console.selection.building = Look.fresh(among: looks, context: context).identifier
+					}
+					.disabled(console.selection.building != nil)
 				}
 			}
 		}

@@ -347,6 +347,7 @@ struct ControllerTests {
 		}
 		
 		let look = Look(name: "Probe Chase", sortIndex: 6)
+		look.loops = true
 		Rig.first.context.insert(look)
 		
 		for step in 0..<40 {
@@ -394,6 +395,7 @@ struct ControllerTests {
 		try inScratch()
 		let light = try #require(Rig.first.lights.first)
 		let look = Look(name: "Probe Stall", sortIndex: 7)
+		look.loops = true
 		Rig.first.context.insert(look)
 		
 		for step in 0..<10 {

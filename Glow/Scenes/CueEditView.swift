@@ -44,7 +44,7 @@ private struct CueForm: View {
 		
 		Form {
 			Section {
-				TextField("Cue \(position + 1)", text: $cue.label, axis: .vertical)
+				TextField("Cue \(cue.number)", text: $cue.label, axis: .vertical)
 					.lineLimit(1...3)
 			}
 			
@@ -85,7 +85,7 @@ private struct CueForm: View {
 				}
 			}
 		}
-		.navigationTitle("Cue \(position + 1)")
+		.navigationTitle("Cue \(cue.number)")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			ToolbarItemGroup(placement: .topBarLeading) {

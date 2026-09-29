@@ -35,9 +35,13 @@ final class Recording: Identifiable {
 		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
 		lights = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		
-		if case let .cue(look, _) = destination {
+		switch destination {
+		case let .cue(look, _):
 			features = console.selection.aspects
 			fade = look.cues(among: cues).last?.fade ?? 0
+		case .into:
+			guard selected.isEmpty else { break }
+			lights = Set(fixtures.filter { $0.range(library.type($0.typeID)).contains(where: console.active.contains) }.map(\.identifier))
 		}
 	}
 	
@@ -53,15 +57,18 @@ final class Recording: Identifiable {
 		}
 	}
 	
-	var number: Int {
+	var number: String {
+		Cue.number(slot)
+	}
+	
+	var slot: Double {
 		switch destination {
 		case let .cue(look, after):
 			let held = look.cues(among: cues)
-			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }) else { return held.count + 1 }
-			return position + 2
-		case let .into(cue):
-			let held = looks.first { $0.identifier == cue.lookID }?.cues(among: cues) ?? []
-			return (held.firstIndex { $0.identifier == cue.identifier } ?? 0) + 1
+			let last = (held.last?.sortIndex ?? 0).rounded(.down) + 1
+			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), held.indices.contains(position + 1) else { return last }
+			return Console.sortIndex(between: held[position].sortIndex, and: held[position + 1].sortIndex) ?? held[position].sortIndex + 1
+		case let .into(cue): return cue.sortIndex
 		}
 	}
 	
@@ -130,15 +137,11 @@ final class Recording: Identifiable {
 		switch destination {
 		case let .cue(look, after):
 			let held = look.cues(among: cues)
-			var sortIndex = Console.nextSortIndex(held, sortIndex: \.sortIndex)
+			let sortIndex = slot
 			
-			if let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), held.indices.contains(position + 1) {
-				sortIndex = Console.sortIndex(between: held[position].sortIndex, and: held[position + 1].sortIndex) ?? held[position].sortIndex + 1
-				
-				if sortIndex > held[position + 1].sortIndex {
-					for (offset, later) in held[(position + 1)...].enumerated() {
-						later.sortIndex = sortIndex + 1 + Double(offset)
-					}
+			if let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), held.indices.contains(position + 1), sortIndex >= held[position + 1].sortIndex {
+				for (offset, later) in held[(position + 1)...].enumerated() {
+					later.sortIndex = sortIndex + 1 + Double(offset)
 				}
 			}
 			

@@ -84,7 +84,7 @@ struct ShowSyncTests {
 		levels.set(7, slot: 14, of: "0123456789abcdef")
 		levels.set(128, slot: 3, of: "par")
 		levels.set(64, slot: 2, of: "A-b_9Zz0qQw")
-		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, symbol: "sun.max", tint: "orange", tap: .flash, buttons: [.back, .toggle], size: .large)
+		let scene = ShowContents.Scene(identifier: "look", name: "Évening", sortIndex: 2.5, symbol: "sun.max", tint: "orange", tap: .flash, buttons: [.back, .toggle], size: .large, loops: true)
 		let cue = ShowContents.Cue(identifier: "cue", scene: "0123456789abcdef", sortIndex: 1.5, label: "The sun comes up over the hill", fade: 3.5, delay: 1, follow: 0, levels: levels.data)
 		let held = ShowContents.Cue(identifier: "held", scene: "look", sortIndex: 1.0 / 3, follow: nil)
 		
@@ -98,6 +98,7 @@ struct ShowSyncTests {
 		#expect(readScene.tap == .flash)
 		#expect(readScene.buttons == [.back, .toggle])
 		#expect(readScene.size == .large)
+		#expect(readScene.loops)
 		#expect(readCue.scene == "0123456789abcdef")
 		#expect(readCue.sortIndex == 1.5)
 		#expect(readCue.label == "The sun comes up over the hill")
