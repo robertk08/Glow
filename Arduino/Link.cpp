@@ -34,9 +34,8 @@ class Sockets : public WebSocketsServerCore {
     WSclient_t *client = &_clients[num];
     if (!clientIsConnected(client)) return false;
 
-    bool heard = reading && client->tcp->available() > 0;
-    if (heard && client->status == WSC_HEADER) handshake(client);
-    else if (heard) take(client);
+    bool heard = false;
+    if (reading && client->tcp->available() > 0) heard = client->status == WSC_HEADER ? handshake(client) : take(client);
     handleHBPing(client);
     handleHBTimeout(client);
     return heard;
@@ -48,12 +47,15 @@ class Sockets : public WebSocketsServerCore {
     _lines[num]  = String();
   }
 
+  void keep() { _kept = true; }
+
  private:
   static const size_t LINE_LIMIT = 1024;
 
   uint8_t *_bodies[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
   size_t   _got[WEBSOCKETS_SERVER_CLIENT_MAX]    = {};
   String   _lines[WEBSOCKETS_SERVER_CLIENT_MAX];
+  bool     _kept = false;
 
   static size_t span(const WSclient_t *client) {
     const uint8_t *head = client->cWsHeader;
@@ -65,7 +67,7 @@ class Sockets : public WebSocketsServerCore {
     return size;
   }
 
-  void handshake(WSclient_t *client) {
+  bool handshake(WSclient_t *client) {
     String &line = _lines[client->num];
     for (int c; client->status == WSC_HEADER && (c = client->tcp->read()) >= 0;) {
       if (c == '\n') {
@@ -74,21 +76,24 @@ class Sockets : public WebSocketsServerCore {
       } else if (line.length() < LINE_LIMIT) {
         line += (char)c;
       } else {
-        return clientDisconnect(client);
+        clientDisconnect(client);
       }
     }
+    return true;
   }
 
-  void take(WSclient_t *client) {
+  bool take(WSclient_t *client) {
     uint8_t            num    = client->num;
     uint8_t           *head   = client->cWsHeader;
     WSMessageHeader_t *header = &client->cWsHeaderDecode;
+    bool               heard  = false;
 
     if (!_bodies[num]) {
       for (size_t need = span(client); client->cWsRXsize < need; need = span(client)) {
         int n = client->tcp->read(head + client->cWsRXsize, need - client->cWsRXsize);
-        if (n <= 0) return;
+        if (n <= 0) return heard;
         client->cWsRXsize += n;
+        heard = true;
       }
 
       size_t length = head[1] & 0x7F;
@@ -100,20 +105,37 @@ class Sockets : public WebSocketsServerCore {
       header->payloadLen = length;
       header->maskKey    = header->mask ? head + client->cWsRXsize - 4 : nullptr;
 
-      if (length > WEBSOCKETS_MAX_DATA_SIZE) return WebSockets::clientDisconnect(client, 1009);
-      if (!length) return handleWebsocketPayloadCb(client, true, nullptr);
+      if (length > WEBSOCKETS_MAX_DATA_SIZE) {
+        WebSockets::clientDisconnect(client, 1009);
+        return true;
+      }
+      if (!length) {
+        handleWebsocketPayloadCb(client, true, nullptr);
+        return true;
+      }
       _bodies[num] = (uint8_t *)malloc(length + 1);
       _got[num]    = 0;
-      if (!_bodies[num]) return WebSockets::clientDisconnect(client, 1011);
+      if (!_bodies[num]) return heard;
     }
 
     int n = client->tcp->read(_bodies[num] + _got[num], header->payloadLen - _got[num]);
     if (n > 0) _got[num] += n;
-    if (_got[num] < header->payloadLen) return;
+    if (_got[num] < header->payloadLen) return n > 0;
 
     uint8_t *payload = _bodies[num];
     _bodies[num]     = nullptr;
-    handleWebsocketPayloadCb(client, true, payload);
+    if (!header->fin || (header->opCode != WSop_text && header->opCode != WSop_binary)) {
+      handleWebsocketPayloadCb(client, true, payload);
+      return true;
+    }
+
+    for (size_t i = 0; header->mask && i < header->payloadLen; i++) payload[i] ^= header->maskKey[i % 4];
+    payload[header->payloadLen] = 0;
+    client->cWsRXsize           = 0;
+    _kept                       = false;
+    runCbEvent(num, header->opCode == WSop_text ? WStype_TEXT : WStype_BIN, payload, header->payloadLen);
+    if (!_kept) free(payload);
+    return true;
   }
 };
 
@@ -305,7 +327,7 @@ void settle() {
   }
 }
 
-void onDocument(uint8_t num, const uint8_t *p, size_t len) {
+void onDocument(uint8_t num, uint8_t *p, size_t len) {
   if (len < Store::DOC_HEADER || p[1] > 1) return;
 
   size_t showLen   = p[2];
@@ -322,11 +344,8 @@ void onDocument(uint8_t num, const uint8_t *p, size_t len) {
   names(p, show, folder, id);
   if (!Store::ready() || !Store::safe(show) || !Store::safe(folder) || !Store::safe(id)) return answer(num, p, false);
 
-  uint8_t *frame = (uint8_t *)malloc(len);
-  if (!frame) return answer(num, p, false);
-  memcpy(frame, p, len);
-
-  Store::Job job = {frame, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
+  g_ws.keep();
+  Store::Job job = {p, len, num | (g_arrival[num] << 8), false, nullptr, nullptr};
   if (!Store::submit(job)) g_parked[num] = job;
 }
 

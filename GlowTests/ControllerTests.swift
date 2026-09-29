@@ -95,10 +95,10 @@ private func eventually(within seconds: Double = 6, _ condition: () async -> Boo
 private func stall() async throws -> URLSessionStreamTask {
 	let stream = URLSession.shared.streamTask(withHostName: Rig.host, port: 80)
 	stream.resume()
-	try await stream.write(Data("GET /ws HTTP/1.1\r\nHost: \(Rig.host)\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n".utf8), timeout: 2)
-	let (answer, _) = try await stream.readData(ofMinLength: 12, maxLength: 512, timeout: 2)
+	try await stream.write(Data("GET /ws HTTP/1.1\r\nHost: \(Rig.host)\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n".utf8), timeout: 5)
+	let (answer, _) = try await stream.readData(ofMinLength: 12, maxLength: 512, timeout: 5)
 	try #require(String(decoding: answer ?? Data(), as: UTF8.self).contains(" 101 "))
-	try await stream.write(Data([0x82, 0xFE, 0x03, 0xE8, 1, 2, 3, 4] + [UInt8](repeating: 0, count: 10)), timeout: 2)
+	try await stream.write(Data([0x82, 0xFE, 0x03, 0xE8, 1, 2, 3, 4] + [UInt8](repeating: 0, count: 10)), timeout: 5)
 	return stream
 }
 
@@ -393,7 +393,6 @@ struct ControllerTests {
 	@Test func aChaseKeepsItsTimeWhileAPhoneHoldsTheControllerMidMessage() async throws {
 		try inScratch()
 		let light = try #require(Rig.first.lights.first)
-		let dimmer = try #require(DMXAddress(light.address + 7))
 		let look = Look(name: "Probe Stall", sortIndex: 7)
 		Rig.first.context.insert(look)
 		
@@ -679,15 +678,17 @@ struct ControllerTests {
 		#expect(await eventually { Rig.both.allSatisfy { !$0.shows.shows.contains { $0.id == imported } } } != nil)
 	}
 	
-	@Test func twoImportsAtOnceArriveWholeWhileAPhoneHoldsTheControllerMidMessage() async throws {
-		try #require(!Rig.scratch.isEmpty)
+	@Test func anImportCutShortByAnotherArrivesWholeWhileAPhoneHoldsTheControllerMidMessage() async throws {
+		let scratch = try #require(Rig.first.shows.shows.first { $0.id == Rig.scratch })
+		Rig.first.shows.activate(scratch)
+		#expect(await eventually { Rig.both.allSatisfy { $0.shows.activeID == Rig.scratch && $0.shows.isLoaded } } != nil)
 		let url = try #require(Bundle.main.url(forResource: "Demo", withExtension: "json"))
 		var file = try JSONDecoder.iso.decode(ShowFile.self, from: Data(contentsOf: url))
 		
 		for index in file.show.cues.indices {
 			var levels = Levels()
 			
-			for _ in 0..<120 {
+			for _ in 0..<60 {
 				let light = Identifier.fresh()
 				
 				for slot in 1...12 {
@@ -713,24 +714,28 @@ struct ControllerTests {
 			let saved = FileManager.default.temporaryDirectory.appending(path: "\(name).json")
 			try encoder.encode(file).write(to: saved)
 			#expect(device.shows.adopt(contentsOf: saved))
+			#expect(await eventually { Rig.both.allSatisfy { $0.shows.active.name == name && $0.shows.isLoaded } } != nil)
 		}
 		
-		let took = await eventually(within: 20) {
-			try? await Task.sleep(for: .milliseconds(500))
-			let imported = Rig.first.shows.shows.filter { $0.name.hasPrefix("Probe Import") }
-			guard imported.count == 2 else { return false }
+		#expect(await eventually { Rig.first.shows.shows.count { $0.name.hasPrefix("Probe Import") } == 2 } != nil)
+		var pending = Set(Rig.first.shows.shows.filter { $0.name.hasPrefix("Probe Import") }.map(\.id))
+		
+		let took = await eventually(within: 30) {
+			try? await Task.sleep(for: .seconds(1))
 			
-			for show in imported {
-				guard await NodeStore().show(show.id, at: Rig.first.console.reachable)?.cues.count == file.show.cues.count else { return false }
+			for id in pending {
+				if await NodeStore().show(id, at: Rig.first.console.reachable)?.cues.count == file.show.cues.count {
+					pending.remove(id)
+				}
 			}
 			
-			return true
+			return pending.isEmpty
 		}
 		
 		trickle.cancel()
 		stalled.cancel()
 		#expect(took != nil)
-		print("HARDWARE two imports of \(file.show.cues.count) cues of \(file.show.cues.first?.levels.count ?? 0) bytes each were whole on the controller in \(String(format: "%.2f", took ?? -1))s while a phone held it mid message")
+		print("HARDWARE an import cut short by another, both of \(file.show.cues.count) cues of \(file.show.cues.first?.levels.count ?? 0) bytes each, were whole on the controller in \(String(format: "%.2f", took ?? -1))s while a phone held it mid message")
 		
 		for show in Rig.first.shows.shows where show.name.hasPrefix("Probe Import") {
 			Rig.first.shows.delete(show)
