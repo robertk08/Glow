@@ -29,54 +29,6 @@
     "sortIndex": 1.0
    },
    {
-    "fade": 3.0,
-    "identifier": "QdIKk5_Y92w",
-    "label": "Audience comes in, washes low and warm",
-    "levels": "BbCg19Yr9Xkaj/+AGkxMBTvz2TX7u40pj/+AGkxMBYxqDRSgMjQzIAAF4Bw+qNllJfiP/4AaTEwF7DjagAyZkXCP/4AaTEwF3MVKfjeA29sgAAUSOug08KnYCQMAAAX5XbjtqUBz4QMAAAV12o/JTgRd8TAAAA==",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 1.0
-   },
-   {
-    "fade": 8.0,
-    "identifier": "eqxlzqn7MtA",
-    "label": "Sunrise",
-    "levels": "BbCg19Yr9Xkaj/9ZDQCyBTvz2TX7u40pj/9ZDQCyBeAcPqjZZSX4j/9ZDQCyBew42oAMmZFwj/9ZDQCyCRI66DTwqdgJ+weZmf//mZlAAGZmCflduO2pQHPh+weZmf//mZlAAGZm",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 2.0
-   },
-   {
-    "fade": 5.0,
-    "identifier": "ueGodF_VDvo",
-    "label": "Midday",
-    "levels": "BbCg19Yr9Xkaj5nM////BTvz2TX7u40pj5nM////BeAcPqjZZSX4j5nM////Bew42oAMmZFwj5nM////CRI66DTwqdgJ+wf/////////////CflduO2pQHPh+wf/////////////",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 3.0
-   },
-   {
-    "fade": 6.0,
-    "identifier": "45Q_-9-aq_k",
-    "label": "Dusk",
-    "levels": "BbCg19Yr9Xkaj4AA/wCZBTvz2TX7u40pj4AA/wCZCYxqDRSgMjQz7wOmZkAA8P8AmQAF4Bw+qNllJfiPgAD/AJkF7DjagAyZkXCPgAD/AJkJ3MVKfjeA29vvA1mZQADw/wCZAAUSOug08KnYCQNmZgX5XbjtqUBz4QNmZg==",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 4.0
-   },
-   {
-    "fade": 4.0,
-    "identifier": "aM9cbyYSs-U",
-    "label": "Moonlight",
-    "levels": "BbCg19Yr9XkajwAz/wAzBTvz2TX7u40pjwAz/wAzCYxqDRSgMjQzwANmmf//BeAcPqjZZSX4jwAz/wAzBew42oAMmZFwjwAz/wAzCdzFSn43gNvbwANmmf//BRI66DTwqdgJAwAABflduO2pQHPhAwAADXXaj8lOBF3xMABg//8Zmg==",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 5.0
-   },
-   {
-    "fade": 2.0,
-    "identifier": "nMV_auOXbfQ",
-    "label": "Blackout",
-    "levels": "BbCg19Yr9XkagAAFO/PZNfu7jSmAAAWMag0UoDI0MyAABeAcPqjZZSX4gAAF7DjagAyZkXCAAAXcxUp+N4Db2yAABRI66DTwqdgJAwAABflduO2pQHPhAwAABXXaj8lOBF3xMAAA",
-    "scene": "B_uxdiVUb30",
-    "sortIndex": 6.0
-   },
-   {
     "fade": 2.0,
     "identifier": "wl0aN1BjEp0",
     "label": "Dark",
@@ -109,34 +61,246 @@
     "sortIndex": 1.0
    },
    {
-    "fade": 0.5,
-    "identifier": "WTrOro1Jo5o",
+    "fade": 3.0,
+    "identifier": "hI0152H1zVk",
+    "label": "Preset",
+    "levels": "BflduO2pQHPhAwAABdzFSn43gNvbIAAF4Bw+qNllJfiPABr/ACgF7DjagAyZkXCPABr/ACgFEjroNPCp2AkDAAAFO/PZNfu7jSmPABr/ACgFddqPyU4EXfEwAAAFjGoNFKAyNDMgAAWwoNfWK/V5Go8AGv8AKA==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 1.0
+   },
+   {
+    "fade": 2.0,
+    "identifier": "SmYt7LxYjpA",
+    "label": "Places, stage dark",
+    "levels": "BeAcPqjZZSX4gAAF7DjagAyZkXCAAAU789k1+7uNKYAABbCg19Yr9XkagAA=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 2.0
+   },
+   {
+    "delay": 1.0,
+    "fade": 8.0,
+    "identifier": "dokIKqplyOM",
+    "label": "Dawn",
+    "levels": "CflduO2pQHPh+weZmf//mZlAQGZmBeAcPqjZZSX4j/9ZDQCyBew42oAMmZFwj/9ZDQCyCRI66DTwqdgJ+weZmf//mZlAQGZmBTvz2TX7u40pj/9ZDQCyBbCg19Yr9Xkaj/9ZDQCy",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 3.0
+   },
+   {
+    "fade": 5.0,
+    "identifier": "b6TRqiWjBk4",
+    "label": "Morning",
+    "levels": "CflduO2pQHPh+wf/////////////BeAcPqjZZSX4j5nM////Bew42oAMmZFwj5nM////CRI66DTwqdgJ+wf/////////////BTvz2TX7u40pj5nM////BbCg19Yr9Xkaj5nM////",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 4.0
+   },
+   {
+    "fade": 1.0,
+    "identifier": "mYYRxzyANZY",
+    "label": "Knock at the door",
+    "levels": "CdzFSn43gNvb7wM8AFoA8P////8=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 5.0
+   },
+   {
+    "fade": 2.0,
+    "identifier": "e3pFPF2xXBE",
+    "label": "Door opens",
+    "levels": "CYxqDRSgMjQz7wPIAFoA8P////8=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 6.0
+   },
+   {
+    "fade": 2.0,
+    "identifier": "EXZawtFEmI8",
+    "label": "Scene change",
+    "levels": "BflduO2pQHPhAwAABdzFSn43gNvbIAAF4Bw+qNllJfiPABr/AFAF7DjagAyZkXCPABr/AFAFEjroNPCp2AkDAAAFO/PZNfu7jSmPABr/AFAFjGoNFKAyNDMgAAWwoNfWK/V5Go8AGv8AUA==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 7.0
+   },
+   {
+    "fade": 4.0,
+    "identifier": "AlfO6IH0qWg",
+    "label": "Market",
+    "levels": "CflduO2pQHPh+wfIyP//c3MNDTMzBeAcPqjZZSX4j/9zDTP/Bew42oAMmZFwj/9zDTP/CRI66DTwqdgJ+wfIyP//c3MNDTMzBTvz2TX7u40pj/9zDTP/BbCg19Yr9Xkaj/9zDTP/",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 8.0
+   },
+   {
+    "fade": 6.0,
+    "identifier": "gH67h0-zupU",
+    "label": "Storm gathers",
+    "levels": "BflduO2pQHPhAzw8BeAcPqjZZSX4j1BQoAB4Bew42oAMmZFwj1BQoAB4BRI66DTwqdgJAzw8BTvz2TX7u40pj1BQoAB4BbCg19Yr9Xkaj1BQoAB4",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 9.0
+   },
+   {
+    "fade": 0.0,
+    "follow": 0.1,
+    "identifier": "l6BJJpVAvxI",
+    "label": "Lightning",
+    "levels": "CflduO2pQHPh+wf/////////////BeAcPqjZZSX4iP//Bew42oAMmZFwiP//CRI66DTwqdgJ+wf/////////////BTvz2TX7u40piP//BbCg19Yr9XkaiP//",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 10.0
+   },
+   {
+    "fade": 0.3,
+    "follow": 0.8,
+    "identifier": "5Sc_pWw7qE8",
+    "label": "Lightning fades",
+    "levels": "BflduO2pQHPhAygoBeAcPqjZZSX4iAB4Bew42oAMmZFwiAB4BRI66DTwqdgJAygoBTvz2TX7u40piAB4BbCg19Yr9XkaiAB4",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 11.0
+   },
+   {
+    "fade": 0.0,
+    "follow": 0.2,
+    "identifier": "cf7eWnWcmHU",
+    "label": "Second strike",
+    "levels": "BflduO2pQHPhA///BRI66DTwqdgJA///",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 12.0
+   },
+   {
+    "fade": 2.0,
+    "identifier": "_IR2iv5Z9y8",
+    "label": "Rain",
+    "levels": "BflduO2pQHPhAygoBeAcPqjZZSX4jyg8yACMBew42oAMmZFwjyg8yACMBRI66DTwqdgJAygoBTvz2TX7u40pjyg8yACMCXXaj8lOBF3xsB+0tP//PDwAAAWwoNfWK/V5Go8oPMgAjA==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 13.0
+   },
+   {
+    "fade": 10.0,
+    "identifier": "cqtzQoAg7ZM",
+    "label": "Storm passes",
+    "levels": "CflduO2pQHPh+weWlv//////////BeAcPqjZZSX4j5nM/3jIBew42oAMmZFwj5nM/3jICRI66DTwqdgJ+weWlv//////////BTvz2TX7u40pj5nM/3jIBXXaj8lOBF3xMAAABbCg19Yr9Xkaj5nM/3jI",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 14.0
+   },
+   {
+    "fade": 8.0,
+    "identifier": "IeMktqwv0Zo",
+    "label": "Evening",
+    "levels": "CflduO2pQHPh+wdkZP//c3MNDTMzBeAcPqjZZSX4j/9GFACgBew42oAMmZFwj/9GFACgCRI66DTwqdgJ+wdkZP//c3MNDTMzBTvz2TX7u40pj/9GFACgBbCg19Yr9Xkaj/9GFACg",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 15.0
+   },
+   {
+    "fade": 4.0,
+    "identifier": "zhx3n-0Ax4M",
+    "label": "Candle",
+    "levels": "BflduO2pQHPhAwAACdzFSn43gNvb7wNaAG4A8P+MHjwF4Bw+qNllJfiAHgXsONqADJmRcIAeBRI66DTwqdgJAwAABTvz2TX7u40pgB4FsKDX1iv1eRqAHg==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 16.0
+   },
+   {
+    "delay": 2.0,
+    "fade": 3.0,
+    "identifier": "xsKgb7KTkgQ",
+    "label": "The letter",
+    "levels": "CYxqDRSgMjQz7wOqAHgA8LTI//8=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 17.0
+   },
+   {
+    "fade": 6.0,
+    "identifier": "7C8-uQ4vRR8",
+    "label": "Dusk",
+    "levels": "CdzFSn43gNvb4APw/wCZAAXgHD6o2WUl+I+AAP8AmQXsONqADJmRcI+AAP8AmQU789k1+7uNKY+AAP8AmQmMag0UoDI0M+AD8P8AmQAFsKDX1iv1eRqPgAD/AJk=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 18.0
+   },
+   {
+    "fade": 4.0,
+    "identifier": "fErxyC-UPp4",
+    "label": "Moonlight",
+    "levels": "CdzFSn43gNvb4APwZpn//wXgHD6o2WUl+I8AM/8AMwXsONqADJmRcI8AM/8AMwU789k1+7uNKY8AM/8AMwV12o/JTgRd8TD//wmMag0UoDI0M+AD8GaZ//8FsKDX1iv1eRqPADP/ADM=",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 19.0
+   },
+   {
+    "fade": 1.0,
+    "follow": 2.0,
+    "identifier": "IA7Oi28aUvQ",
+    "label": "Dance",
+    "levels": "CdzFSn43gNvb7wMoAEYA8P8AmQAF4Bw+qNllJfiP/wB4AMgF7DjagAyZkXCP/wB4AMgFO/PZNfu7jSmP/wB4AMgJjGoNFKAyNDPvA9cARgDw/wCZAAWwoNfWK/V5Go//AHgAyA==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 20.0
+   },
+   {
+    "fade": 1.0,
+    "follow": 2.0,
+    "identifier": "QQyHcS_-JA4",
+    "label": "Dance, turn",
+    "levels": "CdzFSn43gNvb7wPXADwA8ADI/wAJjGoNFKAyNDPvAygAPADwAMj/AA==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 21.0
+   },
+   {
+    "fade": 1.0,
+    "identifier": "UK8mDKLMhfw",
+    "label": "Dance, lift",
+    "levels": "CdzFSn43gNvb7wOAAB4A8P+WAAAF4Bw+qNllJfiP/3MNM/8F7DjagAyZkXCP/3MNM/8FO/PZNfu7jSmP/3MNM/8JjGoNFKAyNDPvA4AAHgDw/5YAAAWwoNfWK/V5Go//cw0z/w==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 22.0
+   },
+   {
+    "fade": 5.0,
+    "identifier": "5-y_RX4iwmM",
+    "label": "Final tableau",
+    "levels": "CflduO2pQHPh+wf/////c3MNDTMzCdzFSn43gNvb7wOAAEwA8P////8F4Bw+qNllJfiP/3MNM/8F7DjagAyZkXCP/3MNM/8JEjroNPCp2An7B/////9zcw0NMzMFO/PZNfu7jSmP/3MNM/8FddqPyU4EXfEwAAAJjGoNFKAyNDPvA4AATADw/////wWwoNfWK/V5Go//cw0z/w==",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 23.0
+   },
+   {
+    "fade": 0.0,
+    "identifier": "0pl2jiUxk5U",
+    "label": "Blackout",
+    "levels": "BflduO2pQHPhAwAABdzFSn43gNvbIAAF4Bw+qNllJfiAAAXsONqADJmRcIAABRI66DTwqdgJAwAABTvz2TX7u40pgAAFddqPyU4EXfEwAAAFjGoNFKAyNDMgAAWwoNfWK/V5GoAA",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 24.0
+   },
+   {
+    "delay": 1.0,
+    "fade": 2.0,
+    "identifier": "IXs9SwJKgI0",
+    "label": "Bows",
+    "levels": "CflduO2pQHPh+wf/////////////BeAcPqjZZSX4j///////Bew42oAMmZFwj///////CRI66DTwqdgJ+wf/////////////BTvz2TX7u40pj///////BbCg19Yr9Xkaj///////",
+    "scene": "B_uxdiVUb30",
+    "sortIndex": 25.0
+   },
+   {
+    "fade": 0.6,
+    "follow": 0.2,
+    "identifier": "0NEePoCw5mY",
     "label": "",
-    "levels": "BbCg19Yr9XkajwD/AAD/BTvz2TX7u40pj/8A/wD/BeAcPqjZZSX4j/8AAAD/Bew42oAMmZFwjwAA/wD/",
+    "levels": "BeAcPqjZZSX4jwD/AAD/Bew42oAMmZFwj/8A/wD/BTvz2TX7u40pj/8AAAD/BbCg19Yr9XkajwAA/wD/",
     "scene": "6ykcwi-fkNM",
     "sortIndex": 1.0
    },
    {
-    "fade": 0.5,
-    "identifier": "Y7woFX5yyBk",
+    "fade": 0.6,
+    "follow": 0.2,
+    "identifier": "cdf7m4tE7pY",
     "label": "",
-    "levels": "BbCg19Yr9XkajwAA/wD/BTvz2TX7u40pj/8AAAD/BeAcPqjZZSX4jwD/AAD/Bew42oAMmZFwj/8A/wD/",
+    "levels": "BeAcPqjZZSX4jwAA/wD/Bew42oAMmZFwj/8AAAD/BTvz2TX7u40pjwD/AAD/BbCg19Yr9Xkaj/8A/wD/",
     "scene": "6ykcwi-fkNM",
     "sortIndex": 2.0
    },
    {
-    "fade": 0.5,
-    "identifier": "OJKjUYtSZ8o",
+    "fade": 0.6,
+    "follow": 0.2,
+    "identifier": "dN5YTdX5E-M",
     "label": "",
-    "levels": "BbCg19Yr9Xkaj/8A/wD/BTvz2TX7u40pjwD/AAD/BeAcPqjZZSX4jwAA/wD/Bew42oAMmZFwj/8AAAD/",
+    "levels": "BeAcPqjZZSX4j/8A/wD/Bew42oAMmZFwjwD/AAD/BTvz2TX7u40pjwAA/wD/BbCg19Yr9Xkaj/8AAAD/",
     "scene": "6ykcwi-fkNM",
     "sortIndex": 3.0
    },
    {
-    "fade": 0.5,
-    "identifier": "mh9FdJS_TjM",
+    "fade": 0.6,
+    "follow": 0.2,
+    "identifier": "tCmaarHqlaQ",
     "label": "",
-    "levels": "BbCg19Yr9Xkaj/8AAAD/BTvz2TX7u40pjwAA/wD/BeAcPqjZZSX4j/8A/wD/Bew42oAMmZFwjwD/AAD/",
+    "levels": "BeAcPqjZZSX4j/8AAAD/Bew42oAMmZFwjwAA/wD/BTvz2TX7u40pj/8A/wD/BbCg19Yr9XkajwD/AAD/",
     "scene": "6ykcwi-fkNM",
     "sortIndex": 4.0
    }
@@ -276,7 +440,7 @@
      0
     ],
     "identifier": "B_uxdiVUb30",
-    "name": "Evening",
+    "name": "Act One",
     "size": 2,
     "sortIndex": 3,
     "symbol": "theatermasks",
@@ -286,13 +450,15 @@
    {
     "buttons": [
      3,
+     2,
      0
     ],
     "identifier": "w6dWp8l5N3w",
     "name": "Reading",
+    "size": 1,
     "sortIndex": 4,
     "symbol": "book",
-    "tap": 2,
+    "tap": 5,
     "tint": "teal"
    },
    {
@@ -308,10 +474,11 @@
      0
     ],
     "identifier": "6ykcwi-fkNM",
-    "name": "Color Steps",
+    "name": "Chase",
+    "size": 1,
     "sortIndex": 6,
     "symbol": "circle.hexagongrid",
-    "tap": 2,
+    "tap": 0,
     "tint": "pink"
    }
   ]
