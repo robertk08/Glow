@@ -235,8 +235,9 @@ private struct CueRow: View {
 				.frame(minWidth: 28, alignment: .trailing)
 			
 			VStack(alignment: .leading, spacing: 4) {
-				Text(cue.label)
+				Text(cue.label.isEmpty ? "Cue \(position + 1)" : cue.label)
 					.fontWeight(isLive ? .semibold : .regular)
+					.foregroundStyle(cue.label.isEmpty ? .secondary : .primary)
 					.lineLimit(2)
 					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 				

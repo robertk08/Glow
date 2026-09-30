@@ -10,6 +10,8 @@ struct StoreView: View {
 	
 	@Bindable var recording: Recording
 	
+	private let columns = [GridItem(.adaptive(minimum: 100), spacing: 8)]
+	
 	var body: some View {
 		NavigationStack {
 			Form {
@@ -26,47 +28,51 @@ struct StoreView: View {
 				}
 				
 				Section {
-					ScrollView(.horizontal) {
-						HStack(spacing: 8) {
-							ForEach(FeatureGroup.allCases) { feature in
-								Toggle(isOn: Binding { recording.features.contains(feature) } set: { _ in recording.toggle(feature) }) {
-									Label(feature.name, systemImage: feature.symbol)
-										.font(.subheadline)
+					LazyVGrid(columns: columns, spacing: 8) {
+						ForEach(FeatureGroup.allCases) { feature in
+							Toggle(isOn: Binding { recording.features.contains(feature) } set: { _ in recording.toggle(feature) }) {
+								HStack(spacing: 6) {
+									Image(systemName: feature.symbol)
+									
+									Text(feature.name)
 								}
+								.font(.subheadline)
+								.lineLimit(1)
+								.minimumScaleFactor(0.8)
+								.frame(maxWidth: .infinity)
 							}
 						}
-						.padding(.vertical, 4)
 					}
-					.contentMargins(.horizontal, 16, for: .scrollContent)
-					.scrollIndicators(.hidden)
 					.toggleStyle(.button)
 					.buttonStyle(.glass)
 					.buttonBorderShape(.capsule)
-					.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+					.padding(.vertical, 4)
 				} header: {
 					Text("Store")
 				}
 				
 				Section {
 					if !groups.isEmpty {
-						ScrollView(.horizontal) {
-							HStack(spacing: 8) {
-								ForEach(groups) { group in
-									Toggle(isOn: Binding { recording.contains(group) } set: { _ in recording.toggle(group) }) {
-										Label(group.name, systemImage: group.symbol)
-											.font(.subheadline)
+						LazyVGrid(columns: columns, spacing: 8) {
+							ForEach(groups) { group in
+								Toggle(isOn: Binding { recording.contains(group) } set: { _ in recording.toggle(group) }) {
+									HStack(spacing: 6) {
+										Image(systemName: group.symbol)
+										
+										Text(group.name)
 									}
-									.tint(group.tint.color ?? .accentColor)
+									.font(.subheadline)
+									.lineLimit(1)
+									.minimumScaleFactor(0.8)
+									.frame(maxWidth: .infinity)
 								}
+								.tint(group.tint.color ?? .accentColor)
 							}
-							.padding(.vertical, 4)
 						}
-						.contentMargins(.horizontal, 16, for: .scrollContent)
-						.scrollIndicators(.hidden)
 						.toggleStyle(.button)
 						.buttonStyle(.glass)
 						.buttonBorderShape(.capsule)
-						.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+						.padding(.vertical, 4)
 					}
 					
 					ForEach(fixtures) { fixture in
