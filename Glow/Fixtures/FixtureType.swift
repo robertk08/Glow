@@ -40,6 +40,16 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		channels.filter { $0.attribute.group == group }
 	}
 	
+	func channels(storedWith group: FeatureGroup) -> [FixtureChannel] {
+		guard group == .dimmer else { return channels(in: group) }
+		
+		switch dimming {
+		case let .band(channel, _, _, _): return channels(in: group) + [channel]
+		case let .emitters(emitters): return channels(in: group) + emitters
+		default: return channels(in: group)
+		}
+	}
+	
 	var defaults: [UInt8] {
 		var values = [UInt8](repeating: 0, count: channelCount)
 		

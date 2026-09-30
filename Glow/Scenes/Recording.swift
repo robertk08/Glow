@@ -128,7 +128,9 @@ final class Recording: Identifiable {
 		for fixture in fixtures where lights.contains(fixture.identifier) {
 			guard let type = library.type(fixture.typeID) else { continue }
 			
-			for channel in type.channels where features.contains(channel.attribute.group) {
+			let stored = features.flatMap(type.channels(storedWith:))
+			
+			for channel in type.channels where stored.contains(channel) {
 				for offset in channel.offsets {
 					guard let address = fixture.start.offset(by: offset - 1) else { continue }
 					levels.set(console.value(at: address), slot: offset, of: fixture.identifier)
@@ -192,6 +194,7 @@ final class Recording: Identifiable {
 			cue.follow = follow
 			context.insert(cue)
 			landing = (cue.identifier, look)
+			console.selection.marked = cue.identifier
 			draft.label = ""
 			
 			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {

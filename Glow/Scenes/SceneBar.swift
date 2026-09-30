@@ -3,8 +3,6 @@ import SwiftUI
 
 struct SceneBar: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
-	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
@@ -19,8 +17,6 @@ struct SceneBar: View {
 		Group {
 			if let look = looks.first(where: { $0.identifier == shown }), let list = lists.first(where: { $0.scene == shown }) {
 				let index = list.index(of: console.playback.cue(of: look.identifier))
-				let live = cues.first { $0.identifier == console.playback.cue(of: look.identifier) }
-				let isUpdatable = live.map(console.canUpdate) ?? false
 				let tint = look.tint.color ?? .accentColor
 				
 				HStack(spacing: 4) {
@@ -57,25 +53,12 @@ struct SceneBar: View {
 					.matchedTransitionSource(id: "scene", in: transition)
 					.accessibilityHint("Shows its cues.")
 					
-					if let live, isUpdatable {
-						Button("Update") {
-							Recording(.into(live), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-						}
-						.buttonStyle(.borderedProminent)
-						.buttonBorderShape(.capsule)
-						.controlSize(.small)
-						.tint(tint)
-						.transition(.scale.combined(with: .opacity))
-					}
-					
 					Group {
-						if list.cues.count > 1, !isUpdatable {
+						if list.cues.count > 1 {
 							Button("Back", systemImage: SceneAction.back.symbol) {
 								console.back(list)
 							}
-						}
-						
-						if list.cues.count > 1 {
+							
 							Button("Next Cue", systemImage: SceneAction.next.symbol) {
 								console.go(list)
 							}

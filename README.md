@@ -120,8 +120,12 @@ These are product decisions the code implements without explaining.
   set up, since holding them flashes.
 - A store takes the selected lights, or every light when none is selected.
   Storing into a cue replaces only the chosen aspects and keeps its name and
-  timing. Updating is offered only for the live cue once a light was touched,
-  and with nothing selected it takes only the touched lights.
+  timing. Update is enabled once a light was touched, and with nothing
+  selected it takes only the touched lights.
+- In the builder a new cue goes after the marked cue, the last stored one or
+  the one tapped. Marking a cue never changes the stage. A light without a
+  dimmer channel stores its brightness under Intensity, whether that is a
+  shutter band or its colour emitters.
 - The store settings (aspects, lights, fade, delay, follow) apply to every cue
   stored after them, whether or not the sheet stored a cue, until the builder
   opens for another scene. Changing the selection resets the lights to it.

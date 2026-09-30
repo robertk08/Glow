@@ -13,10 +13,13 @@ final class Selection {
 	var scene: String?
 	var armed: [String: String] = [:]
 	var draft = CueDraft()
+	var marked: String?
 	
 	var building: String? {
 		didSet {
-			if building != oldValue { draft = CueDraft() }
+			guard building != oldValue else { return }
+			draft = CueDraft()
+			marked = nil
 		}
 	}
 	

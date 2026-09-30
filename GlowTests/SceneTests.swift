@@ -527,18 +527,35 @@ struct SceneTests {
 		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[0].identifier])
 	}
 	
-	@Test func updatingIsOfferedOnlyForTheLiveCueOnceALightWasTouched() throws {
+	@Test func updatingWaitsForATouchAndStoringInsertsAfterTheMarkedCueWithoutPlayingIt() throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 10)])
-		let second = rig.add(2, [(0, 1, 20)])
-		rig.console.play(rig.list, at: 0, snapping: true)
+		rig.add(2, [(0, 1, 20)])
+		rig.console.selection.building = rig.look.identifier
 		
-		#expect(!rig.console.canUpdate(first))
+		#expect(!rig.console.isTouched)
 		
+		rig.console.selection.marked = first.identifier
 		rig.console.set(55, at: DMXAddress(1)!)
 		
-		#expect(rig.console.canUpdate(first))
-		#expect(!rig.console.canUpdate(second))
+		#expect(rig.console.isTouched)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
+		
+		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(held.count == 3)
+		#expect(rig.console.selection.marked == held[1].identifier)
+		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[1] == 55)
+	}
+	
+	@Test func intensityStoresTheDimmerBandOfALightWithoutADimmer() throws {
+		let rig = try rig()
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		recording.features = [.dimmer]
+		
+		#expect(recording.levels.lights[rig.fixtures[2].identifier]?.keys.sorted() == [1])
+		#expect(recording.isReady)
 	}
 	
 	@Test func allOffPutsBackEveryScene() async throws {

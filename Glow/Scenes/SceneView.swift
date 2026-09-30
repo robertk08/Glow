@@ -87,12 +87,6 @@ struct SceneView: View {
 										editing = cue
 									}
 									
-									if console.canUpdate(cue) {
-										Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
-											Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-										}
-									}
-									
 									Button("Delete Cue", systemImage: "trash", role: .destructive) {
 										console.delete(cue, from: list, context: context)
 									}
@@ -140,18 +134,6 @@ struct SceneView: View {
 					ToolbarItem(placement: .topBarLeading) {
 						Button(role: .close) { dismiss() }
 					}
-				}
-				
-				if let index, !editMode.isEditing, console.canUpdate(held[index]) {
-					ToolbarItem(placement: .topBarTrailing) {
-						Button("Update \(index + 1)") {
-							Recording(.into(held[index]), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-						}
-						.buttonStyle(.glassProminent)
-						.tint(tint)
-					}
-					
-					ToolbarSpacer(.fixed, placement: .topBarTrailing)
 				}
 				
 				if !held.isEmpty {

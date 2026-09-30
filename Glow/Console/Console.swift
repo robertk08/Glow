@@ -519,8 +519,8 @@ final class Console {
 		list.index(of: selection.armed[list.scene]) ?? list.next(after: list.index(of: playback.cue(of: list.scene)))
 	}
 	
-	func canUpdate(_ cue: Cue) -> Bool {
-		playback.cue(of: cue.lookID) == cue.identifier && !active.isEmpty
+	var isTouched: Bool {
+		!active.isEmpty
 	}
 	
 	func back(_ list: CueList) {

@@ -12,13 +12,14 @@ struct BuilderBar: View {
 	@State private var recording: Recording?
 	@State private var editing: Cue?
 	@State private var isStyling = false
+	@State private var updates = 0
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
 			@Bindable var look = look
 			let list = CueList(look, cues: cues, fixtures: fixtures)
 			let held = look.cues(among: cues)
-			let index = list.index(of: console.playback.cue(of: look.identifier))
+			let index = held.firstIndex { $0.identifier == console.selection.marked } ?? held.indices.last
 			let current = index.map { held[$0] }
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let tint = look.tint.color ?? .accentColor
@@ -26,24 +27,18 @@ struct BuilderBar: View {
 			VStack(alignment: .leading, spacing: 14) {
 				HStack(spacing: 12) {
 					Button {
-						isStyling = true
+						isStyling.toggle()
 					} label: {
-						Image(systemName: look.symbol)
+						Image(systemName: isStyling ? "chevron.down" : look.symbol)
 							.font(.body.weight(.semibold))
 							.foregroundStyle(.white)
+							.contentTransition(.symbolEffect(.replace))
 							.frame(width: 40, height: 40)
 							.background(tint, in: .circle)
 					}
 					.buttonStyle(.plain)
 					.accessibilityLabel("Icon and Colour")
-					.popover(isPresented: $isStyling) {
-						ScrollView {
-							AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
-								.padding()
-						}
-						.frame(width: 320, height: 380)
-						.presentationCompactAdaptation(.popover)
-					}
+					.accessibilityAddTraits(isStyling ? .isSelected : [])
 					
 					VStack(alignment: .leading, spacing: 1) {
 						TextField("Name", text: $look.name)
@@ -89,7 +84,10 @@ struct BuilderBar: View {
 					.controlSize(.large)
 				}
 				
-				if !held.isEmpty {
+				if isStyling {
+					AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+						.transition(.opacity.combined(with: .move(edge: .bottom)))
+				} else if !held.isEmpty {
 					ScrollViewReader { proxy in
 						ScrollView(.horizontal) {
 							HStack(spacing: 6) {
@@ -98,7 +96,7 @@ struct BuilderBar: View {
 										if position == index {
 											editing = cue
 										} else {
-											console.play(list, at: position)
+											console.selection.marked = cue.identifier
 										}
 									} label: {
 										HStack(spacing: 6) {
@@ -124,7 +122,7 @@ struct BuilderBar: View {
 									.transition(.scale.combined(with: .opacity))
 									.accessibilityLabel(cue.title(at: position))
 									.accessibilityAddTraits(position == index ? .isSelected : [])
-									.accessibilityHint(position == index ? "Edits it." : "Plays it.")
+									.accessibilityHint(position == index ? "Edits it." : "New cues go after it.")
 								}
 							}
 						}
@@ -150,25 +148,28 @@ struct BuilderBar: View {
 					.buttonStyle(.glass)
 					.buttonBorderShape(.circle)
 					
-					if let current, console.canUpdate(current) {
+					if let current, let index {
 						Button {
 							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+							updates += 1
 						} label: {
-							Label("Update \((index ?? 0) + 1)", systemImage: "arrow.triangle.2.circlepath")
+							Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.glass)
-						.transition(.scale.combined(with: .opacity))
+						.disabled(!console.isTouched)
 					}
 					
 					Button {
 						next.store(context: context)
+						isStyling = false
 					} label: {
 						Label("Cue \(next.number)", systemImage: "plus")
 							.frame(maxWidth: .infinity)
 					}
 					.buttonStyle(.glassProminent)
 					.tint(tint)
+					.disabled(!next.isReady)
 					.accessibilityLabel("Store Cue \(next.number)")
 				}
 				.controlSize(.large)
@@ -180,9 +181,12 @@ struct BuilderBar: View {
 			.frame(maxWidth: 560)
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
-			.animation(.snappy, value: held.count)
-			.animation(.snappy, value: current.map(console.canUpdate))
+			.animation(.snappy, value: [held.count, index ?? -1])
+			.animation(.snappy, value: isStyling)
 			.sensoryFeedback(.success, trigger: held.count)
+			.sensoryFeedback(.success, trigger: updates)
+			.sensoryFeedback(.selection, trigger: index)
+			.sensoryFeedback(.selection, trigger: [look.symbol, look.tint.rawValue])
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
 			}

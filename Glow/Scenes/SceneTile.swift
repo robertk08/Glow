@@ -161,12 +161,10 @@ private struct SceneMenu<Items: View, Preview: View>: ViewModifier {
 
 private struct SceneActions: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	let look: Look
 	let list: CueList
@@ -177,13 +175,6 @@ private struct SceneActions: View {
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
-		let live = cues.first { $0.identifier == console.playback.cue(of: look.identifier) }
-		
-		if let live, console.canUpdate(live) {
-			Button("Update Cue \((index ?? 0) + 1)", systemImage: "arrow.triangle.2.circlepath") {
-				Recording(.into(live), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-			}
-		}
 		
 		Section {
 			if list.cues.count > 1, index != nil {
