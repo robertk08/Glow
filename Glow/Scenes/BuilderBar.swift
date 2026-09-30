@@ -11,6 +11,7 @@ struct BuilderBar: View {
 	
 	@State private var recording: Recording?
 	@State private var editing: Cue?
+	@State private var isStyling = false
 	
 	var body: some View {
 		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
@@ -24,11 +25,25 @@ struct BuilderBar: View {
 			
 			VStack(alignment: .leading, spacing: 14) {
 				HStack(spacing: 12) {
-					Image(systemName: look.symbol)
-						.font(.body.weight(.semibold))
-						.foregroundStyle(.white)
-						.frame(width: 40, height: 40)
-						.background(tint, in: .circle)
+					Button {
+						isStyling = true
+					} label: {
+						Image(systemName: look.symbol)
+							.font(.body.weight(.semibold))
+							.foregroundStyle(.white)
+							.frame(width: 40, height: 40)
+							.background(tint, in: .circle)
+					}
+					.buttonStyle(.plain)
+					.accessibilityLabel("Icon and Colour")
+					.popover(isPresented: $isStyling) {
+						ScrollView {
+							AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
+								.padding()
+						}
+						.frame(width: 320, height: 380)
+						.presentationCompactAdaptation(.popover)
+					}
 					
 					VStack(alignment: .leading, spacing: 1) {
 						TextField("Name", text: $look.name)
@@ -83,7 +98,7 @@ struct BuilderBar: View {
 										console.play(list, at: position)
 									} label: {
 										HStack(spacing: 6) {
-											Text(cue.number)
+											Text("\(position + 1)")
 												.fontWeight(.bold)
 												.monospacedDigit()
 											
@@ -103,7 +118,7 @@ struct BuilderBar: View {
 									.buttonStyle(.plain)
 									.id(cue.identifier)
 									.transition(.scale.combined(with: .opacity))
-									.accessibilityLabel(cue.title)
+									.accessibilityLabel(cue.title(at: position))
 									.accessibilityAddTraits(position == index ? .isSelected : [])
 									.contextMenu {
 										Button("Edit", systemImage: "slider.horizontal.3") {
@@ -120,10 +135,13 @@ struct BuilderBar: View {
 									}
 								}
 							}
-							.padding(.horizontal, 2)
 						}
 						.scrollIndicators(.hidden)
-						.scrollClipDisabled()
+						.contentMargins(.horizontal, 16, for: .scrollContent)
+						.padding(.horizontal, -16)
+						.onAppear {
+							proxy.scrollTo(current?.identifier, anchor: .center)
+						}
 						.onChange(of: current?.identifier) {
 							withAnimation {
 								proxy.scrollTo(current?.identifier, anchor: .center)
@@ -144,7 +162,7 @@ struct BuilderBar: View {
 						Button {
 							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 						} label: {
-							Label("Update \(current.number)", systemImage: "arrow.triangle.2.circlepath")
+							Label("Update \((index ?? 0) + 1)", systemImage: "arrow.triangle.2.circlepath")
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.glass)

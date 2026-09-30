@@ -46,12 +46,23 @@ nonisolated struct CueList: Sendable {
 		return (index + cues.count - 1) % cues.count
 	}
 	
-	func number(at index: Int) -> String {
-		Cue.number(cues[index].sortIndex)
+	func heading(at index: Int) -> String {
+		cues[index].label.isEmpty ? "Cue \(index + 1)" : "\(index + 1) · \(cues[index].label)"
 	}
 	
-	func heading(at index: Int) -> String {
-		cues[index].label.isEmpty ? "Cue \(number(at: index))" : "\(number(at: index)) · \(cues[index].label)"
+	func detail(at index: Int) -> String {
+		let cue = cues[index]
+		var parts = cue.delay > 0 ? ["Wait \(Self.seconds(cue.delay))"] : []
+		
+		if let follow = cue.follow, let next = next(after: index) {
+			parts.append(follow > 0 ? "Then \(next + 1) after \(Self.seconds(follow))" : "Then \(next + 1)")
+		}
+		
+		return parts.joined(separator: ", ")
+	}
+	
+	static func seconds(_ value: Double) -> String {
+		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
 	}
 	
 	var isLong: Bool {

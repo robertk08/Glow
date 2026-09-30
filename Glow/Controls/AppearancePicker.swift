@@ -15,23 +15,6 @@ struct AppearancePicker: View {
 	private let tintColumns = [GridItem(.adaptive(minimum: 40), spacing: 10)]
 	
 	var body: some View {
-		LazyVGrid(columns: symbolColumns, spacing: 12) {
-			ForEach(symbols, id: \.self) { option in
-				Button {
-					symbol = option
-				} label: {
-					Image(systemName: option)
-						.font(.title3)
-						.foregroundStyle(symbol == option ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-						.frame(width: 44, height: 44)
-						.background(symbol == option ? Color.accentColor.opacity(0.18) : .clear, in: .circle)
-				}
-				.buttonStyle(.plain)
-				.accessibilityAddTraits(symbol == option ? .isSelected : [])
-			}
-		}
-		.padding(.vertical, 4)
-		
 		if let tint {
 			LazyVGrid(columns: tintColumns, spacing: 10) {
 				ForEach(FixtureTint.allCases) { option in
@@ -60,5 +43,22 @@ struct AppearancePicker: View {
 			}
 			.padding(.vertical, 4)
 		}
+		
+		LazyVGrid(columns: symbolColumns, spacing: 12) {
+			ForEach(symbols, id: \.self) { option in
+				Button {
+					symbol = option
+				} label: {
+					Image(systemName: option)
+						.font(.title3)
+						.foregroundStyle(symbol == option ? Color.white : Color.primary)
+						.frame(width: 44, height: 44)
+						.background(symbol == option ? tint?.wrappedValue.color ?? .accentColor : .clear, in: .circle)
+				}
+				.buttonStyle(.plain)
+				.accessibilityAddTraits(symbol == option ? .isSelected : [])
+			}
+		}
+		.padding(.vertical, 4)
 	}
 }

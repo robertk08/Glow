@@ -180,7 +180,7 @@ private struct SceneActions: View {
 		let live = cues.first { $0.identifier == console.playback.cue(of: look.identifier) }
 		
 		if let live, console.canUpdate(live) {
-			Button("Update Cue \(live.number)", systemImage: "arrow.triangle.2.circlepath") {
+			Button("Update Cue \((index ?? 0) + 1)", systemImage: "arrow.triangle.2.circlepath") {
 				Recording(.into(live), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
 			}
 		}

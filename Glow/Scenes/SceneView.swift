@@ -59,21 +59,9 @@ struct SceneView: View {
 										console.selection.arm(cue.identifier, of: look.identifier)
 									}
 								} label: {
-									CueRow(cue: cue, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
+									CueRow(list: list, position: position, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
 								}
 								.buttonStyle(.plain)
-								.overlay(alignment: .trailing) {
-									if position == index, console.canUpdate(cue) {
-										Button("Update", systemImage: "arrow.triangle.2.circlepath") {
-											Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
-										}
-										.buttonStyle(.borderedProminent)
-										.buttonBorderShape(.capsule)
-										.controlSize(.small)
-										.tint(tint)
-										.transition(.scale.combined(with: .opacity))
-									}
-								}
 								.id(cue.identifier)
 								.listRowBackground(position == index ? tint.opacity(0.14) : nil)
 								.accessibilityAddTraits(position == index ? .isSelected : [])
@@ -160,6 +148,18 @@ struct SceneView: View {
 					}
 				}
 				
+				if let index, !editMode.isEditing, console.canUpdate(held[index]) {
+					ToolbarItem(placement: .topBarTrailing) {
+						Button("Update \(index + 1)") {
+							Recording(.into(held[index]), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+						}
+						.buttonStyle(.glassProminent)
+						.tint(tint)
+					}
+					
+					ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				}
+				
 				if !held.isEmpty {
 					ToolbarItem(placement: .topBarTrailing) {
 						if editMode.isEditing {
@@ -215,7 +215,8 @@ struct SceneView: View {
 }
 
 private struct CueRow: View {
-	let cue: Cue
+	let list: CueList
+	let position: Int
 	let isLive: Bool
 	let isNext: Bool
 	let isArmed: Bool
@@ -223,36 +224,35 @@ private struct CueRow: View {
 	let tint: Color
 	
 	var body: some View {
-		HStack(spacing: 10) {
-			Text(cue.number)
-				.font(.subheadline.weight(.semibold))
+		let cue = list.cues[position]
+		let detail = list.detail(at: position)
+		
+		HStack(alignment: .firstTextBaseline, spacing: 12) {
+			Text("\(position + 1)")
+				.font(.body.weight(isLive ? .bold : .regular))
+				.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
 				.monospacedDigit()
-				.foregroundStyle(isLive ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
-				.lineLimit(1)
-				.minimumScaleFactor(0.7)
-				.padding(.horizontal, 6)
-				.frame(minWidth: 40, minHeight: 28)
-				.background(isLive ? tint : .clear, in: .capsule)
-				.frame(width: 52)
-				.accessibilityLabel(isLive ? "Live, cue \(cue.number)" : "Cue \(cue.number)")
+				.frame(minWidth: 28, alignment: .trailing)
 			
-			VStack(alignment: .leading, spacing: 3) {
-				if !cue.label.isEmpty {
-					Text(cue.label)
-						.fontWeight(isLive ? .semibold : .regular)
-						.lineLimit(2)
-				}
+			VStack(alignment: .leading, spacing: 4) {
+				Text(cue.label.isEmpty ? "Cue \(position + 1)" : cue.label)
+					.fontWeight(isLive ? .semibold : .regular)
+					.foregroundStyle(cue.label.isEmpty ? .secondary : .primary)
+					.lineLimit(2)
+					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 				
 				Group {
 					if isLive {
 						CueStatus(fade: fade, follow: cue.follow) {
-							CueTimes(cue: cue)
+							if !detail.isEmpty {
+								Text(detail)
+							}
 						}
-					} else {
-						CueTimes(cue: cue)
+					} else if !detail.isEmpty {
+						Text(detail)
 					}
 				}
-				.font(.caption)
+				.font(.subheadline)
 				.foregroundStyle(.secondary)
 				
 				if isLive, cue.fade + cue.delay > 0 {
@@ -271,8 +271,14 @@ private struct CueRow: View {
 					.padding(.vertical, 3)
 					.background(isArmed ? tint : tint.opacity(0.15), in: .capsule)
 			}
+			
+			Text(CueList.seconds(cue.fade))
+				.foregroundStyle(.secondary)
+				.monospacedDigit()
 		}
 		.contentShape(.rect)
+		.accessibilityElement(children: .combine)
+		.accessibilityLabel(isLive ? "Live, \(list.heading(at: position))" : list.heading(at: position))
 	}
 }
 

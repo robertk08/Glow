@@ -111,9 +111,8 @@ These are product decisions the code implements without explaining.
 - Cues track. A cue holds only the lights and aspects stored into it, the rest
   keeps what earlier cues set, and going back undoes what later cues changed.
   After the last cue Go does nothing, unless the scene loops.
-- A cue's number is its sort index, so inserting between 1 and 2 gives 1.5 and
-  no other cue is renumbered. A scene written before loops existed reads as not
-  looping.
+- A cue's number is its position in the scene, so an inserted cue renumbers the
+  ones after it. A scene written before loops existed reads as not looping.
 - A tap on a cue in a scene's list only marks it as the next cue, and Go plays
   it, so a stray tap never changes the stage mid show.
 - Playing and arranging are separate. In the Scenes edit mode a tap customizes

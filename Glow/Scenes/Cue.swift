@@ -40,26 +40,8 @@ final class Cue {
 		values = entry.levels
 	}
 	
-	var number: String {
-		Self.number(sortIndex)
+	func title(at position: Int) -> String {
+		label.isEmpty ? "Cue \(position + 1)" : label
 	}
 	
-	var title: String {
-		label.isEmpty ? "Cue \(number)" : label
-	}
-	
-	static func number(_ sortIndex: Double) -> String {
-		sortIndex.formatted(.number.precision(.fractionLength(0...3)).grouping(.never))
-	}
-	
-	var times: [(time: CueTime, seconds: Double)] {
-		var times: [(time: CueTime, seconds: Double)] = fade > 0 ? [(.fade, fade)] : []
-		if delay > 0 { times.append((.delay, delay)) }
-		if let follow { times.append((.follow, follow)) }
-		return times
-	}
-	
-	static func seconds(_ value: Double) -> String {
-		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
-	}
 }

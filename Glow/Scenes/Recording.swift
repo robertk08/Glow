@@ -57,8 +57,16 @@ final class Recording: Identifiable {
 		}
 	}
 	
-	var number: String {
-		Cue.number(slot)
+	var number: Int {
+		switch destination {
+		case let .cue(look, after):
+			let held = look.cues(among: cues)
+			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }) else { return held.count + 1 }
+			return position + 2
+		case let .into(cue):
+			let held = looks.first { $0.identifier == cue.lookID }?.cues(among: cues) ?? []
+			return (held.firstIndex { $0.identifier == cue.identifier } ?? 0) + 1
+		}
 	}
 	
 	var slot: Double {

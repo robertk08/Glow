@@ -342,7 +342,7 @@ struct SceneTests {
 		let recording = rig.recording(.cue(fresh, after: nil))
 		
 		#expect(fresh.name == "Scene 2")
-		#expect(recording.number == "1")
+		#expect(recording.number == 1)
 		#expect(recording.hint == "All lights")
 		#expect(recording.lights == Set(rig.fixtures.map(\.identifier)))
 		
@@ -416,11 +416,11 @@ struct SceneTests {
 		
 		let held = rig.look.cues(among: rig.cues)
 		#expect(held.map(\.sortIndex) == [1, 1.5, 2])
-		#expect(held[1].title == "Storm rolls in")
+		#expect(held[1].title(at: 1) == "Storm rolls in")
 		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[2] == 77)
-		#expect(held[0].title == "Cue 1")
-		#expect(rig.recording(.cue(rig.look, after: held[1])).slot == 1.75)
-		#expect(rig.recording(.cue(rig.look, after: nil)).slot == 3)
+		#expect(held[0].title(at: 0) == "Cue 1")
+		#expect(rig.recording(.cue(rig.look, after: held[1])).number == 3)
+		#expect(rig.recording(.cue(rig.look, after: nil)).number == 4)
 	}
 	
 	@Test func aStoredCueIsOnStageWithoutMovingTheLights() throws {
