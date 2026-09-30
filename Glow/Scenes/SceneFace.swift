@@ -44,18 +44,20 @@ struct SceneFace: View {
 					.font(.headline)
 					.lineLimit(1)
 				
-				CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
-					HStack(spacing: 4) {
-						if look.tap == .flash {
-							Image(systemName: SceneAction.flash.symbol)
+				if !isLarge || isOn {
+					CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
+						HStack(spacing: 4) {
+							if look.tap == .flash {
+								Image(systemName: SceneAction.flash.symbol)
+							}
+							
+							Text(list.status(at: index).isEmpty ? " " : list.status(at: index))
 						}
-						
-						Text(list.status(at: index))
 					}
+					.font(isLarge ? .title3.weight(.semibold) : .subheadline)
+					.foregroundStyle(isLarge ? .primary : .secondary)
+					.lineLimit(isLarge ? 2 : 1)
 				}
-				.font(isLarge && isOn ? .title3.weight(.semibold) : .subheadline)
-				.foregroundStyle(isLarge && isOn ? .primary : .secondary)
-				.lineLimit(isLarge ? 2 : 1)
 				
 				if isLarge, list.cues.count > 1, let upcoming {
 					HStack(spacing: 4) {

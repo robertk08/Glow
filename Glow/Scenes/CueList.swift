@@ -54,11 +54,11 @@ nonisolated struct CueList: Sendable {
 		let cue = cues[index]
 		var parts = cue.delay > 0 ? ["Wait \(Self.seconds(cue.delay))"] : []
 		
-		if let follow = cue.follow, let next = next(after: index) {
-			parts.append(follow > 0 ? "Then \(next + 1) after \(Self.seconds(follow))" : "Then \(next + 1)")
+		if let follow = cue.follow, next(after: index) != nil {
+			parts.append(follow > 0 ? "Auto \(Self.seconds(follow))" : "Auto")
 		}
 		
-		return parts.joined(separator: ", ")
+		return parts.joined(separator: " · ")
 	}
 	
 	static func seconds(_ value: Double) -> String {
@@ -71,8 +71,7 @@ nonisolated struct CueList: Sendable {
 	
 	func status(at index: Int?) -> String {
 		guard !cues.isEmpty else { return "No Cues" }
-		guard let index else { return "Off" }
-		guard cues.count > 1 else { return "On" }
+		guard let index, cues.count > 1 else { return "" }
 		return heading(at: index)
 	}
 	

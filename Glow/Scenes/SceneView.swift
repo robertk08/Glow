@@ -235,9 +235,8 @@ private struct CueRow: View {
 				.frame(minWidth: 28, alignment: .trailing)
 			
 			VStack(alignment: .leading, spacing: 4) {
-				Text(cue.label.isEmpty ? "Cue \(position + 1)" : cue.label)
+				Text(cue.label)
 					.fontWeight(isLive ? .semibold : .regular)
-					.foregroundStyle(cue.label.isEmpty ? .secondary : .primary)
 					.lineLimit(2)
 					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 				
@@ -272,9 +271,11 @@ private struct CueRow: View {
 					.background(isArmed ? tint : tint.opacity(0.15), in: .capsule)
 			}
 			
-			Text(CueList.seconds(cue.fade))
-				.foregroundStyle(.secondary)
-				.monospacedDigit()
+			if cue.fade > 0 {
+				Text(CueList.seconds(cue.fade))
+					.foregroundStyle(.secondary)
+					.monospacedDigit()
+			}
 		}
 		.contentShape(.rect)
 		.accessibilityElement(children: .combine)

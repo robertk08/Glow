@@ -37,19 +37,18 @@ struct StoreView: View {
 						}
 						.padding(.vertical, 4)
 					}
-					.contentMargins(.horizontal, 20, for: .scrollContent)
+					.contentMargins(.horizontal, 16, for: .scrollContent)
 					.scrollIndicators(.hidden)
 					.toggleStyle(.button)
 					.buttonStyle(.glass)
 					.buttonBorderShape(.capsule)
-					.listRowBackground(Color.clear)
-					.listRowInsets(EdgeInsets())
+					.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
 				} header: {
 					Text("Store")
 				}
 				
-				if !groups.isEmpty {
-					Section {
+				Section {
+					if !groups.isEmpty {
 						ScrollView(.horizontal) {
 							HStack(spacing: 8) {
 								ForEach(groups) { group in
@@ -62,19 +61,14 @@ struct StoreView: View {
 							}
 							.padding(.vertical, 4)
 						}
-						.contentMargins(.horizontal, 20, for: .scrollContent)
+						.contentMargins(.horizontal, 16, for: .scrollContent)
 						.scrollIndicators(.hidden)
 						.toggleStyle(.button)
 						.buttonStyle(.glass)
 						.buttonBorderShape(.capsule)
-						.listRowBackground(Color.clear)
-						.listRowInsets(EdgeInsets())
-					} header: {
-						Text("Groups")
+						.listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
 					}
-				}
-				
-				Section {
+					
 					ForEach(fixtures) { fixture in
 						Toggle(isOn: Binding { recording.lights.contains(fixture.identifier) } set: { _ in recording.toggle(fixture) }) {
 							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))

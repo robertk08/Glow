@@ -40,7 +40,9 @@ struct SceneBar: View {
 									.font(.subheadline.weight(.medium))
 								
 								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
-									Text(list.status(at: index))
+									if !list.status(at: index).isEmpty {
+										Text(list.status(at: index))
+									}
 								}
 								.font(.caption)
 								.foregroundStyle(.secondary)
