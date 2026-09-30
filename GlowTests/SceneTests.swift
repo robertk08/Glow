@@ -507,6 +507,26 @@ struct SceneTests {
 		#expect(rig.recording(.cue(rig.look, after: nil)).features == Set(FeatureGroup.allCases))
 	}
 	
+	@Test func theStoreSettingsStayWithoutStoringACue() throws {
+		let rig = try rig()
+		rig.console.selection.building = rig.look.identifier
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		recording.features = [.position]
+		recording.fade = 4
+		recording.lights = [rig.fixtures[1].identifier]
+		
+		let next = rig.recording(.cue(rig.look, after: nil))
+		#expect(rig.look.cues(among: rig.cues).isEmpty)
+		#expect(next.features == [.position])
+		#expect(next.fade == 4)
+		#expect(next.lights == [rig.fixtures[1].identifier])
+		#expect(next.hint == "1 light · 4 s")
+		
+		rig.console.selection.toggle(rig.fixtures[0])
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[0].identifier])
+	}
+	
 	@Test func updatingIsOfferedOnlyForTheLiveCueOnceALightWasTouched() throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 10)])

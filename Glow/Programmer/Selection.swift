@@ -3,17 +3,20 @@ import SwiftUI
 
 @Observable @MainActor
 final class Selection {
-	private(set) var identifiers: Set<String> = []
+	private(set) var identifiers: Set<String> = [] {
+		didSet { draft.lights = nil }
+	}
+	
 	var isProgrammerOpen = false
 	var isSceneOpen = false
 	var section = "lights"
 	var scene: String?
 	var armed: [String: String] = [:]
-	var aspects = Set(FeatureGroup.allCases)
+	var draft = CueDraft()
 	
 	var building: String? {
 		didSet {
-			if building != oldValue { aspects = Set(FeatureGroup.allCases) }
+			if building != oldValue { draft = CueDraft() }
 		}
 	}
 	

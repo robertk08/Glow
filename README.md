@@ -122,8 +122,9 @@ These are product decisions the code implements without explaining.
   Storing into a cue replaces only the chosen aspects and keeps its name and
   timing. Updating is offered only for the live cue once a light was touched,
   and with nothing selected it takes only the touched lights.
-- The aspects chosen for one store stay chosen for the next, until the builder
-  opens for another scene.
+- The store settings (aspects, lights, fade, delay, follow) apply to every cue
+  stored after them, whether or not the sheet stored a cue, until the builder
+  opens for another scene. Changing the selection resets the lights to it.
 - Fades, delays and follows run on the controller, so they carry on when the
   device that started them sleeps or drops. Touching a channel mid-fade, on any
   device, releases it from the fade.

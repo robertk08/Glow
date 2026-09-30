@@ -11,13 +11,14 @@ final class Recording: Identifiable {
 	
 	let destination: Destination
 	let selected: Set<String>
-	var label = ""
-	var lights: Set<String>
-	var features = Set(FeatureGroup.allCases)
-	var fade = 0.0
-	var delay = 0.0
-	var follow: Double?
 	
+	var draft: CueDraft {
+		didSet {
+			if isNew { console.selection.draft = draft }
+		}
+	}
+	
+	private let chosen: Set<String>
 	private let console: Console
 	private let fixtures: [Fixture]
 	private let library: FixtureLibrary
@@ -33,16 +34,45 @@ final class Recording: Identifiable {
 		self.cues = cues
 		
 		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
-		lights = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		
 		switch destination {
-		case let .cue(look, _):
-			features = console.selection.aspects
-			fade = look.cues(among: cues).last?.fade ?? 0
+		case .cue:
+			draft = console.selection.draft
+			chosen = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		case .into:
-			guard selected.isEmpty else { break }
-			lights = Set(fixtures.filter { $0.range(library.type($0.typeID)).contains(where: console.active.contains) }.map(\.identifier))
+			draft = CueDraft()
+			chosen = selected.isEmpty ? Set(fixtures.filter { $0.range(library.type($0.typeID)).contains(where: console.active.contains) }.map(\.identifier)) : selected
 		}
+	}
+	
+	var label: String {
+		get { draft.label }
+		set { draft.label = newValue }
+	}
+	
+	var fade: Double {
+		get { draft.fade }
+		set { draft.fade = newValue }
+	}
+	
+	var delay: Double {
+		get { draft.delay }
+		set { draft.delay = newValue }
+	}
+	
+	var follow: Double? {
+		get { draft.follow }
+		set { draft.follow = newValue }
+	}
+	
+	var features: Set<FeatureGroup> {
+		get { draft.aspects }
+		set { draft.aspects = newValue }
+	}
+	
+	var lights: Set<String> {
+		get { draft.lights ?? chosen }
+		set { draft.lights = newValue }
 	}
 	
 	var isNew: Bool {
@@ -81,8 +111,11 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		guard !selected.isEmpty else { return "All lights" }
-		return selected.count == 1 ? "1 light" : "\(selected.count) lights"
+		var parts = [lights.count >= fixtures.count ? "All lights" : lights.count == 1 ? "1 light" : "\(lights.count) lights"]
+		if fade > 0 { parts.append(CueList.seconds(fade)) }
+		if delay > 0 { parts.append("Wait \(CueList.seconds(delay))") }
+		if follow != nil { parts.append("Auto") }
+		return parts.joined(separator: " · ")
 	}
 	
 	var isReady: Bool {
@@ -159,7 +192,7 @@ final class Recording: Identifiable {
 			cue.follow = follow
 			context.insert(cue)
 			landing = (cue.identifier, look)
-			console.selection.aspects = features
+			draft.label = ""
 			
 			if held.count == 1, look.tap == .toggle, look.buttons.isEmpty {
 				look.tap = .next

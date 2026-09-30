@@ -95,7 +95,11 @@ struct BuilderBar: View {
 							HStack(spacing: 6) {
 								ForEach(Array(held.enumerated()), id: \.element.identifier) { position, cue in
 									Button {
-										console.play(list, at: position)
+										if position == index {
+											editing = cue
+										} else {
+											console.play(list, at: position)
+										}
 									} label: {
 										HStack(spacing: 6) {
 											Text("\(position + 1)")
@@ -120,19 +124,7 @@ struct BuilderBar: View {
 									.transition(.scale.combined(with: .opacity))
 									.accessibilityLabel(cue.title(at: position))
 									.accessibilityAddTraits(position == index ? .isSelected : [])
-									.contextMenu {
-										Button("Edit", systemImage: "slider.horizontal.3") {
-											editing = cue
-										}
-										
-										Button("Add Cue After", systemImage: "text.insert") {
-											recording = Recording(.cue(look, after: cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
-										}
-										
-										Button("Delete Cue", systemImage: "trash", role: .destructive) {
-											console.delete(cue, from: list, context: context)
-										}
-									}
+									.accessibilityHint(position == index ? "Edits it." : "Plays it.")
 								}
 							}
 						}

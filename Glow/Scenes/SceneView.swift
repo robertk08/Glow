@@ -87,12 +87,6 @@ struct SceneView: View {
 										editing = cue
 									}
 									
-									Button("Add Cue After", systemImage: "text.insert") {
-										console.play(list, at: position)
-										console.selection.building = look.identifier
-										console.selection.isSceneOpen = false
-									}
-									
 									if console.canUpdate(cue) {
 										Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
 											Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)

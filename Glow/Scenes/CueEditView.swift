@@ -26,6 +26,7 @@ private struct CueForm: View {
 	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.dismiss) private var dismiss
+	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
@@ -77,12 +78,21 @@ private struct CueForm: View {
 				Text("Lights")
 			}
 			
-			if console.canUpdate(cue) {
-				Section {
+			Section {
+				if console.canUpdate(cue) {
 					Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
 						recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 					}
 				}
+				
+				Button("Delete Cue", systemImage: "trash", role: .destructive) {
+					if let look = looks.first(where: { $0.identifier == cue.lookID }) {
+						console.delete(cue, from: CueList(look, cues: cues, fixtures: fixtures), context: context)
+					}
+					
+					dismiss()
+				}
+				.foregroundStyle(.red)
 			}
 		}
 		.navigationTitle("Cue \(position + 1)")
