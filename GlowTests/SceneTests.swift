@@ -556,6 +556,7 @@ struct SceneTests {
 		
 		#expect(recording.levels.lights[rig.fixtures[2].identifier]?.keys.sorted() == [1])
 		#expect(recording.isReady)
+		#expect(recording.levels.features(of: rig.fixtures[2].identifier, type: rig.library.type("head")) == [.dimmer])
 	}
 	
 	@Test func allOffPutsBackEveryScene() async throws {

@@ -86,6 +86,7 @@ nonisolated struct Levels: Sendable, Equatable {
 	
 	func features(of light: String, type: FixtureType?) -> [FeatureGroup] {
 		guard let slots = lights[light], let type else { return [] }
-		return FeatureGroup.allCases.filter { group in type.channels(storedWith: group).contains { $0.offsets.contains(where: { slots[$0] != nil }) } }
+		let dimming = type.channels(storedWith: .dimmer)
+		return FeatureGroup.allCases.filter { group in type.channels(storedWith: group).contains { channel in (group == .dimmer || !dimming.contains(channel)) && channel.offsets.contains(where: { slots[$0] != nil }) } }
 	}
 }
