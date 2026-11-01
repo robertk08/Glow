@@ -511,6 +511,25 @@ struct SceneTests {
 		#expect(rig.look.cues(among: rig.cues).map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30, 30])
 	}
 	
+	@Test func aSceneNeverEndsUpWithoutAName() throws {
+		let rig = try rig()
+		rig.look.name = "   "
+		rig.look.settle(name: "Act One", among: rig.looks)
+		
+		#expect(rig.look.name == "Act One")
+		
+		rig.look.name = "  Storm  "
+		rig.look.settle(name: "Act One", among: rig.looks)
+		
+		#expect(rig.look.name == "Storm")
+		
+		rig.look.name = ""
+		rig.look.settle(name: " ", among: rig.looks)
+		
+		#expect(!rig.look.name.isEmpty)
+		#expect(rig.looks.filter { $0.name == rig.look.name }.count == 1)
+	}
+	
 	@Test func randomBuilderSessionsKeepEveryButtonHonest() async throws {
 		var seed: UInt64 = 0x9E3779B97F4A7C15
 		

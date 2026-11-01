@@ -5,6 +5,7 @@ struct SceneSettings: View {
 	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var context
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Environment(\.dynamicTypeSize) private var typeSize
@@ -13,6 +14,8 @@ struct SceneSettings: View {
 	@Bindable var look: Look
 	
 	@State private var isDeleting = false
+	@State private var named = ""
+	@FocusState private var isNaming: Bool
 	
 	var body: some View {
 		NavigationStack {
@@ -45,6 +48,8 @@ struct SceneSettings: View {
 			Section {
 				TextField("Name", text: $look.name)
 					.autocorrectionDisabled()
+					.submitLabel(.done)
+					.focused($isNaming)
 			}
 			
 			Section {
@@ -139,6 +144,19 @@ struct SceneSettings: View {
 				console.remove(look, with: cues, context: context)
 				dismiss()
 			}
+		}
+		.onAppear {
+			named = look.name
+		}
+		.onChange(of: isNaming) {
+			if isNaming {
+				named = look.name
+			} else {
+				look.settle(name: named, among: looks)
+			}
+		}
+		.onDisappear {
+			if !look.isGone { look.settle(name: named, among: looks) }
 		}
 	}
 }

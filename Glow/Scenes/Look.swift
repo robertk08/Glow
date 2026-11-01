@@ -67,6 +67,20 @@ final class Look {
 		symbolOverride ?? "theatermasks"
 	}
 	
+	func settle(name before: String, among looks: [Look]) {
+		var settled = name.trimmingCharacters(in: .whitespacesAndNewlines)
+		
+		if settled.isEmpty {
+			settled = before.trimmingCharacters(in: .whitespacesAndNewlines)
+		}
+		
+		if settled.isEmpty {
+			settled = Identifier.unusedName("Scene \(looks.count)", among: looks.map(\.name))
+		}
+		
+		if settled != name { name = settled }
+	}
+	
 	func cues(among cues: [Cue]) -> [Cue] {
 		cues.filter { $0.lookID == identifier }.sorted { ($0.sortIndex, $0.identifier) < ($1.sortIndex, $1.identifier) }
 	}

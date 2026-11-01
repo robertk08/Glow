@@ -33,6 +33,8 @@ private struct BuilderPanel: View {
 	@State private var isDiscarding = false
 	@State private var updates = 0
 	@State private var shows = 0
+	@State private var named = ""
+	@FocusState private var isNaming: Bool
 	
 	var body: some View {
 		if !look.isGone {
@@ -67,6 +69,7 @@ private struct BuilderPanel: View {
 							.font(.headline)
 							.autocorrectionDisabled()
 							.submitLabel(.done)
+							.focused($isNaming)
 						
 						HStack(spacing: 6) {
 							Text(next.hint)
@@ -106,6 +109,7 @@ private struct BuilderPanel: View {
 						
 						if !held.isEmpty {
 							Button(role: .confirm) {
+								look.settle(name: named, among: looks)
 								console.selection.building = nil
 							}
 							.buttonStyle(.glassProminent)
@@ -241,6 +245,14 @@ private struct BuilderPanel: View {
 			.sensoryFeedback(.selection, trigger: [look.symbol, look.tint.rawValue])
 			.onAppear {
 				console.keep(look, among: cues)
+				named = look.name
+			}
+			.onChange(of: isNaming) {
+				if isNaming {
+					named = look.name
+				} else {
+					look.settle(name: named, among: looks)
+				}
 			}
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
