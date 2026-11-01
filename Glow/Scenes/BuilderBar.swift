@@ -158,7 +158,8 @@ private struct BuilderPanel: View {
 									.buttonStyle(.plain)
 									.id(cue.identifier)
 									.transition(.scale.combined(with: .opacity))
-									.accessibilityLabel(cue.title(at: position))
+									.accessibilityLabel("Cue \(position + 1)")
+									.accessibilityValue(cue.label)
 									.accessibilityAddTraits(position == index ? .isSelected : [])
 									.accessibilityHint(position == index ? "Edits it." : "New cues go after it.")
 								}

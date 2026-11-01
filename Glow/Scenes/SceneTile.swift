@@ -31,7 +31,7 @@ struct SceneTile: View {
 				console.selection.scene = look.identifier
 				console.selection.isSceneOpen = sizeClass != .regular
 			} else if list.cues.isEmpty {
-				console.selection.building = look.identifier
+				console.selection.build(look.identifier)
 			} else {
 				console.run(look.tap, on: list)
 			}
@@ -202,7 +202,7 @@ private struct SceneActions: View {
 			}
 			
 			Button("Add Cues", systemImage: "plus") {
-				console.selection.building = look.identifier
+				console.selection.build(look.identifier)
 			}
 		}
 		

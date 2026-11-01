@@ -38,6 +38,7 @@ private struct CueForm: View {
 	@Binding var identifier: String
 	
 	@State private var recording: Recording?
+	@FocusState private var isLabelling: Bool
 	
 	var body: some View {
 		let levels = cue.levels
@@ -47,6 +48,7 @@ private struct CueForm: View {
 			Section {
 				TextField("Cue \(position + 1)", text: $cue.label, axis: .vertical)
 					.lineLimit(1...3)
+					.focused($isLabelling)
 			}
 			
 			Section {
@@ -117,6 +119,15 @@ private struct CueForm: View {
 		}
 		.sheet(item: $recording) { recording in
 			StoreView(recording: recording)
+		}
+		.onChange(of: isLabelling) {
+			if !isLabelling { cue.settleLabel() }
+		}
+		.onChange(of: cue.identifier) { before, _ in
+			cues.first { $0.identifier == before }?.settleLabel()
+		}
+		.onDisappear {
+			if !cue.isDeleted, cue.modelContext != nil { cue.settleLabel() }
 		}
 	}
 }

@@ -25,6 +25,15 @@ final class Selection {
 	
 	var isEmpty: Bool { identifiers.isEmpty }
 	
+	func build(_ scene: String) {
+		guard building == nil else {
+			section = "lights"
+			return
+		}
+		
+		building = scene
+	}
+	
 	func contains(_ fixture: Fixture) -> Bool {
 		identifiers.contains(fixture.identifier)
 	}

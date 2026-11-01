@@ -63,7 +63,7 @@ final class Recording: Identifiable {
 	}
 	
 	var lights: Set<String> {
-		get { draft.lights ?? Set(fixtures.map(\.identifier)) }
+		get { (draft.lights ?? Set(fixtures.map(\.identifier))).intersection(fixtures.map(\.identifier)) }
 		set { draft.lights = newValue }
 	}
 	
@@ -103,7 +103,7 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		var parts = [lights.count >= fixtures.count ? "All lights" : lights.count == 1 ? "1 light" : "\(lights.count) lights"]
+		var parts = [lights.isEmpty ? "No lights" : lights.count == fixtures.count ? "All lights" : lights.count == 1 ? "1 light" : "\(lights.count) lights"]
 		if fade > 0 { parts.append(CueList.seconds(fade)) }
 		if delay > 0 { parts.append("Wait \(CueList.seconds(delay))") }
 		if follow != nil { parts.append("Auto") }
@@ -189,7 +189,7 @@ final class Recording: Identifiable {
 	
 	func store(context: ModelContext) {
 		let levels = levels
-		let label = label.trimmingCharacters(in: .whitespaces)
+		let label = label.trimmingCharacters(in: .whitespacesAndNewlines)
 		var landing: (cue: String, look: Look)?
 		
 		switch destination {

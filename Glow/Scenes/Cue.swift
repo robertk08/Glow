@@ -40,8 +40,9 @@ final class Cue {
 		values = entry.levels
 	}
 	
-	func title(at position: Int) -> String {
-		label.isEmpty ? "Cue \(position + 1)" : label
+	func settleLabel() {
+		let settled = label.trimmingCharacters(in: .whitespacesAndNewlines)
+		if settled != label { label = settled }
 	}
 	
 }

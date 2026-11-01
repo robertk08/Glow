@@ -566,6 +566,11 @@ final class Console {
 	}
 	
 	func delete(_ cue: Cue, from list: CueList, context: ModelContext) {
+		if selection.marked == cue.identifier, let index = list.index(of: cue.identifier) {
+			let neighbour = index > 0 ? index - 1 : index + 1
+			selection.marked = list.cues.indices.contains(neighbour) ? list.cues[neighbour].identifier : nil
+		}
+		
 		if let index = list.index(of: cue.identifier), playback.cue(of: list.scene) == cue.identifier {
 			let trimmed = list.removing(cue.identifier)
 			

@@ -511,6 +511,63 @@ struct SceneTests {
 		#expect(rig.look.cues(among: rig.cues).map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30, 30])
 	}
 	
+	@Test func addingCuesToAnotherSceneWhileBuildingKeepsTheOpenBuilder() throws {
+		let rig = try rig()
+		let other = Look.fresh(among: rig.looks, context: rig.context)
+		rig.console.selection.section = "scenes"
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.selection.section = "scenes"
+		rig.console.selection.build(other.identifier)
+		
+		#expect(rig.console.selection.building == rig.look.identifier)
+		#expect(rig.console.selection.section == "lights")
+	}
+	
+	@Test func deletingTheMarkedCueMarksTheOneBeforeIt() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		rig.add(3, [(0, 1, 30)])
+		rig.console.selection.marked = second.identifier
+		rig.console.delete(second, from: rig.list, context: rig.context)
+		
+		#expect(rig.console.selection.marked == first.identifier)
+		
+		try? rig.context.save()
+		rig.console.delete(first, from: rig.list, context: rig.context)
+		
+		#expect(rig.console.selection.marked == rig.look.cues(among: rig.cues).last?.identifier)
+	}
+	
+	@Test func aDeletedLightLeavesTheStoreSettings() throws {
+		let rig = try rig()
+		let recording = rig.recording(.cue(rig.look, after: nil))
+		recording.lights = [rig.fixtures[0].identifier, "gone"]
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[0].identifier])
+		#expect(rig.recording(.cue(rig.look, after: nil)).hint == "1 light")
+		
+		recording.lights = []
+		
+		#expect(rig.recording(.cue(rig.look, after: nil)).hint == "No lights")
+	}
+	
+	@Test func aBlankCueLabelReadsAsNoLabel() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 10)])
+		cue.label = " \n "
+		cue.settleLabel()
+		
+		#expect(cue.label.isEmpty)
+		#expect(rig.list.heading(at: 0) == "Cue 1")
+		
+		let recording = rig.recording(.cue(rig.look, after: cue))
+		recording.label = "\n Storm \n"
+		recording.store(context: rig.context)
+		
+		#expect(rig.look.cues(among: rig.cues)[1].label == "Storm")
+	}
+	
 	@Test func aSceneNeverEndsUpWithoutAName() throws {
 		let rig = try rig()
 		rig.look.name = "   "
@@ -750,9 +807,9 @@ struct SceneTests {
 		
 		let held = rig.look.cues(among: rig.cues)
 		#expect(held.map(\.sortIndex) == [1, 1.5, 2])
-		#expect(held[1].title(at: 1) == "Storm rolls in")
+		#expect(held[1].label == "Storm rolls in")
 		#expect(held[1].levels.lights[rig.fixtures[0].identifier]?[2] == 77)
-		#expect(held[0].title(at: 0) == "Cue 1")
+		#expect(held[0].label.isEmpty)
 		#expect(rig.recording(.cue(rig.look, after: held[1])).number == 3)
 		#expect(rig.recording(.cue(rig.look, after: nil)).number == 4)
 	}

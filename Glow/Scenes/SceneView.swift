@@ -42,7 +42,7 @@ struct SceneView: View {
 						Label("No Cues Yet", systemImage: look.symbol)
 					} actions: {
 						Button("Add Cues", systemImage: "plus") {
-							console.selection.building = look.identifier
+							console.selection.build(look.identifier)
 							console.selection.isSceneOpen = false
 						}
 						.buttonStyle(.glassProminent)
@@ -101,7 +101,7 @@ struct SceneView: View {
 							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
 							
 							Button {
-								console.selection.building = look.identifier
+								console.selection.build(look.identifier)
 								console.selection.isSceneOpen = false
 							} label: {
 								Label("Add Cues", systemImage: "plus")
