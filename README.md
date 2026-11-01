@@ -118,22 +118,25 @@ These are product decisions the code implements without explaining.
 - Playing and arranging are separate. In the Scenes edit mode a tap customizes
   a tile and never plays it, tiles are dragged into order, and flash tiles are
   set up, since holding them flashes.
-- The builder records what is on stage. A new cue stores every light, or the
-  lights and aspects narrowed in its settings, whatever is selected. Update
-  shows whenever the stage differs from what the marked cue plays, on a
-  light that cue holds or one touched since, and it writes just the aspects
-  that differ and keeps the cue's name and timing. Show, beside it, does the
-  opposite: it puts the marked cue on stage and drops the touches on the
-  lights that cue holds. Duplicate in a scene's cue list puts an exact copy
-  right after the cue.
+- The builder records what is on stage. A new cue stores the lights and
+  aspects the scene's cues already hold, every light for a new scene, or what
+  its settings narrow it to, whatever is selected. Update shows whenever the
+  stage differs from what the marked cue plays, on a light that cue holds or
+  one touched since, and it writes just the aspects that differ and keeps the
+  cue's name and timing. Show, beside it, does the opposite: it puts the
+  marked cue on stage and drops the touches on the lights that cue holds. Both
+  wait while a fade or a follow is running. Duplicate in a scene's cue list
+  puts an exact copy right after the cue.
 - Opening the builder, marking a cue and closing it with the tick never
   change the stage. It marks the cue the scene is on, or its last cue. A new
   cue goes after the marked one and becomes the mark. A light without a
   dimmer channel stores its brightness under Intensity, whether that is a
   shutter band or its colour emitters.
-- Closing the builder with the cross puts the scene, its cues and the stage
-  back as the builder found them, after asking when anything changed. A scene
-  the builder started without cues is deleted.
+- Closing the builder with the cross puts the scene and its cues back as the
+  builder found them, after asking when anything changed, and puts the scene
+  back on the cue it was on if the builder moved it. Touches on lights stay.
+  A scene the builder created is deleted. Add Cues on another scene while one
+  is being built returns to the open builder.
 - The store settings (aspects, lights, fade, delay, follow) apply to every cue
   stored after them, whether or not the sheet stored a cue, until the builder
   opens for another scene.

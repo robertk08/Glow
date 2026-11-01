@@ -44,7 +44,7 @@ struct ScenesView: View {
 					}
 				} actions: {
 					Button("New Scene", systemImage: "plus") {
-						console.selection.building = Look.fresh(among: looks, context: context).identifier
+						console.selection.build(Look.fresh(among: looks, context: context).identifier, isNew: true)
 					}
 					.font(.headline)
 					.buttonStyle(.glassProminent)
@@ -109,7 +109,7 @@ struct ScenesView: View {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button("New Scene", systemImage: "plus") {
 						if console.selection.building == nil {
-							console.selection.building = Look.fresh(among: looks, context: context).identifier
+							console.selection.build(Look.fresh(among: looks, context: context).identifier, isNew: true)
 						} else {
 							console.selection.section = "lights"
 						}

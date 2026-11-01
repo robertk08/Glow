@@ -568,6 +568,75 @@ struct SceneTests {
 		#expect(rig.look.cues(among: rig.cues)[1].label == "Storm")
 	}
 	
+	@Test func discardingAnEmptySceneTheBuilderDidNotCreateKeepsIt() throws {
+		let rig = try rig()
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		rig.look.name = "Renamed"
+		
+		#expect(rig.console.hasChanged(rig.look, among: rig.cues))
+		
+		rig.console.discard(rig.look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+		
+		#expect(rig.looks.contains { $0.identifier == rig.look.identifier })
+		#expect(rig.look.name == "Play")
+	}
+	
+	@Test func discardingAfterOnlyARenameLeavesARunningSceneAlone() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 10)]).follow = 0
+		rig.add(2, [(0, 1, 20)])
+		rig.console.play(rig.list, at: 0)
+		let playing = rig.console.playback.cue(of: rig.look.identifier)
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		rig.look.name = "Renamed"
+		rig.console.discard(rig.look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == playing)
+		#expect(rig.console.playback.fades[rig.look.identifier]?.follows != false)
+	}
+	
+	@Test func aRunningFadeOrFollowCountsAsMovingAndASnappedCueDoesNot() throws {
+		let rig = try rig()
+		rig.add(1, fade: 5, [(0, 1, 10)])
+		rig.add(2, [(0, 1, 20)])
+		rig.console.lists = [rig.look.identifier: rig.list]
+		rig.console.play(rig.list, at: 0)
+		
+		#expect(rig.console.isMoving)
+		
+		rig.console.play(rig.list, at: 1, snapping: true)
+		
+		#expect(!rig.console.isMoving)
+	}
+	
+	@Test func theMarkStaysPutWhileTheSceneRunsOn() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		rig.add(3, [(0, 1, 30)])
+		rig.console.play(rig.list, at: 1, snapping: true)
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		rig.console.go(rig.list)
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(rig.console.marked(among: held).map { held[$0].identifier } == second.identifier)
+	}
+	
+	@Test func addingCuesToANarrowedSceneKeepsItNarrowed() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 2, 10), (0, 3, 10), (0, 4, 10)])
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		let next = rig.recording(.cue(rig.look, after: nil))
+		
+		#expect(next.lights == [rig.fixtures[0].identifier])
+		#expect(next.features == [.color])
+		#expect(next.hint == "1 light")
+	}
+	
 	@Test func aSceneNeverEndsUpWithoutAName() throws {
 		let rig = try rig()
 		rig.look.name = "   "
@@ -607,14 +676,14 @@ struct SceneTests {
 			}
 			
 			rig.console.selection.building = look.identifier
-			rig.console.keep(look, among: rig.cues)
+			rig.console.keep(look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
 			var kept = rig.console.selection.kept
 			
 			for step in 0..<30 {
 				try await Task.sleep(for: .milliseconds(1))
 				let place = "session \(session) step \(step)"
 				let held = look.cues(among: rig.cues)
-				let marked = held.first { $0.identifier == rig.console.selection.marked } ?? held.last
+				let marked = rig.console.marked(among: held).map { held[$0] }
 				
 				switch roll(10) {
 				case 0, 1, 2: rig.console.set(values[roll(4)], at: DMXAddress(addresses[roll(addresses.count)])!)
@@ -678,25 +747,22 @@ struct SceneTests {
 						#expect(look.entry == snapshot.scene, "\(place) discard left the scene changed")
 						#expect(look.cues(among: rig.cues).map(\.entry) == snapshot.cues, "\(place) discard left the cues changed")
 						#expect(rig.console.playback.cue(of: look.identifier) == snapshot.playing, "\(place) discard left the scene on another cue")
-						
-						if let playing = look.cues(among: rig.cues).first(where: { $0.identifier == snapshot.playing }) {
-							#expect(rig.recording(.into(playing)).isOnStage, "\(place) discard left the stage different from the cue it restored")
-						}
 					} else {
 						rig.console.selection.building = nil
 					}
 					
 					let stage = addresses.map { rig.console.value(at: DMXAddress($0)!) }
 					rig.console.selection.building = look.identifier
-					rig.console.keep(look, among: rig.cues)
+					rig.console.keep(look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
 					kept = rig.console.selection.kept
 					#expect(!rig.console.hasChanged(look, among: rig.cues), "\(place) a fresh builder shows changes")
 					#expect(addresses.map { rig.console.value(at: DMXAddress($0)!) } == stage, "\(place) opening the builder moved the stage")
-					#expect(rig.console.selection.marked == rig.console.playback.cue(of: look.identifier), "\(place) the builder did not mark the cue on stage")
+					let reopened = look.cues(among: rig.cues)
+					#expect(rig.console.marked(among: reopened).map { reopened[$0].identifier } == rig.console.playback.cue(of: look.identifier) ?? reopened.last?.identifier, "\(place) the builder did not mark the cue on stage")
 				}
 				
 				let now = look.cues(among: rig.cues)
-				guard let current = now.first(where: { $0.identifier == rig.console.selection.marked }) ?? now.last else { continue }
+				guard let current = rig.console.marked(among: now).map({ now[$0] }) else { continue }
 				let update = rig.recording(.into(current))
 				let tracked = update.tracked
 				var differs = false
@@ -728,7 +794,7 @@ struct SceneTests {
 		let first = rig.add(1, [(0, 1, 10)])
 		let second = rig.add(2, [(0, 1, 20)])
 		rig.console.selection.building = rig.look.identifier
-		rig.console.keep(rig.look, among: rig.cues)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
 		
 		#expect(!rig.console.hasChanged(rig.look, among: rig.cues))
 		
@@ -756,8 +822,8 @@ struct SceneTests {
 	@Test func discardingASceneTheBuilderStartedEmptyDeletesIt() throws {
 		let rig = try rig()
 		let fresh = Look.fresh(among: rig.looks, context: rig.context)
-		rig.console.selection.building = fresh.identifier
-		rig.console.keep(fresh, among: rig.cues)
+		rig.console.selection.build(fresh.identifier, isNew: true)
+		rig.console.keep(fresh, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
 		
 		#expect(!rig.console.hasChanged(fresh, among: rig.cues))
 		
@@ -784,7 +850,7 @@ struct SceneTests {
 		rig.add(2, [(0, 1, 20)])
 		rig.console.play(rig.list, at: 0, snapping: true)
 		rig.console.selection.building = rig.look.identifier
-		rig.console.keep(rig.look, among: rig.cues)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
 		rig.recording(.cue(rig.look, after: nil)).store(context: rig.context)
 		
 		#expect(rig.console.playback.cue(of: rig.look.identifier) != first.identifier)

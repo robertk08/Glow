@@ -160,7 +160,7 @@ struct LightsView: View {
 					}
 					
 					Button("New Scene", systemImage: "theatermasks") {
-						console.selection.building = Look.fresh(among: looks, context: context).identifier
+						console.selection.build(Look.fresh(among: looks, context: context).identifier, isNew: true)
 					}
 					.disabled(console.selection.building != nil || fixtures.isEmpty)
 				}

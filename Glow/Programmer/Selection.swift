@@ -12,6 +12,7 @@ final class Selection {
 	var armed: [String: String] = [:]
 	var draft = CueDraft()
 	var marked: String?
+	var isNew = false
 	var kept: (scene: ShowContents.Scene, cues: [ShowContents.Cue], playing: String?)?
 	
 	var building: String? {
@@ -20,18 +21,20 @@ final class Selection {
 			draft = CueDraft()
 			marked = nil
 			kept = nil
+			isNew = false
 		}
 	}
 	
 	var isEmpty: Bool { identifiers.isEmpty }
 	
-	func build(_ scene: String) {
+	func build(_ scene: String, isNew: Bool = false) {
 		guard building == nil else {
 			section = "lights"
 			return
 		}
 		
 		building = scene
+		self.isNew = isNew
 	}
 	
 	func contains(_ fixture: Fixture) -> Bool {

@@ -39,12 +39,13 @@ private struct BuilderPanel: View {
 	var body: some View {
 		if !look.isGone {
 			let held = look.cues(among: cues)
-			let index = held.firstIndex { $0.identifier == console.selection.marked } ?? held.indices.last
+			let index = console.marked(among: held)
 			let current = index.map { held[$0] }
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let update = current.map { Recording(.into($0), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues) }
-			let canUpdate = update?.isReady == true
-			let isOnStage = update?.isOnStage ?? true
+			let isMoving = console.isMoving
+			let canUpdate = !isMoving && update?.isReady == true
+			let isOnStage = isMoving || update?.isOnStage ?? true
 			let hasChanged = console.hasChanged(look, among: cues)
 			let tint = look.tint.color ?? .accentColor
 			
@@ -90,7 +91,7 @@ private struct BuilderPanel: View {
 					Spacer(minLength: 0)
 					
 					HStack(spacing: 8) {
-						if held.isEmpty || hasChanged {
+						if hasChanged || held.isEmpty && console.selection.isNew {
 							Button(role: .close) {
 								if hasChanged {
 									isDiscarding = true
@@ -101,13 +102,13 @@ private struct BuilderPanel: View {
 							.buttonStyle(.glass)
 							.transition(.scale.combined(with: .opacity))
 							.confirmationDialog("Discard", isPresented: $isDiscarding) {
-								Button(console.selection.kept?.cues.isEmpty == false ? "Discard Changes" : "Delete Scene", role: .destructive) {
+								Button(console.selection.isNew ? "Delete Scene" : "Discard Changes", role: .destructive) {
 									console.discard(look, among: cues, fixtures: fixtures, context: context)
 								}
 							}
 						}
 						
-						if !held.isEmpty {
+						if !held.isEmpty || !console.selection.isNew {
 							Button(role: .confirm) {
 								look.settle(name: named, among: looks)
 								console.selection.building = nil
@@ -245,7 +246,7 @@ private struct BuilderPanel: View {
 			.sensoryFeedback(.selection, trigger: index)
 			.sensoryFeedback(.selection, trigger: [look.symbol, look.tint.rawValue])
 			.onAppear {
-				console.keep(look, among: cues)
+				console.keep(look, among: cues, fixtures: fixtures, library: library)
 				named = look.name
 			}
 			.onChange(of: isNaming) {

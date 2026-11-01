@@ -589,30 +589,51 @@ final class Console {
 		look.remove(with: cues, context: context)
 	}
 	
-	func keep(_ look: Look, among cues: [Cue]) {
+	var isMoving: Bool {
+		playback.fades.values.contains { $0.end > .now } || playback.playing.contains { entry in
+			guard playback.fades[entry.scene]?.follows != false, let list = lists[entry.scene], let index = list.index(of: entry.cue) else { return false }
+			return list.cues[index].follow != nil && list.next(after: index) != nil
+		}
+	}
+	
+	func marked(among held: [Cue]) -> Int? {
+		held.firstIndex { $0.identifier == selection.marked } ?? held.indices.last
+	}
+	
+	func keep(_ look: Look, among cues: [Cue], fixtures: [Fixture], library: FixtureLibrary) {
 		guard selection.kept == nil else { return }
-		selection.kept = (look.entry, look.cues(among: cues).map(\.entry), playback.cue(of: look.identifier))
-		selection.marked = playback.cue(of: look.identifier)
+		let held = look.cues(among: cues)
+		selection.kept = (look.entry, held.map(\.entry), playback.cue(of: look.identifier))
+		selection.marked = playback.cue(of: look.identifier) ?? held.last?.identifier
+		
+		let levels = held.reduce(Levels()) { $0.merging($1.levels) }
+		let aspects = Set(fixtures.flatMap { levels.features(of: $0.identifier, type: library.type($0.typeID)) })
+		guard !aspects.isEmpty else { return }
+		selection.draft.lights = Set(levels.lights.keys)
+		selection.draft.aspects = aspects
 	}
 	
 	func hasChanged(_ look: Look, among cues: [Cue]) -> Bool {
 		guard let kept = selection.kept else { return false }
 		let held = look.cues(among: cues).map(\.entry)
-		guard !held.isEmpty || !kept.cues.isEmpty else { return false }
+		guard !selection.isNew || !held.isEmpty else { return false }
 		return look.entry != kept.scene || held != kept.cues
 	}
 	
 	func discard(_ look: Look, among cues: [Cue], fixtures: [Fixture], context: ModelContext) {
 		let kept = selection.kept
+		let isNew = selection.isNew
 		selection.building = nil
 		
 		guard let kept else { return }
 		
-		guard !kept.cues.isEmpty else {
+		guard !isNew else {
 			remove(look, with: cues, context: context)
 			return
 		}
 		
+		let playing = look.cues(among: cues).first { $0.identifier == kept.playing }?.entry
+		let moved = playback.cue(of: look.identifier) != kept.playing || playing != kept.cues.first { $0.identifier == kept.playing }
 		look.take(kept.scene)
 		
 		for cue in look.cues(among: cues) where !kept.cues.contains(where: { $0.identifier == cue.identifier }) {
@@ -630,6 +651,7 @@ final class Console {
 		}
 		
 		try? context.save()
+		guard moved else { return }
 		let list = CueList(look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
 		
 		if let index = list.index(of: kept.playing) {

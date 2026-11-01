@@ -7,10 +7,8 @@ struct RootView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(\.scenePhase) private var scenePhase
-	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
 	@State private var returning: String?
 	@Namespace private var transition
@@ -104,10 +102,6 @@ struct RootView: View {
 			if !looks.contains(where: { $0.identifier == console.selection.building }) { console.selection.building = nil }
 		}
 		.onChange(of: console.selection.building) { before, after in
-			if let abandoned = looks.first(where: { $0.identifier == before }), after != nil, abandoned.cues(among: cues).isEmpty {
-				console.remove(abandoned, with: cues, context: context)
-			}
-			
 			if before == nil, after != nil {
 				returning = console.selection.section
 				console.selection.section = "lights"
