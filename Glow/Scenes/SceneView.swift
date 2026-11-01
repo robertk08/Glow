@@ -87,6 +87,12 @@ struct SceneView: View {
 										editing = cue
 									}
 									
+									Button("Duplicate", systemImage: "plus.square.on.square") {
+										withAnimation {
+											console.duplicate(cue, among: held, context: context)
+										}
+									}
+									
 									Button("Delete Cue", systemImage: "trash", role: .destructive) {
 										console.delete(cue, from: list, context: context)
 									}

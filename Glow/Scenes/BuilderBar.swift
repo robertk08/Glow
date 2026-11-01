@@ -32,6 +32,7 @@ private struct BuilderPanel: View {
 	@State private var isStyling = false
 	@State private var isDiscarding = false
 	@State private var updates = 0
+	@State private var shows = 0
 	
 	var body: some View {
 		if !look.isGone {
@@ -41,6 +42,7 @@ private struct BuilderPanel: View {
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let update = current.map { Recording(.into($0), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues) }
 			let canUpdate = update?.isReady == true
+			let isOnStage = update?.isOnStage ?? true
 			let hasChanged = console.hasChanged(look, among: cues)
 			let tint = look.tint.color ?? .accentColor
 			
@@ -174,7 +176,7 @@ private struct BuilderPanel: View {
 					}
 				}
 				
-				HStack(spacing: 10) {
+				HStack(spacing: 8) {
 					Button("Choose Lights and Aspects", systemImage: "slider.horizontal.3") {
 						recording = next
 					}
@@ -182,13 +184,28 @@ private struct BuilderPanel: View {
 					.buttonStyle(.glass)
 					.buttonBorderShape(.circle)
 					
+					if let update, let index, !isOnStage {
+						Button("Show Cue \(index + 1)", systemImage: "play.fill") {
+							update.show()
+							shows += 1
+						}
+						.labelStyle(.iconOnly)
+						.buttonStyle(.glass)
+						.buttonBorderShape(.circle)
+						.transition(.scale.combined(with: .opacity))
+					}
+					
 					if let update, let index, canUpdate {
 						Button {
 							update.store(context: context)
 							updates += 1
 						} label: {
-							Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
-								.frame(maxWidth: .infinity)
+							ViewThatFits(in: .horizontal) {
+								Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
+								
+								Text("Update \(index + 1)")
+							}
+							.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.glass)
 						.transition(.scale.combined(with: .opacity))
@@ -216,9 +233,10 @@ private struct BuilderPanel: View {
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
 			.animation(.snappy, value: [held.count, index ?? -1])
-			.animation(.snappy, value: [isStyling, canUpdate, hasChanged])
+			.animation(.snappy, value: [isStyling, canUpdate, isOnStage, hasChanged])
 			.sensoryFeedback(.success, trigger: held.count)
 			.sensoryFeedback(.success, trigger: updates)
+			.sensoryFeedback(.impact(weight: .light), trigger: shows)
 			.sensoryFeedback(.selection, trigger: index)
 			.sensoryFeedback(.selection, trigger: [look.symbol, look.tint.rawValue])
 			.onAppear {

@@ -462,6 +462,55 @@ struct SceneTests {
 		#expect(!rig.recording(.into(second)).isReady)
 	}
 	
+	@Test func showingACueMakesTheStageThatCueAndLeavesOtherTouchesAlone() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		rig.add(2, [(0, 1, 20), (1, 1, 30)])
+		rig.console.land(rig.list, at: 1)
+		rig.console.set(99, at: DMXAddress(1)!)
+		rig.console.set(50, at: DMXAddress(21)!)
+		
+		#expect(!rig.recording(.into(first)).isOnStage)
+		
+		rig.recording(.into(first)).show()
+		
+		#expect(rig.value(1) == 10)
+		#expect(rig.value(21) == 50)
+		#expect(rig.recording(.into(first)).isOnStage)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == first.identifier)
+		#expect(!rig.console.isActive(DMXAddress(1)!))
+		#expect(rig.recording(.into(first)).isReady)
+		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
+	}
+	
+	@Test func duplicatingACuePutsAnExactCopyRightAfterIt() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		rig.add(1.001, [(0, 1, 20)])
+		rig.add(5, [(0, 1, 30)])
+		first.label = "Storm"
+		first.fade = 3
+		first.follow = 1
+		
+		rig.console.duplicate(first, among: rig.look.cues(among: rig.cues), context: rig.context)
+		try? rig.context.save()
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(held.count == 4)
+		#expect(held[0].identifier == first.identifier)
+		#expect(held[1].identifier != first.identifier)
+		#expect(held[1].label == "Storm")
+		#expect(held[1].fade == 3)
+		#expect(held[1].follow == 1)
+		#expect(held[1].levels == first.levels)
+		#expect(held.map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30])
+		
+		rig.console.duplicate(held[3], among: held, context: rig.context)
+		try? rig.context.save()
+		
+		#expect(rig.look.cues(among: rig.cues).map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30, 30])
+	}
+	
 	@Test func randomBuilderSessionsKeepEveryButtonHonest() async throws {
 		var seed: UInt64 = 0x9E3779B97F4A7C15
 		
@@ -524,8 +573,26 @@ struct SceneTests {
 						}
 					}
 				case 8:
-					guard let marked, held.count > 1, roll(2) == 0 else { break }
-					rig.console.delete(marked, from: rig.list, context: rig.context)
+					guard let marked else { break }
+					
+					switch roll(3) {
+					case 0:
+						guard held.count > 1 else { break }
+						rig.console.delete(marked, from: rig.list, context: rig.context)
+					case 1:
+						let count = held.count
+						rig.console.duplicate(marked, among: held, context: rig.context)
+						try? rig.context.save()
+						let now = look.cues(among: rig.cues)
+						let position = now.firstIndex { $0.identifier == marked.identifier }
+						#expect(now.count == count + 1 && position.map { now[$0 + 1].levels == marked.levels && now[$0 + 1].label == marked.label } == true, "\(place) duplicate did not land right after its cue")
+					default:
+						let show = rig.recording(.into(marked))
+						guard !show.isOnStage else { break }
+						show.show()
+						#expect(rig.recording(.into(marked)).isOnStage, "\(place) Show left the stage different from the cue")
+					}
+					
 					try? rig.context.save()
 				default:
 					guard let snapshot = kept else { break }
@@ -534,6 +601,11 @@ struct SceneTests {
 						rig.console.discard(look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
 						#expect(look.entry == snapshot.scene, "\(place) discard left the scene changed")
 						#expect(look.cues(among: rig.cues).map(\.entry) == snapshot.cues, "\(place) discard left the cues changed")
+						#expect(rig.console.playback.cue(of: look.identifier) == snapshot.playing, "\(place) discard left the scene on another cue")
+						
+						if let playing = look.cues(among: rig.cues).first(where: { $0.identifier == snapshot.playing }) {
+							#expect(rig.recording(.into(playing)).isOnStage, "\(place) discard left the stage different from the cue it restored")
+						}
 					} else {
 						rig.console.selection.building = nil
 					}
@@ -552,6 +624,7 @@ struct SceneTests {
 				let update = rig.recording(.into(current))
 				let tracked = update.tracked
 				var differs = false
+				var shows = false
 				
 				for fixture in rig.fixtures {
 					let owned = tracked.lights[fixture.identifier] ?? [:]
@@ -561,12 +634,14 @@ struct SceneTests {
 						
 						if let value = owned[slot] {
 							differs = differs || rig.console.value(at: address) != value
+							shows = shows || rig.console.value(at: address) != value
 						} else {
 							differs = differs || rig.console.isChanged(address)
 						}
 					}
 				}
 				
+				#expect(update.isOnStage == !shows, "\(place) Show is \(update.isOnStage ? "hidden" : "shown") while the stage \(shows ? "differs from" : "matches") the cue")
 				#expect(update.isReady == differs, "\(place) Update is \(update.isReady ? "shown" : "hidden") while the stage \(differs ? "differs from" : "matches") the cue")
 			}
 		}

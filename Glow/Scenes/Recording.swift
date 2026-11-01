@@ -121,6 +121,13 @@ final class Recording: Identifiable {
 		return held.prefix(index + 1).reduce(Levels()) { $0.merging($1.levels) }
 	}
 	
+	var isOnStage: Bool {
+		!tracked.lights.contains { light, slots in
+			guard let fixture = fixtures.first(where: { $0.identifier == light }) else { return false }
+			return slots.contains { slot, value in fixture.start.offset(by: slot - 1).map { console.value(at: $0) != value } ?? false }
+		}
+	}
+	
 	var levels: Levels {
 		var levels = Levels()
 		let tracked = tracked
@@ -215,7 +222,23 @@ final class Recording: Identifiable {
 		}
 		
 		try? context.save()
+		release(levels)
 		
+		guard let landing else { return }
+		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
+		guard let index = list.index(of: landing.cue) else { return }
+		console.land(list, at: index)
+	}
+	
+	func show() {
+		guard case let .into(cue) = destination, let look = looks.first(where: { $0.identifier == cue.lookID }) else { return }
+		let list = CueList(look, cues: cues, fixtures: fixtures)
+		guard let index = list.index(of: cue.identifier) else { return }
+		release(tracked)
+		console.play(list, at: index, snapping: true)
+	}
+	
+	private func release(_ levels: Levels) {
 		for fixture in fixtures {
 			guard let slots = levels.lights[fixture.identifier] else { continue }
 			
@@ -224,10 +247,5 @@ final class Recording: Identifiable {
 				console.release(address.value...address.value)
 			}
 		}
-		
-		guard let landing else { return }
-		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
-		guard let index = list.index(of: landing.cue) else { return }
-		console.land(list, at: index)
 	}
 }

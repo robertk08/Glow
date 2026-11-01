@@ -547,6 +547,24 @@ final class Console {
 		stop(list.scene, fade: snapping ? 0 : list.fade(of: playback.cue(of: list.scene)))
 	}
 	
+	func duplicate(_ cue: Cue, among held: [Cue], context: ModelContext) {
+		guard let position = held.firstIndex(where: { $0.identifier == cue.identifier }) else { return }
+		let later = held[(position + 1)...]
+		var entry = cue.entry
+		entry.identifier = Identifier.fresh()
+		entry.sortIndex = later.first.flatMap { Self.sortIndex(between: cue.sortIndex, and: $0.sortIndex) } ?? cue.sortIndex + 1
+		
+		if let next = later.first, entry.sortIndex >= next.sortIndex {
+			for (offset, shifted) in later.enumerated() {
+				shifted.sortIndex = entry.sortIndex + 1 + Double(offset)
+			}
+		}
+		
+		let twin = Cue(lookID: entry.scene, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
+		twin.take(entry)
+		context.insert(twin)
+	}
+	
 	func delete(_ cue: Cue, from list: CueList, context: ModelContext) {
 		if let index = list.index(of: cue.identifier), playback.cue(of: list.scene) == cue.identifier {
 			let trimmed = list.removing(cue.identifier)
@@ -610,7 +628,7 @@ final class Console {
 		let list = CueList(look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
 		
 		if let index = list.index(of: kept.playing) {
-			land(list, at: index)
+			play(list, at: index, snapping: true)
 		} else {
 			stop(look.identifier, fade: 0)
 		}
