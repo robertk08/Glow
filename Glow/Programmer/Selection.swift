@@ -3,9 +3,7 @@ import SwiftUI
 
 @Observable @MainActor
 final class Selection {
-	private(set) var identifiers: Set<String> = [] {
-		didSet { draft.lights = nil }
-	}
+	private(set) var identifiers: Set<String> = []
 	
 	var isProgrammerOpen = false
 	var isSceneOpen = false

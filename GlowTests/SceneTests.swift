@@ -330,7 +330,7 @@ struct SceneTests {
 		let paused = rig.value(1)
 		try await Task.sleep(for: .milliseconds(500))
 		
-		#expect(rig.value(1) > paused + 20)
+		#expect(Int(rig.value(1)) > Int(paused) + 20)
 		try await until(within: 5) { rig.value(1) == 0 }
 	}
 	
@@ -358,18 +358,19 @@ struct SceneTests {
 		#expect(!rig.console.isActive(DMXAddress(1)!))
 	}
 	
-	@Test func aSelectionStoresOnlyItsLightsAndNothingSelectedStoresAll() throws {
+	@Test func aStoreTakesEveryLightWhateverIsSelected() throws {
 		let rig = try rig()
 		rig.console.set(120, at: DMXAddress(11)!)
 		rig.console.selection.toggle(rig.fixtures[0])
 		let recording = rig.recording(.cue(rig.look, after: nil))
 		
-		#expect(recording.lights == [rig.fixtures[0].identifier])
-		#expect(recording.hint == "1 light")
+		#expect(recording.lights == Set(rig.fixtures.map(\.identifier)))
+		#expect(recording.hint == "All lights")
 		
-		rig.console.selection.clear()
+		recording.lights = [rig.fixtures[1].identifier]
+		rig.console.selection.toggle(rig.fixtures[2])
 		
-		#expect(rig.recording(.cue(rig.look, after: nil)).lights == Set(rig.fixtures.map(\.identifier)))
+		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[1].identifier])
 	}
 	
 	@Test func deletingTheLiveCueMovesTheStageToTheOneBefore() throws {
@@ -391,34 +392,184 @@ struct SceneTests {
 	@Test func updateStoresWhatChangedOnAnyLightWhateverIsSelected() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])
+		rig.console.play(rig.list, at: 0, snapping: true)
 		rig.console.set(70, at: DMXAddress(11)!)
 		rig.console.set(50, at: DMXAddress(2)!)
 		rig.console.set(0, at: DMXAddress(2)!)
 		rig.console.selection.toggle(rig.fixtures[0])
 		
-		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 light")
+		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "All lights")
 		
 		rig.recording(.into(cue)).store(context: rig.context)
 		
 		#expect(cue.levels.lights[rig.fixtures[1].identifier] == [1: 70])
 		#expect(cue.levels.lights[rig.fixtures[0].identifier] == [1: 200])
 		#expect(!rig.console.selection.isEmpty)
-		#expect(!rig.console.isTouched)
+		#expect(!rig.recording(.into(cue)).isReady)
 	}
 	
-	@Test func updateIsOnlyReadyWhileALightDiffersFromBeforeItWasTouched() throws {
+	@Test func updateIsOnlyReadyWhileTheStageDiffersFromTheCue() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 0)])
 		rig.console.set(255, at: DMXAddress(1)!)
 		
-		#expect(rig.console.isTouched)
 		#expect(rig.recording(.into(cue)).isReady)
 		
 		rig.console.set(0, at: DMXAddress(1)!)
 		
-		#expect(!rig.console.isTouched)
 		#expect(!rig.recording(.into(cue)).isReady)
 		#expect(rig.console.isActive(DMXAddress(1)!))
+		
+		rig.console.set(90, at: DMXAddress(11)!)
+		rig.console.set(0, at: DMXAddress(11)!)
+		
+		#expect(!rig.recording(.into(cue)).isReady)
+	}
+	
+	@Test func afterUpdatingOneCueTheNextCueCanStillBeUpdatedToWhatIsOnStage() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 0), (1, 1, 0)])
+		let second = rig.add(2, [(0, 1, 0), (1, 1, 0)])
+		rig.console.set(128, at: DMXAddress(1)!)
+		rig.console.set(128, at: DMXAddress(11)!)
+		rig.recording(.into(first)).store(context: rig.context)
+		
+		#expect(!rig.recording(.into(first)).isReady)
+		#expect(rig.recording(.into(second)).isReady)
+		
+		rig.recording(.into(second)).store(context: rig.context)
+		
+		#expect(second.levels.lights[rig.fixtures[0].identifier]?[1] == 128)
+		#expect(second.levels.lights[rig.fixtures[1].identifier]?[1] == 128)
+		#expect(!rig.recording(.into(first)).isReady)
+		#expect(!rig.recording(.into(second)).isReady)
+	}
+	
+	@Test func afterUpdatingOneSceneAnotherSceneCanStillBeUpdatedToWhatIsOnStage() throws {
+		let rig = try rig()
+		let other = Look.fresh(among: rig.looks, context: rig.context)
+		let first = rig.add(1, [(0, 1, 0), (1, 1, 0)])
+		let second = rig.add(1, to: other, [(0, 1, 0), (1, 1, 0)])
+		rig.console.set(128, at: DMXAddress(1)!)
+		rig.console.set(128, at: DMXAddress(11)!)
+		rig.recording(.into(first)).store(context: rig.context)
+		
+		#expect(rig.recording(.into(second)).isReady)
+		
+		rig.recording(.into(second)).store(context: rig.context)
+		
+		#expect(second.levels.lights[rig.fixtures[0].identifier]?[1] == 128)
+		#expect(!rig.recording(.into(second)).isReady)
+	}
+	
+	@Test func randomBuilderSessionsKeepEveryButtonHonest() async throws {
+		var seed: UInt64 = 0x9E3779B97F4A7C15
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
+		let addresses = [1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 21]
+		let values: [UInt8] = [0, 50, 128, 255]
+		
+		for session in 0..<60 {
+			let rig = try rig()
+			let look = rig.look
+			
+			for index in 0...roll(3) {
+				rig.add(Double(index + 1), [(0, 1, values[roll(4)]), (1, 2, values[roll(4)]), (2, 1, values[roll(4)])])
+			}
+			
+			rig.console.selection.building = look.identifier
+			rig.console.keep(look, among: rig.cues)
+			var kept = rig.console.selection.kept
+			
+			for step in 0..<30 {
+				try await Task.sleep(for: .milliseconds(1))
+				let place = "session \(session) step \(step)"
+				let held = look.cues(among: rig.cues)
+				let marked = held.first { $0.identifier == rig.console.selection.marked } ?? held.last
+				
+				switch roll(10) {
+				case 0, 1, 2: rig.console.set(values[roll(4)], at: DMXAddress(addresses[roll(addresses.count)])!)
+				case 3: rig.console.selection.toggle(rig.fixtures[roll(3)])
+				case 4:
+					let recording = rig.recording(.cue(look, after: marked))
+					recording.features = Set(FeatureGroup.allCases.filter { _ in roll(3) > 0 } + [.dimmer])
+					recording.lights = Set(rig.fixtures.filter { _ in roll(3) > 0 }.map(\.identifier))
+				case 5:
+					let recording = rig.recording(.cue(look, after: marked))
+					guard recording.isReady else { break }
+					let stored = recording.levels
+					recording.store(context: rig.context)
+					let fresh = look.cues(among: rig.cues).first { $0.identifier == rig.console.selection.marked }
+					#expect(fresh?.levels == stored, "\(place) stored something other than the stage")
+				case 6:
+					guard !held.isEmpty else { break }
+					rig.console.selection.marked = held[roll(held.count)].identifier
+				case 7:
+					guard let marked else { break }
+					let update = rig.recording(.into(marked))
+					guard update.isReady else { break }
+					update.store(context: rig.context)
+					let after = rig.recording(.into(marked))
+					#expect(!after.isReady, "\(place) Update stayed after updating")
+					
+					for (light, slots) in after.tracked.lights {
+						let fixture = rig.fixtures.first { $0.identifier == light }!
+						
+						for (slot, value) in slots {
+							#expect(rig.console.value(at: fixture.start.offset(by: slot - 1)!) == value, "\(place) cue differs from the stage after updating")
+						}
+					}
+				case 8:
+					guard let marked, held.count > 1, roll(2) == 0 else { break }
+					rig.console.delete(marked, from: rig.list, context: rig.context)
+					try? rig.context.save()
+				default:
+					guard let snapshot = kept else { break }
+					
+					if roll(2) == 0 {
+						rig.console.discard(look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+						#expect(look.entry == snapshot.scene, "\(place) discard left the scene changed")
+						#expect(look.cues(among: rig.cues).map(\.entry) == snapshot.cues, "\(place) discard left the cues changed")
+					} else {
+						rig.console.selection.building = nil
+					}
+					
+					let stage = addresses.map { rig.console.value(at: DMXAddress($0)!) }
+					rig.console.selection.building = look.identifier
+					rig.console.keep(look, among: rig.cues)
+					kept = rig.console.selection.kept
+					#expect(!rig.console.hasChanged(look, among: rig.cues), "\(place) a fresh builder shows changes")
+					#expect(addresses.map { rig.console.value(at: DMXAddress($0)!) } == stage, "\(place) opening the builder moved the stage")
+					#expect(rig.console.selection.marked == rig.console.playback.cue(of: look.identifier), "\(place) the builder did not mark the cue on stage")
+				}
+				
+				let now = look.cues(among: rig.cues)
+				guard let current = now.first(where: { $0.identifier == rig.console.selection.marked }) ?? now.last else { continue }
+				let update = rig.recording(.into(current))
+				let tracked = update.tracked
+				var differs = false
+				
+				for fixture in rig.fixtures {
+					let owned = tracked.lights[fixture.identifier] ?? [:]
+					
+					for slot in 1...7 {
+						guard let address = fixture.start.offset(by: slot - 1), addresses.contains(address.value) else { continue }
+						
+						if let value = owned[slot] {
+							differs = differs || rig.console.value(at: address) != value
+						} else {
+							differs = differs || rig.console.isChanged(address)
+						}
+					}
+				}
+				
+				#expect(update.isReady == differs, "\(place) Update is \(update.isReady ? "shown" : "hidden") while the stage \(differs ? "differs from" : "matches") the cue")
+			}
+		}
 	}
 	
 	@Test func discardingPutsTheSceneAndItsCuesBackAsTheBuilderFoundThem() throws {
@@ -549,6 +700,7 @@ struct SceneTests {
 	@Test func storingIntoACueReplacesOnlyWhatWasChosen() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 255), (1, 1, 255)])
+		rig.console.play(rig.list, at: 0, snapping: true)
 		rig.console.set(9, at: DMXAddress(1)!)
 		rig.console.selection.toggle(rig.fixtures[0])
 		let recording = rig.recording(.into(cue))
@@ -613,7 +765,7 @@ struct SceneTests {
 		
 		rig.console.selection.toggle(rig.fixtures[0])
 		
-		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[0].identifier])
+		#expect(rig.recording(.cue(rig.look, after: nil)).lights == [rig.fixtures[1].identifier])
 	}
 	
 	@Test func updatingWaitsForATouchAndStoringInsertsAfterTheMarkedCueWithoutPlayingIt() throws {
@@ -622,12 +774,12 @@ struct SceneTests {
 		rig.add(2, [(0, 1, 20)])
 		rig.console.selection.building = rig.look.identifier
 		
-		#expect(!rig.console.isTouched)
+		#expect(!rig.console.isChanged(DMXAddress(1)!))
 		
 		rig.console.selection.marked = first.identifier
 		rig.console.set(55, at: DMXAddress(1)!)
 		
-		#expect(rig.console.isTouched)
+		#expect(rig.console.isChanged(DMXAddress(1)!))
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
 		
 		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)

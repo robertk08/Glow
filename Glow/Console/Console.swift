@@ -523,10 +523,6 @@ final class Console {
 		list.index(of: selection.armed[list.scene]) ?? list.next(after: list.index(of: playback.cue(of: list.scene)))
 	}
 	
-	var isTouched: Bool {
-		active.contains { DMXAddress($0.key).map(isChanged) ?? false }
-	}
-	
 	func back(_ list: CueList) {
 		guard let current = list.index(of: playback.cue(of: list.scene)), let index = list.previous(before: current) else { return }
 		play(list, at: index)
@@ -573,6 +569,7 @@ final class Console {
 	func keep(_ look: Look, among cues: [Cue]) {
 		guard selection.kept == nil else { return }
 		selection.kept = (look.entry, look.cues(among: cues).map(\.entry), playback.cue(of: look.identifier))
+		selection.marked = playback.cue(of: look.identifier)
 	}
 	
 	func hasChanged(_ look: Look, among cues: [Cue]) -> Bool {

@@ -10,7 +10,6 @@ final class Recording: Identifiable {
 	}
 	
 	let destination: Destination
-	let selected: Set<String>
 	
 	var draft: CueDraft {
 		didSet {
@@ -18,7 +17,6 @@ final class Recording: Identifiable {
 		}
 	}
 	
-	private let chosen: Set<String>
 	private let console: Console
 	private let fixtures: [Fixture]
 	private let library: FixtureLibrary
@@ -33,15 +31,9 @@ final class Recording: Identifiable {
 		self.looks = looks
 		self.cues = cues
 		
-		selected = Set(fixtures.filter(console.selection.contains).map(\.identifier))
-		
 		switch destination {
-		case .cue:
-			draft = console.selection.draft
-			chosen = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
-		case .into:
-			draft = CueDraft()
-			chosen = Set(fixtures.map(\.identifier))
+		case .cue: draft = console.selection.draft
+		case .into: draft = CueDraft()
 		}
 	}
 	
@@ -71,7 +63,7 @@ final class Recording: Identifiable {
 	}
 	
 	var lights: Set<String> {
-		get { draft.lights ?? chosen }
+		get { draft.lights ?? Set(fixtures.map(\.identifier)) }
 		set { draft.lights = newValue }
 	}
 	
@@ -122,13 +114,29 @@ final class Recording: Identifiable {
 		!levels.isEmpty
 	}
 	
+	var tracked: Levels {
+		guard case let .into(cue) = destination else { return Levels() }
+		let held = looks.first { $0.identifier == cue.lookID }?.cues(among: cues) ?? [cue]
+		let index = held.firstIndex { $0.identifier == cue.identifier } ?? 0
+		return held.prefix(index + 1).reduce(Levels()) { $0.merging($1.levels) }
+	}
+	
 	var levels: Levels {
 		var levels = Levels()
+		let tracked = tracked
 		
 		for fixture in fixtures where lights.contains(fixture.identifier) {
 			guard let type = library.type(fixture.typeID) else { continue }
 			
-			let stored = features.filter { isNew || type.channels(storedWith: $0).contains { $0.offsets.contains { fixture.start.offset(by: $0 - 1).map(console.isChanged) ?? false } } }.flatMap(type.channels(storedWith:))
+			let owned = tracked.lights[fixture.identifier] ?? [:]
+			let differing = type.channels.filter { channel in
+				channel.offsets.contains { offset in
+					guard let address = fixture.start.offset(by: offset - 1) else { return false }
+					guard let value = owned[offset] else { return console.isChanged(address) }
+					return value != console.value(at: address)
+				}
+			}
+			let stored = features.filter { isNew || type.channels(storedWith: $0).contains(where: differing.contains) }.flatMap(type.channels(storedWith:))
 			
 			for channel in type.channels where stored.contains(channel) {
 				for offset in channel.offsets {

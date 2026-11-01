@@ -82,7 +82,7 @@ private struct CueForm: View {
 				Button("Update Cue", systemImage: "arrow.triangle.2.circlepath") {
 					recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 				}
-				.disabled(!console.isTouched)
+				.disabled(!Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).isReady)
 				
 				Button("Delete Cue", systemImage: "trash", role: .destructive) {
 					if let look = looks.first(where: { $0.identifier == cue.lookID }) {

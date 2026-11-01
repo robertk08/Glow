@@ -118,13 +118,14 @@ These are product decisions the code implements without explaining.
 - Playing and arranging are separate. In the Scenes edit mode a tap customizes
   a tile and never plays it, tiles are dragged into order, and flash tiles are
   set up, since holding them flashes.
-- A store takes the selected lights, or every light when none is selected.
-  Storing into a cue replaces only the chosen aspects and keeps its name and
-  timing. Update shows only while a touched channel differs from its value
-  before the touch, and it writes just the aspects that changed, on any
-  light, whatever is selected.
-- In the builder a new cue goes after the marked cue, the last stored one or
-  the one tapped. Marking a cue never changes the stage. A light without a
+- The builder records what is on stage. A new cue stores every light, or the
+  lights and aspects narrowed in its settings, whatever is selected. Update
+  shows whenever the stage differs from what the marked cue plays, on a
+  light that cue holds or one touched since, and it writes just the aspects
+  that differ and keeps the cue's name and timing.
+- Opening the builder, marking a cue and closing it with the tick never
+  change the stage. It marks the cue the scene is on, or its last cue. A new
+  cue goes after the marked one and becomes the mark. A light without a
   dimmer channel stores its brightness under Intensity, whether that is a
   shutter band or its colour emitters.
 - Closing the builder with the cross puts the scene, its cues and the stage
@@ -132,7 +133,7 @@ These are product decisions the code implements without explaining.
   the builder started without cues is deleted.
 - The store settings (aspects, lights, fade, delay, follow) apply to every cue
   stored after them, whether or not the sheet stored a cue, until the builder
-  opens for another scene. Changing the selection resets the lights to it.
+  opens for another scene.
 - Fades, delays and follows run on the controller, so they carry on when the
   device that started them sleeps or drops. Touching a channel mid-fade, on any
   device, releases it from the fade.
