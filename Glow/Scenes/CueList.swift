@@ -196,6 +196,7 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	static func milliseconds(_ seconds: Double) -> Int {
-		max(0, Int((seconds * 1000).rounded()))
+		guard seconds.isFinite else { return 0 }
+		return Int((min(max(seconds, 0), 3600) * 1000).rounded())
 	}
 }

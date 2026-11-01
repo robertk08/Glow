@@ -589,11 +589,11 @@ final class Console {
 		look.remove(with: cues, context: context)
 	}
 	
-	var isMoving: Bool {
-		playback.fades.values.contains { $0.end > .now } || playback.playing.contains { entry in
-			guard playback.fades[entry.scene]?.follows != false, let list = lists[entry.scene], let index = list.index(of: entry.cue) else { return false }
-			return list.cues[index].follow != nil && list.next(after: index) != nil
-		}
+	func isMoving(_ scene: String) -> Bool {
+		guard let fade = playback.fades[scene] else { return false }
+		guard fade.end <= .now else { return true }
+		guard fade.follows, let list = lists[scene], let index = list.index(of: playback.cue(of: scene)) else { return false }
+		return list.cues[index].follow != nil && list.next(after: index) != nil
 	}
 	
 	func marked(among held: [Cue]) -> Int? {

@@ -43,7 +43,7 @@ private struct BuilderPanel: View {
 			let current = index.map { held[$0] }
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 			let update = current.map { Recording(.into($0), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues) }
-			let isMoving = console.isMoving
+			let isMoving = console.isMoving(look.identifier)
 			let canUpdate = !isMoving && update?.isReady == true
 			let isOnStage = isMoving || update?.isOnStage ?? true
 			let hasChanged = console.hasChanged(look, among: cues)

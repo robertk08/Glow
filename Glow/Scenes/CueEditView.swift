@@ -121,7 +121,7 @@ private struct CueForm: View {
 			StoreView(recording: recording)
 		}
 		.onChange(of: isLabelling) {
-			if !isLabelling { cue.settleLabel() }
+			if !isLabelling, !cue.isDeleted, cue.modelContext != nil { cue.settleLabel() }
 		}
 		.onChange(of: cue.identifier) { before, _ in
 			cues.first { $0.identifier == before }?.settleLabel()

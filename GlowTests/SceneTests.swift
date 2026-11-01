@@ -604,11 +604,18 @@ struct SceneTests {
 		rig.console.lists = [rig.look.identifier: rig.list]
 		rig.console.play(rig.list, at: 0)
 		
-		#expect(rig.console.isMoving)
+		#expect(rig.console.isMoving(rig.look.identifier))
+		
+		let other = Look.fresh(among: rig.looks, context: rig.context)
+		
+		#expect(!rig.console.isMoving(other.identifier))
 		
 		rig.console.play(rig.list, at: 1, snapping: true)
 		
-		#expect(!rig.console.isMoving)
+		#expect(!rig.console.isMoving(rig.look.identifier))
+		#expect(CueList.milliseconds(1e300) == 3_600_000)
+		#expect(CueList.milliseconds(.nan) == 0)
+		#expect(CueList.milliseconds(-4) == 0)
 	}
 	
 	@Test func theMarkStaysPutWhileTheSceneRunsOn() throws {
