@@ -49,7 +49,7 @@ final class Console {
 	
 	private(set) var isConfigured = false
 	
-	private(set) var active: Set<Int> = []
+	private(set) var active: [Int: UInt8] = [:]
 	private(set) var patched: Set<Int> = []
 	private(set) var span = Universe.minimumSlots
 	private(set) var resets = 0
@@ -313,8 +313,8 @@ final class Console {
 	}
 	
 	func set(_ value: UInt8, at address: DMXAddress) {
+		if active[address.value] == nil { active[address.value] = universe[address] }
 		universe[address] = value
-		active.insert(address.value)
 	}
 	
 	func set(_ values: [UInt8], at address: DMXAddress) {
@@ -322,16 +322,20 @@ final class Console {
 	}
 	
 	func isActive(_ address: DMXAddress) -> Bool {
-		active.contains(address.value)
+		active[address.value] != nil
+	}
+	
+	func isChanged(_ address: DMXAddress) -> Bool {
+		active[address.value].map { $0 != universe[address] } ?? false
 	}
 	
 	func release(_ span: ClosedRange<Int>, only offset: Int? = nil) {
 		guard let offset else {
-			active.subtract(span)
+			active = active.filter { !span.contains($0.key) }
 			return
 		}
 		
-		active.remove(span.lowerBound + offset - 1)
+		active[span.lowerBound + offset - 1] = nil
 	}
 	
 	var reachable: NodeEndpoint {
@@ -361,7 +365,7 @@ final class Console {
 			hasAdoptedSource = false
 		}
 		
-		active = []
+		active = [:]
 		map = Data([Wire.mapOpcode])
 		patched = []
 		cover(Universe.minimumSlots)
@@ -520,7 +524,7 @@ final class Console {
 	}
 	
 	var isTouched: Bool {
-		!active.isEmpty
+		active.contains { DMXAddress($0.key).map(isChanged) ?? false }
 	}
 	
 	func back(_ list: CueList) {
@@ -564,6 +568,55 @@ final class Console {
 	func remove(_ look: Look, with cues: [Cue], context: ModelContext) {
 		stop(look.identifier, fade: lists[look.identifier]?.fade(of: playback.cue(of: look.identifier)) ?? 0)
 		look.remove(with: cues, context: context)
+	}
+	
+	func keep(_ look: Look, among cues: [Cue]) {
+		guard selection.kept == nil else { return }
+		selection.kept = (look.entry, look.cues(among: cues).map(\.entry), playback.cue(of: look.identifier))
+	}
+	
+	func hasChanged(_ look: Look, among cues: [Cue]) -> Bool {
+		guard let kept = selection.kept else { return false }
+		let held = look.cues(among: cues).map(\.entry)
+		guard !held.isEmpty || !kept.cues.isEmpty else { return false }
+		return look.entry != kept.scene || held != kept.cues
+	}
+	
+	func discard(_ look: Look, among cues: [Cue], fixtures: [Fixture], context: ModelContext) {
+		let kept = selection.kept
+		selection.building = nil
+		
+		guard let kept else { return }
+		
+		guard !kept.cues.isEmpty else {
+			remove(look, with: cues, context: context)
+			return
+		}
+		
+		look.take(kept.scene)
+		
+		for cue in look.cues(among: cues) where !kept.cues.contains(where: { $0.identifier == cue.identifier }) {
+			context.delete(cue)
+		}
+		
+		for entry in kept.cues {
+			if let cue = cues.first(where: { $0.identifier == entry.identifier }) {
+				cue.take(entry)
+			} else {
+				let cue = Cue(lookID: entry.scene, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
+				cue.take(entry)
+				context.insert(cue)
+			}
+		}
+		
+		try? context.save()
+		let list = CueList(look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
+		
+		if let index = list.index(of: kept.playing) {
+			land(list, at: index)
+		} else {
+			stop(look.identifier, fade: 0)
+		}
 	}
 	
 	private func stop(_ scene: String, fade: Double) {
@@ -672,7 +725,7 @@ final class Console {
 			
 			if !hasAdoptedSource {
 				universe = Universe()
-				active = []
+				active = [:]
 				
 				for fixture in fixtures {
 					guard let type = library.type(fixture.typeID) else { continue }
@@ -690,7 +743,7 @@ final class Console {
 		for address in patched.subtracting(covered) {
 			guard let slot = DMXAddress(address) else { continue }
 			universe.set([0], at: slot)
-			active.remove(address)
+			active[address] = nil
 		}
 		
 		patched = covered

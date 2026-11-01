@@ -41,7 +41,7 @@ final class Recording: Identifiable {
 			chosen = selected.isEmpty ? Set(fixtures.map(\.identifier)) : selected
 		case .into:
 			draft = CueDraft()
-			chosen = selected.isEmpty ? Set(fixtures.filter { $0.range(library.type($0.typeID)).contains(where: console.active.contains) }.map(\.identifier)) : selected
+			chosen = Set(fixtures.map(\.identifier))
 		}
 	}
 	
@@ -128,7 +128,7 @@ final class Recording: Identifiable {
 		for fixture in fixtures where lights.contains(fixture.identifier) {
 			guard let type = library.type(fixture.typeID) else { continue }
 			
-			let stored = features.flatMap(type.channels(storedWith:))
+			let stored = features.filter { isNew || type.channels(storedWith: $0).contains { $0.offsets.contains { fixture.start.offset(by: $0 - 1).map(console.isChanged) ?? false } } }.flatMap(type.channels(storedWith:))
 			
 			for channel in type.channels where stored.contains(channel) {
 				for offset in channel.offsets {

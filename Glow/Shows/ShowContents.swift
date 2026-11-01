@@ -80,7 +80,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 		}
 	}
 	
-	nonisolated struct Scene: Codable, Sendable {
+	nonisolated struct Scene: Codable, Sendable, Equatable {
 		var identifier: String
 		var name: String
 		var sortIndex: Double
@@ -143,7 +143,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 		}
 	}
 	
-	nonisolated struct Cue: Codable, Sendable {
+	nonisolated struct Cue: Codable, Sendable, Equatable {
 		var identifier: String
 		var scene: String
 		var sortIndex: Double

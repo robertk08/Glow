@@ -14,12 +14,14 @@ final class Selection {
 	var armed: [String: String] = [:]
 	var draft = CueDraft()
 	var marked: String?
+	var kept: (scene: ShowContents.Scene, cues: [ShowContents.Cue], playing: String?)?
 	
 	var building: String? {
 		didSet {
 			guard building != oldValue else { return }
 			draft = CueDraft()
 			marked = nil
+			kept = nil
 		}
 	}
 	

@@ -101,6 +101,7 @@ struct RootView: View {
 		}
 		.onChange(of: looks.map(\.identifier)) {
 			if !looks.contains(where: { $0.identifier == console.selection.scene }) { console.selection.isSceneOpen = false }
+			if !looks.contains(where: { $0.identifier == console.selection.building }) { console.selection.building = nil }
 		}
 		.onChange(of: console.selection.building) { before, after in
 			if let abandoned = looks.first(where: { $0.identifier == before }), after != nil, abandoned.cues(among: cues).isEmpty {

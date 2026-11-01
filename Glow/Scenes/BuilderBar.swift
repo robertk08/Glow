@@ -3,25 +3,45 @@ import SwiftUI
 
 struct BuilderBar: View {
 	@Environment(Console.self) private var console
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
+	
+	var body: some View {
+		VStack {
+			if let look = looks.first(where: { $0.identifier == console.selection.building }) {
+				BuilderPanel(look: look)
+					.id(look.identifier)
+					.transition(.move(edge: .bottom).combined(with: .opacity))
+			}
+		}
+		.animation(.snappy, value: console.selection.building)
+	}
+}
+
+private struct BuilderPanel: View {
+	@Environment(Console.self) private var console
 	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
+	@Bindable var look: Look
+	
 	@State private var recording: Recording?
 	@State private var editing: Cue?
 	@State private var isStyling = false
+	@State private var isDiscarding = false
 	@State private var updates = 0
 	
 	var body: some View {
-		if let look = looks.first(where: { $0.identifier == console.selection.building }) {
-			@Bindable var look = look
-			let list = CueList(look, cues: cues, fixtures: fixtures)
+		if !look.isGone {
 			let held = look.cues(among: cues)
 			let index = held.firstIndex { $0.identifier == console.selection.marked } ?? held.indices.last
 			let current = index.map { held[$0] }
 			let next = Recording(.cue(look, after: current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
+			let update = current.map { Recording(.into($0), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues) }
+			let canUpdate = update?.isReady == true
+			let hasChanged = console.hasChanged(look, among: cues)
 			let tint = look.tint.color ?? .accentColor
 			
 			VStack(alignment: .leading, spacing: 14) {
@@ -64,19 +84,31 @@ struct BuilderBar: View {
 					
 					Spacer(minLength: 0)
 					
-					Group {
-						if held.isEmpty {
+					HStack(spacing: 8) {
+						if held.isEmpty || hasChanged {
 							Button(role: .close) {
-								look.remove(with: cues, context: context)
-								console.selection.building = nil
+								if hasChanged {
+									isDiscarding = true
+								} else {
+									console.discard(look, among: cues, fixtures: fixtures, context: context)
+								}
 							}
 							.buttonStyle(.glass)
-						} else {
+							.transition(.scale.combined(with: .opacity))
+							.confirmationDialog("Discard", isPresented: $isDiscarding) {
+								Button(console.selection.kept?.cues.isEmpty == false ? "Discard Changes" : "Delete Scene", role: .destructive) {
+									console.discard(look, among: cues, fixtures: fixtures, context: context)
+								}
+							}
+						}
+						
+						if !held.isEmpty {
 							Button(role: .confirm) {
 								console.selection.building = nil
 							}
 							.buttonStyle(.glassProminent)
 							.tint(tint)
+							.transition(.scale.combined(with: .opacity))
 						}
 					}
 					.labelStyle(.iconOnly)
@@ -133,8 +165,10 @@ struct BuilderBar: View {
 							proxy.scrollTo(current?.identifier, anchor: .center)
 						}
 						.onChange(of: current?.identifier) {
-							withAnimation {
-								proxy.scrollTo(current?.identifier, anchor: .center)
+							Task {
+								withAnimation {
+									proxy.scrollTo(current?.identifier, anchor: .center)
+								}
 							}
 						}
 					}
@@ -148,16 +182,16 @@ struct BuilderBar: View {
 					.buttonStyle(.glass)
 					.buttonBorderShape(.circle)
 					
-					if let current, let index {
+					if let update, let index, canUpdate {
 						Button {
-							Recording(.into(current), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+							update.store(context: context)
 							updates += 1
 						} label: {
 							Label("Update \(index + 1)", systemImage: "arrow.triangle.2.circlepath")
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.glass)
-						.disabled(!console.isTouched)
+						.transition(.scale.combined(with: .opacity))
 					}
 					
 					Button {
@@ -182,11 +216,14 @@ struct BuilderBar: View {
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
 			.animation(.snappy, value: [held.count, index ?? -1])
-			.animation(.snappy, value: isStyling)
+			.animation(.snappy, value: [isStyling, canUpdate, hasChanged])
 			.sensoryFeedback(.success, trigger: held.count)
 			.sensoryFeedback(.success, trigger: updates)
 			.sensoryFeedback(.selection, trigger: index)
 			.sensoryFeedback(.selection, trigger: [look.symbol, look.tint.rawValue])
+			.onAppear {
+				console.keep(look, among: cues)
+			}
 			.sheet(item: $recording) { recording in
 				StoreView(recording: recording)
 			}

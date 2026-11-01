@@ -388,20 +388,109 @@ struct SceneTests {
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
 	}
 	
-	@Test func updateStoresTheSelectedLightIntoTheCue() throws {
+	@Test func updateStoresWhatChangedOnAnyLightWhateverIsSelected() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])
 		rig.console.set(70, at: DMXAddress(11)!)
-		rig.console.release(11...11)
-		rig.console.selection.toggle(rig.fixtures[1])
+		rig.console.set(50, at: DMXAddress(2)!)
+		rig.console.set(0, at: DMXAddress(2)!)
+		rig.console.selection.toggle(rig.fixtures[0])
 		
 		#expect(rig.recording(.cue(rig.look, after: cue)).hint == "1 light")
 		
 		rig.recording(.into(cue)).store(context: rig.context)
 		
-		#expect(cue.levels.lights[rig.fixtures[1].identifier]?[1] == 70)
-		#expect(cue.levels.lights[rig.fixtures[0].identifier]?[1] == 200)
+		#expect(cue.levels.lights[rig.fixtures[1].identifier] == [1: 70])
+		#expect(cue.levels.lights[rig.fixtures[0].identifier] == [1: 200])
 		#expect(!rig.console.selection.isEmpty)
+		#expect(!rig.console.isTouched)
+	}
+	
+	@Test func updateIsOnlyReadyWhileALightDiffersFromBeforeItWasTouched() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 0)])
+		rig.console.set(255, at: DMXAddress(1)!)
+		
+		#expect(rig.console.isTouched)
+		#expect(rig.recording(.into(cue)).isReady)
+		
+		rig.console.set(0, at: DMXAddress(1)!)
+		
+		#expect(!rig.console.isTouched)
+		#expect(!rig.recording(.into(cue)).isReady)
+		#expect(rig.console.isActive(DMXAddress(1)!))
+	}
+	
+	@Test func discardingPutsTheSceneAndItsCuesBackAsTheBuilderFoundThem() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		rig.console.selection.building = rig.look.identifier
+		rig.console.keep(rig.look, among: rig.cues)
+		
+		#expect(!rig.console.hasChanged(rig.look, among: rig.cues))
+		
+		rig.look.name = "Storm"
+		rig.look.tint = .red
+		rig.console.set(99, at: DMXAddress(1)!)
+		rig.recording(.into(first)).store(context: rig.context)
+		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)
+		rig.console.delete(second, from: rig.list, context: rig.context)
+		try? rig.context.save()
+		
+		#expect(rig.console.hasChanged(rig.look, among: rig.cues))
+		
+		rig.console.discard(rig.look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+		
+		let held = rig.look.cues(among: rig.cues)
+		#expect(rig.look.name == "Play")
+		#expect(rig.look.tint == .none)
+		#expect(held.map(\.identifier) == [first.identifier, second.identifier])
+		#expect(held.map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 20])
+		#expect(rig.console.selection.building == nil)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
+	}
+	
+	@Test func discardingASceneTheBuilderStartedEmptyDeletesIt() throws {
+		let rig = try rig()
+		let fresh = Look.fresh(among: rig.looks, context: rig.context)
+		rig.console.selection.building = fresh.identifier
+		rig.console.keep(fresh, among: rig.cues)
+		
+		#expect(!rig.console.hasChanged(fresh, among: rig.cues))
+		
+		fresh.name = "Renamed"
+		
+		#expect(!rig.console.hasChanged(fresh, among: rig.cues))
+		
+		rig.recording(.cue(fresh, after: nil)).store(context: rig.context)
+		
+		#expect(rig.console.hasChanged(fresh, among: rig.cues))
+		#expect(rig.console.playback.cue(of: fresh.identifier) != nil)
+		
+		rig.console.discard(fresh, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+		try? rig.context.save()
+		
+		#expect(rig.looks.count == 1)
+		#expect(rig.cues.isEmpty)
+		#expect(rig.console.playback.cue(of: fresh.identifier) == nil)
+	}
+	
+	@Test func discardingPutsTheStageBackOnTheCueItWasOn() throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		rig.add(2, [(0, 1, 20)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		rig.console.selection.building = rig.look.identifier
+		rig.console.keep(rig.look, among: rig.cues)
+		rig.recording(.cue(rig.look, after: nil)).store(context: rig.context)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) != first.identifier)
+		
+		rig.console.discard(rig.look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == first.identifier)
+		#expect(rig.look.cues(among: rig.cues).count == 2)
 	}
 	
 	@Test func aNewCueCanGoBetweenTwoOthers() throws {
