@@ -28,6 +28,13 @@ struct ScenesView: View {
 		.overlay(alignment: .topLeading) {
 			if let look = looks.first(where: { $0.identifier == arrangement.lifted }), let floating = arrangement.floating {
 				SceneFace(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])])
+					.overlay(alignment: .topTrailing) {
+						Image(systemName: "slider.horizontal.3")
+							.font(.body.weight(.semibold))
+							.foregroundStyle(.secondary)
+							.frame(width: 44, height: 44)
+							.padding(11)
+					}
 					.frame(width: floating.width, height: floating.height)
 					.scaleEffect(arrangement.isSettling ? 1 : 1.05)
 					.shadow(color: .black.opacity(arrangement.isSettling ? 0 : 0.18), radius: 20, y: 10)

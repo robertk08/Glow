@@ -94,6 +94,7 @@ struct SceneView: View {
 								}
 							}
 							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
+							.onDelete { deleting = $0.first.map { held[$0].identifier } }
 							
 							Button {
 								console.selection.build(look.identifier)
