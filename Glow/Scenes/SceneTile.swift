@@ -35,7 +35,7 @@ struct SceneTile: View {
 						arrangement.lift(look.identifier, at: point, among: looks)
 						arrangement.drag(to: point)
 					} ended: {
-						arrangement.drop(among: looks, console: console)
+						arrangement.drop(among: looks)
 					})
 					.accessibilityAddTraits(.isButton)
 					.accessibilityHint("Customizes it.")
@@ -100,9 +100,7 @@ struct SceneTile: View {
 					.padding(14)
 			}
 		}
-		.alert("Delete \(look.name)?", isPresented: $isDeleting) {
-			Button("Cancel", role: .cancel) {}
-			
+		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
 			Button("Delete Scene", role: .destructive) {
 				console.remove(look, with: cues, context: context)
 			}
@@ -113,6 +111,7 @@ struct SceneTile: View {
 		}
 		.opacity(arrangement.lifted == look.identifier ? 0 : 1)
 		.layoutValue(key: TileSpan.self, value: look.size)
+		.layoutValue(key: TileSlot.self, value: arrangement.slot(of: look))
 		.animation(.snappy, value: isEditing)
 	}
 }

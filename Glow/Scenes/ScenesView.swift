@@ -19,10 +19,31 @@ struct ScenesView: View {
 	private var tiles: some View {
 		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
 		let shown = arrangement.arranged(looks)
+		let tint = looks.first { $0.identifier == arrangement.lifted }?.tint.color ?? .accentColor
 		
 		return TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			ForEach(shown) { look in
 				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, isEditing: $isEditing, customizing: $customizing)
+			}
+		}
+		.background(alignment: .topLeading) {
+			if isEditing {
+				ZStack(alignment: .topLeading) {
+					ForEach(Array(arrangement.outlines(among: looks).enumerated()), id: \.offset) { _, outline in
+						RoundedRectangle(cornerRadius: 24, style: .continuous)
+							.strokeBorder(.quaternary, style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
+							.frame(width: outline.width, height: outline.height)
+							.offset(x: outline.minX, y: outline.minY)
+					}
+					
+					if let landing = arrangement.landing {
+						RoundedRectangle(cornerRadius: 24, style: .continuous)
+							.fill(tint.opacity(0.12))
+							.strokeBorder(tint.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [6, 6]))
+							.frame(width: landing.width, height: landing.height)
+							.offset(x: landing.minX, y: landing.minY)
+					}
+				}
 			}
 		}
 		.overlay(alignment: .topLeading) {
@@ -44,9 +65,15 @@ struct ScenesView: View {
 			}
 		}
 		.coordinateSpace(.named("tiles"))
+		.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { arrangement.width = $0 }
+		.onChange(of: typeSize.isAccessibilitySize ? 300 : tileWidth, initial: true) { _, minimum in
+			arrangement.minimum = minimum
+		}
+		.padding(.bottom, isEditing ? (arrangement.row(among: looks) ?? 0) + 12 : 0)
 		.padding(.horizontal)
 		.padding(.bottom, 24)
-		.animation(.snappy, value: looks.map(\.identifier))
+		.animation(.snappy, value: looks.map(\.slot))
+		.animation(.snappy, value: isEditing)
 	}
 	
 	var body: some View {

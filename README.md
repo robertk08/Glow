@@ -116,8 +116,11 @@ These are product decisions the code implements without explaining.
 - A tap on a cue in a scene's list only marks it as the next cue, and Go plays
   it, so a stray tap never changes the stage mid show.
 - Playing and arranging are separate. In the Scenes edit mode a tap customizes
-  a tile and never plays it, a held tile is dragged into order and stored once
-  where it lands, and flash tiles are set up, since holding them flashes.
+  a tile and never plays it, and flash tiles are set up, since holding them
+  flashes. Every tile keeps its own spot, like a button on a desk. A held tile
+  moves alone into an empty spot, or trades places with the tile it is dropped
+  on, and nothing else moves. Empty spots stay empty and show as outlines.
+- A new scene loops.
 - The builder records what is on stage. A new cue stores the lights and
   aspects the scene's cues already hold, every light for a new scene, or what
   its settings narrow it to, whatever is selected. Update shows whenever the

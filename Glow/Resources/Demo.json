@@ -442,7 +442,7 @@
     "identifier": "B_uxdiVUb30",
     "name": "Act One",
     "size": 2,
-    "sortIndex": 3,
+    "sortIndex": 4,
     "symbol": "theatermasks",
     "tap": 2,
     "tint": "purple"
@@ -456,7 +456,7 @@
     "identifier": "w6dWp8l5N3w",
     "name": "Reading",
     "size": 1,
-    "sortIndex": 4,
+    "sortIndex": 8,
     "symbol": "book",
     "tap": 5,
     "tint": "teal"
@@ -464,7 +464,7 @@
    {
     "identifier": "LFDuXPmz4N0",
     "name": "Blinder",
-    "sortIndex": 5,
+    "sortIndex": 3,
     "symbol": "bolt",
     "tap": 1,
     "tint": "yellow"
@@ -477,7 +477,7 @@
     "loops": true,
     "name": "Chase",
     "size": 1,
-    "sortIndex": 6,
+    "sortIndex": 10,
     "symbol": "circle.hexagongrid",
     "tap": 0,
     "tint": "pink"

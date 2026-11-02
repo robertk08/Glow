@@ -32,24 +32,23 @@ struct SceneSettings: View {
 		
 		Form {
 			Section {
+				TextField("Name", text: $look.name)
+					.autocorrectionDisabled()
+					.submitLabel(.done)
+					.focused($isNaming)
+			} header: {
 				TileLayout(minimum: column, spacing: 12) {
 					SceneFace(look: look, list: list, showsButtons: true)
 						.layoutValue(key: TileSpan.self, value: look.size)
 				}
 				.frame(width: look.size == .small ? column : column * 2 + 12)
 				.frame(maxWidth: .infinity)
-				.padding(.vertical, 8)
+				.padding(.top, 8)
+				.padding(.bottom, 28)
+				.foregroundStyle(.primary)
+				.textCase(nil)
 				.allowsHitTesting(false)
 				.accessibilityHidden(true)
-				.listRowBackground(Color.clear)
-				.listRowInsets(EdgeInsets())
-			}
-			
-			Section {
-				TextField("Name", text: $look.name)
-					.autocorrectionDisabled()
-					.submitLabel(.done)
-					.focused($isNaming)
 			}
 			
 			Section {
@@ -125,6 +124,12 @@ struct SceneSettings: View {
 					isDeleting = true
 				}
 				.foregroundStyle(.red)
+				.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+					Button("Delete Scene", role: .destructive) {
+						console.remove(look, with: cues, context: context)
+						dismiss()
+					}
+				}
 			}
 		}
 		.environment(\.editMode, .constant(.active))
@@ -137,14 +142,6 @@ struct SceneSettings: View {
 				Button(role: .confirm) {
 					dismiss()
 				}
-			}
-		}
-		.alert("Delete \(look.name)?", isPresented: $isDeleting) {
-			Button("Cancel", role: .cancel) {}
-			
-			Button("Delete Scene", role: .destructive) {
-				console.remove(look, with: cues, context: context)
-				dismiss()
 			}
 		}
 		.onAppear {

@@ -35,6 +35,10 @@ final class Look {
 		loops = entry.loops
 	}
 	
+	var slot: Int {
+		Int(sortIndex.rounded(.up))
+	}
+	
 	var isGone: Bool {
 		isDeleted || modelContext == nil
 	}
@@ -89,6 +93,7 @@ final class Look {
 		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
 		let tints = [FixtureTint.blue, .orange, .purple, .green, .pink, .yellow, .indigo, .red, .mint]
 		look.tint = tints.min { first, second in looks.count { $0.tint == first } < looks.count { $0.tint == second } } ?? .blue
+		look.loops = true
 		context.insert(look)
 		try? context.save()
 		return look

@@ -484,7 +484,7 @@ struct SceneTests {
 		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
 	}
 	
-	@Test func randomArrangingLandsEveryTileWhereItWasShownWithOneWrite() async throws {
+	@Test func randomArrangingMovesOnlyTheDraggedTileOrSwapsTwo() async throws {
 		var seed: UInt64 = 0x2545F4914F6CDD1D
 		
 		func roll(_ count: Int) -> Int {
@@ -493,45 +493,65 @@ struct SceneTests {
 		}
 		
 		let rig = try rig()
+		let sizes: [TileSize] = [.small, .small, .wide, .large, .small, .wide, .small]
 		
-		for _ in 0..<7 {
-			_ = Look.fresh(among: rig.looks, context: rig.context)
+		for size in sizes {
+			let look = Look.fresh(among: rig.looks, context: rig.context)
+			look.size = size
 		}
 		
 		let arrangement = Arrangement()
+		arrangement.width = 352
+		let columns = arrangement.columns
 		
-		func lay(_ looks: [Look]) {
-			for (index, look) in arrangement.arranged(looks).enumerated() {
-				arrangement.frames[look.identifier] = CGRect(x: Double(index % 2) * 110, y: Double(index / 2) * 110, width: 100, height: 100)
+		func place(_ looks: [Look]) -> [String: Int] {
+			let origins = TileLayout.origins(of: looks.map(\.size), at: looks.map { arrangement.slot(of: $0) }, columns: columns)
+			
+			for (look, origin) in zip(looks, origins) {
+				let across = min(look.size.columns, columns)
+				arrangement.frames[look.identifier] = CGRect(x: Double(origin % columns) * 182, y: Double(origin / columns) * 112, width: Double(across) * 170 + Double(across - 1) * 12, height: Double(look.size.rows) * 100 + Double(look.size.rows - 1) * 12)
 			}
+			
+			return Dictionary(uniqueKeysWithValues: zip(looks.map(\.identifier), origins))
 		}
 		
-		for session in 0..<200 {
+		for session in 0..<300 {
 			try await Task.sleep(for: .milliseconds(1))
-			let looks = rig.looks
-			let before = looks.map(\.identifier)
-			let indexes = looks.map(\.sortIndex)
-			lay(looks)
+			let looks = arrangement.arranged(rig.looks)
+			let before = place(looks)
+			let indexes = rig.looks.map(\.sortIndex)
 			let lifted = looks[roll(looks.count)]
 			let start = arrangement.frames[lifted.identifier]!
 			arrangement.lift(lifted.identifier, at: CGPoint(x: start.midX, y: start.midY), among: looks)
-			#expect(arrangement.lifted == lifted.identifier, "session \(session) did not lift")
 			
 			for _ in 0..<roll(8) {
-				arrangement.drag(to: CGPoint(x: Double(roll(220)), y: Double(roll(560))))
-				lay(looks)
-				#expect(Set(arrangement.arranged(looks).map(\.identifier)) == Set(before), "session \(session) lost or doubled a scene while dragging")
+				arrangement.drag(to: CGPoint(x: Double(roll(360)), y: Double(roll(900))))
+				#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote while dragging")
 			}
 			
-			#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote while dragging")
-			let shown = arrangement.arranged(looks).map(\.identifier)
-			arrangement.drop(among: looks, console: rig.console)
+			let shown = Dictionary(uniqueKeysWithValues: looks.map { ($0.identifier, arrangement.slot(of: $0)) })
+			arrangement.drop(among: looks)
 			try? rig.context.save()
-			let after = rig.looks
-			#expect(after.map(\.identifier) == shown, "session \(session) landed somewhere other than where it was shown")
+			let after = place(arrangement.arranged(rig.looks))
+			let moved = before.keys.filter { before[$0] != after[$0] }
+			#expect(after == shown, "session \(session) landed somewhere other than where it was shown")
+			#expect(moved.isEmpty || moved == [lifted.identifier] || moved.count == 2 && moved.contains(lifted.identifier), "session \(session) moved \(moved.count) tiles")
 			
-			if shown == before {
-				#expect(after.map(\.sortIndex) == indexes, "session \(session) wrote without a move")
+			if moved.count == 2, let other = moved.first(where: { $0 != lifted.identifier }), let size = rig.looks.first(where: { $0.identifier == other })?.size {
+				let landed = Set(TileLayout.cells(of: lifted.size, at: after[lifted.identifier]!, columns: columns))
+				#expect(after[other] == before[lifted.identifier] && !landed.isDisjoint(with: TileLayout.cells(of: size, at: before[other]!, columns: columns)), "session \(session) moved two tiles without swapping them")
+			}
+			
+			if moved.isEmpty {
+				#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote without a move")
+			}
+			
+			var cells = Set<Int>()
+			
+			for look in rig.looks {
+				let covered = TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)
+				#expect(cells.isDisjoint(with: covered), "session \(session) put two tiles on one spot")
+				cells.formUnion(covered)
 			}
 		}
 	}
