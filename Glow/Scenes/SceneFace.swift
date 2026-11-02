@@ -47,33 +47,13 @@ struct SceneFace: View {
 					.lineLimit(1)
 				
 				if isLarge, list.cues.count > 1 {
-					VStack(alignment: .leading, spacing: 6) {
-						ForEach(Array(list.window(live: index, upcoming: upcoming).enumerated()), id: \.offset) { slot, position in
-							HStack(spacing: 6) {
-								if position == upcoming {
-									Image(systemName: SceneAction.next.symbol)
-										.font(.caption)
-										.transition(.scale.combined(with: .opacity))
-								}
-								
-								if position == index {
-									CueStatus(fade: fade, follow: list.cues[position].follow) {
-										Text(list.heading(at: position))
-											.contentTransition(.numericText())
-									}
-								} else {
-									Text(list.heading(at: position))
-										.contentTransition(.numericText())
-								}
-							}
-							.font(slot == 0 && isOn ? .title3.weight(.semibold) : .subheadline)
-							.foregroundStyle(slot == 0 ? AnyShapeStyle(.primary) : slot == 1 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
-							.lineLimit(1)
-							.transition(.opacity)
-						}
+					ViewThatFits(in: .vertical) {
+						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 3)
+						
+						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 2)
+						
+						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 1)
 					}
-					.padding(.top, 8)
-					.animation(.snappy(duration: 0.3), value: [index ?? -1, upcoming ?? -1])
 				} else {
 					CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
 						HStack(spacing: 4) {
@@ -125,6 +105,44 @@ struct SceneFace: View {
 		.glassEffect(.regular, in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.animation(.snappy(duration: 0.25), value: isOn)
+	}
+}
+
+private struct CueWindow: View {
+	let list: CueList
+	let index: Int?
+	let upcoming: Int?
+	let fade: Fade?
+	let lines: Int
+	
+	var body: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			ForEach(Array(list.window(live: index, upcoming: upcoming).prefix(lines).enumerated()), id: \.offset) { slot, position in
+				HStack(spacing: 6) {
+					if position == upcoming {
+						Image(systemName: SceneAction.next.symbol)
+							.font(.caption)
+							.transition(.scale.combined(with: .opacity))
+					}
+					
+					if position == index {
+						CueStatus(fade: fade, follow: list.cues[position].follow) {
+							Text(list.heading(at: position))
+								.contentTransition(.numericText())
+						}
+					} else {
+						Text(list.heading(at: position))
+							.contentTransition(.numericText())
+					}
+				}
+				.font(slot == 0 && index != nil ? .title3.weight(.semibold) : .subheadline)
+				.foregroundStyle(slot == 0 ? AnyShapeStyle(.primary) : slot == 1 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
+				.lineLimit(1)
+				.transition(.opacity)
+			}
+		}
+		.padding(.top, 8)
+		.animation(.snappy(duration: 0.3), value: [index ?? -1, upcoming ?? -1])
 	}
 }
 

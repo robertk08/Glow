@@ -59,11 +59,12 @@ struct TileLayout: Layout {
 		let columns = Self.columns(in: width, minimum: minimum, spacing: spacing)
 		let column = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
 		let sizes = subviews.map { $0[TileSpan.self] }
-		let height = zip(subviews, sizes).map { subview, size in
+		let heights = zip(subviews, sizes).map { subview, size in
 			let across = min(size.columns, columns)
 			let width = column * CGFloat(across) + spacing * CGFloat(across - 1)
-			return (subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows)
-		}.max() ?? 0
+			return (size.rows, (subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows))
+		}
+		let height = heights.filter { $0.0 == 1 }.map(\.1).max() ?? heights.map(\.1).max() ?? 0
 		let origins = Self.origins(of: sizes, at: subviews.map { $0[TileSlot.self] }, columns: columns)
 		var cells: [(index: Int, frame: CGRect)] = []
 		
