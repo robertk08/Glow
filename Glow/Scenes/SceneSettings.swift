@@ -100,7 +100,6 @@ struct SceneSettings: View {
 				}
 			}
 		}
-		.environment(\.editMode, .constant(.active))
 		.animation(.snappy(duration: 0.3), value: look.buttons)
 		.navigationTitle(look.name)
 		.navigationBarTitleDisplayMode(.inline)
@@ -144,6 +143,11 @@ private struct SceneButtonRow: View {
 					.foregroundStyle(isOn ? .primary : .secondary)
 				
 				Spacer(minLength: 0)
+				
+				if isOn {
+					Image(systemName: "line.3.horizontal")
+						.foregroundStyle(.tertiary)
+				}
 			}
 			.contentShape(.rect)
 		}
