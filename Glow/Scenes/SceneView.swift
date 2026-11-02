@@ -75,9 +75,10 @@ struct SceneView: View {
 									.tint(tint)
 								}
 								.swipeActions(edge: .trailing) {
-									Button("Delete", systemImage: "trash", role: .destructive) {
+									Button("Delete", systemImage: "trash") {
 										deleting = cue.identifier
 									}
+									.tint(.red)
 								}
 								.contextMenu {
 									Button("Play Now", systemImage: "play.fill") {
@@ -113,7 +114,9 @@ struct SceneView: View {
 							Button("Cancel", role: .cancel) {}
 							
 							Button("Delete", role: .destructive) {
-								console.delete(cue, from: list, context: context)
+								withAnimation {
+									console.delete(cue, from: list, context: context)
+								}
 							}
 						}
 						.onAppear {
