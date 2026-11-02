@@ -14,8 +14,10 @@ struct SecondsField: View {
 					.multilineTextAlignment(.trailing)
 					.monospacedDigit()
 				
-				Text("s")
-					.foregroundStyle(.secondary)
+				if seconds >= 0 {
+					Text("s")
+						.foregroundStyle(.secondary)
+				}
 			}
 		} label: {
 			Label(title, systemImage: symbol)

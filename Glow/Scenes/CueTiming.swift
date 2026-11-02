@@ -6,12 +6,14 @@ struct CueTiming: View {
 	@Binding var follow: Double?
 	
 	var body: some View {
-		CueTimeline(delay: delay, fade: fade, follow: follow.flatMap { $0 < 0 ? nil : $0 }, height: 18)
-			.font(.subheadline.weight(.medium))
-			.foregroundStyle(.tint)
-			.frame(maxWidth: .infinity)
-			.padding(.vertical, 6)
-			.animation(.snappy(duration: 0.25), value: [delay, fade, follow ?? -1])
+		if fade >= 0, delay >= 0, follow.map({ $0 >= 0 }) ?? true {
+			CueTimeline(delay: delay, fade: fade, follow: follow, height: 18)
+				.font(.subheadline.weight(.medium))
+				.foregroundStyle(.tint)
+				.frame(maxWidth: .infinity)
+				.padding(.vertical, 6)
+				.animation(.snappy(duration: 0.25), value: [delay, fade, follow ?? -1])
+		}
 		
 		SecondsField(title: CueTime.fade.name, symbol: CueTime.fade.symbol, seconds: $fade)
 		
