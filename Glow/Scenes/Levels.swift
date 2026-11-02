@@ -84,6 +84,29 @@ nonisolated struct Levels: Sendable, Equatable {
 		return trimmed
 	}
 	
+	func keeping(_ kept: Set<String>, features: Set<FeatureGroup>, types: [String: FixtureType]) -> Levels {
+		var trimmed = Levels()
+		
+		for (light, slots) in lights where kept.contains(light) {
+			var dropped = Set<Int>()
+			
+			if let type = types[light] {
+				let dimming = type.channels(storedWith: .dimmer)
+				
+				for group in FeatureGroup.allCases where !features.contains(group) {
+					for channel in type.channels(storedWith: group) where group == .dimmer || !dimming.contains(channel) {
+						dropped.formUnion(channel.offsets)
+					}
+				}
+			}
+			
+			let remaining = slots.filter { !dropped.contains($0.key) }
+			if !remaining.isEmpty { trimmed.lights[light] = remaining }
+		}
+		
+		return trimmed
+	}
+	
 	func features(of light: String, type: FixtureType?) -> [FeatureGroup] {
 		guard let slots = lights[light], let type else { return [] }
 		let dimming = type.channels(storedWith: .dimmer)

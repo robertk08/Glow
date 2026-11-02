@@ -705,6 +705,27 @@ struct SceneTests {
 		#expect(first.follow == 0.5 && second.follow == 0.5)
 	}
 	
+	@Test func aCueKeepsOnlyTheLightsAndAspectsLeftTickedAndGetsThemBackWhenTickedAgain() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 200), (0, 2, 10), (0, 3, 20), (0, 5, 30), (0, 6, 31), (1, 1, 100), (2, 1, 150)])
+		let original = cue.levels
+		let types = Dictionary(uniqueKeysWithValues: rig.fixtures.map { ($0.identifier, rig.library.type($0.typeID)!) })
+		let all = Set(rig.fixtures.map(\.identifier))
+		
+		let colourless = original.keeping(all, features: Set(FeatureGroup.allCases).subtracting([.color]), types: types)
+		#expect(colourless.lights[rig.fixtures[0].identifier] == [1: 200, 5: 30, 6: 31])
+		#expect(colourless.lights[rig.fixtures[1].identifier] == [1: 100])
+		
+		let dark = original.keeping(all, features: Set(FeatureGroup.allCases).subtracting([.dimmer]), types: types)
+		#expect(dark.lights[rig.fixtures[0].identifier] == [2: 10, 3: 20, 5: 30, 6: 31])
+		#expect(dark.lights[rig.fixtures[1].identifier] == nil)
+		#expect(dark.lights[rig.fixtures[2].identifier] == nil)
+		
+		let alone = original.keeping([rig.fixtures[1].identifier], features: Set(FeatureGroup.allCases), types: types)
+		#expect(Set(alone.lights.keys) == [rig.fixtures[1].identifier])
+		#expect(original.keeping(all, features: Set(FeatureGroup.allCases), types: types) == original)
+	}
+	
 	@Test func aLargeTileShowsTheLiveCueThenWhatGoPlaysNext() throws {
 		let rig = try rig()
 		
