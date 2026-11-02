@@ -13,11 +13,13 @@ final class Arrangement {
 	private(set) var finger = CGPoint.zero
 	private(set) var isSettling = false
 	private(set) var moves = 0
+	private(set) var stretched: (scene: String, size: TileSize)?
 	
 	private var spots: [String: Int] = [:]
 	private var resting: [String: Int] = [:]
 	private var sizes: [String: TileSize] = [:]
 	private var grab = CGSize.zero
+	private var base = CGRect.zero
 	
 	var columns: Int {
 		TileLayout.columns(in: width, minimum: minimum, spacing: spacing)
@@ -28,8 +30,13 @@ final class Arrangement {
 	}
 	
 	func slot(of look: Look) -> Int {
-		guard lifted != nil, let spot = spots[look.identifier] else { return look.slot }
+		guard lifted != nil || stretched != nil, let spot = spots[look.identifier] else { return look.slot }
 		return spot
+	}
+	
+	func size(of look: Look) -> TileSize {
+		guard let stretched, stretched.scene == look.identifier else { return look.size }
+		return stretched.size
 	}
 	
 	func arranged(_ looks: [Look]) -> [Look] {
@@ -39,7 +46,7 @@ final class Arrangement {
 	func row(among looks: [Look]) -> CGFloat? {
 		for look in looks {
 			guard let frame = frames[look.identifier] else { continue }
-			return (frame.height - spacing * CGFloat(look.size.rows - 1)) / CGFloat(look.size.rows)
+			return (frame.height - spacing * CGFloat(size(of: look).rows - 1)) / CGFloat(size(of: look).rows)
 		}
 		
 		return nil
@@ -47,7 +54,7 @@ final class Arrangement {
 	
 	private func origins(among looks: [Look]) -> [String: Int] {
 		let arranged = arranged(looks)
-		let origins = TileLayout.origins(of: arranged.map(\.size), at: arranged.map { slot(of: $0) }, columns: columns)
+		let origins = TileLayout.origins(of: arranged.map { size(of: $0) }, at: arranged.map { slot(of: $0) }, columns: columns)
 		return Dictionary(zip(arranged.map(\.identifier), origins), uniquingKeysWith: { first, _ in first })
 	}
 	
@@ -58,7 +65,7 @@ final class Arrangement {
 		
 		for look in looks {
 			guard let origin = placed[look.identifier] else { continue }
-			taken.formUnion(TileLayout.cells(of: look.size, at: origin, columns: columns))
+			taken.formUnion(TileLayout.cells(of: size(of: look), at: origin, columns: columns))
 		}
 		
 		let rows = (taken.max() ?? 0) / columns + 2
@@ -73,7 +80,7 @@ final class Arrangement {
 	
 	var floating: CGRect? {
 		guard let lifted, let frame = frames[lifted] else { return nil }
-		return CGRect(origin: CGPoint(x: finger.x - grab.width, y: finger.y - grab.height), size: frame.size)
+		return CGRect(origin: CGPoint(x: min(max(finger.x - grab.width, 0), max(width - frame.width, 0)), y: max(finger.y - grab.height, 0)), size: frame.size)
 	}
 	
 	func lift(_ scene: String, at point: CGPoint, among looks: [Look]) {
@@ -85,7 +92,7 @@ final class Arrangement {
 		finger = point
 		isSettling = false
 		
-		withAnimation(.snappy) {
+		withAnimation(.snappy(duration: 0.3)) {
 			lifted = scene
 		}
 	}
@@ -93,41 +100,110 @@ final class Arrangement {
 	func drag(to point: CGPoint) {
 		finger = point
 		guard let lifted, let size = sizes[lifted], let frame = frames[lifted] else { return }
-		var taken: [Int: String] = [:]
-		
-		for (scene, origin) in resting where scene != lifted {
-			guard let other = sizes[scene] else { continue }
-			
-			for cell in TileLayout.cells(of: other, at: origin, columns: columns) {
-				taken[cell] = scene
-			}
-		}
-		
+		let taken = taken(besides: lifted)
 		let row = (frame.height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows)
 		let across = min(size.columns, columns)
 		let x = min(max(Int(((point.x - grab.width) / (column + spacing)).rounded()), 0), columns - across)
 		let bottom = resting.compactMap { scene, origin in sizes[scene].flatMap { TileLayout.cells(of: $0, at: origin, columns: columns).max() } }.max() ?? 0
 		let y = min(max(Int(((point.y - grab.height) / (row + spacing)).rounded()), 0), bottom / columns + 1)
-		guard let placed = place(lifted, at: y * columns + x, taken: taken), placed != spots else { return }
+		let placed = place(lifted, at: y * columns + x, size: size, taken: taken)
+		guard placed != spots else { return }
 		
-		withAnimation(.snappy) {
+		withAnimation(.snappy(duration: 0.3)) {
 			spots = placed
 		}
 		moves += 1
 	}
 	
-	private func place(_ scene: String, at destination: Int, taken: [Int: String]) -> [String: Int]? {
-		guard let size = sizes[scene], let start = resting[scene] else { return nil }
-		let target = TileLayout.cells(of: size, at: destination, columns: columns)
-		let occupants = Set(target.compactMap { taken[$0] })
+	private func place(_ scene: String, at destination: Int, size: TileSize, taken: [Int: String]) -> [String: Int] {
+		let target = Set(TileLayout.cells(of: size, at: destination, columns: columns))
+		let covered = Set(target.compactMap { taken[$0] })
+		var filled = target
 		var placed = resting
 		placed[scene] = destination
-		guard let partner = occupants.first else { return placed }
-		guard occupants.count == 1, let other = sizes[partner], TileLayout.fits(other, at: start, columns: columns) else { return nil }
-		let moved = TileLayout.cells(of: other, at: start, columns: columns)
-		guard Set(moved).isDisjoint(with: target), moved.allSatisfy({ taken[$0] == nil || taken[$0] == partner }) else { return nil }
-		placed[partner] = start
+		
+		for (other, origin) in resting where other != scene && !covered.contains(other) {
+			guard let size = sizes[other] else { continue }
+			filled.formUnion(TileLayout.cells(of: size, at: origin, columns: columns))
+		}
+		
+		for other in covered.sorted(by: { resting[$0, default: 0] < resting[$1, default: 0] }) {
+			guard let size = sizes[other], var origin = resting[other] else { continue }
+			
+			while !filled.isDisjoint(with: TileLayout.cells(of: size, at: origin, columns: columns)) {
+				origin += columns
+			}
+			
+			placed[other] = origin
+			filled.formUnion(TileLayout.cells(of: size, at: origin, columns: columns))
+		}
+		
 		return placed
+	}
+	
+	private func taken(besides scene: String) -> [Int: String] {
+		var taken: [Int: String] = [:]
+		
+		for (other, origin) in resting where other != scene {
+			guard let size = sizes[other] else { continue }
+			
+			for cell in TileLayout.cells(of: size, at: origin, columns: columns) {
+				taken[cell] = other
+			}
+		}
+		
+		return taken
+	}
+	
+	func stretch(_ scene: String, by translation: CGSize, among looks: [Look]) {
+		guard lifted == nil, let look = looks.first(where: { $0.identifier == scene }), let frame = stretched == nil ? frames[scene] : base else { return }
+		base = frame
+		let row = (frame.height - spacing * CGFloat(look.size.rows - 1)) / CGFloat(look.size.rows)
+		let across = frame.width + translation.width > column * 1.5 + spacing && columns > 1
+		let down = frame.height + translation.height > row * 1.5 + spacing
+		stretch(scene, to: down ? .large : across ? .wide : .small, among: looks)
+	}
+	
+	func stretch(_ scene: String, to size: TileSize, among looks: [Look]) {
+		guard lifted == nil else { return }
+		
+		if stretched == nil {
+			resting = origins(among: looks)
+			spots = resting
+			sizes = Dictionary(looks.map { ($0.identifier, $0.size) }, uniquingKeysWith: { first, _ in first })
+		}
+		
+		guard let start = resting[scene] else { return }
+		let previous = stretched?.size
+		guard previous != size else { return }
+		var origin = start
+		
+		while origin % columns > 0, !TileLayout.fits(size, at: origin, columns: columns) {
+			origin -= 1
+		}
+		
+		let placed = place(scene, at: origin, size: size, taken: taken(besides: scene))
+		
+		withAnimation(.snappy(duration: 0.3)) {
+			stretched = (scene, size)
+			spots = placed
+		}
+		
+		if previous != nil { moves += 1 }
+	}
+	
+	func settle(among looks: [Look]) {
+		guard let stretched else { return }
+		
+		withAnimation(.snappy(duration: 0.3)) {
+			for look in looks {
+				if look.identifier == stretched.scene, look.size != stretched.size { look.size = stretched.size }
+				guard let spot = spots[look.identifier], Double(spot) != look.sortIndex else { continue }
+				look.sortIndex = Double(spot)
+			}
+			
+			self.stretched = nil
+		}
 	}
 	
 	func autoscroll() -> CGFloat? {
@@ -168,7 +244,7 @@ final class Arrangement {
 		
 		isSettling = true
 		
-		withAnimation(.snappy) {
+		withAnimation(.snappy(duration: 0.3)) {
 			finger = CGPoint(x: frame.minX + grab.width, y: frame.minY + grab.height)
 		} completion: {
 			guard self.isSettling else { return }

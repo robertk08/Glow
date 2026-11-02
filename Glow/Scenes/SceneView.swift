@@ -96,6 +96,10 @@ struct SceneView: View {
 							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
 							.onDelete { deleting = $0.first.map { held[$0].identifier } }
 							
+							if held.count > 1 {
+								LoopRow(look: look, list: list, tint: tint)
+							}
+							
 							Button {
 								console.selection.build(look.identifier)
 								console.selection.isSceneOpen = false
@@ -195,9 +199,8 @@ private struct CueRow: View {
 	
 	var body: some View {
 		let cue = list.cues[position]
-		let detail = list.detail(at: position)
 		
-		HStack(alignment: .firstTextBaseline, spacing: 12) {
+		HStack(alignment: .center, spacing: 12) {
 			Text("\(position + 1)")
 				.font(.body.weight(isLive ? .bold : .regular))
 				.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
@@ -211,46 +214,67 @@ private struct CueRow: View {
 					.lineLimit(2)
 					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 				
-				Group {
-					if isLive {
-						CueStatus(fade: fade, follow: cue.follow) {
-							if !detail.isEmpty {
-								Text(detail)
-							}
+				if isLive {
+					CueStatus(fade: fade, follow: cue.follow) {
+						if cue.fade + cue.delay > 0 {
+							FadeBar(fade: fade, tint: tint)
+								.padding(.vertical, 5)
 						}
-					} else if !detail.isEmpty {
-						Text(detail)
 					}
-				}
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
-				
-				if isLive, cue.fade + cue.delay > 0 {
-					FadeBar(fade: fade, tint: tint)
-						.padding(.vertical, 2)
+					.font(.subheadline)
+					.foregroundStyle(.secondary)
 				}
 			}
 			
 			Spacer(minLength: 8)
 			
 			if isNext {
-				Text("Next")
-					.font(.caption.weight(.semibold))
+				Image(systemName: SceneAction.next.symbol)
+					.font(.subheadline.weight(.semibold))
 					.foregroundStyle(isArmed ? AnyShapeStyle(.white) : AnyShapeStyle(tint))
-					.padding(.horizontal, 8)
-					.padding(.vertical, 3)
-					.background(isArmed ? tint : tint.opacity(0.15), in: .capsule)
+					.frame(width: 30, height: 30)
+					.background(isArmed ? tint : tint.opacity(0.15), in: .circle)
+					.transition(.scale.combined(with: .opacity))
 			}
 			
-			if cue.fade > 0 {
-				Text(CueList.seconds(cue.fade))
-					.foregroundStyle(.secondary)
-					.monospacedDigit()
-			}
+			CueTimeline(delay: cue.delay, fade: cue.fade, follow: list.next(after: position) == nil ? nil : cue.follow)
+				.font(.caption2)
+				.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
 		}
 		.contentShape(.rect)
 		.accessibilityElement(children: .combine)
 		.accessibilityLabel(isLive ? "Live, \(list.heading(at: position))" : list.heading(at: position))
+	}
+}
+
+private struct LoopRow: View {
+	@Bindable var look: Look
+	
+	let list: CueList
+	let tint: Color
+	
+	var body: some View {
+		Button {
+			look.loops.toggle()
+		} label: {
+			HStack(spacing: 12) {
+				Image(systemName: "repeat")
+					.font(.body.weight(.semibold))
+					.frame(minWidth: 28, alignment: .trailing)
+				
+				Text(list.heading(at: 0))
+					.strikethrough(!look.loops)
+				
+				Spacer(minLength: 0)
+			}
+			.foregroundStyle(look.loops ? AnyShapeStyle(tint) : AnyShapeStyle(.tertiary))
+			.contentShape(.rect)
+		}
+		.buttonStyle(.plain)
+		.accessibilityLabel("Loop")
+		.accessibilityAddTraits(look.loops ? .isSelected : [])
+		.animation(.snappy(duration: 0.25), value: look.loops)
+		.sensoryFeedback(.selection, trigger: look.loops)
 	}
 }
 
@@ -266,73 +290,80 @@ private struct Transport: View {
 		let upcoming = console.upcoming(list)
 		let tint = look.tint.color ?? .accentColor
 		let steps = list.cues.count > 1
-		let isAtEnd = steps && upcoming == nil
+		let isOn = index != nil
+		let isAtEnd = steps && isOn && upcoming == nil
 		
 		GlassEffectContainer(spacing: 12) {
 			HStack(spacing: 12) {
-				if steps {
+				if steps, isOn {
 					Button {
 						console.back(list)
 					} label: {
 						Image(systemName: SceneAction.back.symbol)
 							.frame(width: height, height: height)
-							.glassEffect(.regular.interactive(index != nil), in: .circle)
+							.glassEffect(.regular.interactive(), in: .circle)
 					}
 					.accessibilityLabel("Back")
 					.keyboardShortcut(.leftArrow, modifiers: [])
-					.disabled(index == nil)
+					.transition(.scale(scale: 0.6).combined(with: .opacity))
 				}
 				
 				Button {
-					if steps {
+					if isAtEnd {
+						console.play(list, at: 0)
+					} else if steps {
 						console.go(list)
 					} else {
 						console.toggle(list)
 					}
 				} label: {
 					Group {
-						if steps {
+						if isAtEnd {
+							Label(list.heading(at: 0), systemImage: SceneAction.restart.symbol)
+						} else if steps {
 							VStack(spacing: 1) {
 								Label("Go", systemImage: SceneAction.next.symbol)
 								
 								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
-									Text(upcoming.map(list.heading(at:)) ?? "End")
+									Text(upcoming.map(list.heading(at:)) ?? "")
+										.contentTransition(.numericText())
 								}
 								.font(.caption)
 								.opacity(0.85)
 							}
 						} else {
-							Label(SceneAction.toggle.name(isOn: index != nil), systemImage: SceneAction.toggle.symbol(isOn: index != nil))
+							Label(SceneAction.toggle.name(isOn: isOn), systemImage: SceneAction.toggle.symbol(isOn: isOn))
 								.contentTransition(.symbolEffect(.replace))
 						}
 					}
-					.foregroundStyle(isAtEnd ? AnyShapeStyle(.secondary) : AnyShapeStyle(.white))
+					.foregroundStyle(isOn && !isAtEnd ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
 					.padding(.horizontal)
 					.frame(maxWidth: .infinity)
 					.frame(height: height)
-					.glassEffect(.regular.tint(isAtEnd ? nil : tint).interactive(!isAtEnd), in: .capsule)
+					.glassEffect(.regular.tint(isOn && !isAtEnd ? tint : nil).interactive(), in: .capsule)
 				}
 				.keyboardShortcut(.rightArrow, modifiers: [])
-				.disabled(isAtEnd)
 				
-				if steps {
+				if steps, isOn {
 					Button {
 						console.toggle(list)
 					} label: {
 						Image(systemName: "stop.fill")
 							.frame(width: height, height: height)
-							.glassEffect(.regular.interactive(index != nil), in: .circle)
+							.glassEffect(.regular.interactive(), in: .circle)
 					}
 					.accessibilityLabel("Turn Off")
-					.disabled(index == nil)
+					.transition(.scale(scale: 0.6).combined(with: .opacity))
 				}
 			}
 		}
 		.buttonStyle(.plain)
 		.font(.headline)
-		.foregroundStyle(index == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+		.foregroundStyle(.primary)
 		.lineLimit(1)
 		.padding(.horizontal)
 		.padding(.vertical, 8)
+		.animation(.snappy(duration: 0.25), value: [isOn, isAtEnd])
+		.animation(.snappy(duration: 0.3), value: upcoming)
 	}
 }

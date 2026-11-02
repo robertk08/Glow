@@ -6,9 +6,11 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 	case next = 2
 	case back = 3
 	case open = 5
+	case restart = 6
+	case stop = 7
 	
 	static let taps: [SceneAction] = [.next, .toggle, .flash, .open]
-	static let buttons: [SceneAction] = [.toggle, .flash, .next, .back]
+	static let buttons: [SceneAction] = [.toggle, .flash, .next, .back, .restart, .stop]
 	
 	var id: Int { rawValue }
 	
@@ -19,6 +21,8 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		case .next: "Next"
 		case .back: "Back"
 		case .open: "Open"
+		case .restart: "Restart"
+		case .stop: "Stop"
 		}
 	}
 	
@@ -38,6 +42,8 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		case .next: "forward.end.fill"
 		case .back: "backward.end.fill"
 		case .open: "list.bullet"
+		case .restart: "backward.end.alt.fill"
+		case .stop: "stop.fill"
 		}
 	}
 	

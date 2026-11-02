@@ -82,6 +82,11 @@ private struct BuilderPanel: View {
 										.accessibilityLabel(feature.name)
 								}
 							}
+							
+							if next.fade + next.delay > 0 || next.follow != nil {
+								CueTimeline(delay: next.delay, fade: next.fade, follow: next.follow, height: 7)
+									.font(.system(size: 9))
+							}
 						}
 						.font(.caption)
 						.foregroundStyle(.secondary)

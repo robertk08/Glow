@@ -62,23 +62,23 @@ nonisolated struct CueList: Sendable {
 		cues[index].label.isEmpty ? "Cue \(index + 1)" : "\(index + 1) · \(cues[index].label)"
 	}
 	
-	func detail(at index: Int) -> String {
-		let cue = cues[index]
-		var parts = cue.delay > 0 ? ["Wait \(Self.seconds(cue.delay))"] : []
+	static func timing(delay: Double, fade: Double, follow: Double?) -> String {
+		var parts = delay > 0 ? ["\(CueTime.delay.name) \(seconds(delay))"] : []
+		parts.append("\(CueTime.fade.name) \(seconds(fade))")
 		
-		if let follow = cue.follow, next(after: index) != nil {
-			parts.append(follow > 0 ? "Auto \(Self.seconds(follow))" : "Auto")
+		if let follow {
+			parts.append(follow > 0 ? "\(CueTime.follow.name) after \(seconds(follow))" : "\(CueTime.follow.name) right away")
 		}
 		
-		return parts.joined(separator: " · ")
+		return parts.joined(separator: ", ")
+	}
+	
+	static func span(of seconds: Double) -> Double {
+		1.6 + 1.4 * log2(1 + min(max(seconds, 0), 60))
 	}
 	
 	static func seconds(_ value: Double) -> String {
 		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
-	}
-	
-	var isLong: Bool {
-		cues.count > 12
 	}
 	
 	func status(at index: Int?) -> String {

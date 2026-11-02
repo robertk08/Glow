@@ -479,6 +479,8 @@ final class Console {
 		case .toggle: toggle(list)
 		case .next: go(list)
 		case .back: back(list)
+		case .restart: play(list, at: 0)
+		case .stop: stop(list)
 		case .flash, .open: break
 		}
 	}
@@ -650,7 +652,7 @@ final class Console {
 		writer.number(CueList.milliseconds(fade))
 		guard command(.stop, scene: scene, body: writer.data) else { return }
 		flashing.remove(scene)
-		playback.stop(scene)
+		playback.stop(scene, fade: fade)
 	}
 	
 	@discardableResult private func command(_ action: Wire.Action, scene: String, body: Data) -> Bool {

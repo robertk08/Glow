@@ -10,6 +10,7 @@ nonisolated struct Playback: Sendable, Equatable {
 	
 	private(set) var playing: [Playing] = []
 	private(set) var fades: [String: Fade] = [:]
+	private(set) var falls: [String: Double] = [:]
 	
 	init() {}
 	
@@ -35,8 +36,9 @@ nonisolated struct Playback: Sendable, Equatable {
 		fades[scene] = fade
 	}
 	
-	mutating func stop(_ scene: String) {
+	mutating func stop(_ scene: String, fade: Double = 0) {
 		playing.removeAll { $0.scene == scene }
 		fades[scene] = nil
+		falls[scene] = fade
 	}
 }

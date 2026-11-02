@@ -111,11 +111,7 @@ final class Recording: Identifiable {
 	}
 	
 	var hint: String {
-		var parts = [lights.isEmpty ? "No lights" : lights.count == fixtures.count ? "All lights" : lights.count == 1 ? "1 light" : "\(lights.count) lights"]
-		if fade > 0 { parts.append(CueList.seconds(fade)) }
-		if delay > 0 { parts.append("Wait \(CueList.seconds(delay))") }
-		if follow != nil { parts.append("Auto") }
-		return parts.joined(separator: " · ")
+		lights.isEmpty ? "No lights" : lights.count == fixtures.count ? "All lights" : lights.count == 1 ? "1 light" : "\(lights.count) lights"
 	}
 	
 	var isReady: Bool {

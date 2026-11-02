@@ -118,28 +118,23 @@ struct ScenesView: View {
 			}
 		}
 		.navigationTitle("Scenes")
-		.navigationSubtitle(isEditing ? "Drag to arrange, tap to customize" : shows.active.name)
+		.navigationSubtitle(shows.active.name)
 		.toolbar {
 			LinkStatusButton()
 			
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			
-			ToolbarItem(placement: .topBarTrailing) {
-				if isPlaying {
+			if isPlaying {
+				ToolbarItem(placement: .topBarTrailing) {
 					Button("All Off", systemImage: "stop.fill") {
 						console.stopAll()
 					}
 					.buttonStyle(.glassProminent)
 					.tint(.red)
-				} else {
-					Button("All Off", systemImage: "stop.fill") {
-						console.stopAll()
-					}
-					.disabled(true)
 				}
+				
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			}
-			
-			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			if isEditing {
 				ToolbarItem(placement: .topBarTrailing) {
@@ -174,6 +169,7 @@ struct ScenesView: View {
 		}
 		.sensoryFeedback(.selection, trigger: isEditing)
 		.sensoryFeedback(.selection, trigger: arrangement.moves)
+		.sensoryFeedback(.impact(weight: .light), trigger: arrangement.stretched != nil)
 		.sensoryFeedback(.impact(weight: .light), trigger: arrangement.lifted != nil)
 	}
 }

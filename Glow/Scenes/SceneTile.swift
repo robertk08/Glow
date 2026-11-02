@@ -27,7 +27,7 @@ struct SceneTile: View {
 	@ViewBuilder private var content: some View {
 		Group {
 			if isEditing {
-				SceneFace(look: look, list: list)
+				SceneFace(look: look, list: list, size: arrangement.size(of: look))
 					.onTapGesture {
 						customizing = look
 					}
@@ -39,6 +39,39 @@ struct SceneTile: View {
 					})
 					.accessibilityAddTraits(.isButton)
 					.accessibilityHint("Customizes it.")
+					.overlay(alignment: .bottomTrailing) {
+						StretchHandle()
+							.gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("tiles")).onChanged { drag in
+								arrangement.stretch(look.identifier, by: drag.translation, among: looks)
+							}.onEnded { _ in
+								arrangement.settle(among: looks)
+							})
+							.accessibilityLabel("Size")
+							.accessibilityValue(arrangement.size(of: look).name)
+							.accessibilityAdjustableAction { direction in
+								let sizes = TileSize.allCases
+								let index = sizes.firstIndex(of: look.size) ?? 0
+								let next = direction == .increment ? min(index + 1, sizes.count - 1) : max(index - 1, 0)
+								arrangement.stretch(look.identifier, to: sizes[next], among: looks)
+								arrangement.settle(among: looks)
+							}
+							.transition(.scale.combined(with: .opacity))
+					}
+					.overlay(alignment: .topLeading) {
+						Button("Delete Scene", systemImage: "minus") {
+							isDeleting = true
+						}
+						.labelStyle(.iconOnly)
+						.font(.subheadline.weight(.bold))
+						.foregroundStyle(.primary)
+						.frame(width: 28, height: 28)
+						.glassEffect(.regular.interactive(), in: .circle)
+						.frame(width: 44, height: 44)
+						.contentShape(.circle)
+						.offset(x: -14, y: -14)
+						.buttonStyle(.plain)
+						.transition(.scale.combined(with: .opacity))
+					}
 			} else {
 				Button {
 					if look.tap == .open {
@@ -110,9 +143,22 @@ struct SceneTile: View {
 			arrangement.frames[look.identifier] = frame
 		}
 		.opacity(arrangement.lifted == look.identifier ? 0 : 1)
-		.layoutValue(key: TileSpan.self, value: look.size)
+		.layoutValue(key: TileSpan.self, value: arrangement.size(of: look))
 		.layoutValue(key: TileSlot.self, value: arrangement.slot(of: look))
-		.animation(.snappy, value: isEditing)
+		.animation(.snappy(duration: 0.3), value: isEditing)
+	}
+}
+
+private struct StretchHandle: View {
+	var body: some View {
+		Path { path in
+			path.move(to: CGPoint(x: 37, y: 14))
+			path.addArc(tangent1End: CGPoint(x: 37, y: 37), tangent2End: CGPoint(x: 14, y: 37), radius: 17)
+			path.addLine(to: CGPoint(x: 14, y: 37))
+		}
+		.stroke(.secondary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+		.frame(width: 44, height: 44)
+		.contentShape(.rect)
 	}
 }
 

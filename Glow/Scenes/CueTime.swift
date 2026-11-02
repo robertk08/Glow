@@ -6,8 +6,8 @@ nonisolated enum CueTime: Sendable {
 	var name: String {
 		switch self {
 		case .fade: "Fade"
-		case .delay: "Delay"
-		case .follow: "Follow"
+		case .delay: "Wait"
+		case .follow: "Next Cue"
 		}
 	}
 	

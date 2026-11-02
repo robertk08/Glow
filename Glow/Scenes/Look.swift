@@ -58,6 +58,21 @@ final class Look {
 		set { sizeValue = newValue.rawValue }
 	}
 	
+	func buttons(live index: Int?, upcoming: Int?, count: Int) -> [SceneAction] {
+		guard count > 0 else { return [] }
+		
+		return buttons.filter { action in
+			switch action {
+			case .toggle: index == nil || !buttons.contains(.stop)
+			case .next: index == nil ? !buttons.contains(.toggle) && count > 1 : upcoming != nil
+			case .back: index != nil && count > 1
+			case .restart: index.map { $0 > 0 } ?? false
+			case .stop: index != nil
+			case .flash, .open: true
+			}
+		}
+	}
+	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
 		buttons = buttons.filter { $0 != button } + (isShown ? [button] : [])
 	}

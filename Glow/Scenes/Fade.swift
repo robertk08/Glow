@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 nonisolated struct Fade: Sendable, Equatable {
 	let start: Date
@@ -7,6 +7,17 @@ nonisolated struct Fade: Sendable, Equatable {
 	
 	func moments(follow: Double?) -> [Date] {
 		[start, end] + (follows ? follow.map { [end.addingTimeInterval($0)] } ?? [] : [])
+	}
+	
+	var rise: Animation {
+		let duration = end.timeIntervalSince(start)
+		guard duration > 0 else { return .snappy(duration: 0.25) }
+		return .linear(duration: duration).delay(max(start.timeIntervalSinceNow, 0))
+	}
+	
+	static func fall(over seconds: Double) -> Animation {
+		guard seconds > 0 else { return .snappy(duration: 0.25) }
+		return .linear(duration: seconds)
 	}
 	
 	func phase(at date: Date, follow: Double?) -> CuePhase {

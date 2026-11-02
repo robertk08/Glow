@@ -52,61 +52,29 @@ struct SceneSettings: View {
 			}
 			
 			Section {
-				Picker("Size", selection: $look.size) {
-					ForEach(TileSize.allCases) { size in
-						Text(size.name)
-							.tag(size)
-					}
-				}
-				.pickerStyle(.segmented)
-				
 				Picker("Tap", selection: $look.tap) {
 					ForEach(SceneAction.taps) { action in
 						Label(action.name, systemImage: action.symbol)
 							.tag(action)
 					}
 				}
-			} header: {
-				Text("Tile")
-			}
-			
-			if list.cues.count > 1 {
-				Section {
-					Toggle(isOn: $look.loops) {
-						Label("Loop", systemImage: "repeat")
-					}
-				}
 			}
 			
 			if look.size != .small {
 				Section {
-					ForEach(look.buttons + SceneAction.buttons.filter { !look.buttons.contains($0) }) { action in
-						let isOn = look.buttons.contains(action)
-						
-						Button {
-							look.shows(action, !isOn)
-						} label: {
-							HStack(spacing: 16) {
-								Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-									.font(.title3)
-									.foregroundStyle(isOn ? AnyShapeStyle(tint) : AnyShapeStyle(.tertiary))
-								
-								Label(action.name, systemImage: action.symbol)
-									.foregroundStyle(isOn ? .primary : .secondary)
-								
-								Spacer(minLength: 0)
-							}
-							.contentShape(.rect)
+					ForEach(look.buttons) { action in
+						SceneButtonRow(action: action, isOn: true, tint: tint) {
+							look.shows(action, false)
 						}
-						.buttonStyle(.plain)
-						.accessibilityAddTraits(isOn ? .isSelected : [])
-						.moveDisabled(!isOn)
 					}
 					.onMove { from, to in
-						var order = look.buttons + SceneAction.buttons.filter { !look.buttons.contains($0) }
-						let chosen = Set(look.buttons)
-						order.move(fromOffsets: from, toOffset: to)
-						look.buttons = order.filter(chosen.contains)
+						look.buttons.move(fromOffsets: from, toOffset: to)
+					}
+					
+					ForEach(SceneAction.buttons.filter { !look.buttons.contains($0) }) { action in
+						SceneButtonRow(action: action, isOn: false, tint: tint) {
+							look.shows(action, true)
+						}
 					}
 				} header: {
 					Text("Buttons")
@@ -133,8 +101,7 @@ struct SceneSettings: View {
 			}
 		}
 		.environment(\.editMode, .constant(.active))
-		.animation(.snappy, value: look.buttons)
-		.animation(.snappy, value: look.size)
+		.animation(.snappy(duration: 0.3), value: look.buttons)
 		.navigationTitle(look.name)
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
@@ -157,5 +124,30 @@ struct SceneSettings: View {
 		.onDisappear {
 			if !look.isGone { look.settle(name: named, among: looks) }
 		}
+	}
+}
+
+private struct SceneButtonRow: View {
+	let action: SceneAction
+	let isOn: Bool
+	let tint: Color
+	let toggle: () -> Void
+	
+	var body: some View {
+		Button(action: toggle) {
+			HStack(spacing: 16) {
+				Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+					.font(.title3)
+					.foregroundStyle(isOn ? AnyShapeStyle(tint) : AnyShapeStyle(.tertiary))
+				
+				Label(action.name, systemImage: action.symbol)
+					.foregroundStyle(isOn ? .primary : .secondary)
+				
+				Spacer(minLength: 0)
+			}
+			.contentShape(.rect)
+		}
+		.buttonStyle(.plain)
+		.accessibilityAddTraits(isOn ? .isSelected : [])
 	}
 }

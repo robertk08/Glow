@@ -484,7 +484,7 @@ struct SceneTests {
 		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
 	}
 	
-	@Test func randomArrangingMovesOnlyTheDraggedTileOrSwapsTwo() async throws {
+	@Test func randomArrangingPutsTheTileUnderTheFingerAndSlidesOnlyCoveredTilesStraightDown() async throws {
 		var seed: UInt64 = 0x2545F4914F6CDD1D
 		
 		func roll(_ count: Int) -> Int {
@@ -535,15 +535,93 @@ struct SceneTests {
 			let after = place(arrangement.arranged(rig.looks))
 			let moved = before.keys.filter { before[$0] != after[$0] }
 			#expect(after == shown, "session \(session) landed somewhere other than where it was shown")
-			#expect(moved.isEmpty || moved == [lifted.identifier] || moved.count == 2 && moved.contains(lifted.identifier), "session \(session) moved \(moved.count) tiles")
+			let landed = Set(TileLayout.cells(of: lifted.size, at: after[lifted.identifier]!, columns: columns))
 			
-			if moved.count == 2, let other = moved.first(where: { $0 != lifted.identifier }), let size = rig.looks.first(where: { $0.identifier == other })?.size {
-				let landed = Set(TileLayout.cells(of: lifted.size, at: after[lifted.identifier]!, columns: columns))
-				#expect(after[other] == before[lifted.identifier] && !landed.isDisjoint(with: TileLayout.cells(of: size, at: before[other]!, columns: columns)), "session \(session) moved two tiles without swapping them")
+			for other in moved where other != lifted.identifier {
+				let size = rig.looks.first { $0.identifier == other }!.size
+				#expect(!landed.isDisjoint(with: TileLayout.cells(of: size, at: before[other]!, columns: columns)), "session \(session) moved a tile the drop did not cover")
+				#expect(after[other]! > before[other]! && after[other]! % columns == before[other]! % columns, "session \(session) moved a covered tile other than straight down")
+				
+				var higher = after[other]! - columns
+				
+				while higher > before[other]! {
+					let cells = Set(TileLayout.cells(of: size, at: higher, columns: columns))
+					let blocked = rig.looks.contains { look in look.identifier != other && !cells.isDisjoint(with: TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)) }
+					#expect(blocked, "session \(session) slid a tile further down than it had to")
+					higher -= columns
+				}
 			}
 			
 			if moved.isEmpty {
 				#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote without a move")
+			}
+			
+			var cells = Set<Int>()
+			
+			for look in rig.looks {
+				let covered = TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)
+				#expect(cells.isDisjoint(with: covered), "session \(session) put two tiles on one spot")
+				cells.formUnion(covered)
+			}
+		}
+	}
+	
+	@Test func randomResizingChangesOnlyThatTileAndSlidesOnlyCoveredTilesStraightDown() async throws {
+		var seed: UInt64 = 0x9E3779B97F4A7C15
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
+		let rig = try rig()
+		
+		for size in [TileSize.small, .wide, .small, .large, .small, .small, .wide] {
+			let look = Look.fresh(among: rig.looks, context: rig.context)
+			look.size = size
+		}
+		
+		let arrangement = Arrangement()
+		arrangement.width = 352
+		let columns = arrangement.columns
+		
+		func place(_ looks: [Look]) -> [String: Int] {
+			let origins = TileLayout.origins(of: looks.map { arrangement.size(of: $0) }, at: looks.map { arrangement.slot(of: $0) }, columns: columns)
+			
+			for (look, origin) in zip(looks, origins) {
+				let size = arrangement.size(of: look)
+				let across = min(size.columns, columns)
+				arrangement.frames[look.identifier] = CGRect(x: Double(origin % columns) * 182, y: Double(origin / columns) * 112, width: Double(across) * 170 + Double(across - 1) * 12, height: Double(size.rows) * 100 + Double(size.rows - 1) * 12)
+			}
+			
+			return Dictionary(uniqueKeysWithValues: zip(looks.map(\.identifier), origins))
+		}
+		
+		for session in 0..<300 {
+			try await Task.sleep(for: .milliseconds(1))
+			let looks = arrangement.arranged(rig.looks)
+			let before = place(looks)
+			let sizes = Dictionary(uniqueKeysWithValues: rig.looks.map { ($0.identifier, $0.size) })
+			let indexes = rig.looks.map(\.sortIndex)
+			let stretched = looks[roll(looks.count)]
+			
+			for _ in 0...roll(6) {
+				arrangement.stretch(stretched.identifier, by: CGSize(width: Double(roll(400)) - 200, height: Double(roll(400)) - 200), among: looks)
+				_ = place(arrangement.arranged(looks))
+				#expect(rig.looks.map(\.sortIndex) == indexes && rig.looks.allSatisfy { $0.size == sizes[$0.identifier] }, "session \(session) wrote while resizing")
+			}
+			
+			let shown = place(arrangement.arranged(looks))
+			arrangement.settle(among: looks)
+			try? rig.context.save()
+			let after = place(arrangement.arranged(rig.looks))
+			#expect(after == shown, "session \(session) landed somewhere other than where it was shown")
+			#expect(rig.looks.allSatisfy { $0.identifier == stretched.identifier || $0.size == sizes[$0.identifier] }, "session \(session) resized another tile")
+			let grown = Set(TileLayout.cells(of: stretched.size, at: after[stretched.identifier]!, columns: columns))
+			
+			for look in rig.looks where look.identifier != stretched.identifier && after[look.identifier] != before[look.identifier] {
+				#expect(!grown.isDisjoint(with: TileLayout.cells(of: look.size, at: before[look.identifier]!, columns: columns)), "session \(session) moved a tile the new size did not cover")
+				#expect(after[look.identifier]! > before[look.identifier]! && after[look.identifier]! % columns == before[look.identifier]! % columns, "session \(session) moved a covered tile other than straight down")
 			}
 			
 			var cells = Set<Int>()
@@ -1101,7 +1179,7 @@ struct SceneTests {
 		#expect(next.features == [.position])
 		#expect(next.fade == 4)
 		#expect(next.lights == [rig.fixtures[1].identifier])
-		#expect(next.hint == "1 light · 4 s")
+		#expect(next.hint == "1 light")
 		
 		rig.console.selection.toggle(rig.fixtures[0])
 		

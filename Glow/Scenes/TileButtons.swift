@@ -15,37 +15,37 @@ struct TileButtons: View {
 	
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
+		let upcoming = console.upcoming(list)
 		let isLarge = look.size == .large
 		let tint = look.tint.color ?? .accentColor
+		let shown = look.buttons(live: index, upcoming: upcoming, count: list.cues.count)
 		
-		HStack(spacing: isLarge ? 10 : 6) {
-			ForEach(look.buttons) { action in
-				let isEnabled = switch action {
-				case .back: list.cues.count > 1 && index != nil
-				case .next: console.upcoming(list) != nil
-				default: !list.cues.isEmpty
-				}
-				let isProminent = isLarge && action == .next && isEnabled
-				
-				Button {
-					if action != .flash {
-						console.run(action, on: list)
+		GlassEffectContainer(spacing: isLarge ? 10 : 6) {
+			HStack(spacing: isLarge ? 10 : 6) {
+				ForEach(shown) { action in
+					let isProminent = action == .next && index != nil
+					
+					Button {
+						if action != .flash {
+							console.run(action, on: list)
+						}
+					} label: {
+						Label(action.name(isOn: index != nil), systemImage: action.symbol(isOn: index != nil))
+							.labelStyle(.iconOnly)
+							.font(.body.weight(.semibold))
+							.foregroundStyle(isProminent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+							.contentTransition(.symbolEffect(.replace))
+							.frame(minWidth: 48, maxWidth: isLarge ? .infinity : 48, minHeight: isLarge ? height : 40)
+							.glassEffect(.regular.tint(isProminent ? tint : nil).interactive(), in: .capsule)
+							.contentShape(.capsule)
 					}
-				} label: {
-					Label(action.name(isOn: index != nil), systemImage: action.symbol(isOn: index != nil))
-						.labelStyle(.iconOnly)
-						.font(.body.weight(.semibold))
-						.foregroundStyle(isProminent ? AnyShapeStyle(.white) : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
-						.contentTransition(.symbolEffect(.replace))
-						.frame(minWidth: 48, maxWidth: isLarge ? .infinity : 48, minHeight: isLarge ? height : 40)
-						.glassEffect(.regular.tint(isProminent ? tint : nil).interactive(isEnabled), in: .capsule)
-						.contentShape(.capsule)
+					.buttonStyle(PressStyle(flashes: action == .flash) { isHeld in
+						console.flash(list, isHeld: isHeld)
+					})
+					.transition(.scale(scale: 0.6).combined(with: .opacity))
 				}
-				.buttonStyle(PressStyle(flashes: action == .flash) { isHeld in
-					console.flash(list, isHeld: isHeld)
-				})
-				.disabled(!isEnabled)
 			}
 		}
+		.animation(.snappy(duration: 0.25), value: shown)
 	}
 }
