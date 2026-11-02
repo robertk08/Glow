@@ -5,14 +5,15 @@ struct SceneTile: View {
 	@Environment(Console.self) private var console
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
 	let look: Look
 	let list: CueList
+	let arrangement: Arrangement
 	
 	@Binding var isEditing: Bool
 	@Binding var customizing: Look?
-	@Binding var dragging: String?
 	
 	@State private var isDeleting = false
 	@State private var size = CGSize.zero
@@ -24,24 +25,39 @@ struct SceneTile: View {
 	}
 	
 	@ViewBuilder private var content: some View {
-		Button {
+		Group {
 			if isEditing {
-				customizing = look
-			} else if look.tap == .open {
-				console.selection.scene = look.identifier
-				console.selection.isSceneOpen = sizeClass != .regular
-			} else if list.cues.isEmpty {
-				console.selection.build(look.identifier)
+				SceneFace(look: look, list: list)
+					.onTapGesture {
+						customizing = look
+					}
+					.gesture(HoldDrag { point in
+						arrangement.lift(look.identifier, at: point, among: looks)
+						arrangement.drag(to: point)
+					} ended: {
+						arrangement.drop(among: looks, console: console)
+					})
+					.accessibilityAddTraits(.isButton)
+					.accessibilityHint("Customizes it.")
 			} else {
-				console.run(look.tap, on: list)
+				Button {
+					if look.tap == .open {
+						console.selection.scene = look.identifier
+						console.selection.isSceneOpen = sizeClass != .regular
+					} else if list.cues.isEmpty {
+						console.selection.build(look.identifier)
+					} else {
+						console.run(look.tap, on: list)
+					}
+				} label: {
+					SceneFace(look: look, list: list)
+				}
+				.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
+					console.flash(list, isHeld: isHeld)
+				})
+				.accessibilityHint(look.tap.tapName)
 			}
-		} label: {
-			SceneFace(look: look, list: list)
 		}
-		.buttonStyle(PressStyle(flashes: look.tap == .flash && !isEditing) { isHeld in
-			console.flash(list, isHeld: isHeld)
-		})
-		.accessibilityHint(isEditing ? "Customizes it." : look.tap.tapName)
 		.modifier(SceneMenu(isShown: look.tap != .flash && !isEditing) {
 			SceneActions(look: look, list: list, isEditing: $isEditing, isDeleting: $isDeleting, customizing: $customizing)
 		} preview: {
@@ -55,7 +71,14 @@ struct SceneTile: View {
 					TileButtons(look: look, list: list)
 				}
 				
-				if list.cues.count > 1, !isEditing {
+				if isEditing {
+					Image(systemName: "slider.horizontal.3")
+						.font(.body.weight(.semibold))
+						.foregroundStyle(.secondary)
+						.frame(width: 44, height: 44)
+						.allowsHitTesting(false)
+						.transition(.scale.combined(with: .opacity))
+				} else if list.cues.count > 1 {
 					Button("Show Cues", systemImage: "list.bullet") {
 						console.selection.scene = look.identifier
 						console.selection.isSceneOpen = sizeClass != .regular
@@ -66,6 +89,7 @@ struct SceneTile: View {
 					.frame(width: 44, height: 44)
 					.contentShape(.rect)
 					.buttonStyle(.plain)
+					.transition(.scale.combined(with: .opacity))
 				}
 			}
 			.padding(11)
@@ -76,61 +100,20 @@ struct SceneTile: View {
 					.padding(14)
 			}
 		}
-		.overlay(alignment: .topLeading) {
-			if isEditing {
-				Button("Delete \(look.name)", systemImage: "minus") {
-					isDeleting = true
-				}
-				.labelStyle(.iconOnly)
-				.font(.footnote.weight(.bold))
-				.foregroundStyle(.primary)
-				.frame(width: 28, height: 28)
-				.glassEffect(.regular.interactive(), in: .circle)
-				.buttonStyle(.plain)
-				.offset(x: -8, y: -8)
-				.transition(.scale.combined(with: .opacity))
-			}
-		}
-		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+		.alert("Delete \(look.name)?", isPresented: $isDeleting) {
+			Button("Cancel", role: .cancel) {}
+			
 			Button("Delete Scene", role: .destructive) {
 				console.remove(look, with: cues, context: context)
 			}
 		}
-		.onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-		.contentShape(.dragPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-		.animation(.snappy, value: isEditing)
-		.modifier(Arranging(look: look, isOn: isEditing, dragging: $dragging))
-		.layoutValue(key: TileSpan.self, value: look.size)
-	}
-}
-
-private struct Arranging: ViewModifier {
-	@Environment(Console.self) private var console
-	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	
-	let look: Look
-	let isOn: Bool
-	
-	@Binding var dragging: String?
-	
-	func body(content: Content) -> some View {
-		if isOn {
-			content
-				.opacity(dragging == look.identifier ? 0.4 : 1)
-				.onDrag {
-					dragging = look.identifier
-					return NSItemProvider(object: look.identifier as NSString)
-				}
-				.dropDestination(for: String.self) { _, _ in
-					dragging = nil
-					return true
-				} isTargeted: { isTargeted in
-					guard isTargeted, let from = looks.firstIndex(where: { $0.identifier == dragging }), let to = looks.firstIndex(where: { $0.identifier == look.identifier }), from != to else { return }
-					console.move(IndexSet(integer: from), to: to > from ? to + 1 : to, among: looks, sortIndex: \.sortIndex)
-				}
-		} else {
-			content
+		.onGeometryChange(for: CGRect.self) { $0.frame(in: .named("tiles")) } action: { frame in
+			size = frame.size
+			arrangement.frames[look.identifier] = frame
 		}
+		.opacity(arrangement.lifted == look.identifier ? 0 : 1)
+		.layoutValue(key: TileSpan.self, value: look.size)
+		.animation(.snappy, value: isEditing)
 	}
 }
 
@@ -222,6 +205,25 @@ private struct SceneActions: View {
 			Button("Delete Scene", systemImage: "trash", role: .destructive) {
 				isDeleting = true
 			}
+		}
+	}
+}
+
+private struct HoldDrag: UIGestureRecognizerRepresentable {
+	let moved: (CGPoint) -> Void
+	let ended: () -> Void
+	
+	func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+		let recognizer = UILongPressGestureRecognizer()
+		recognizer.minimumPressDuration = 0.3
+		return recognizer
+	}
+	
+	func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+		switch recognizer.state {
+		case .began, .changed: moved(context.converter.location(in: .named("tiles")))
+		case .ended, .cancelled, .failed: ended()
+		default: break
 		}
 	}
 }

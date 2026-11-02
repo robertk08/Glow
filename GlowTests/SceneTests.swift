@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import SwiftData
 import Testing
@@ -483,32 +484,56 @@ struct SceneTests {
 		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
 	}
 	
-	@Test func duplicatingACuePutsAnExactCopyRightAfterIt() throws {
+	@Test func randomArrangingLandsEveryTileWhereItWasShownWithOneWrite() async throws {
+		var seed: UInt64 = 0x2545F4914F6CDD1D
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
 		let rig = try rig()
-		let first = rig.add(1, [(0, 1, 10)])
-		rig.add(1.001, [(0, 1, 20)])
-		rig.add(5, [(0, 1, 30)])
-		first.label = "Storm"
-		first.fade = 3
-		first.follow = 1
 		
-		rig.console.duplicate(first, among: rig.look.cues(among: rig.cues), context: rig.context)
-		try? rig.context.save()
+		for _ in 0..<7 {
+			_ = Look.fresh(among: rig.looks, context: rig.context)
+		}
 		
-		let held = rig.look.cues(among: rig.cues)
-		#expect(held.count == 4)
-		#expect(held[0].identifier == first.identifier)
-		#expect(held[1].identifier != first.identifier)
-		#expect(held[1].label == "Storm")
-		#expect(held[1].fade == 3)
-		#expect(held[1].follow == 1)
-		#expect(held[1].levels == first.levels)
-		#expect(held.map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30])
+		let arrangement = Arrangement()
 		
-		rig.console.duplicate(held[3], among: held, context: rig.context)
-		try? rig.context.save()
+		func lay(_ looks: [Look]) {
+			for (index, look) in arrangement.arranged(looks).enumerated() {
+				arrangement.frames[look.identifier] = CGRect(x: Double(index % 2) * 110, y: Double(index / 2) * 110, width: 100, height: 100)
+			}
+		}
 		
-		#expect(rig.look.cues(among: rig.cues).map { $0.levels.lights[rig.fixtures[0].identifier]?[1] } == [10, 10, 20, 30, 30])
+		for session in 0..<200 {
+			try await Task.sleep(for: .milliseconds(1))
+			let looks = rig.looks
+			let before = looks.map(\.identifier)
+			let indexes = looks.map(\.sortIndex)
+			lay(looks)
+			let lifted = looks[roll(looks.count)]
+			let start = arrangement.frames[lifted.identifier]!
+			arrangement.lift(lifted.identifier, at: CGPoint(x: start.midX, y: start.midY), among: looks)
+			#expect(arrangement.lifted == lifted.identifier, "session \(session) did not lift")
+			
+			for _ in 0..<roll(8) {
+				arrangement.drag(to: CGPoint(x: Double(roll(220)), y: Double(roll(560))))
+				lay(looks)
+				#expect(Set(arrangement.arranged(looks).map(\.identifier)) == Set(before), "session \(session) lost or doubled a scene while dragging")
+			}
+			
+			#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote while dragging")
+			let shown = arrangement.arranged(looks).map(\.identifier)
+			arrangement.drop(among: looks, console: rig.console)
+			try? rig.context.save()
+			let after = rig.looks
+			#expect(after.map(\.identifier) == shown, "session \(session) landed somewhere other than where it was shown")
+			
+			if shown == before {
+				#expect(after.map(\.sortIndex) == indexes, "session \(session) wrote without a move")
+			}
+		}
 	}
 	
 	@Test func addingCuesToAnotherSceneWhileBuildingKeepsTheOpenBuilder() throws {
@@ -785,12 +810,14 @@ struct SceneTests {
 						guard held.count > 1 else { break }
 						rig.console.delete(marked, from: rig.list, context: rig.context)
 					case 1:
-						let count = held.count
-						rig.console.duplicate(marked, among: held, context: rig.context)
+						guard let from = held.firstIndex(where: { $0.identifier == marked.identifier }) else { break }
+						let to = roll(held.count + 1)
+						var expected = held.map(\.identifier)
+						let moved = expected.remove(at: from)
+						expected.insert(moved, at: to > from ? to - 1 : to)
+						rig.console.move(IndexSet(integer: from), to: to, among: held, sortIndex: \.sortIndex)
 						try? rig.context.save()
-						let now = look.cues(among: rig.cues)
-						let position = now.firstIndex { $0.identifier == marked.identifier }
-						#expect(now.count == count + 1 && position.map { now[$0 + 1].levels == marked.levels && now[$0 + 1].label == marked.label } == true, "\(place) duplicate did not land right after its cue")
+						#expect(look.cues(among: rig.cues).map(\.identifier) == expected, "\(place) a moved cue did not land where it was dropped")
 					default:
 						let show = rig.recording(.into(marked))
 						guard !show.isOnStage else { break }

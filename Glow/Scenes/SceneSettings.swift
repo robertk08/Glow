@@ -139,7 +139,9 @@ struct SceneSettings: View {
 				}
 			}
 		}
-		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+		.alert("Delete \(look.name)?", isPresented: $isDeleting) {
+			Button("Cancel", role: .cancel) {}
+			
 			Button("Delete Scene", role: .destructive) {
 				console.remove(look, with: cues, context: context)
 				dismiss()

@@ -16,7 +16,6 @@ struct SceneView: View {
 	
 	@State private var editing: Cue?
 	@State private var editMode = EditMode.inactive
-	@State private var isDeleting = false
 	@State private var deleting: String?
 	@State private var isCustomizing = false
 	
@@ -87,12 +86,6 @@ struct SceneView: View {
 									
 									Button("Edit", systemImage: "slider.horizontal.3") {
 										editing = cue
-									}
-									
-									Button("Duplicate", systemImage: "plus.square.on.square") {
-										withAnimation {
-											console.duplicate(cue, among: held, context: context)
-										}
 									}
 									
 									Button("Delete Cue", systemImage: "trash", role: .destructive) {
@@ -171,20 +164,8 @@ struct SceneView: View {
 				
 				ToolbarItem(placement: .topBarTrailing) {
 					if !editMode.isEditing {
-						Menu {
-							Button("Customize", systemImage: "slider.horizontal.3") {
-								isCustomizing = true
-							}
-							
-							Button("Duplicate Scene", systemImage: "plus.square.on.square") {
-								look.duplicate(with: cues, among: looks, context: context)
-							}
-							
-							Button("Delete Scene", systemImage: "trash", role: .destructive) {
-								isDeleting = true
-							}
-						} label: {
-							Label("More", systemImage: "ellipsis")
+						Button("Customize", systemImage: "slider.horizontal.3") {
+							isCustomizing = true
 						}
 					}
 				}
@@ -194,11 +175,6 @@ struct SceneView: View {
 			}
 			.sheet(isPresented: $isCustomizing) {
 				SceneSettings(look: look)
-			}
-			.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
-				Button("Delete Scene", role: .destructive) {
-					console.remove(look, with: cues, context: context)
-				}
 			}
 			.onChange(of: looks.contains { $0.identifier == look.identifier }) {
 				dismiss()

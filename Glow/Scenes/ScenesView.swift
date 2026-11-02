@@ -11,19 +11,32 @@ struct ScenesView: View {
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var customizing: Look?
-	@State private var isOrdering = false
 	@State private var isEditing = false
-	@State private var dragging: String?
+	@State private var arrangement = Arrangement()
+	@State private var position = ScrollPosition()
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	private var tiles: some View {
-		let lists = CueList.all(looks, cues: cues, fixtures: fixtures)
+		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
+		let shown = arrangement.arranged(looks)
 		
 		return TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
-			ForEach(Array(zip(looks, lists)), id: \.0.identifier) { look, list in
-				SceneTile(look: look, list: list, isEditing: $isEditing, customizing: $customizing, dragging: $dragging)
+			ForEach(shown) { look in
+				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, isEditing: $isEditing, customizing: $customizing)
 			}
 		}
+		.overlay(alignment: .topLeading) {
+			if let look = looks.first(where: { $0.identifier == arrangement.lifted }), let floating = arrangement.floating {
+				SceneFace(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])])
+					.frame(width: floating.width, height: floating.height)
+					.scaleEffect(arrangement.isSettling ? 1 : 1.05)
+					.shadow(color: .black.opacity(arrangement.isSettling ? 0 : 0.18), radius: 20, y: 10)
+					.offset(x: floating.minX, y: floating.minY)
+					.allowsHitTesting(false)
+					.transition(.scale(scale: 1 / 1.05))
+			}
+		}
+		.coordinateSpace(.named("tiles"))
 		.padding(.horizontal)
 		.padding(.bottom, 24)
 		.animation(.snappy, value: looks.map(\.identifier))
@@ -55,10 +68,23 @@ struct ScenesView: View {
 				ScrollView {
 					tiles
 				}
+				.scrollPosition($position)
+				.onScrollGeometryChange(for: ScrollGeometry.self) { $0 } action: { _, geometry in
+					arrangement.geometry = geometry
+				}
+				.task(id: arrangement.lifted) {
+					while arrangement.lifted != nil, !Task.isCancelled {
+						try? await Task.sleep(for: .milliseconds(16))
+						
+						if let offset = arrangement.autoscroll() {
+							position.scrollTo(y: offset)
+						}
+					}
+				}
 			}
 		}
 		.navigationTitle("Scenes")
-		.navigationSubtitle(shows.active.name)
+		.navigationSubtitle(isEditing ? "Drag to arrange, tap to customize" : shows.active.name)
 		.toolbar {
 			LinkStatusButton()
 			
@@ -82,15 +108,6 @@ struct ScenesView: View {
 			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
 			if isEditing {
-				ToolbarItem(placement: .topBarTrailing) {
-					Button("Reorder", systemImage: "arrow.up.arrow.down") {
-						isOrdering = true
-					}
-					.disabled(looks.count < 2)
-				}
-				
-				ToolbarSpacer(.fixed, placement: .topBarTrailing)
-				
 				ToolbarItem(placement: .topBarTrailing) {
 					Button("Done", role: .confirm) {
 						isEditing = false
@@ -121,24 +138,8 @@ struct ScenesView: View {
 		.sheet(item: $customizing) { look in
 			SceneSettings(look: look)
 		}
-		.sheet(isPresented: $isOrdering) {
-			NavigationStack {
-				List {
-					ForEach(looks) { look in
-						Label(look.name, systemImage: look.symbol)
-					}
-					.onMove { console.move($0, to: $1, among: looks, sortIndex: \.sortIndex) }
-				}
-				.environment(\.editMode, .constant(.active))
-				.navigationTitle("Reorder")
-				.navigationBarTitleDisplayMode(.inline)
-				.toolbar {
-					ToolbarItem(placement: .confirmationAction) {
-						Button("Done") { isOrdering = false }
-					}
-				}
-			}
-		}
 		.sensoryFeedback(.selection, trigger: isEditing)
+		.sensoryFeedback(.selection, trigger: arrangement.moves)
+		.sensoryFeedback(.impact(weight: .light), trigger: arrangement.lifted != nil)
 	}
 }
