@@ -13,7 +13,7 @@ struct BuilderBar: View {
 					.transition(.move(edge: .bottom).combined(with: .opacity))
 			}
 		}
-		.animation(.snappy, value: console.selection.building)
+		.animation(.snappy(duration: 0.3), value: console.selection.building)
 	}
 }
 
@@ -243,8 +243,8 @@ private struct BuilderPanel: View {
 			.frame(maxWidth: 560)
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)
-			.animation(.snappy, value: [held.count, index ?? -1])
-			.animation(.snappy, value: [isStyling, canUpdate, isOnStage, hasChanged])
+			.animation(.snappy(duration: 0.3), value: [held.count, index ?? -1])
+			.animation(.snappy(duration: 0.3), value: [isStyling, canUpdate, isOnStage, hasChanged])
 			.sensoryFeedback(.success, trigger: held.count)
 			.sensoryFeedback(.success, trigger: updates)
 			.sensoryFeedback(.impact(weight: .light), trigger: shows)

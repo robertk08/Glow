@@ -72,8 +72,8 @@ struct ScenesView: View {
 		.padding(.bottom, isEditing ? (arrangement.row(among: looks) ?? 0) + 12 : 0)
 		.padding(.horizontal)
 		.padding(.bottom, 24)
-		.animation(.snappy, value: looks.map(\.slot))
-		.animation(.snappy, value: isEditing)
+		.animation(.snappy(duration: 0.3), value: looks.map(\.slot))
+		.animation(.snappy(duration: 0.3), value: isEditing)
 	}
 	
 	var body: some View {

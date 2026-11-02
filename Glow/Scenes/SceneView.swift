@@ -59,6 +59,10 @@ struct SceneView: View {
 								Button {
 									if !editMode.isEditing {
 										console.selection.arm(cue.identifier, of: look.identifier)
+									} else if chosen.contains(cue.identifier) {
+										chosen.remove(cue.identifier)
+									} else {
+										chosen.insert(cue.identifier)
 									}
 								} label: {
 									CueRow(list: list, position: position, isLive: position == index, isNext: position == upcoming, isArmed: armed == cue.identifier, fade: fade, tint: tint)
@@ -96,7 +100,6 @@ struct SceneView: View {
 								}
 							}
 							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
-							.onDelete { deleting = $0.first.map { held[$0].identifier } }
 							
 							if held.count > 1 {
 								LoopRow(look: look, list: list, tint: tint)
@@ -110,6 +113,7 @@ struct SceneView: View {
 									.foregroundStyle(tint)
 							}
 						}
+						.tint(tint)
 						.alert("Delete Cue \((held.firstIndex { $0.identifier == deleting } ?? 0) + 1)?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, presenting: held.first { $0.identifier == deleting }) { cue in
 							Button("Cancel", role: .cancel) {}
 							
@@ -262,7 +266,7 @@ private struct CueRow: View {
 					.font(.subheadline.weight(.semibold))
 					.foregroundStyle(isArmed ? AnyShapeStyle(.white) : AnyShapeStyle(tint))
 					.frame(width: 30, height: 30)
-					.background(isArmed ? tint : tint.opacity(0.15), in: .circle)
+					.background(isArmed ? tint : .clear, in: .circle)
 					.transition(.scale.combined(with: .opacity))
 			}
 			
@@ -325,7 +329,7 @@ private struct ChosenBar: View {
 	var body: some View {
 		GlassEffectContainer(spacing: 12) {
 			HStack(spacing: 12) {
-				Button("Timing", systemImage: CueTime.fade.symbol) {
+				Button("Timing", systemImage: "timer") {
 					isRetiming = true
 				}
 				.frame(maxWidth: .infinity)

@@ -606,6 +606,7 @@ struct SceneTests {
 			let stretched = looks[roll(looks.count)]
 			
 			for _ in 0...roll(6) {
+				try await Task.sleep(for: .milliseconds(1))
 				arrangement.stretch(stretched.identifier, by: CGSize(width: Double(roll(400)) - 200, height: Double(roll(400)) - 200), among: looks)
 				_ = place(arrangement.arranged(looks))
 				#expect(rig.looks.map(\.sortIndex) == indexes && rig.looks.allSatisfy { $0.size == sizes[$0.identifier] }, "session \(session) wrote while resizing")

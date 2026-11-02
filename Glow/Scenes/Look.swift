@@ -68,7 +68,8 @@ final class Look {
 			case .back: index != nil && count > 1
 			case .restart: index.map { $0 > 0 } ?? false
 			case .stop: index != nil
-			case .flash, .open: true
+			case .flash: index == nil
+			case .open: true
 			}
 		}
 	}

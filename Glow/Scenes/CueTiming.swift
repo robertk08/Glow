@@ -6,8 +6,8 @@ struct CueTiming: View {
 	@Binding var follow: Double?
 	
 	var body: some View {
-		CueTimeline(delay: delay, fade: fade, follow: follow, height: 14)
-			.font(.footnote)
+		CueTimeline(delay: delay, fade: fade, follow: follow, height: 18)
+			.font(.subheadline.weight(.medium))
 			.foregroundStyle(.tint)
 			.frame(maxWidth: .infinity)
 			.padding(.vertical, 6)

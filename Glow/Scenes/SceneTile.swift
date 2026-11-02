@@ -156,7 +156,7 @@ private struct StretchHandle: View {
 			path.addArc(tangent1End: CGPoint(x: 37, y: 37), tangent2End: CGPoint(x: 14, y: 37), radius: 17)
 			path.addLine(to: CGPoint(x: 14, y: 37))
 		}
-		.stroke(.secondary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+		.stroke(.secondary, style: StrokeStyle(lineWidth: 5, lineCap: .round))
 		.frame(width: 44, height: 44)
 		.contentShape(.rect)
 	}
