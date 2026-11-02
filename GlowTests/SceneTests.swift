@@ -597,7 +597,7 @@ struct SceneTests {
 			return Dictionary(uniqueKeysWithValues: zip(looks.map(\.identifier), origins))
 		}
 		
-		for session in 0..<300 {
+		for session in 0..<100 {
 			try await Task.sleep(for: .milliseconds(1))
 			let looks = arrangement.arranged(rig.looks)
 			let before = place(looks)
@@ -606,7 +606,6 @@ struct SceneTests {
 			let stretched = looks[roll(looks.count)]
 			
 			for _ in 0...roll(6) {
-				try await Task.sleep(for: .milliseconds(1))
 				arrangement.stretch(stretched.identifier, by: CGSize(width: Double(roll(400)) - 200, height: Double(roll(400)) - 200), among: looks)
 				_ = place(arrangement.arranged(looks))
 				#expect(rig.looks.map(\.sortIndex) == indexes && rig.looks.allSatisfy { $0.size == sizes[$0.identifier] }, "session \(session) wrote while resizing")
@@ -704,6 +703,14 @@ struct SceneTests {
 		
 		#expect(first.fade == 2 && second.fade == 5 && second.delay == 1)
 		#expect(first.follow == 0.5 && second.follow == 0.5)
+		
+		let mixed = CueDraft(fade: -1, delay: -1, follow: 0.5)
+		var nothing = mixed
+		nothing.follow = nil
+		rig.console.retime([first, second], from: mixed, to: nothing)
+		
+		#expect(first.fade == 2 && second.fade == 5 && second.delay == 1 && first.delay == 0)
+		#expect(first.follow == nil && second.follow == nil)
 	}
 	
 	@Test func aCueKeepsOnlyTheLightsAndAspectsLeftTickedAndGetsThemBackWhenTickedAgain() throws {

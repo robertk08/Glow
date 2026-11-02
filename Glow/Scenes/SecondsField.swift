@@ -9,7 +9,7 @@ struct SecondsField: View {
 	var body: some View {
 		LabeledContent {
 			HStack(spacing: 4) {
-				TextField(title, value: Binding { seconds == 0 ? nil : seconds } set: { seconds = min(max($0 ?? 0, 0), 3600) }, format: .number.precision(.fractionLength(0...1)), prompt: Text("0"))
+				TextField(title, value: Binding { seconds <= 0 ? nil : seconds } set: { seconds = min(max($0 ?? 0, 0), 3600) }, format: .number.precision(.fractionLength(0...1)), prompt: Text(seconds < 0 ? "Mixed" : "0"))
 					.keyboardType(.decimalPad)
 					.multilineTextAlignment(.trailing)
 					.monospacedDigit()

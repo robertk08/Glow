@@ -6,7 +6,7 @@ struct CueTiming: View {
 	@Binding var follow: Double?
 	
 	var body: some View {
-		CueTimeline(delay: delay, fade: fade, follow: follow, height: 18)
+		CueTimeline(delay: delay, fade: fade, follow: follow.flatMap { $0 < 0 ? nil : $0 }, height: 18)
 			.font(.subheadline.weight(.medium))
 			.foregroundStyle(.tint)
 			.frame(maxWidth: .infinity)
@@ -17,18 +17,18 @@ struct CueTiming: View {
 		
 		SecondsField(title: CueTime.delay.name, symbol: CueTime.delay.symbol, seconds: $delay)
 		
-		Picker(selection: Binding { follow != nil } set: { follow = $0 ? 0 : nil }.animation(.snappy(duration: 0.25))) {
+		Picker(selection: Binding { follow == nil ? false : follow.map { $0 < 0 } == true ? nil : true } set: { follow = $0 == true ? 0 : nil }.animation(.snappy(duration: 0.25))) {
 			Text("On Go")
-				.tag(false)
+				.tag(Optional(false))
 			
 			Text("By Itself")
-				.tag(true)
+				.tag(Optional(true))
 		} label: {
 			Label(CueTime.follow.name, systemImage: CueTime.follow.symbol)
 		}
 		
-		if follow != nil {
-			SecondsField(title: "After", symbol: "timer", seconds: Binding { follow ?? 0 } set: { follow = $0 })
+		if let after = follow, after >= 0 {
+			SecondsField(title: "After", symbol: "timer", seconds: Binding { after } set: { follow = $0 })
 		}
 	}
 }

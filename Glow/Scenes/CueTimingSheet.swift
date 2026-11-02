@@ -12,7 +12,10 @@ struct CueTimingSheet: View {
 	
 	init(picked: [Cue]) {
 		self.picked = picked
-		let first = CueDraft(fade: picked.first?.fade ?? 0, delay: picked.first?.delay ?? 0, follow: picked.first?.follow)
+		let fades = Set(picked.map(\.fade))
+		let delays = Set(picked.map(\.delay))
+		let follows = Set(picked.map(\.follow))
+		let first = CueDraft(fade: fades.count == 1 ? fades.first ?? 0 : -1, delay: delays.count == 1 ? delays.first ?? 0 : -1, follow: follows.count == 1 ? follows.first ?? nil : -1)
 		start = first
 		_draft = State(initialValue: first)
 	}

@@ -24,6 +24,7 @@ struct TileButtons: View {
 				ForEach(look.buttons) { action in
 					let isEnabled = Look.enables(action, live: index, upcoming: upcoming, count: list.cues.count)
 					let isProminent = action == .next && index != nil && isEnabled
+					let isWide = isLarge && (action == .next || !look.buttons.contains(.next))
 					
 					Button {
 						if action != .flash {
@@ -35,7 +36,7 @@ struct TileButtons: View {
 							.font(.body.weight(.semibold))
 							.foregroundStyle(isProminent ? AnyShapeStyle(.white) : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
 							.contentTransition(.symbolEffect(.replace))
-							.frame(minWidth: 48, maxWidth: isLarge ? .infinity : 48, minHeight: isLarge ? height : 40)
+							.frame(minWidth: isLarge ? height : 48, maxWidth: isWide ? .infinity : isLarge ? height : 48, minHeight: isLarge ? height : 40)
 							.glassEffect(.regular.tint(isProminent ? tint : nil).interactive(isEnabled), in: .capsule)
 							.contentShape(.capsule)
 					}
