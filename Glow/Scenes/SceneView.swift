@@ -113,7 +113,6 @@ struct SceneView: View {
 									.foregroundStyle(tint)
 							}
 						}
-						.tint(tint)
 						.alert("Delete Cue \((held.firstIndex { $0.identifier == deleting } ?? 0) + 1)?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, presenting: held.first { $0.identifier == deleting }) { cue in
 							Button("Cancel", role: .cancel) {}
 							

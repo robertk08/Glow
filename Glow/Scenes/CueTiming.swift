@@ -12,6 +12,7 @@ struct CueTiming: View {
 				.foregroundStyle(.tint)
 				.frame(maxWidth: .infinity)
 				.padding(.vertical, 6)
+				.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
 				.animation(.snappy(duration: 0.25), value: [delay, fade, follow ?? -1])
 		}
 		
