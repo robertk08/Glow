@@ -17,9 +17,9 @@ struct StoreView: View {
 			Form {
 				if recording.isNew {
 					Section {
-						TextField(recording.title, text: $recording.label, axis: .vertical)
-							.lineLimit(1...3)
+						TextField(recording.title, text: $recording.label)
 							.autocorrectionDisabled()
+							.submitLabel(.done)
 					}
 					
 					Section {
@@ -105,6 +105,7 @@ struct StoreView: View {
 					}
 				}
 			}
+			.scrollDismissesKeyboard(.interactively)
 			.navigationTitle(recording.title)
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {

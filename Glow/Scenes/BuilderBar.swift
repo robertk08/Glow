@@ -235,6 +235,7 @@ private struct BuilderPanel: View {
 			}
 			.padding(16)
 			.glassEffect(.regular, in: .rect(cornerRadius: 30, style: .continuous))
+			.contentShape(.rect(cornerRadius: 30, style: .continuous))
 			.frame(maxWidth: 560)
 			.padding(.horizontal, 16)
 			.padding(.bottom, 8)

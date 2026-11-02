@@ -47,8 +47,8 @@ private struct CueForm: View {
 		
 		Form {
 			Section {
-				TextField("Cue \(position + 1)", text: $cue.label, axis: .vertical)
-					.lineLimit(1...3)
+				TextField("Cue \(position + 1)", text: $cue.label)
+					.submitLabel(.done)
 					.focused($isLabelling)
 			}
 			
@@ -103,6 +103,7 @@ private struct CueForm: View {
 				}
 			}
 		}
+		.scrollDismissesKeyboard(.interactively)
 		.navigationTitle("Cue \(position + 1)")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
