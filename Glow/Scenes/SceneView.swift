@@ -383,41 +383,38 @@ private struct Transport: View {
 		let tint = look.tint.color ?? .accentColor
 		let steps = list.cues.count > 1
 		let isOn = index != nil
-		let isAtEnd = steps && isOn && upcoming == nil
+		let isAtEnd = steps && upcoming == nil
+		let isLit = isOn && !isAtEnd
 		
 		GlassEffectContainer(spacing: 12) {
 			HStack(spacing: 12) {
-				if steps, isOn {
+				if steps {
 					Button {
 						console.back(list)
 					} label: {
 						Image(systemName: SceneAction.back.symbol)
 							.frame(width: height, height: height)
-							.glassEffect(.regular.interactive(), in: .circle)
+							.glassEffect(.regular.interactive(isOn), in: .circle)
 					}
 					.accessibilityLabel("Back")
 					.keyboardShortcut(.leftArrow, modifiers: [])
-					.transition(.scale(scale: 0.6).combined(with: .opacity))
+					.disabled(!isOn)
 				}
 				
 				Button {
-					if isAtEnd {
-						console.play(list, at: 0)
-					} else if steps {
+					if steps {
 						console.go(list)
 					} else {
 						console.toggle(list)
 					}
 				} label: {
 					Group {
-						if isAtEnd {
-							Label(list.heading(at: 0), systemImage: SceneAction.restart.symbol)
-						} else if steps {
+						if steps {
 							VStack(spacing: 1) {
 								Label("Go", systemImage: SceneAction.next.symbol)
 								
 								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
-									Text(upcoming.map(list.heading(at:)) ?? "")
+									Text(upcoming.map(list.heading(at:)) ?? "End")
 										.contentTransition(.numericText())
 								}
 								.font(.caption)
@@ -428,30 +425,31 @@ private struct Transport: View {
 								.contentTransition(.symbolEffect(.replace))
 						}
 					}
-					.foregroundStyle(isOn && !isAtEnd ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+					.foregroundStyle(isLit ? AnyShapeStyle(.white) : isAtEnd ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 					.padding(.horizontal)
 					.frame(maxWidth: .infinity)
 					.frame(height: height)
-					.glassEffect(.regular.tint(isOn && !isAtEnd ? tint : nil).interactive(), in: .capsule)
+					.glassEffect(.regular.tint(isLit ? tint : nil).interactive(!isAtEnd), in: .capsule)
 				}
 				.keyboardShortcut(.rightArrow, modifiers: [])
+				.disabled(isAtEnd)
 				
-				if steps, isOn {
+				if steps {
 					Button {
 						console.toggle(list)
 					} label: {
 						Image(systemName: "stop.fill")
 							.frame(width: height, height: height)
-							.glassEffect(.regular.interactive(), in: .circle)
+							.glassEffect(.regular.interactive(isOn), in: .circle)
 					}
 					.accessibilityLabel("Turn Off")
-					.transition(.scale(scale: 0.6).combined(with: .opacity))
+					.disabled(!isOn)
 				}
 			}
 		}
 		.buttonStyle(.plain)
 		.font(.headline)
-		.foregroundStyle(.primary)
+		.foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
 		.lineLimit(1)
 		.padding(.horizontal)
 		.padding(.vertical, 8)

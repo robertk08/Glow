@@ -96,13 +96,15 @@ struct SceneFace: View {
 		.padding(14)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.background {
-			Rectangle()
-				.fill(tint.opacity(0.22))
-				.scaleEffect(x: 1, y: isOn ? 1 : 0, anchor: .bottom)
-				.animation(isOn ? fade?.rise ?? .snappy(duration: 0.25) : Fade.fall(over: console.playback.falls[look.identifier] ?? 0), value: isOn)
-				.clipShape(.rect(cornerRadius: 24, style: .continuous))
+			if list.cues.count == 1 {
+				Rectangle()
+					.fill(tint.opacity(0.22))
+					.scaleEffect(x: 1, y: isOn ? 1 : 0, anchor: .bottom)
+					.animation(isOn ? fade?.rise ?? .snappy(duration: 0.25) : Fade.fall(over: console.playback.falls[look.identifier] ?? 0), value: isOn)
+					.clipShape(.rect(cornerRadius: 24, style: .continuous))
+			}
 		}
-		.glassEffect(.regular, in: .rect(cornerRadius: 24, style: .continuous))
+		.glassEffect(.regular.tint(isOn && list.cues.count > 1 ? tint.opacity(0.22) : nil), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
 		.animation(.snappy(duration: 0.25), value: isOn)
 	}

@@ -78,7 +78,7 @@ private struct CueForm: View {
 						Toggle(isOn: Binding { features.contains(feature) } set: { isOn in
 							if isOn {
 								features.insert(feature)
-							} else {
+							} else if !original.keeping(lights, features: features.subtracting([feature]), types: types).isEmpty {
 								features.remove(feature)
 							}
 							
@@ -113,7 +113,7 @@ private struct CueForm: View {
 							Toggle(isOn: Binding { members.isSubset(of: lights) } set: { isOn in
 								if isOn {
 									lights.formUnion(members)
-								} else {
+								} else if !original.keeping(lights.subtracting(members), features: features, types: types).isEmpty {
 									lights.subtract(members)
 								}
 								
@@ -142,7 +142,7 @@ private struct CueForm: View {
 					Toggle(isOn: Binding { lights.contains(fixture.identifier) } set: { isOn in
 						if isOn {
 							lights.insert(fixture.identifier)
-						} else {
+						} else if !original.keeping(lights.subtracting([fixture.identifier]), features: features, types: types).isEmpty {
 							lights.remove(fixture.identifier)
 						}
 						
