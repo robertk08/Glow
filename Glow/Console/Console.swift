@@ -549,23 +549,77 @@ final class Console {
 		stop(list.scene, fade: snapping ? 0 : list.fade(of: playback.cue(of: list.scene)))
 	}
 	
-	func delete(_ cue: Cue, from list: CueList, context: ModelContext) {
-		if selection.marked == cue.identifier, let index = list.index(of: cue.identifier) {
-			let neighbour = index > 0 ? index - 1 : index + 1
-			selection.marked = list.cues.indices.contains(neighbour) ? list.cues[neighbour].identifier : nil
+	func delete(_ chosen: [Cue], from list: CueList, context: ModelContext) {
+		let gone = Set(chosen.map(\.identifier))
+		release(gone, from: list)
+		
+		for cue in chosen {
+			context.delete(cue)
+		}
+	}
+	
+	func duplicate(_ chosen: [Cue], among held: [Cue], context: ModelContext) {
+		let picked = Set(chosen.map(\.identifier))
+		guard let last = held.lastIndex(where: { picked.contains($0.identifier) }) else { return }
+		var ordered = held
+		var copies: [Cue] = []
+		
+		for cue in held where picked.contains(cue.identifier) {
+			var entry = cue.entry
+			entry.identifier = Identifier.fresh()
+			let copy = Cue(lookID: cue.lookID, sortIndex: cue.sortIndex, fade: cue.fade, levels: Levels())
+			copy.take(entry)
+			context.insert(copy)
+			copies.append(copy)
 		}
 		
-		if let index = list.index(of: cue.identifier), playback.cue(of: list.scene) == cue.identifier {
-			let trimmed = list.removing(cue.identifier)
-			
-			if trimmed.cues.isEmpty {
-				stop(list)
-			} else {
-				play(trimmed, at: max(index - 1, 0), snapping: true)
-			}
+		ordered.insert(contentsOf: copies, at: last + 1)
+		
+		for (index, cue) in ordered.enumerated() where cue.sortIndex != Double(index + 1) {
+			cue.sortIndex = Double(index + 1)
+		}
+	}
+	
+	func move(_ chosen: [Cue], from list: CueList, to look: Look, among cues: [Cue]) {
+		let picked = Set(chosen.map(\.identifier))
+		release(picked, from: list)
+		let start = (look.cues(among: cues).last?.sortIndex ?? 0).rounded(.down) + 1
+		
+		for (offset, cue) in chosen.enumerated() {
+			cue.lookID = look.identifier
+			cue.sortIndex = start + Double(offset)
+		}
+	}
+	
+	func retime(_ chosen: [Cue], from start: CueDraft, to end: CueDraft) {
+		for cue in chosen {
+			if end.fade != start.fade { cue.fade = end.fade }
+			if end.delay != start.delay { cue.delay = end.delay }
+			if end.follow != start.follow { cue.follow = end.follow }
+		}
+	}
+	
+	private func release(_ gone: Set<String>, from list: CueList) {
+		if let marked = selection.marked, gone.contains(marked), let index = list.index(of: marked) {
+			let before = list.cues[..<index].last { !gone.contains($0.identifier) }
+			let after = list.cues[index...].first { !gone.contains($0.identifier) }
+			selection.marked = (before ?? after)?.identifier
 		}
 		
-		context.delete(cue)
+		if let armed = selection.armed[list.scene], gone.contains(armed) {
+			selection.armed[list.scene] = nil
+		}
+		
+		guard let live = playback.cue(of: list.scene), gone.contains(live), let index = list.index(of: live) else { return }
+		let trimmed = gone.reduce(list) { $0.removing($1) }
+		
+		guard let first = trimmed.cues.first else {
+			stop(list)
+			return
+		}
+		
+		let landing = list.cues[..<index].last { !gone.contains($0.identifier) } ?? first
+		play(trimmed, at: trimmed.index(of: landing.identifier) ?? 0, snapping: true)
 	}
 	
 	func remove(_ look: Look, with cues: [Cue], context: ModelContext) {

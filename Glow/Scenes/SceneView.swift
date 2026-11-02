@@ -18,6 +18,9 @@ struct SceneView: View {
 	@State private var editMode = EditMode.inactive
 	@State private var deleting: String?
 	@State private var isCustomizing = false
+	@State private var chosen = Set<String>()
+	@State private var isRetiming = false
+	@State private var isDeletingChosen = false
 	
 	var body: some View {
 		if !look.isGone {
@@ -34,6 +37,7 @@ struct SceneView: View {
 		let armed = console.selection.armed[look.identifier]
 		let fade = console.playback.fades[look.identifier]
 		let tint = look.tint.color ?? .accentColor
+		let picked = held.filter { chosen.contains($0.identifier) }
 		
 		NavigationStack {
 			Group {
@@ -50,12 +54,10 @@ struct SceneView: View {
 					}
 				} else {
 					ScrollViewReader { proxy in
-						List {
+						List(selection: $chosen) {
 							ForEach(Array(held.enumerated()), id: \.element.identifier) { position, cue in
 								Button {
-									if editMode.isEditing {
-										editing = cue
-									} else {
+									if !editMode.isEditing {
 										console.selection.arm(cue.identifier, of: look.identifier)
 									}
 								} label: {
@@ -66,7 +68,7 @@ struct SceneView: View {
 								.listRowBackground(position == index ? tint.opacity(0.14) : nil)
 								.accessibilityAddTraits(position == index ? .isSelected : [])
 								.accessibilityValue(position == upcoming ? "Next" : "")
-								.accessibilityHint(editMode.isEditing ? "Edits it." : "Makes it the next cue.")
+								.accessibilityHint(editMode.isEditing ? "" : "Makes it the next cue.")
 								.swipeActions(edge: .leading) {
 									Button("Edit", systemImage: "slider.horizontal.3") {
 										editing = cue
@@ -113,7 +115,7 @@ struct SceneView: View {
 							
 							Button("Delete", role: .destructive) {
 								withAnimation {
-									console.delete(cue, from: list, context: context)
+									console.delete([cue], from: list, context: context)
 								}
 							}
 						}
@@ -132,7 +134,12 @@ struct SceneView: View {
 			}
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 0) {
-					if !held.isEmpty {
+					if editMode.isEditing {
+						if !picked.isEmpty {
+							ChosenBar(look: look, list: list, picked: picked, held: held, isRetiming: $isRetiming, isDeleting: $isDeletingChosen)
+								.transition(.move(edge: .bottom).combined(with: .opacity))
+						}
+					} else if !held.isEmpty {
 						Transport(look: look, list: list)
 					}
 					
@@ -141,11 +148,18 @@ struct SceneView: View {
 					}
 				}
 			}
-			.navigationTitle(look.name)
+			.animation(.snappy(duration: 0.25), value: picked.isEmpty)
+			.navigationTitle(editMode.isEditing && !picked.isEmpty ? "\(picked.count) Selected" : look.name)
 			.navigationBarTitleDisplayMode(.inline)
 			.environment(\.editMode, $editMode)
 			.toolbar {
-				if isSheet {
+				if editMode.isEditing {
+					ToolbarItem(placement: .topBarLeading) {
+						Button(picked.count == held.count ? "Deselect All" : "Select All") {
+							chosen = picked.count == held.count ? [] : Set(held.map(\.identifier))
+						}
+					}
+				} else if isSheet {
 					ToolbarItem(placement: .topBarLeading) {
 						Button(role: .close) { dismiss() }
 					}
@@ -177,6 +191,21 @@ struct SceneView: View {
 			}
 			.sheet(item: $editing) { cue in
 				CueEditView(cue: cue)
+			}
+			.sheet(isPresented: $isRetiming) {
+				CueTimingSheet(picked: picked)
+			}
+			.confirmationDialog(picked.count == 1 ? "Delete 1 Cue?" : "Delete \(picked.count) Cues?", isPresented: $isDeletingChosen, titleVisibility: .visible) {
+				Button("Delete", role: .destructive) {
+					withAnimation {
+						console.delete(picked, from: list, context: context)
+					}
+					
+					chosen = []
+				}
+			}
+			.onChange(of: editMode.isEditing) {
+				chosen = []
 			}
 			.sheet(isPresented: $isCustomizing) {
 				SceneSettings(look: look)
@@ -275,6 +304,65 @@ private struct LoopRow: View {
 		.accessibilityAddTraits(look.loops ? .isSelected : [])
 		.animation(.snappy(duration: 0.25), value: look.loops)
 		.sensoryFeedback(.selection, trigger: look.loops)
+	}
+}
+
+private struct ChosenBar: View {
+	@Environment(Console.self) private var console
+	@Environment(\.modelContext) private var context
+	@Query(sort: \Look.sortIndex) private var looks: [Look]
+	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
+	@ScaledMetric(relativeTo: .headline) private var height = 54
+	
+	let look: Look
+	let list: CueList
+	let picked: [Cue]
+	let held: [Cue]
+	
+	@Binding var isRetiming: Bool
+	@Binding var isDeleting: Bool
+	
+	var body: some View {
+		GlassEffectContainer(spacing: 12) {
+			HStack(spacing: 12) {
+				Button("Timing", systemImage: CueTime.fade.symbol) {
+					isRetiming = true
+				}
+				.frame(maxWidth: .infinity)
+				
+				Button("Duplicate", systemImage: "plus.square.on.square") {
+					withAnimation {
+						console.duplicate(picked, among: held, context: context)
+					}
+				}
+				.frame(maxWidth: .infinity)
+				
+				Menu("Move to Scene", systemImage: "arrow.right.square") {
+					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+						Button(other.name, systemImage: other.symbol) {
+							withAnimation {
+								console.move(picked, from: list, to: other, among: cues)
+							}
+						}
+					}
+				}
+				.frame(maxWidth: .infinity)
+				
+				Button("Delete", systemImage: "trash", role: .destructive) {
+					isDeleting = true
+				}
+				.foregroundStyle(.red)
+				.frame(maxWidth: .infinity)
+			}
+			.labelStyle(.iconOnly)
+			.font(.title3)
+			.frame(maxWidth: .infinity)
+			.frame(height: height)
+			.glassEffect(.regular, in: .capsule)
+		}
+		.buttonStyle(.plain)
+		.padding(.horizontal)
+		.padding(.vertical, 8)
 	}
 }
 

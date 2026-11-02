@@ -379,13 +379,13 @@ struct SceneTests {
 		rig.add(1, [(0, 1, 10)])
 		let second = rig.add(2, [(0, 1, 20)])
 		rig.console.play(rig.list, at: 1, snapping: true)
-		rig.console.delete(second, from: rig.list, context: rig.context)
+		rig.console.delete([second], from: rig.list, context: rig.context)
 		
 		let held = rig.look.cues(among: rig.cues)
 		#expect(held.count == 1)
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[0].identifier)
 		
-		rig.console.delete(held[0], from: rig.list, context: rig.context)
+		rig.console.delete([held[0]], from: rig.list, context: rig.context)
 		
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
 	}
@@ -634,6 +634,77 @@ struct SceneTests {
 		}
 	}
 	
+	@Test func deletingSeveralCuesWithTheLiveOneMovesTheStageToTheNearestKeptCueBefore() throws {
+		let rig = try rig()
+		
+		for index in 1...5 {
+			rig.add(Double(index), [(0, 1, UInt8(index * 10))])
+		}
+		
+		let held = rig.look.cues(among: rig.cues)
+		rig.console.play(rig.list, at: 3)
+		rig.console.delete([held[2], held[3]], from: rig.list, context: rig.context)
+		try rig.context.save()
+		
+		#expect(rig.look.cues(among: rig.cues).map(\.identifier) == [held[0], held[1], held[4]].map(\.identifier))
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[1].identifier)
+		
+		rig.console.delete(rig.look.cues(among: rig.cues), from: rig.list, context: rig.context)
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == nil)
+	}
+	
+	@Test func duplicatingSeveralCuesPutsTheCopiesInOrderAfterTheLastOne() throws {
+		let rig = try rig()
+		
+		for index in 1...4 {
+			let cue = rig.add(Double(index), [(0, 1, UInt8(index))])
+			cue.label = "\(index)"
+		}
+		
+		let held = rig.look.cues(among: rig.cues)
+		rig.console.duplicate([held[0], held[2]], among: held, context: rig.context)
+		try rig.context.save()
+		let after = rig.look.cues(among: rig.cues)
+		
+		#expect(after.map(\.label) == ["1", "2", "3", "1", "3", "4"])
+		#expect(Set(after.map(\.identifier)).count == 6)
+		#expect(after[3].levels == held[0].levels && after[4].levels == held[2].levels)
+	}
+	
+	@Test func movingCuesToAnotherSceneAppendsThemInOrderAndLeavesTheStageOnAKeptCue() throws {
+		let rig = try rig()
+		let other = Look.fresh(among: rig.looks, context: rig.context)
+		rig.add(1, to: other, [(1, 1, 9)])
+		
+		for index in 1...3 {
+			let cue = rig.add(Double(index), [(0, 1, UInt8(index))])
+			cue.label = "\(index)"
+		}
+		
+		let held = rig.look.cues(among: rig.cues)
+		rig.console.play(rig.list, at: 2)
+		rig.console.move([held[1], held[2]], from: rig.list, to: other, among: rig.cues)
+		try rig.context.save()
+		
+		#expect(rig.look.cues(among: rig.cues).map(\.label) == ["1"])
+		#expect(other.cues(among: rig.cues).map(\.label) == ["", "2", "3"])
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == held[0].identifier)
+	}
+	
+	@Test func timingSeveralCuesChangesOnlyWhatWasChanged() throws {
+		let rig = try rig()
+		let first = rig.add(1, fade: 2, [(0, 1, 1)])
+		let second = rig.add(2, fade: 5, [(0, 1, 2)])
+		second.delay = 1
+		let start = CueDraft(fade: 2, delay: 0, follow: nil)
+		var end = start
+		end.follow = 0.5
+		rig.console.retime([first, second], from: start, to: end)
+		
+		#expect(first.fade == 2 && second.fade == 5 && second.delay == 1)
+		#expect(first.follow == 0.5 && second.follow == 0.5)
+	}
+	
 	@Test func aLargeTileShowsTheLiveCueThenWhatGoPlaysNext() throws {
 		let rig = try rig()
 		
@@ -668,12 +739,12 @@ struct SceneTests {
 		let second = rig.add(2, [(0, 1, 20)])
 		rig.add(3, [(0, 1, 30)])
 		rig.console.selection.marked = second.identifier
-		rig.console.delete(second, from: rig.list, context: rig.context)
+		rig.console.delete([second], from: rig.list, context: rig.context)
 		
 		#expect(rig.console.selection.marked == first.identifier)
 		
 		try? rig.context.save()
-		rig.console.delete(first, from: rig.list, context: rig.context)
+		rig.console.delete([first], from: rig.list, context: rig.context)
 		
 		#expect(rig.console.selection.marked == rig.look.cues(among: rig.cues).last?.identifier)
 	}
@@ -922,7 +993,7 @@ struct SceneTests {
 					switch roll(3) {
 					case 0:
 						guard held.count > 1 else { break }
-						rig.console.delete(marked, from: rig.list, context: rig.context)
+						rig.console.delete([marked], from: rig.list, context: rig.context)
 					case 1:
 						guard let from = held.firstIndex(where: { $0.identifier == marked.identifier }) else { break }
 						let to = roll(held.count + 1)
@@ -1004,7 +1075,7 @@ struct SceneTests {
 		rig.console.set(99, at: DMXAddress(1)!)
 		rig.recording(.into(first)).store(context: rig.context)
 		rig.recording(.cue(rig.look, after: first)).store(context: rig.context)
-		rig.console.delete(second, from: rig.list, context: rig.context)
+		rig.console.delete([second], from: rig.list, context: rig.context)
 		try? rig.context.save()
 		
 		#expect(rig.console.hasChanged(rig.look, among: rig.cues))
@@ -1352,7 +1423,7 @@ struct SceneTests {
 		rig.console.play(rig.list, at: 0, snapping: true)
 		try await until { rig.value(1) == 10 }
 		
-		rig.console.delete(first, from: rig.list, context: rig.context)
+		rig.console.delete([first], from: rig.list, context: rig.context)
 		
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == second.identifier)
 		try await until { rig.value(1) == 0 && rig.value(2) == 20 }
@@ -1450,7 +1521,7 @@ struct SceneTests {
 		rig.console.play(rig.list, at: 1, snapping: true)
 		try await until { rig.value(1) == 200 && rig.value(11) == 150 }
 		
-		rig.console.delete(second, from: rig.list, context: rig.context)
+		rig.console.delete([second], from: rig.list, context: rig.context)
 		try await until { rig.value(11) == 0 }
 		#expect(rig.value(1) == 200)
 	}

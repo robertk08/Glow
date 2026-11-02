@@ -95,7 +95,7 @@ private struct CueForm: View {
 				.confirmationDialog("Delete Cue \(position + 1)?", isPresented: $isDeleting, titleVisibility: .visible) {
 					Button("Delete Cue", role: .destructive) {
 						if let look = looks.first(where: { $0.identifier == cue.lookID }) {
-							console.delete(cue, from: CueList(look, cues: cues, fixtures: fixtures), context: context)
+							console.delete([cue], from: CueList(look, cues: cues, fixtures: fixtures), context: context)
 						}
 						
 						dismiss()
