@@ -44,7 +44,32 @@ struct SceneFace: View {
 					.font(.headline)
 					.lineLimit(1)
 				
-				if !isLarge || isOn {
+				if isLarge, list.cues.count > 1 {
+					VStack(alignment: .leading, spacing: 6) {
+						ForEach(list.window(live: index, upcoming: upcoming), id: \.self) { position in
+							HStack(spacing: 6) {
+								if position == upcoming {
+									Image(systemName: SceneAction.next.symbol)
+										.font(.caption)
+								}
+								
+								if position == index {
+									CueStatus(fade: fade, follow: list.cues[position].follow) {
+										Text(list.heading(at: position))
+									}
+								} else {
+									Text(list.heading(at: position))
+								}
+							}
+							.font(position == index ? .title3.weight(.semibold) : .subheadline)
+							.foregroundStyle(position == index ? AnyShapeStyle(.primary) : position == upcoming ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
+							.lineLimit(1)
+							.transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity.animation(.easeOut(duration: 0.12))))
+						}
+					}
+					.padding(.top, 8)
+					.animation(.snappy, value: [index ?? -1, upcoming ?? -1])
+				} else {
 					CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
 						HStack(spacing: 4) {
 							if look.tap == .flash {
@@ -54,18 +79,7 @@ struct SceneFace: View {
 							Text(list.status(at: index).isEmpty ? " " : list.status(at: index))
 						}
 					}
-					.font(isLarge ? .title3.weight(.semibold) : .subheadline)
-					.foregroundStyle(isLarge ? .primary : .secondary)
-					.lineLimit(isLarge ? 2 : 1)
-				}
-				
-				if isLarge, list.cues.count > 1, let upcoming {
-					HStack(spacing: 4) {
-						Image(systemName: SceneAction.next.symbol)
-						
-						Text(list.heading(at: upcoming))
-					}
-					.font(.footnote)
+					.font(.subheadline)
 					.foregroundStyle(.secondary)
 					.lineLimit(1)
 				}
@@ -94,6 +108,7 @@ struct SceneFace: View {
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.glassEffect(.regular.tint(isOn ? tint.opacity(0.22) : nil), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
+		.animation(.snappy, value: isOn)
 	}
 }
 

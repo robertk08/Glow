@@ -536,6 +536,22 @@ struct SceneTests {
 		}
 	}
 	
+	@Test func aLargeTileShowsTheLiveCueThenWhatGoPlaysNext() throws {
+		let rig = try rig()
+		
+		for index in 1...4 {
+			rig.add(Double(index), [(0, 1, UInt8(index))])
+		}
+		
+		#expect(rig.list.window(live: nil, upcoming: 0) == [0, 1, 2])
+		#expect(rig.list.window(live: 1, upcoming: 2) == [1, 2, 3])
+		#expect(rig.list.window(live: 1, upcoming: 3) == [1, 3])
+		#expect(rig.list.window(live: 3, upcoming: nil) == [3])
+		rig.look.loops = true
+		#expect(rig.list.window(live: 3, upcoming: 0) == [3, 0, 1])
+		#expect(rig.list.window(live: 2, upcoming: 3) == [2, 3, 0])
+	}
+	
 	@Test func addingCuesToAnotherSceneWhileBuildingKeepsTheOpenBuilder() throws {
 		let rig = try rig()
 		let other = Look.fresh(among: rig.looks, context: rig.context)

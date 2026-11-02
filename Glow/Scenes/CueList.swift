@@ -46,6 +46,18 @@ nonisolated struct CueList: Sendable {
 		return (index + cues.count - 1) % cues.count
 	}
 	
+	func window(live: Int?, upcoming: Int?) -> [Int] {
+		var shown = live.map { [$0] } ?? []
+		var next = upcoming
+		
+		while let index = next, shown.count < 3, !shown.contains(index) {
+			shown.append(index)
+			next = self.next(after: index)
+		}
+		
+		return shown
+	}
+	
 	func heading(at index: Int) -> String {
 		cues[index].label.isEmpty ? "Cue \(index + 1)" : "\(index + 1) · \(cues[index].label)"
 	}
