@@ -15,7 +15,6 @@ struct LightsView: View {
 	@State private var isAdding = false
 	@State private var editingFixture: Fixture?
 	@State private var editingGroup: FixtureGroup?
-	@State private var barTop = CGFloat.infinity
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	private var clashing: Set<PersistentIdentifier> {
@@ -52,7 +51,7 @@ struct LightsView: View {
 	@ViewBuilder private var tiles: some View {
 		let clashes = clashing
 		let items = ForEach(fixtures) { fixture in
-			LightTile(fixture: fixture, fixtures: fixtures, clashes: clashes.contains(fixture.persistentModelID), barTop: barTop, editing: $editingFixture)
+			LightTile(fixture: fixture, fixtures: fixtures, clashes: clashes.contains(fixture.persistentModelID), editing: $editingFixture)
 		}
 		let grid = LazyVGrid(columns: columns, spacing: 12) {
 			if #available(iOS 27.0, *) {
@@ -122,7 +121,6 @@ struct LightsView: View {
 		}
 		.safeAreaInset(edge: .bottom) {
 			BuilderBar()
-				.onGeometryChange(for: CGFloat.self) { console.selection.building == nil ? .infinity : $0.frame(in: .global).minY } action: { barTop = $0 }
 		}
 		.navigationTitle("Lights")
 		.navigationSubtitle(shows.active.name)
