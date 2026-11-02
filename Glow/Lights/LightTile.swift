@@ -9,10 +9,12 @@ struct LightTile: View {
 	let fixture: Fixture
 	let fixtures: [Fixture]
 	let clashes: Bool
+	let barTop: CGFloat
 	
 	@Binding var editing: Fixture?
 	
 	@State private var isRemoving = false
+	@State private var isCovered = false
 	@State private var origin = 0.0
 	
 	var body: some View {
@@ -58,9 +60,10 @@ struct LightTile: View {
 		.foregroundStyle(.primary)
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.padding(14)
-		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
+		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(!isCovered), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
-		.gesture(SidewaysDrag {
+		.onGeometryChange(for: Bool.self) { $0.frame(in: .global).maxY > barTop } action: { isCovered = $0 }
+		.gesture(SidewaysDrag(isEnabled: !isCovered) {
 			origin = programmer?.brightness ?? 0
 		} moved: { distance in
 			guard let programmer, programmer.dims else { return }
@@ -113,11 +116,16 @@ struct LightTile: View {
 }
 
 private struct SidewaysDrag: UIGestureRecognizerRepresentable {
+	let isEnabled: Bool
 	let began: () -> Void
 	let moved: (CGFloat) -> Void
 	
 	func makeUIGestureRecognizer(context: Context) -> Recognizer {
 		Recognizer()
+	}
+	
+	func updateUIGestureRecognizer(_ recognizer: Recognizer, context: Context) {
+		recognizer.isEnabled = isEnabled
 	}
 	
 	func handleUIGestureRecognizerAction(_ recognizer: Recognizer, context: Context) {
