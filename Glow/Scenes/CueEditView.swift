@@ -38,6 +38,7 @@ private struct CueForm: View {
 	@Binding var identifier: String
 	
 	@State private var recording: Recording?
+	@State private var isDeleting = false
 	@FocusState private var isLabelling: Bool
 	
 	var body: some View {
@@ -85,15 +86,21 @@ private struct CueForm: View {
 					recording = Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)
 				}
 				.disabled(!Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).isReady)
+				.foregroundStyle(.tint)
 				
 				Button("Delete Cue", systemImage: "trash", role: .destructive) {
-					if let look = looks.first(where: { $0.identifier == cue.lookID }) {
-						console.delete(cue, from: CueList(look, cues: cues, fixtures: fixtures), context: context)
-					}
-					
-					dismiss()
+					isDeleting = true
 				}
 				.foregroundStyle(.red)
+				.confirmationDialog("Delete Cue \(position + 1)?", isPresented: $isDeleting, titleVisibility: .visible) {
+					Button("Delete Cue", role: .destructive) {
+						if let look = looks.first(where: { $0.identifier == cue.lookID }) {
+							console.delete(cue, from: CueList(look, cues: cues, fixtures: fixtures), context: context)
+						}
+						
+						dismiss()
+					}
+				}
 			}
 		}
 		.navigationTitle("Cue \(position + 1)")

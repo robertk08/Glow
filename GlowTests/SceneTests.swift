@@ -644,6 +644,59 @@ struct SceneTests {
 		#expect(next.hint == "1 light")
 	}
 	
+	@Test func resettingANewCueGoesBackToWhatTheBuilderChoseOnOpening() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 2, 10), (0, 3, 10), (0, 4, 10)])
+		rig.console.selection.build(rig.look.identifier)
+		rig.console.keep(rig.look, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		let next = rig.recording(.cue(rig.look, after: nil))
+		
+		#expect(next.isDefault)
+		
+		next.label = "Storm"
+		next.fade = 3
+		next.delay = 1
+		next.follow = 2
+		next.features = [.dimmer]
+		next.lights = Set(rig.fixtures.map(\.identifier))
+		
+		#expect(!next.isDefault)
+		
+		next.reset()
+		
+		#expect(next.isDefault)
+		#expect(next.label.isEmpty)
+		#expect(next.fade == 0)
+		#expect(next.delay == 0)
+		#expect(next.follow == nil)
+		#expect(next.lights == [rig.fixtures[0].identifier])
+		#expect(next.features == [.color])
+		#expect(rig.recording(.cue(rig.look, after: nil)).isDefault)
+	}
+	
+	@Test func aNewSceneResetsToAllLightsAndPicksAllWithoutLeavingTheDefault() throws {
+		let rig = try rig()
+		let fresh = Look.fresh(among: rig.looks, context: rig.context)
+		rig.console.selection.build(fresh.identifier, isNew: true)
+		rig.console.keep(fresh, among: rig.cues, fixtures: rig.fixtures, library: rig.library)
+		let next = rig.recording(.cue(fresh, after: nil))
+		
+		next.lights = []
+		
+		#expect(!next.isDefault)
+		
+		next.lights = Set(rig.fixtures.map(\.identifier))
+		
+		#expect(next.isDefault)
+		
+		next.fade = 2
+		next.reset()
+		
+		#expect(next.lights == Set(rig.fixtures.map(\.identifier)))
+		#expect(next.features == Set(FeatureGroup.allCases))
+		#expect(next.isDefault)
+	}
+	
 	@Test func aSceneNeverEndsUpWithoutAName() throws {
 		let rig = try rig()
 		rig.look.name = "   "

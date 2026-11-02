@@ -17,6 +17,7 @@ struct SceneView: View {
 	@State private var editing: Cue?
 	@State private var editMode = EditMode.inactive
 	@State private var isDeleting = false
+	@State private var deleting: String?
 	@State private var isCustomizing = false
 	
 	var body: some View {
@@ -75,7 +76,7 @@ struct SceneView: View {
 								}
 								.swipeActions(edge: .trailing) {
 									Button("Delete", systemImage: "trash", role: .destructive) {
-										console.delete(cue, from: list, context: context)
+										deleting = cue.identifier
 									}
 								}
 								.contextMenu {
@@ -94,7 +95,7 @@ struct SceneView: View {
 									}
 									
 									Button("Delete Cue", systemImage: "trash", role: .destructive) {
-										console.delete(cue, from: list, context: context)
+										deleting = cue.identifier
 									}
 								}
 							}
@@ -106,6 +107,13 @@ struct SceneView: View {
 							} label: {
 								Label("Add Cues", systemImage: "plus")
 									.foregroundStyle(tint)
+							}
+						}
+						.alert("Delete Cue \((held.firstIndex { $0.identifier == deleting } ?? 0) + 1)?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, presenting: held.first { $0.identifier == deleting }) { cue in
+							Button("Cancel", role: .cancel) {}
+							
+							Button("Delete", role: .destructive) {
+								console.delete(cue, from: list, context: context)
 							}
 						}
 						.onAppear {

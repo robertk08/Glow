@@ -11,6 +11,7 @@ final class Selection {
 	var scene: String?
 	var armed: [String: String] = [:]
 	var draft = CueDraft()
+	var seed = CueDraft()
 	var marked: String?
 	var isNew = false
 	var kept: (scene: ShowContents.Scene, cues: [ShowContents.Cue], playing: String?)?
@@ -19,6 +20,7 @@ final class Selection {
 		didSet {
 			guard building != oldValue else { return }
 			draft = CueDraft()
+			seed = CueDraft()
 			marked = nil
 			kept = nil
 			isNew = false

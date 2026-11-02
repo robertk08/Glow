@@ -139,7 +139,10 @@ These are product decisions the code implements without explaining.
   is being built returns to the open builder.
 - The store settings (aspects, lights, fade, delay, follow) apply to every cue
   stored after them, whether or not the sheet stored a cue, until the builder
-  opens for another scene.
+  opens for another scene. Reset to Defaults brings back what the builder
+  chose on opening: no label, no times, and the lights and aspects the
+  scene's cues hold, or all of them for a new scene.
+- Deleting a cue asks first, wherever it starts.
 - Fades, delays and follows run on the controller, so they carry on when the
   device that started them sleeps or drops. Touching a channel mid-fade, on any
   device, releases it from the fade.

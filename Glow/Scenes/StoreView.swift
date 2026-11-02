@@ -93,6 +93,17 @@ struct StoreView: View {
 						.textCase(nil)
 					}
 				}
+				
+				if recording.isNew {
+					Section {
+						Button("Reset to Defaults") {
+							withAnimation {
+								recording.reset()
+							}
+						}
+						.disabled(recording.isDefault)
+					}
+				}
 			}
 			.navigationTitle(recording.title)
 			.navigationBarTitleDisplayMode(.inline)

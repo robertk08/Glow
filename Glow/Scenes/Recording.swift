@@ -63,8 +63,16 @@ final class Recording: Identifiable {
 	}
 	
 	var lights: Set<String> {
-		get { (draft.lights ?? Set(fixtures.map(\.identifier))).intersection(fixtures.map(\.identifier)) }
+		get { lights(in: draft) }
 		set { draft.lights = newValue }
+	}
+	
+	var isDefault: Bool {
+		var seed = console.selection.seed
+		seed.lights = lights(in: seed)
+		var draft = draft
+		draft.lights = lights
+		return draft == seed
 	}
 	
 	var isNew: Bool {
@@ -156,6 +164,10 @@ final class Recording: Identifiable {
 		return levels
 	}
 	
+	func reset() {
+		draft = console.selection.seed
+	}
+	
 	func toggle(_ fixture: Fixture) {
 		if lights.contains(fixture.identifier) {
 			lights.remove(fixture.identifier)
@@ -236,6 +248,10 @@ final class Recording: Identifiable {
 		guard let index = list.index(of: cue.identifier) else { return }
 		release(tracked)
 		console.play(list, at: index, snapping: true)
+	}
+	
+	private func lights(in draft: CueDraft) -> Set<String> {
+		(draft.lights ?? Set(fixtures.map(\.identifier))).intersection(fixtures.map(\.identifier))
 	}
 	
 	private func release(_ levels: Levels) {

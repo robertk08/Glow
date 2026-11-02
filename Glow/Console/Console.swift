@@ -609,8 +609,9 @@ final class Console {
 		let levels = held.reduce(Levels()) { $0.merging($1.levels) }
 		let aspects = Set(fixtures.flatMap { levels.features(of: $0.identifier, type: library.type($0.typeID)) })
 		guard !aspects.isEmpty else { return }
-		selection.draft.lights = Set(levels.lights.keys)
-		selection.draft.aspects = aspects
+		selection.seed.lights = Set(levels.lights.keys)
+		selection.seed.aspects = aspects
+		selection.draft = selection.seed
 	}
 	
 	func hasChanged(_ look: Look, among cues: [Cue]) -> Bool {
