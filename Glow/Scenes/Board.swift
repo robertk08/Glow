@@ -74,11 +74,18 @@ nonisolated struct Board: Equatable {
 		}
 		
 		for other in covered.sorted(by: { (origins[$0] ?? 0, $0) < (origins[$1] ?? 0, $1) }) {
-			while !filled.isDisjoint(with: cells(of: other)) {
-				origins[other, default: 0] += columns
-			}
-			
+			guard let start = origins[other], let size = sizes[other] else { continue }
+			let end = ((filled.max() ?? 0) / columns + size.rows + 1) * columns
+			let free = (0..<end).filter { fitted(size, at: $0) == $0 && filled.isDisjoint(with: TileLayout.cells(of: size, at: $0, columns: columns)) }
+			let nearest = free.min { distance(from: start, to: $0) < distance(from: start, to: $1) }
+			origins[other] = nearest ?? end
 			filled.formUnion(cells(of: other))
 		}
+	}
+	
+	func distance(from start: Int, to origin: Int) -> (Int, Int, Int, Int) {
+		let rows = origin / columns - start / columns
+		let across = origin % columns - start % columns
+		return (abs(rows) + abs(across), abs(rows), rows, across)
 	}
 }

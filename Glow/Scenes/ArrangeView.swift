@@ -7,13 +7,14 @@ struct ArrangeView: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@ScaledMetric(relativeTo: .headline) private var height = 76
 	
 	let columns: Int
 	
 	@State private var dragged: String?
+	@State private var dropped: String?
 	@State private var landing: Int?
 	@State private var width: CGFloat = 0
+	@State private var height: CGFloat = 76
 	@State private var deleting: Look?
 	@State private var customizing: Look?
 	
@@ -26,6 +27,15 @@ struct ArrangeView: View {
 		NavigationStack {
 			ScrollView {
 				ZStack(alignment: .topLeading) {
+					if let first = looks.first {
+						Block(look: first)
+							.frame(width: cell.width)
+							.fixedSize(horizontal: false, vertical: true)
+							.hidden()
+							.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = max($0 + 20, 76) }
+							.accessibilityHidden(true)
+					}
+					
 					ForEach(0..<rows * columns, id: \.self) { spot in
 						RoundedRectangle(cornerRadius: 18, style: .continuous)
 							.fill(.fill.quaternary)
@@ -60,9 +70,13 @@ struct ArrangeView: View {
 							}
 							.contextMenu {
 								Picker("Size", selection: Binding { board.sizes[look.identifier] ?? look.size } set: { size in
-									var resized = board
-									resized.resize(look.identifier, to: size)
-									resized.write(to: looks)
+									Task {
+										try? await Task.sleep(for: .milliseconds(650))
+										var resized = Board(columns: columns, looks: looks)
+										resized.resize(look.identifier, to: size)
+										dropped = nil
+										resized.write(to: looks)
+									}
 								}) {
 									ForEach(TileSize.allCases) { size in
 										Text(size.name)
@@ -82,6 +96,7 @@ struct ArrangeView: View {
 							.modifier(DragTracking(scene: look.identifier, dragged: $dragged, landing: $landing))
 							.opacity(look.identifier == dragged ? 0 : 1)
 							.offset(x: CGFloat(origin % columns) * (cell.width + spacing), y: CGFloat(origin / columns) * (cell.height + spacing))
+							.animation(look.identifier == dropped ? nil : .smooth(duration: 0.35), value: board)
 							.accessibilityLabel(look.name)
 							.accessibilityValue(board.sizes[look.identifier]?.name ?? "")
 							.accessibilityHint("Customizes it.")
@@ -92,13 +107,13 @@ struct ArrangeView: View {
 					guard let scene = items.first, let origin = board.origin(of: scene, at: session.location, cell: cell, spacing: spacing) else { return }
 					var moved = board
 					moved.place(scene, at: origin)
+					dropped = scene
 					moved.write(to: looks)
 					dragged = nil
 					landing = nil
 				}
 				.modifier(DropTracking(board: board, dragged: dragged, cell: cell, spacing: spacing, landing: $landing))
-				.animation(.snappy(duration: 0.3), value: board)
-				.animation(.snappy(duration: 0.2), value: landing)
+				.animation(.smooth(duration: 0.2), value: landing)
 				.frame(maxWidth: .infinity)
 				.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
 				.padding()
@@ -144,7 +159,7 @@ private struct Block: View {
 			Text(look.name)
 				.font(.subheadline.weight(.semibold))
 				.foregroundStyle(.primary)
-				.lineLimit(2)
+				.lineLimit(1)
 		}
 		.padding(12)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

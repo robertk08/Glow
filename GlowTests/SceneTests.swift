@@ -537,7 +537,7 @@ struct SceneTests {
 		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
 	}
 	
-	@Test func randomMovesAndResizesLandWhereAskedAndSlideOnlyCoveredTilesStraightDown() {
+	@Test nonisolated func randomMovesAndResizesLandWhereAskedAndMoveOnlyCoveredTilesToTheNearestFreeSpot() {
 		var seed: UInt64 = 0x2545F4914F6CDD1D
 		
 		func roll(_ count: Int) -> Int {
@@ -575,7 +575,12 @@ struct SceneTests {
 					taken.formUnion(cells)
 					guard other != id, let old = before.origins[other], let new = board.origins[other], old != new else { continue }
 					#expect(!landed.isDisjoint(with: before.cells(of: other)), "session \(session) step \(step) moved a tile it did not cover")
-					#expect(new > old && new % columns == old % columns, "session \(session) step \(step) moved a covered tile other than straight down")
+					let size = board.sizes[other]!
+					let rest = board.origins.keys.filter { $0 != other }.reduce(into: Set<Int>()) { $0.formUnion(board.cells(of: $1)) }
+					
+					for spot in 0..<((board.rows + 3) * columns) where board.fitted(size, at: spot) == spot && rest.isDisjoint(with: TileLayout.cells(of: size, at: spot, columns: columns)) {
+						#expect(board.distance(from: old, to: spot) >= board.distance(from: old, to: new), "session \(session) step \(step) skipped a nearer free spot")
+					}
 				}
 			}
 		}
