@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ScenesView: View {
 	@Environment(Console.self) private var console
@@ -13,6 +14,7 @@ struct ScenesView: View {
 	
 	@State private var customizing: Look?
 	@State private var isEditing = false
+	@State private var visible: CGFloat = 0
 	@State private var position = ScrollPosition()
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
@@ -46,30 +48,25 @@ struct ScenesView: View {
 				}
 			}
 		}
-		.overlay(alignment: .topLeading) {
-			if let look = looks.first(where: { $0.identifier == arrangement.lifted }), let floating = arrangement.floating {
-				let list = lists[look.identifier, default: CueList(look, cues: [], fixtures: [])]
-				
-				SceneFace(look: look, list: list)
-					.overlay {
-						TileControls(look: look, list: list, isEditing: true)
-					}
-					.frame(width: floating.width, height: floating.height)
-					.scaleEffect(arrangement.isSettling ? 1 : 1.05)
-					.shadow(color: .black.opacity(arrangement.isSettling ? 0 : 0.18), radius: 20, y: 10)
-					.offset(x: floating.minX, y: floating.minY)
-					.allowsHitTesting(false)
-					.transition(.scale(scale: 1 / 1.05))
-			}
-		}
-		.coordinateSpace(.named("tiles"))
 		.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { arrangement.width = $0 }
+		.padding(.bottom, isEditing ? (arrangement.row(among: looks) ?? 0) + 12 : 0)
+		.onDrop(of: [.text], delegate: TileDrop(arrangement: arrangement, looks: looks))
+		.coordinateSpace(.named("tiles"))
 		.onChange(of: typeSize.isAccessibilitySize ? 300 : tileWidth, initial: true) { _, minimum in
 			arrangement.minimum = minimum
 		}
-		.padding(.bottom, isEditing ? (arrangement.row(among: looks) ?? 0) + 12 : 0)
 		.padding(.horizontal)
 		.padding(.bottom, 24)
+		.frame(minHeight: visible, alignment: .top)
+		.background {
+			if isEditing {
+				Color.clear
+					.contentShape(.rect)
+					.onTapGesture {
+						isEditing = false
+					}
+			}
+		}
 		.animation(.snappy(duration: 0.3), value: looks.map(\.slot))
 		.animation(.snappy(duration: 0.3), value: isEditing)
 	}
@@ -103,6 +100,7 @@ struct ScenesView: View {
 				.scrollPosition($position)
 				.onScrollGeometryChange(for: ScrollGeometry.self) { $0 } action: { _, geometry in
 					arrangement.geometry = geometry
+					visible = geometry.containerSize.height
 				}
 				.task(id: arrangement.lifted) {
 					while arrangement.lifted != nil, !Task.isCancelled {
@@ -169,5 +167,32 @@ struct ScenesView: View {
 		.sensoryFeedback(.selection, trigger: arrangement.moves)
 		.sensoryFeedback(.impact(weight: .light), trigger: arrangement.stretched != nil)
 		.sensoryFeedback(.impact(weight: .light), trigger: arrangement.lifted != nil)
+	}
+}
+
+private struct TileDrop: DropDelegate {
+	let arrangement: Arrangement
+	let looks: [Look]
+	
+	func validateDrop(info: DropInfo) -> Bool {
+		arrangement.picked != nil
+	}
+	
+	func dropUpdated(info: DropInfo) -> DropProposal? {
+		if #unavailable(iOS 27) {
+			arrangement.lift(among: looks)
+			arrangement.drag(to: info.location)
+		}
+		
+		return DropProposal(operation: .move)
+	}
+	
+	func dropExited(info: DropInfo) {
+		if #unavailable(iOS 27) { arrangement.leave() }
+	}
+	
+	func performDrop(info: DropInfo) -> Bool {
+		arrangement.drop(among: looks)
+		return true
 	}
 }

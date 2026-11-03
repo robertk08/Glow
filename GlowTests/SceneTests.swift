@@ -575,7 +575,8 @@ struct SceneTests {
 			let indexes = rig.looks.map(\.sortIndex)
 			let lifted = looks[roll(looks.count)]
 			let start = arrangement.frames[lifted.identifier]!
-			arrangement.lift(lifted.identifier, at: CGPoint(x: start.midX, y: start.midY), among: looks)
+			_ = arrangement.pick(lifted.identifier)
+			arrangement.hold(at: CGPoint(x: start.width / 2, y: start.height / 2), among: looks)
 			
 			for _ in 0..<roll(8) {
 				arrangement.drag(to: CGPoint(x: Double(roll(360)), y: Double(roll(900))))

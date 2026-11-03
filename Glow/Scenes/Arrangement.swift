@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 @Observable @MainActor
 final class Arrangement {
@@ -9,16 +10,16 @@ final class Arrangement {
 	
 	let spacing: CGFloat = 12
 	
+	private(set) var picked: String?
 	private(set) var lifted: String?
-	private(set) var finger = CGPoint.zero
-	private(set) var isSettling = false
 	private(set) var moves = 0
 	private(set) var stretched: (scene: String, size: TileSize)?
 	
 	private var spots: [String: Int] = [:]
 	private var resting: [String: Int] = [:]
 	private var sizes: [String: TileSize] = [:]
-	private var grab = CGSize.zero
+	private var grab: CGSize?
+	private var finger = CGPoint.zero
 	private var base = CGRect.zero
 	
 	var columns: Int {
@@ -84,28 +85,48 @@ final class Arrangement {
 		lifted.flatMap { frames[$0] }
 	}
 	
-	var floating: CGRect? {
-		guard let lifted, let frame = frames[lifted] else { return nil }
-		return CGRect(origin: CGPoint(x: min(max(finger.x - grab.width, 0), max(width - frame.width, 0)), y: max(finger.y - grab.height, 0)), size: frame.size)
+	func pick(_ scene: String) -> NSItemProvider {
+		if lifted == nil {
+			picked = scene
+			grab = nil
+		}
+		
+		let provider = NSItemProvider()
+		
+		provider.registerDataRepresentation(forTypeIdentifier: UTType.text.identifier, visibility: .ownProcess) { done in
+			done(Data(scene.utf8), nil)
+			return nil
+		}
+		
+		return provider
 	}
 	
-	func lift(_ scene: String, at point: CGPoint, among looks: [Look]) {
-		guard lifted == nil || isSettling, let frame = frames[scene] else { return }
+	func hold(at point: CGPoint, among looks: [Look]) {
+		guard lifted == nil else { return }
+		grab = CGSize(width: point.x, height: point.y)
+		lift(among: looks)
+	}
+	
+	func follow(_ point: CGPoint) {
+		guard let lifted, let frame = frames[lifted] else { return }
+		drag(to: CGPoint(x: frame.minX + point.x, y: frame.minY + point.y))
+	}
+	
+	func lift(among looks: [Look]) {
+		guard let picked, lifted == nil, stretched == nil, let frame = frames[picked] else { return }
 		resting = origins(among: looks)
 		spots = resting
 		sizes = Dictionary(looks.map { ($0.identifier, $0.size) }, uniquingKeysWith: { first, _ in first })
-		grab = CGSize(width: point.x - frame.minX, height: point.y - frame.minY)
-		finger = point
-		isSettling = false
+		if grab == nil { grab = CGSize(width: frame.width / 2, height: frame.height / 2) }
 		
 		withAnimation(.snappy(duration: 0.3)) {
-			lifted = scene
+			lifted = picked
 		}
 	}
 	
 	func drag(to point: CGPoint) {
 		finger = point
-		guard let lifted, let size = sizes[lifted], let frame = frames[lifted] else { return }
+		guard let lifted, let grab, let size = sizes[lifted], let frame = frames[lifted] else { return }
 		let taken = taken(besides: lifted)
 		let row = (frame.height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows)
 		let across = min(size.columns, columns)
@@ -119,6 +140,63 @@ final class Arrangement {
 			spots = placed
 		}
 		moves += 1
+	}
+	
+	func leave() {
+		guard lifted != nil else { return }
+		
+		withAnimation(.snappy(duration: 0.3)) {
+			spots = resting
+			lifted = nil
+		}
+	}
+	
+	func autoscroll() -> CGFloat? {
+		guard lifted != nil, let geometry else { return nil }
+		let edge: CGFloat = 72
+		let top = geometry.visibleRect.minY + geometry.contentInsets.top + edge
+		let bottom = geometry.visibleRect.maxY - geometry.contentInsets.bottom - edge
+		var step: CGFloat = 0
+		
+		if finger.y < top {
+			step = -min(edge, top - finger.y) / 6
+		} else if finger.y > bottom {
+			step = min(edge, finger.y - bottom) / 6
+		}
+		
+		let lowest = -geometry.contentInsets.top
+		let highest = max(lowest, geometry.contentSize.height - geometry.containerSize.height - geometry.contentInsets.top)
+		let offset = min(max(geometry.contentOffset.y + step, lowest), highest)
+		let moved = offset - geometry.contentOffset.y
+		guard abs(moved) >= 0.5 else { return nil }
+		self.geometry?.contentOffset.y = offset
+		drag(to: CGPoint(x: finger.x, y: finger.y + moved))
+		return offset + geometry.contentInsets.top
+	}
+	
+	func end(dropped: Bool, among looks: [Look]) {
+		if dropped {
+			drop(among: looks)
+		} else {
+			leave()
+			picked = nil
+		}
+	}
+	
+	func drop(among looks: [Look]) {
+		defer { picked = nil }
+		guard lifted != nil else { return }
+		
+		withAnimation(.snappy(duration: 0.3)) {
+			if spots != resting {
+				for look in looks {
+					guard let spot = spots[look.identifier], Double(spot) != look.sortIndex else { continue }
+					look.sortIndex = Double(spot)
+				}
+			}
+			
+			lifted = nil
+		}
 	}
 	
 	private func place(_ scene: String, at destination: Int, size: TileSize, taken: [Int: String]) -> [String: Int] {
@@ -219,53 +297,6 @@ final class Arrangement {
 			}
 			
 			self.stretched = nil
-		}
-	}
-	
-	func autoscroll() -> CGFloat? {
-		guard lifted != nil, !isSettling, let geometry else { return nil }
-		let edge: CGFloat = 72
-		let top = geometry.visibleRect.minY + geometry.contentInsets.top + edge
-		let bottom = geometry.visibleRect.maxY - geometry.contentInsets.bottom - edge
-		var step: CGFloat = 0
-		
-		if finger.y < top {
-			step = -min(edge, top - finger.y) / 6
-		} else if finger.y > bottom {
-			step = min(edge, finger.y - bottom) / 6
-		}
-		
-		let lowest = -geometry.contentInsets.top
-		let highest = max(lowest, geometry.contentSize.height - geometry.containerSize.height - geometry.contentInsets.top)
-		let offset = min(max(geometry.contentOffset.y + step, lowest), highest)
-		let moved = offset - geometry.contentOffset.y
-		guard abs(moved) >= 0.5 else { return nil }
-		self.geometry?.contentOffset.y = offset
-		drag(to: CGPoint(x: finger.x, y: finger.y + moved))
-		return offset + geometry.contentInsets.top
-	}
-	
-	func drop(among looks: [Look]) {
-		guard let lifted, let frame = frames[lifted] else {
-			self.lifted = nil
-			return
-		}
-		
-		if spots != resting {
-			for look in looks {
-				guard let spot = spots[look.identifier], Double(spot) != look.sortIndex else { continue }
-				look.sortIndex = Double(spot)
-			}
-		}
-		
-		isSettling = true
-		
-		withAnimation(.snappy(duration: 0.3)) {
-			finger = CGPoint(x: frame.minX + grab.width, y: frame.minY + grab.height)
-		} completion: {
-			guard self.isSettling else { return }
-			self.lifted = nil
-			self.isSettling = false
 		}
 	}
 }

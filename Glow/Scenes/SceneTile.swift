@@ -31,12 +31,19 @@ struct SceneTile: View {
 					.onTapGesture {
 						customizing = look
 					}
-					.gesture(HoldDrag { point in
-						arrangement.lift(look.identifier, at: point, among: looks)
-						arrangement.drag(to: point)
-					} ended: {
-						arrangement.drop(among: looks)
-					})
+					.onDrag {
+						arrangement.pick(look.identifier)
+					} preview: {
+						SceneFace(look: look, list: list)
+							.overlay {
+								TileControls(look: look, list: list, isEditing: true)
+							}
+							.frame(width: size.width, height: size.height)
+							.background(.background, in: .rect(cornerRadius: 24, style: .continuous))
+							.environment(console)
+					}
+					.contentShape(.dragPreview, .rect(cornerRadius: 24, style: .continuous))
+					.modifier(DragStart(arrangement: arrangement, looks: looks))
 					.accessibilityAddTraits(.isButton)
 					.accessibilityHint("Customizes it.")
 					.overlay(alignment: .bottomTrailing) {
@@ -61,16 +68,17 @@ struct SceneTile: View {
 							isDeleting = true
 						}
 						.labelStyle(.iconOnly)
-						.font(.subheadline.weight(.bold))
+						.font(.system(size: 13, weight: .heavy))
 						.foregroundStyle(.primary)
-						.frame(width: 28, height: 28)
+						.frame(width: 26, height: 26)
 						.glassEffect(.regular.interactive(), in: .circle)
 						.frame(width: 44, height: 44)
 						.contentShape(.circle)
-						.offset(x: -14, y: -14)
+						.offset(x: -16, y: -16)
 						.buttonStyle(.plain)
 						.transition(.scale.combined(with: .opacity))
 					}
+					.modifier(Wiggle(size: arrangement.size(of: look), phase: Double(abs(look.identifier.hashValue % 100)) / 100, isStill: arrangement.stretched?.scene == look.identifier))
 			} else {
 				Button {
 					if look.tap == .open {
@@ -122,13 +130,52 @@ struct SceneTile: View {
 private struct StretchHandle: View {
 	var body: some View {
 		Path { path in
-			path.move(to: CGPoint(x: 37, y: 14))
-			path.addArc(tangent1End: CGPoint(x: 37, y: 37), tangent2End: CGPoint(x: 14, y: 37), radius: 17)
-			path.addLine(to: CGPoint(x: 14, y: 37))
+			path.move(to: CGPoint(x: 41.5, y: 10))
+			path.addArc(center: CGPoint(x: 20, y: 20), radius: 21.5, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+			path.addLine(to: CGPoint(x: 10, y: 41.5))
 		}
-		.stroke(.secondary, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+		.stroke(.white, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+		.shadow(color: .black.opacity(0.35), radius: 1.5)
 		.frame(width: 44, height: 44)
 		.contentShape(.rect)
+	}
+}
+
+private struct DragStart: ViewModifier {
+	let arrangement: Arrangement
+	let looks: [Look]
+	
+	func body(content: Content) -> some View {
+		if #available(iOS 27, *) {
+			content
+				.onDragSessionUpdated { session in
+					switch session.phase {
+					case .initial: arrangement.hold(at: session.location, among: looks)
+					case .active: arrangement.follow(session.location)
+					case let .ended(operation): arrangement.end(dropped: operation == .move, among: looks)
+					default: break
+					}
+				}
+		} else {
+			content
+		}
+	}
+}
+
+private struct Wiggle: ViewModifier {
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+	
+	let size: TileSize
+	let phase: Double
+	let isStill: Bool
+	
+	func body(content: Content) -> some View {
+		let isPaused = reduceMotion || isStill
+		
+		TimelineView(.animation(paused: isPaused)) { context in
+			content
+				.rotationEffect(.degrees(isPaused ? 0 : sin((context.date.timeIntervalSinceReferenceDate + phase) * 17) * (size == .small ? 0.5 : 0.2)))
+		}
 	}
 }
 
@@ -221,25 +268,6 @@ private struct SceneActions: View {
 			Button("Delete Scene", systemImage: "trash", role: .destructive) {
 				isDeleting = true
 			}
-		}
-	}
-}
-
-private struct HoldDrag: UIGestureRecognizerRepresentable {
-	let moved: (CGPoint) -> Void
-	let ended: () -> Void
-	
-	func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
-		let recognizer = UILongPressGestureRecognizer()
-		recognizer.minimumPressDuration = 0.3
-		return recognizer
-	}
-	
-	func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
-		switch recognizer.state {
-		case .began, .changed: moved(context.converter.location(in: .named("tiles")))
-		case .ended, .cancelled, .failed: ended()
-		default: break
 		}
 	}
 }
