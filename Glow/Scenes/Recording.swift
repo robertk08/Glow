@@ -234,7 +234,7 @@ final class Recording: Identifiable {
 		try? context.save()
 		release(levels)
 		
-		guard let landing else { return }
+		guard let landing, console.playback.cue(of: landing.look.identifier) != nil else { return }
 		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
 		guard let index = list.index(of: landing.cue) else { return }
 		console.land(list, at: index)
@@ -244,6 +244,19 @@ final class Recording: Identifiable {
 		guard case let .into(cue) = destination, let look = looks.first(where: { $0.identifier == cue.lookID }) else { return }
 		let list = CueList(look, cues: cues, fixtures: fixtures)
 		guard let index = list.index(of: cue.identifier) else { return }
+		
+		guard console.playback.cue(of: look.identifier) != nil else {
+			for fixture in fixtures {
+				for (slot, value) in tracked.lights[fixture.identifier] ?? [:] {
+					guard let address = fixture.start.offset(by: slot - 1) else { continue }
+					console.set(value, at: address)
+				}
+			}
+			
+			release(tracked)
+			return
+		}
+		
 		release(tracked)
 		console.play(list, at: index, snapping: true)
 	}

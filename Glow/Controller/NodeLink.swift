@@ -282,6 +282,10 @@ actor NodeLink {
 		seq += 1
 		pings[seq] = Date()
 		pings = pings.filter { Date().timeIntervalSince($0.value) < 10 }
-		await send(Wire.Command.ping(seq: seq).message)
+		let message = Wire.Command.ping(seq: seq).message
+		
+		Task {
+			await send(message)
+		}
 	}
 }

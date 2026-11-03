@@ -105,29 +105,39 @@ private struct CueWindow: View {
 	let lines: Int
 	
 	var body: some View {
-		VStack(alignment: .leading, spacing: 6) {
-			ForEach(Array(list.window(live: index, upcoming: upcoming).prefix(lines).enumerated()), id: \.offset) { slot, position in
-				HStack(spacing: 6) {
-					if position == upcoming {
-						Image(systemName: SceneAction.next.symbol)
-							.font(.caption)
-							.transition(.scale.combined(with: .opacity))
-					}
-					
-					if position == index {
-						CueStatus(fade: fade, follow: list.cues[position].follow) {
+		ZStack(alignment: .topLeading) {
+			VStack(alignment: .leading, spacing: 6) {
+				ForEach(0..<min(lines, list.cues.count), id: \.self) { slot in
+					Text(" ")
+						.font(slot == 0 ? .title3.weight(.semibold) : .subheadline)
+				}
+			}
+			.hidden()
+			
+			VStack(alignment: .leading, spacing: 6) {
+				ForEach(Array(list.window(live: index, upcoming: upcoming).prefix(lines).enumerated()), id: \.offset) { slot, position in
+					HStack(spacing: 6) {
+						if position == upcoming {
+							Image(systemName: SceneAction.next.symbol)
+								.font(.caption)
+								.transition(.scale.combined(with: .opacity))
+						}
+						
+						if position == index {
+							CueStatus(fade: fade, follow: list.cues[position].follow) {
+								Text(list.heading(at: position))
+									.contentTransition(.numericText())
+							}
+						} else {
 							Text(list.heading(at: position))
 								.contentTransition(.numericText())
 						}
-					} else {
-						Text(list.heading(at: position))
-							.contentTransition(.numericText())
 					}
+					.font(slot == 0 && index != nil ? .title3.weight(.semibold) : .subheadline)
+					.foregroundStyle(slot == 0 ? AnyShapeStyle(.primary) : slot == 1 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
+					.lineLimit(1)
+					.transition(.opacity)
 				}
-				.font(slot == 0 && index != nil ? .title3.weight(.semibold) : .subheadline)
-				.foregroundStyle(slot == 0 ? AnyShapeStyle(.primary) : slot == 1 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
-				.lineLimit(1)
-				.transition(.opacity)
 			}
 		}
 		.padding(.top, 8)

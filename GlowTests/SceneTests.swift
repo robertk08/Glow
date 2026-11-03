@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import SwiftData
+import SwiftUI
 import Testing
 
 @testable import Glow
@@ -557,6 +558,23 @@ struct SceneTests {
 		
 		#expect(second.levels.lights[rig.fixtures[0].identifier]?[1] == 128)
 		#expect(!rig.recording(.into(second)).isReady)
+	}
+	
+	@Test func aLargeTileKeepsItsHeightWhenItsSceneRuns() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 10)])
+		rig.add(2, [(0, 1, 20)])
+		rig.add(3, [(0, 1, 30)])
+		rig.look.size = .large
+		let face = UIHostingController(rootView: SceneFace(look: rig.look, list: rig.list).environment(rig.console))
+		let room = CGSize(width: 350, height: CGFloat.greatestFiniteMagnitude)
+		let off = face.sizeThatFits(in: room).height
+		
+		for position in 0..<3 {
+			rig.console.play(rig.list, at: position, snapping: true)
+			
+			#expect(UIHostingController(rootView: SceneFace(look: rig.look, list: rig.list).environment(rig.console)).sizeThatFits(in: room).height == off)
+		}
 	}
 	
 	@Test func showingACueMakesTheStageThatCueAndLeavesOtherTouchesAlone() throws {
@@ -1150,7 +1168,7 @@ struct SceneTests {
 		rig.recording(.cue(fresh, after: nil)).store(context: rig.context)
 		
 		#expect(rig.console.hasChanged(fresh, among: rig.cues))
-		#expect(rig.console.playback.cue(of: fresh.identifier) != nil)
+		#expect(rig.console.playback.cue(of: fresh.identifier) == nil)
 		
 		rig.console.discard(fresh, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
 		try? rig.context.save()

@@ -81,12 +81,14 @@ final class Console {
 	private var running: Task<Void, Never>?
 	private var sent = 0
 	private var acked = 0
+	private var commanded = ContinuousClock.now
 	private(set) var flashing: Set<String> = []
 	private var continued: [String: String] = [:]
 	
 	private static let endpointKey = "node.endpoint"
 	private static let addressKey = "node.address"
 	private static let ownClient = 0
+	private static let ackPatience = Duration.seconds(1)
 	
 	init() {
 		(bell, ringer) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -559,7 +561,7 @@ final class Console {
 	}
 	
 	func land(_ list: CueList, at index: Int) {
-		guard list.cues.indices.contains(index), command(.land, scene: list.scene, body: list.program(from: index, snapping: true)) else { return }
+		guard list.cues.indices.contains(index), command(.land, scene: list.scene, body: list.program(from: index, snapping: list.cues[index].follow == nil)) else { return }
 		flashing.remove(list.scene)
 		playback.play(list.cues[index].identifier, of: list.scene, fade: Fade(start: .now, end: .now, follows: false))
 	}
@@ -652,7 +654,7 @@ final class Console {
 		}
 		
 		let landing = list.cues[..<index].last { !gone.contains($0.identifier) } ?? first
-		play(trimmed, at: trimmed.index(of: landing.identifier) ?? 0, snapping: true)
+		play(trimmed, at: trimmed.index(of: landing.identifier) ?? 0, snapping: landing.follow == nil)
 	}
 	
 	func remove(_ look: Look, with cues: [Cue], context: ModelContext) {
@@ -727,7 +729,7 @@ final class Console {
 		let list = CueList(look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
 		
 		if let index = list.index(of: kept.playing) {
-			play(list, at: index, snapping: true)
+			play(list, at: index, snapping: list.cues[index].follow == nil)
 		} else {
 			stop(look.identifier, fade: 0)
 		}
@@ -745,6 +747,7 @@ final class Console {
 	@discardableResult private func command(_ action: Wire.Action, scene: String, body: Data) -> Bool {
 		guard isMuted || link.isConnected else { return false }
 		sent = (sent + 1) & 0xFFFF
+		commanded = .now
 		if action == .play || action == .stop { commands += 1 }
 		let message = Wire.command(action, seq: sent, scene: scene, body: body)
 		flush()
@@ -764,9 +767,10 @@ final class Console {
 	private func take(_ state: [UInt8]) {
 		guard state.count >= 4 else { return }
 		if Int(state[1]) == (isMuted ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
+		if ContinuousClock.now - commanded > Self.ackPatience { acked = sent }
 		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
 		if fresh.playing != playback.playing || fresh.fades.keys != playback.fades.keys { playback = fresh }
-		continued = continued.filter { scene, cue in fresh.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants } }
+		continued = continued.filter { scene, cue in fresh.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants && $0.caller != 0xFF } }
 		resume()
 	}
 	
