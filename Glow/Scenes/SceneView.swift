@@ -102,7 +102,7 @@ struct SceneView: View {
 							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
 							
 							if held.count > 1 {
-								LoopRow(look: look, list: list, tint: tint)
+								LoopRow(look: look, tint: tint)
 							}
 							
 							Button {
@@ -282,30 +282,21 @@ private struct CueRow: View {
 private struct LoopRow: View {
 	@Bindable var look: Look
 	
-	let list: CueList
 	let tint: Color
 	
 	var body: some View {
-		Button {
-			look.loops.toggle()
-		} label: {
+		Toggle(isOn: $look.loops) {
 			HStack(spacing: 12) {
 				Image(systemName: "repeat")
 					.font(.body.weight(.semibold))
+					.foregroundStyle(tint)
 					.frame(minWidth: 28, alignment: .trailing)
 				
-				Text(list.heading(at: 0))
-					.strikethrough(!look.loops)
-				
-				Spacer(minLength: 0)
+				Text("Repeat")
+					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 			}
-			.foregroundStyle(look.loops ? AnyShapeStyle(tint) : AnyShapeStyle(.tertiary))
-			.contentShape(.rect)
 		}
-		.buttonStyle(.plain)
-		.accessibilityLabel("Loop")
-		.accessibilityAddTraits(look.loops ? .isSelected : [])
-		.animation(.snappy(duration: 0.25), value: look.loops)
+		.tint(tint)
 		.sensoryFeedback(.selection, trigger: look.loops)
 	}
 }
