@@ -31,11 +31,17 @@ nonisolated struct Board: Equatable {
 		return cell / columns * columns + min(cell % columns, columns - min(size.columns, columns))
 	}
 	
-	func origin(of id: String, centeredAt point: CGPoint, cell: CGSize, spacing: CGFloat) -> Int? {
-		guard let size = sizes[id] else { return nil }
+	func frame(of id: String, cell: CGSize, spacing: CGFloat) -> CGSize {
+		let size = sizes[id] ?? .small
 		let across = CGFloat(min(size.columns, columns))
-		let column = Int(((point.x - (across * cell.width + (across - 1) * spacing) / 2) / (cell.width + spacing)).rounded())
-		let row = Int(((point.y - (CGFloat(size.rows) * cell.height + CGFloat(size.rows - 1) * spacing) / 2) / (cell.height + spacing)).rounded())
+		return CGSize(width: across * cell.width + (across - 1) * spacing, height: CGFloat(size.rows) * cell.height + CGFloat(size.rows - 1) * spacing)
+	}
+	
+	func origin(of id: String, at point: CGPoint, cell: CGSize, spacing: CGFloat) -> Int? {
+		guard let size = sizes[id] else { return nil }
+		let frame = frame(of: id, cell: cell, spacing: spacing)
+		let column = Int(((point.x - frame.width / 2) / (cell.width + spacing)).rounded())
+		let row = Int(((point.y - frame.height / 2) / (cell.height + spacing)).rounded())
 		return fitted(size, at: max(row, 0) * columns + min(max(column, 0), columns - 1))
 	}
 	

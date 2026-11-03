@@ -7,11 +7,10 @@ struct ArrangeView: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@ScaledMetric(relativeTo: .headline) private var height = 64
+	@ScaledMetric(relativeTo: .headline) private var height = 76
 	
 	let columns: Int
 	
-	@State private var selected: String?
 	@State private var dragged: String?
 	@State private var landing: Int?
 	@State private var width: CGFloat = 0
@@ -20,73 +19,80 @@ struct ArrangeView: View {
 	
 	var body: some View {
 		let board = Board(columns: columns, looks: looks)
-		let spacing: CGFloat = 10
+		let spacing: CGFloat = 12
 		let cell = CGSize(width: max((width - spacing * CGFloat(columns - 1)) / CGFloat(columns), 0), height: height)
-		let chosen = looks.first { $0.identifier == selected }
 		let rows = board.rows + 1
 		
 		NavigationStack {
 			ScrollView {
 				ZStack(alignment: .topLeading) {
 					ForEach(0..<rows * columns, id: \.self) { spot in
-						RoundedRectangle(cornerRadius: 16, style: .continuous)
-							.strokeBorder(.quaternary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 5]))
+						RoundedRectangle(cornerRadius: 18, style: .continuous)
+							.fill(.fill.quaternary)
 							.frame(width: cell.width, height: cell.height)
-							.contentShape(.rect)
-							.onTapGesture {
-								guard let selected else { return }
-								var moved = board
-								moved.place(selected, at: spot)
-								moved.write(to: looks)
-							}
 							.offset(x: CGFloat(spot % columns) * (cell.width + spacing), y: CGFloat(spot / columns) * (cell.height + spacing))
-							.accessibilityLabel("Empty Spot")
-							.accessibilityAddTraits(.isButton)
+							.accessibilityHidden(true)
 					}
 					
-					if let dragged, let landing, let size = board.sizes[dragged] {
-						let across = CGFloat(min(size.columns, columns))
+					if let dragged, let landing {
+						let frame = board.frame(of: dragged, cell: cell, spacing: spacing)
 						let tint = looks.first { $0.identifier == dragged }?.tint.color ?? .accentColor
 						
-						RoundedRectangle(cornerRadius: 16, style: .continuous)
-							.fill(tint.opacity(0.15))
-							.strokeBorder(tint, style: StrokeStyle(lineWidth: 2, dash: [5, 5]))
-							.frame(width: across * cell.width + (across - 1) * spacing, height: CGFloat(size.rows) * cell.height + CGFloat(size.rows - 1) * spacing)
+						RoundedRectangle(cornerRadius: 18, style: .continuous)
+							.fill(tint.opacity(0.3))
+							.frame(width: frame.width, height: frame.height)
 							.offset(x: CGFloat(landing % columns) * (cell.width + spacing), y: CGFloat(landing / columns) * (cell.height + spacing))
 							.allowsHitTesting(false)
+							.transition(.opacity)
 					}
 					
 					ForEach(looks) { look in
-						let size = board.sizes[look.identifier] ?? look.size
 						let origin = board.origins[look.identifier] ?? 0
-						let across = CGFloat(min(size.columns, columns))
-						let frame = CGSize(width: across * cell.width + (across - 1) * spacing, height: CGFloat(size.rows) * cell.height + CGFloat(size.rows - 1) * spacing)
+						let frame = board.frame(of: look.identifier, cell: cell, spacing: spacing)
 						
-						Block(look: look, isSelected: look.identifier == selected)
+						Block(look: look)
 							.frame(width: frame.width, height: frame.height)
-							.contentShape(.rect(cornerRadius: 16, style: .continuous))
+							.contentShape(.rect(cornerRadius: 18, style: .continuous))
+							.contentShape(.dragPreview, .rect(cornerRadius: 18, style: .continuous))
+							.contentShape(.contextMenuPreview, .rect(cornerRadius: 18, style: .continuous))
 							.onTapGesture {
-								selected = selected == look.identifier ? nil : look.identifier
+								customizing = look
 							}
-							.draggable(look.identifier) {
-								Block(look: look, isSelected: true)
-									.frame(width: frame.width, height: frame.height)
+							.contextMenu {
+								Picker("Size", selection: Binding { board.sizes[look.identifier] ?? look.size } set: { size in
+									var resized = board
+									resized.resize(look.identifier, to: size)
+									resized.write(to: looks)
+								}) {
+									ForEach(TileSize.allCases) { size in
+										Text(size.name)
+											.tag(size)
+									}
+								}
+								
+								Button("Customize", systemImage: "slider.horizontal.3") {
+									customizing = look
+								}
+								
+								Button("Delete Scene", systemImage: "trash", role: .destructive) {
+									deleting = look
+								}
 							}
+							.draggable(look.identifier)
 							.modifier(DragTracking(scene: look.identifier, dragged: $dragged, landing: $landing))
+							.opacity(look.identifier == dragged ? 0 : 1)
 							.offset(x: CGFloat(origin % columns) * (cell.width + spacing), y: CGFloat(origin / columns) * (cell.height + spacing))
-							.opacity(look.identifier == dragged ? 0.4 : 1)
 							.accessibilityLabel(look.name)
-							.accessibilityValue(size.name)
-							.accessibilityAddTraits(look.identifier == selected ? [.isButton, .isSelected] : .isButton)
+							.accessibilityValue(board.sizes[look.identifier]?.name ?? "")
+							.accessibilityHint("Customizes it.")
 					}
 				}
-				.frame(width: width, height: CGFloat(rows) * (cell.height + spacing) - spacing, alignment: .topLeading)
+				.frame(width: width, height: max(CGFloat(rows) * (cell.height + spacing) - spacing, 0), alignment: .topLeading)
 				.dropDestination(for: String.self) { items, session in
-					guard let scene = items.first, let origin = board.origin(of: scene, centeredAt: session.location, cell: cell, spacing: spacing) else { return }
+					guard let scene = items.first, let origin = board.origin(of: scene, at: session.location, cell: cell, spacing: spacing) else { return }
 					var moved = board
 					moved.place(scene, at: origin)
 					moved.write(to: looks)
-					selected = scene
 					dragged = nil
 					landing = nil
 				}
@@ -97,44 +103,7 @@ struct ArrangeView: View {
 				.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
 				.padding()
 			}
-			.safeAreaBar(edge: .bottom) {
-				if let chosen {
-					VStack(spacing: 12) {
-						Picker("Size", selection: Binding { board.sizes[chosen.identifier] ?? chosen.size } set: { size in
-							var resized = board
-							resized.resize(chosen.identifier, to: size)
-							resized.write(to: looks)
-						}) {
-							ForEach(TileSize.allCases) { size in
-								Text(size.name)
-									.tag(size)
-							}
-						}
-						.pickerStyle(.segmented)
-						
-						HStack {
-							Button("Customize", systemImage: "slider.horizontal.3") {
-								customizing = chosen
-							}
-							
-							Spacer(minLength: 0)
-							
-							Button("Delete", systemImage: "trash", role: .destructive) {
-								deleting = chosen
-							}
-							.foregroundStyle(.red)
-						}
-						.font(.body.weight(.medium))
-						.buttonStyle(.plain)
-					}
-					.padding()
-					.glassEffect(.regular, in: .rect(cornerRadius: 28, style: .continuous))
-					.padding(.horizontal)
-					.padding(.bottom, 8)
-					.transition(.move(edge: .bottom).combined(with: .opacity))
-				}
-			}
-			.animation(.snappy(duration: 0.25), value: selected)
+			.background(Color(.systemGroupedBackground))
 			.navigationTitle("Edit Scenes")
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
@@ -146,14 +115,12 @@ struct ArrangeView: View {
 			}
 			.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, titleVisibility: .visible, presenting: deleting) { look in
 				Button("Delete Scene", role: .destructive) {
-					selected = nil
 					console.remove(look, with: cues, context: context)
 				}
 			}
 			.sheet(item: $customizing) { look in
 				SceneSettings(look: look)
 			}
-			.sensoryFeedback(.selection, trigger: selected)
 			.sensoryFeedback(.impact(weight: .light), trigger: board)
 		}
 	}
@@ -161,32 +128,27 @@ struct ArrangeView: View {
 
 private struct Block: View {
 	let look: Look
-	let isSelected: Bool
 	
 	var body: some View {
 		let tint = look.tint.color ?? .accentColor
 		
-		HStack(alignment: .top, spacing: 10) {
+		VStack(alignment: .leading, spacing: 4) {
 			Image(systemName: look.symbol)
-				.font(.subheadline.weight(.semibold))
+				.font(.body.weight(.semibold))
 				.foregroundStyle(tint)
-				.frame(width: 30, height: 30)
-				.background(tint.opacity(0.18), in: .circle)
+				.frame(width: 32, height: 32)
+				.background(tint.opacity(0.16), in: .circle)
+			
+			Spacer(minLength: 0)
 			
 			Text(look.name)
 				.font(.subheadline.weight(.semibold))
+				.foregroundStyle(.primary)
 				.lineLimit(2)
-				.padding(.top, 5)
-			
-			Spacer(minLength: 0)
 		}
-		.padding(10)
+		.padding(12)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-		.background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
-		.overlay {
-			RoundedRectangle(cornerRadius: 16, style: .continuous)
-				.strokeBorder(isSelected ? tint : .clear, lineWidth: 2.5)
-		}
+		.background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18, style: .continuous))
 	}
 }
 
@@ -231,7 +193,7 @@ private struct DropTracking: ViewModifier {
 				}
 				.onDropSessionUpdated { session in
 					switch session.phase {
-					case .entering, .active: landing = dragged.flatMap { board.origin(of: $0, centeredAt: session.location, cell: cell, spacing: spacing) }
+					case .entering, .active: landing = dragged.flatMap { board.origin(of: $0, at: session.location, cell: cell, spacing: spacing) }
 					default: landing = nil
 					}
 				}
