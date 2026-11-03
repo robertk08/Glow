@@ -26,19 +26,8 @@ nonisolated struct ShowFile: Codable, Sendable, Transferable {
 		.suggestedFileName { $0.name }
 	}
 	
-	private enum CodingKeys: String, CodingKey { case format, version, exportedAt, name, show }
-	
 	init(name: String, show: ShowContents) {
 		self.name = name
 		self.show = show
-	}
-	
-	init(from decoder: any Decoder) throws {
-		let container = try decoder.container(keyedBy: CodingKeys.self)
-		format = try container.decodeIfPresent(String.self, forKey: .format) ?? ""
-		version = try container.decodeIfPresent(String.self, forKey: .version) ?? ""
-		exportedAt = try container.decodeIfPresent(Date.self, forKey: .exportedAt) ?? .now
-		name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-		show = try container.decodeIfPresent(ShowContents.self, forKey: .show) ?? ShowContents()
 	}
 }

@@ -211,18 +211,8 @@ struct ShowSyncTests {
 		}
 	}
 	
-	@Test func aShowWithNoFoldersYetDecodesAsAnEmptyOne() throws {
-		let empty = try JSONDecoder().decode(ShowContents.self, from: Data("{}".utf8))
-		
-		#expect(empty.lights.isEmpty)
-		#expect(empty.groups.isEmpty)
-		#expect(empty.made.isEmpty)
-		#expect(empty.scenes.isEmpty)
-		#expect(empty.cues.isEmpty)
-	}
-	
 	@Test func aFolderTheAppDoesNotKnowYetIsIgnored() throws {
-		let text = #"{"lights":[],"effects":[{"anything":1}]}"#
+		let text = #"{"lights":[],"groups":[],"made":[],"scenes":[],"cues":[],"effects":[{"anything":1}]}"#
 		let decoded = try JSONDecoder().decode(ShowContents.self, from: Data(text.utf8))
 		
 		#expect(decoded.lights.isEmpty)
@@ -404,7 +394,7 @@ struct ShowSyncTests {
 	}
 	
 	@Test func aJoiningDeviceLearnsTheMasterAndBlackout() throws {
-		let reply = try #require(Wire.event(.string(#"{"t":"status","src":true,"master":0.5,"blackout":true}"#)))
+		let reply = try #require(Wire.event(.string(#"{"t":"status","fw":"2.14.2","src":true,"client":1,"ip":"192.168.1.2","master":0.5,"blackout":true,"id":"glow","password":false,"nonce":"","session":""}"#)))
 		
 		guard case let .status(info) = reply else {
 			Issue.record("expected a status")
@@ -445,8 +435,8 @@ struct ShowSyncTests {
 	
 	@Test func aShowFileKeepsTheNewestRecordOfEachObjectAndSkipsBrokenOnes() {
 		let records: [(folder: String, id: String, body: String?)] = [
-			("lights", "par", #"{"identifier":"par","typeID":"par","name":"Old","address":1}"#),
-			("lights", "par", #"{"identifier":"par","typeID":"par","name":"New","address":1}"#),
+			("lights", "par", #"{"identifier":"par","typeID":"par","name":"Old","address":1,"sortIndex":0}"#),
+			("lights", "par", #"{"identifier":"par","typeID":"par","name":"New","address":1,"sortIndex":0}"#),
 			("lights", "wash", #"{"name":"Broken"}"#),
 			("scenes", "look", #"{"identifier":"look","name":"Look"}"#),
 			("scenes", "look", nil),
@@ -465,14 +455,6 @@ struct ShowSyncTests {
 		#expect(show.lights.map(\.name) == ["New"])
 		#expect(show.scenes.isEmpty)
 		#expect(show.unreadable == ["lights/wash"])
-	}
-	
-	@Test func aSceneStoredBeforeCuesIsUnreadableSoItsShowErasesIt() {
-		let old = Data(#"{"identifier":"look","name":"Look","sortIndex":0,"levels":{"par":"AID/"}}"#.utf8)
-		let show = ShowContents(objects: [("scenes", "look", old), ("elsewhere", "thing", old)])
-		
-		#expect(show.scenes.isEmpty)
-		#expect(show.unreadable == ["scenes/look"])
 	}
 }
 

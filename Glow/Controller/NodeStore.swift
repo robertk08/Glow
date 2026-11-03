@@ -18,12 +18,12 @@ actor NodeStore {
 	}
 	
 	nonisolated struct Setup: Decodable, Sendable {
-		var id = ""
-		var ip = ""
-		var isProvisioned = false
-		var didRefuse = false
-		var isJoining = false
-		var ssid = ""
+		var id: String
+		var ip: String
+		var isProvisioned: Bool
+		var didRefuse: Bool
+		var isJoining: Bool
+		var ssid: String
 		
 		private enum CodingKeys: String, CodingKey { case id, ip, state, join, ssid }
 		
@@ -33,13 +33,13 @@ actor NodeStore {
 		
 		init(from decoder: any Decoder) throws {
 			let container = try decoder.container(keyedBy: CodingKeys.self)
-			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
-			ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+			id = try container.decode(String.self, forKey: .id)
+			ip = try container.decode(String.self, forKey: .ip)
 			isProvisioned = (try container.decode(String.self, forKey: .state)) == "provisioned"
-			let join = try container.decodeIfPresent(String.self, forKey: .join)
+			let join = try container.decode(String.self, forKey: .join)
 			didRefuse = join == "failed"
 			isJoining = join == "trying"
-			ssid = try container.decodeIfPresent(String.self, forKey: .ssid) ?? ""
+			ssid = try container.decode(String.self, forKey: .ssid)
 		}
 	}
 	

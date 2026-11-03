@@ -32,7 +32,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 			typeID = try container.decode(String.self, forKey: .typeID)
 			name = try container.decode(String.self, forKey: .name)
 			address = try container.decode(Int.self, forKey: .address)
-			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
+			sortIndex = try container.decode(Double.self, forKey: .sortIndex)
 			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
 			groups = try container.decodeIfPresent([String].self, forKey: .groups) ?? []
 			invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan) ?? false
@@ -60,23 +60,12 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var symbol: String?
 		var tint: String?
 		
-		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint }
-		
 		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil) {
 			self.identifier = identifier
 			self.name = name
 			self.sortIndex = sortIndex
 			self.symbol = symbol
 			self.tint = tint
-		}
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			identifier = try container.decode(String.self, forKey: .identifier)
-			name = try container.decode(String.self, forKey: .name)
-			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
-			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
-			tint = try container.decodeIfPresent(String.self, forKey: .tint)
 		}
 	}
 	
@@ -88,12 +77,10 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var tint: String?
 		var tap = SceneAction.toggle
 		var buttons: [SceneAction] = []
-		var size: TileSize?
+		var size = TileSize.small
 		var loops = false
 		
-		private enum CodingKeys: String, CodingKey { case identifier, name, sortIndex, symbol, tint, tap, buttons, size, loops }
-		
-		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil, tap: SceneAction = .toggle, buttons: [SceneAction] = [], size: TileSize? = nil, loops: Bool = false) {
+		init(identifier: String, name: String, sortIndex: Double, symbol: String? = nil, tint: String? = nil, tap: SceneAction = .toggle, buttons: [SceneAction] = [], size: TileSize = .small, loops: Bool = false) {
 			self.identifier = identifier
 			self.name = name
 			self.sortIndex = sortIndex
@@ -109,22 +96,8 @@ nonisolated struct ShowContents: Codable, Sendable {
 			var reader = ByteReader(body)
 			guard reader.byte() == 4, let tap = reader.byte().flatMap({ SceneAction(rawValue: Int($0)) }), let count = reader.byte(), let buttons = reader.bytes(Int(count)) else { return nil }
 			guard let sortIndex = reader.order(), let name = reader.text(), let symbol = reader.text(), let tint = reader.text() else { return nil }
-			let size = reader.byte().flatMap { TileSize(rawValue: Int($0)) }
-			let loops = reader.byte() == 1
-			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) }, size: size, loops: loops)
-		}
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			identifier = try container.decode(String.self, forKey: .identifier)
-			name = try container.decode(String.self, forKey: .name)
-			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
-			symbol = try container.decodeIfPresent(String.self, forKey: .symbol)
-			tint = try container.decodeIfPresent(String.self, forKey: .tint)
-			tap = try container.decodeIfPresent(SceneAction.self, forKey: .tap) ?? .toggle
-			buttons = (try container.decodeIfPresent([Int].self, forKey: .buttons) ?? []).compactMap(SceneAction.init(rawValue:))
-			size = try container.decodeIfPresent(Int.self, forKey: .size).flatMap(TileSize.init(rawValue:))
-			loops = try container.decodeIfPresent(Bool.self, forKey: .loops) ?? false
+			guard let size = reader.byte().flatMap({ TileSize(rawValue: Int($0)) }), let loops = reader.byte() else { return nil }
+			self.init(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbol.isEmpty ? nil : symbol, tint: tint.isEmpty ? nil : tint, tap: tap, buttons: buttons.compactMap { SceneAction(rawValue: Int($0)) }, size: size, loops: loops == 1)
 		}
 		
 		var body: Data {
@@ -137,8 +110,8 @@ nonisolated struct ShowContents: Codable, Sendable {
 			writer.text(name)
 			writer.text(symbol ?? "")
 			writer.text(tint ?? "")
-			if size != nil || loops { writer.byte(UInt8(size?.rawValue ?? 0xFF)) }
-			if loops { writer.byte(1) }
+			writer.byte(UInt8(size.rawValue))
+			writer.byte(loops ? 1 : 0)
 			return writer.data
 		}
 	}
@@ -152,8 +125,6 @@ nonisolated struct ShowContents: Codable, Sendable {
 		var delay = 0.0
 		var follow: Double?
 		var levels = Data()
-		
-		private enum CodingKeys: String, CodingKey { case identifier, scene, sortIndex, label, fade, delay, follow, levels }
 		
 		init(identifier: String, scene: String, sortIndex: Double, label: String = "", fade: Double = 0, delay: Double = 0, follow: Double? = nil, levels: Data = Data()) {
 			self.identifier = identifier
@@ -182,18 +153,6 @@ nonisolated struct ShowContents: Codable, Sendable {
 			let levels = reader.rest
 			guard Levels.read(levels, { _, _, _ in }) else { return nil }
 			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 10, levels: levels)
-		}
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			identifier = try container.decode(String.self, forKey: .identifier)
-			scene = try container.decode(String.self, forKey: .scene)
-			sortIndex = try container.decodeIfPresent(Double.self, forKey: .sortIndex) ?? 0
-			label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
-			fade = try container.decodeIfPresent(Double.self, forKey: .fade) ?? 0
-			delay = try container.decodeIfPresent(Double.self, forKey: .delay) ?? 0
-			follow = try container.decodeIfPresent(Double.self, forKey: .follow)
-			levels = try container.decodeIfPresent(Data.self, forKey: .levels) ?? Data()
 		}
 		
 		var body: Data {
@@ -253,13 +212,4 @@ nonisolated struct ShowContents: Codable, Sendable {
 	}
 	
 	private var count: Int { lights.count + groups.count + made.count + scenes.count + cues.count }
-	
-	init(from decoder: any Decoder) throws {
-		let container = try decoder.container(keyedBy: CodingKeys.self)
-		lights = try container.decodeIfPresent([Light].self, forKey: .lights) ?? []
-		groups = try container.decodeIfPresent([Group].self, forKey: .groups) ?? []
-		made = try container.decodeIfPresent([FixtureType].self, forKey: .made) ?? []
-		scenes = try container.decodeIfPresent([Scene].self, forKey: .scenes) ?? []
-		cues = try container.decodeIfPresent([Cue].self, forKey: .cues) ?? []
-	}
 }

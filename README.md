@@ -78,8 +78,9 @@ bridge.
   not read again until the store takes it.
 - **Writing flash pauses DMX** (`Flash::guarded`), so the app writes only on
   change, never on a timer.
-- **Decoders are additive.** Every field decodes with a fallback, so a missing
-  field or folder reads as empty. An export is read only when its `format` and
+- **Decoders read what the app writes.** A field the writer leaves out because
+  it holds its default reads as that default, and anything else missing makes
+  the object unreadable. An export is read only when its `format` and
   `version` match `ShowFile` exactly. There is no migration. An object the app
   cannot read in a known folder is erased from the controller when its show
   opens.

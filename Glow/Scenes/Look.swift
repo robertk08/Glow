@@ -10,7 +10,7 @@ final class Look {
 	var tintName: String?
 	var tapValue: Int = 0
 	var buttonValues: [Int] = []
-	var sizeValue: Int?
+	var sizeValue = TileSize.small.rawValue
 	var loops = false
 	
 	init(name: String, sortIndex: Double) {
@@ -20,7 +20,7 @@ final class Look {
 	}
 	
 	var entry: ShowContents.Scene {
-		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons, size: sizeValue.flatMap(TileSize.init(rawValue:)), loops: loops)
+		ShowContents.Scene(identifier: identifier, name: name, sortIndex: sortIndex, symbol: symbolOverride, tint: tintName, tap: tap, buttons: buttons, size: size, loops: loops)
 	}
 	
 	func take(_ entry: ShowContents.Scene) {
@@ -31,7 +31,7 @@ final class Look {
 		tintName = entry.tint
 		tap = entry.tap
 		buttons = entry.buttons
-		sizeValue = entry.size?.rawValue
+		size = entry.size
 		loops = entry.loops
 	}
 	
@@ -54,7 +54,7 @@ final class Look {
 	}
 	
 	var size: TileSize {
-		get { sizeValue.flatMap(TileSize.init(rawValue:)) ?? (buttons.isEmpty ? .small : .wide) }
+		get { TileSize(rawValue: sizeValue) ?? .small }
 		set { sizeValue = newValue.rawValue }
 	}
 	
@@ -73,7 +73,6 @@ final class Look {
 	}
 	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
-		if sizeValue == nil { sizeValue = size.rawValue }
 		buttons = buttons.filter { $0 != button } + (isShown ? [button] : [])
 	}
 	

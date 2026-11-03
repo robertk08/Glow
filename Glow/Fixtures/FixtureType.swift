@@ -143,7 +143,7 @@ nonisolated struct FixtureType: Codable, Hashable, Sendable, Identifiable {
 		manufacturer = try container.decodeIfPresent(String.self, forKey: .manufacturer) ?? ""
 		model = try container.decode(String.self, forKey: .model)
 		mode = try container.decodeIfPresent(String.self, forKey: .mode) ?? ""
-		symbol = try container.decodeIfPresent(String.self, forKey: .symbol) ?? "lightbulb"
+		symbol = try container.decode(String.self, forKey: .symbol)
 		mixing = try container.decodeIfPresent(ColorMixing.self, forKey: .mixing) ?? .additive
 		invertsPan = try container.decodeIfPresent(Bool.self, forKey: .invertsPan) ?? false
 		invertsTilt = try container.decodeIfPresent(Bool.self, forKey: .invertsTilt) ?? false

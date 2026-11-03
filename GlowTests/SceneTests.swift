@@ -270,19 +270,6 @@ struct SceneTests {
 		#expect(rig.look.enables(.stop, live: 0, upcoming: nil, list: rig.list, isFlashing: false))
 	}
 	
-	@Test func removingTheLastButtonKeepsTheTileItsSize() throws {
-		let rig = try rig()
-		rig.look.buttonValues = [SceneAction.toggle.rawValue]
-		
-		#expect(rig.look.sizeValue == nil)
-		#expect(rig.look.size == .wide)
-		
-		rig.look.shows(.toggle, false)
-		
-		#expect(rig.look.buttons.isEmpty)
-		#expect(rig.look.size == .wide)
-	}
-	
 	@Test func aCueWithAFollowRunsTheNextOneByItselfAfterItsDelay() async throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 10)])

@@ -81,57 +81,37 @@ nonisolated enum Wire {
 	}
 	
 	nonisolated struct NodeInfo: Decodable, Sendable, Equatable {
-		var firmware = "unknown"
-		var hasSource = false
-		var client: Int?
-		var address = ""
-		var master = 1.0
-		var blackout = false
-		var id = ""
-		var hasPassword = false
-		var nonce = ""
-		var session = ""
+		var firmware: String
+		var hasSource: Bool
+		var client: Int
+		var address: String
+		var master: Double
+		var blackout: Bool
+		var id: String
+		var hasPassword: Bool
+		var nonce: String
+		var session: String
 		
 		var passwordAction: String {
 			hasPassword ? "Change Password" : "Set Password"
 		}
 		
-		private enum CodingKeys: String, CodingKey { case fw, src, client, ip, master, blackout, id, password, nonce, session }
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			firmware = try container.decodeIfPresent(String.self, forKey: .fw) ?? "unknown"
-			hasSource = try container.decodeIfPresent(Bool.self, forKey: .src) ?? false
-			client = try container.decodeIfPresent(Int.self, forKey: .client)
-			address = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
-			master = try container.decodeIfPresent(Double.self, forKey: .master) ?? 1
-			blackout = try container.decodeIfPresent(Bool.self, forKey: .blackout) ?? false
-			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
-			hasPassword = try container.decodeIfPresent(Bool.self, forKey: .password) ?? false
-			nonce = try container.decodeIfPresent(String.self, forKey: .nonce) ?? ""
-			session = try container.decodeIfPresent(String.self, forKey: .session) ?? ""
+		private enum CodingKeys: String, CodingKey {
+			case firmware = "fw", hasSource = "src", client, address = "ip", master, blackout, id, hasPassword = "password", nonce, session
 		}
 	}
 	
 	nonisolated struct Lock: Decodable, Sendable, Equatable {
-		var id = ""
-		var nonce = ""
-		var isWrong = false
-		var wait = 0
+		var id: String
+		var nonce: String
+		var isWrong: Bool
+		var wait: Int
 		
 		var message: String {
 			isWrong ? "That password is wrong." : "This controller has a password."
 		}
 		
-		private enum CodingKeys: String, CodingKey { case id, nonce, wrong, wait }
-		
-		init(from decoder: any Decoder) throws {
-			let container = try decoder.container(keyedBy: CodingKeys.self)
-			id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
-			nonce = try container.decodeIfPresent(String.self, forKey: .nonce) ?? ""
-			isWrong = try container.decodeIfPresent(Bool.self, forKey: .wrong) ?? false
-			wait = try container.decodeIfPresent(Int.self, forKey: .wait) ?? 0
-		}
+		private enum CodingKeys: String, CodingKey { case id, nonce, isWrong = "wrong", wait }
 	}
 	
 	nonisolated struct Place: Sendable, Equatable {

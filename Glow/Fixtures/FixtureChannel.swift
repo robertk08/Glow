@@ -64,7 +64,7 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		let container = try decoder.container(keyedBy: CodingKeys.self)
 		offset = try container.decode(Int.self, forKey: .offset)
 		fineOffset = try container.decodeIfPresent(Int.self, forKey: .fineOffset)
-		attribute = try container.decodeIfPresent(Attribute.self, forKey: .attribute) ?? .custom
+		attribute = try container.decode(Attribute.self, forKey: .attribute)
 		label = try container.decodeIfPresent(String.self, forKey: .label)
 		defaultValue = try container.decodeIfPresent(UInt8.self, forKey: .defaultValue) ?? 0
 		fineDefaultValue = try container.decodeIfPresent(UInt8.self, forKey: .fineDefaultValue) ?? 0

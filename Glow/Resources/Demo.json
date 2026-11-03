@@ -5,6 +5,7 @@
  "show": {
   "cues": [
    {
+    "delay": 0.0,
     "fade": 0.0,
     "identifier": "JmB4um3e_fo",
     "label": "",
@@ -13,6 +14,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "fHv4YCHNZoo",
     "label": "",
@@ -30,6 +32,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 3.0,
     "identifier": "Z83hQHZ5KkA",
     "label": "Preset",
@@ -38,6 +41,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "us9jyKFq27U",
     "label": "Places, stage dark",
@@ -55,6 +59,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 5.0,
     "identifier": "o8zRTk7Af4U",
     "label": "Morning",
@@ -63,6 +68,7 @@
     "sortIndex": 4.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "identifier": "tn2rMoB_9l8",
     "label": "Knock at the door",
@@ -71,6 +77,7 @@
     "sortIndex": 5.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "uB6FBPDMP2c",
     "label": "Door opens",
@@ -79,6 +86,7 @@
     "sortIndex": 6.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "aygNEaTU3Gc",
     "label": "Scene change",
@@ -87,6 +95,7 @@
     "sortIndex": 7.0
    },
    {
+    "delay": 0.0,
     "fade": 4.0,
     "identifier": "Ba1mCdJnM38",
     "label": "Market",
@@ -95,6 +104,7 @@
     "sortIndex": 8.0
    },
    {
+    "delay": 0.0,
     "fade": 6.0,
     "identifier": "kQul9AzCmfY",
     "label": "Storm gathers",
@@ -103,6 +113,7 @@
     "sortIndex": 9.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "follow": 0.1,
     "identifier": "wAkWmLUUiEA",
@@ -112,6 +123,7 @@
     "sortIndex": 10.0
    },
    {
+    "delay": 0.0,
     "fade": 0.3,
     "follow": 0.8,
     "identifier": "Rtzpif_zJFM",
@@ -121,6 +133,7 @@
     "sortIndex": 11.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "follow": 0.2,
     "identifier": "65XmQHeJNmg",
@@ -130,6 +143,7 @@
     "sortIndex": 12.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "wc_dMd4z6vU",
     "label": "Rain",
@@ -138,6 +152,7 @@
     "sortIndex": 13.0
    },
    {
+    "delay": 0.0,
     "fade": 10.0,
     "identifier": "bgb5_5WSoik",
     "label": "Storm passes",
@@ -146,6 +161,7 @@
     "sortIndex": 14.0
    },
    {
+    "delay": 0.0,
     "fade": 8.0,
     "identifier": "0AqOugbc8VA",
     "label": "Evening",
@@ -154,6 +170,7 @@
     "sortIndex": 15.0
    },
    {
+    "delay": 0.0,
     "fade": 4.0,
     "identifier": "f1HC1Qo1ZbA",
     "label": "Candlelight",
@@ -171,6 +188,7 @@
     "sortIndex": 17.0
    },
    {
+    "delay": 0.0,
     "fade": 6.0,
     "identifier": "nQGZmy1nhmk",
     "label": "Dusk",
@@ -179,6 +197,7 @@
     "sortIndex": 18.0
    },
    {
+    "delay": 0.0,
     "fade": 4.0,
     "identifier": "WWU3VYhviOQ",
     "label": "Moonlight",
@@ -187,6 +206,7 @@
     "sortIndex": 19.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "follow": 2.0,
     "identifier": "7JCxShOgCMg",
@@ -196,6 +216,7 @@
     "sortIndex": 20.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "follow": 2.0,
     "identifier": "rK6W1WAuvfk",
@@ -205,6 +226,7 @@
     "sortIndex": 21.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "identifier": "yia8eFJ8U1s",
     "label": "Dance, lift",
@@ -213,6 +235,7 @@
     "sortIndex": 22.0
    },
    {
+    "delay": 0.0,
     "fade": 5.0,
     "identifier": "EIhjWte6rnE",
     "label": "Final tableau",
@@ -221,6 +244,7 @@
     "sortIndex": 23.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "identifier": "4a3lTchcWl0",
     "label": "Blackout",
@@ -238,6 +262,7 @@
     "sortIndex": 25.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "C8OMKOXEVQg",
     "label": "Dark",
@@ -246,6 +271,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 3.0,
     "identifier": "7Ihx-z45RQU",
     "label": "Full stage",
@@ -254,6 +280,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 3.0,
     "identifier": "gXWjYgHBR0U",
     "label": "The reader alone in one light",
@@ -262,6 +289,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "identifier": "cdkInUdPfVs",
     "label": "",
@@ -270,6 +298,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 0.6,
     "follow": 0.2,
     "identifier": "3nTIcPpiNHA",
@@ -279,6 +308,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 0.6,
     "follow": 0.2,
     "identifier": "y6D3HoMN9PU",
@@ -288,6 +318,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 0.6,
     "follow": 0.2,
     "identifier": "Gb1oaot9img",
@@ -297,6 +328,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 0.6,
     "follow": 0.2,
     "identifier": "vnRQZDPesvQ",
@@ -306,6 +338,7 @@
     "sortIndex": 4.0
    },
    {
+    "delay": 0.0,
     "fade": 6.0,
     "identifier": "04pZHLNJAC4",
     "label": "Storm gathers",
@@ -314,6 +347,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "follow": 0.1,
     "identifier": "tI3PcMl3PkU",
@@ -323,6 +357,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 0.3,
     "follow": 0.8,
     "identifier": "ipP9C-Usr3Q",
@@ -332,6 +367,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "follow": 0.2,
     "identifier": "zLd41ihAimI",
@@ -341,6 +377,7 @@
     "sortIndex": 4.0
    },
    {
+    "delay": 0.0,
     "fade": 2.0,
     "identifier": "UhSg6__ILNQ",
     "label": "Rain",
@@ -367,6 +404,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 5.0,
     "identifier": "wPwwcDKWAos",
     "label": "Morning",
@@ -375,6 +413,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 3.0,
     "identifier": "5tixar_M3nY",
     "label": "Full stage",
@@ -383,6 +422,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "identifier": "ZM7XH4sGu7o",
     "label": "",
@@ -391,6 +431,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "follow": 2.0,
     "identifier": "v5Stk_4bzz0",
@@ -400,6 +441,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "follow": 2.0,
     "identifier": "3N2JkY3P2QU",
@@ -409,6 +451,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 1.0,
     "identifier": "E0qRAuhiy0Y",
     "label": "Dance, lift",
@@ -417,6 +460,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 5.0,
     "identifier": "qnZerqeGbvI",
     "label": "Final tableau",
@@ -425,6 +469,7 @@
     "sortIndex": 4.0
    },
    {
+    "delay": 0.0,
     "fade": 0.0,
     "identifier": "eA4c4sNQH7w",
     "label": "Blackout",
@@ -442,6 +487,7 @@
     "sortIndex": 6.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "3WY-ELc9S4U",
@@ -451,6 +497,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "bKja11UdYw0",
@@ -460,6 +507,7 @@
     "sortIndex": 2.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "co3q6mIqCDk",
@@ -469,6 +517,7 @@
     "sortIndex": 3.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "bdKf43u5_Q0",
@@ -478,6 +527,7 @@
     "sortIndex": 4.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "TrexNCzk4Us",
@@ -487,6 +537,7 @@
     "sortIndex": 5.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "kbndLXOAXpU",
@@ -496,6 +547,7 @@
     "sortIndex": 6.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "bdo8wAMCr3Q",
@@ -505,6 +557,7 @@
     "sortIndex": 7.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "XKy6UWR5HOw",
@@ -514,6 +567,7 @@
     "sortIndex": 8.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "59agKCyT388",
@@ -523,6 +577,7 @@
     "sortIndex": 9.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "9dc0p83avZs",
@@ -532,6 +587,7 @@
     "sortIndex": 10.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "fT0wRZ4EDlk",
@@ -541,6 +597,7 @@
     "sortIndex": 11.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "iS9Wb9PG4mw",
@@ -550,6 +607,7 @@
     "sortIndex": 12.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "9Lx8igBQY3w",
@@ -559,6 +617,7 @@
     "sortIndex": 13.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "3iD7Jf2XAyQ",
@@ -568,6 +627,7 @@
     "sortIndex": 14.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "P03zzKLvzAE",
@@ -577,6 +637,7 @@
     "sortIndex": 15.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "TivOu-C6k7Q",
@@ -586,6 +647,7 @@
     "sortIndex": 16.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "X-8G3QM3FVY",
@@ -595,6 +657,7 @@
     "sortIndex": 17.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "u-e7O-cmIkM",
@@ -604,6 +667,7 @@
     "sortIndex": 18.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "F0nNuuhyTIU",
@@ -613,6 +677,7 @@
     "sortIndex": 19.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "GrmBkR-Zo8M",
@@ -622,6 +687,7 @@
     "sortIndex": 20.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "8FDk95tImkw",
@@ -631,6 +697,7 @@
     "sortIndex": 21.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "JN4lOUdSJ_A",
@@ -640,6 +707,7 @@
     "sortIndex": 22.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "ctOS6ys3Cyw",
@@ -649,6 +717,7 @@
     "sortIndex": 23.0
    },
    {
+    "delay": 0.0,
     "fade": 0.4,
     "follow": 0.1,
     "identifier": "Vx26JkhSCfs",
@@ -658,6 +727,7 @@
     "sortIndex": 24.0
    },
    {
+    "delay": 0.0,
     "fade": 4.0,
     "identifier": "zs4jyizQ164",
     "label": "",
@@ -666,6 +736,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 1.5,
     "identifier": "cuglFS7XcHA",
     "label": "",
@@ -674,6 +745,7 @@
     "sortIndex": 1.0
    },
    {
+    "delay": 0.0,
     "fade": 3.0,
     "identifier": "O36WQL71iRc",
     "label": "",
@@ -791,23 +863,35 @@
   "made": [],
   "scenes": [
    {
+    "buttons": [],
     "identifier": "hpmpTkoYOxA",
+    "loops": false,
     "name": "Open White",
+    "size": 0,
     "sortIndex": 0,
-    "symbol": "lightbulb.max"
+    "symbol": "lightbulb.max",
+    "tap": 0
    },
    {
+    "buttons": [],
     "identifier": "MbNQqHphPXQ",
+    "loops": false,
     "name": "Deep Blue",
+    "size": 0,
     "sortIndex": 1,
     "symbol": "sparkles",
+    "tap": 0,
     "tint": "blue"
    },
    {
+    "buttons": [],
     "identifier": "Wn1rmrDwks8",
+    "loops": false,
     "name": "Warm Amber",
+    "size": 0,
     "sortIndex": 2,
     "symbol": "flame",
+    "tap": 0,
     "tint": "orange"
    },
    {
@@ -817,6 +901,7 @@
      0
     ],
     "identifier": "B_uxdiVUb30",
+    "loops": false,
     "name": "Act One",
     "size": 2,
     "sortIndex": 4,
@@ -831,6 +916,7 @@
      0
     ],
     "identifier": "w6dWp8l5N3w",
+    "loops": false,
     "name": "Reading",
     "size": 1,
     "sortIndex": 10,
@@ -839,8 +925,11 @@
     "tint": "teal"
    },
    {
+    "buttons": [],
     "identifier": "LFDuXPmz4N0",
+    "loops": false,
     "name": "Blinder",
+    "size": 0,
     "sortIndex": 3,
     "symbol": "bolt",
     "tap": 1,
@@ -866,6 +955,7 @@
      7
     ],
     "identifier": "IwUP1FZz7YU",
+    "loops": false,
     "name": "Storm",
     "size": 1,
     "sortIndex": 8,
@@ -874,16 +964,22 @@
     "tint": "indigo"
    },
    {
+    "buttons": [],
     "identifier": "Ql1k83s3-44",
+    "loops": false,
     "name": "Sunrise",
+    "size": 0,
     "sortIndex": 12,
     "symbol": "sunrise",
     "tap": 2,
     "tint": "orange"
    },
    {
+    "buttons": [],
     "identifier": "ZzjvnmNkTqc",
+    "loops": false,
     "name": "Pulse",
+    "size": 0,
     "sortIndex": 13,
     "symbol": "waveform",
     "tap": 1,
@@ -897,6 +993,7 @@
      1
     ],
     "identifier": "p_3EJAkVUSo",
+    "loops": false,
     "name": "Finale",
     "size": 2,
     "sortIndex": 16,
@@ -905,26 +1002,36 @@
     "tint": "purple"
    },
    {
+    "buttons": [],
     "identifier": "e_6BSEnnYas",
     "loops": true,
     "name": "Rainbow",
     "size": 0,
     "sortIndex": 20,
     "symbol": "rainbow",
+    "tap": 0,
     "tint": "green"
    },
    {
+    "buttons": [],
     "identifier": "3BRFGZ79qSY",
+    "loops": false,
     "name": "Interval",
+    "size": 0,
     "sortIndex": 21,
     "symbol": "cup.and.saucer",
+    "tap": 0,
     "tint": "teal"
    },
    {
+    "buttons": [],
     "identifier": "eYckVMk0tJM",
+    "loops": false,
     "name": "Spot",
+    "size": 0,
     "sortIndex": 24,
     "symbol": "circle.circle",
+    "tap": 0,
     "tint": "yellow"
    },
    {
@@ -933,10 +1040,12 @@
      1
     ],
     "identifier": "2lhlQfPm7JI",
+    "loops": false,
     "name": "House Lights",
     "size": 1,
     "sortIndex": 22,
     "symbol": "lightbulb.2",
+    "tap": 0,
     "tint": "orange"
    }
   ]
