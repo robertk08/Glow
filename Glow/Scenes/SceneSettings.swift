@@ -99,10 +99,8 @@ struct SceneSettings: View {
 					isDeleting = true
 				}
 				.foregroundStyle(.red)
-				.alert("Delete \(look.name)?", isPresented: $isDeleting) {
-					Button("Cancel", role: .cancel) {}
-					
-					Button("Delete", role: .destructive) {
+				.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
+					Button("Delete Scene", role: .destructive) {
 						console.remove(look, with: cues, context: context)
 						dismiss()
 					}
