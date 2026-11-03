@@ -15,7 +15,6 @@ struct SceneTile: View {
 	@Binding var customizing: Look?
 	
 	@State private var isDeleting = false
-	@State private var size = CGSize.zero
 	
 	var body: some View {
 		if !look.isGone {
@@ -40,26 +39,21 @@ struct SceneTile: View {
 			console.flash(list, isHeld: isHeld)
 		})
 		.accessibilityHint(look.tap.tapName)
-		.modifier(SceneMenu(isShown: look.tap != .flash) {
-			SceneActions(look: look, list: list, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
-		} preview: {
-			SceneFace(look: look, list: list)
-				.overlay {
-					TileControls(look: look, list: list)
-				}
-				.frame(width: size.width, height: size.height)
-				.environment(console)
-		})
 		.overlay {
 			TileControls(look: look, list: list)
 		}
+		.contentShape(.contextMenuPreview, .rect(cornerRadius: 24, style: .continuous))
+		.modifier(SceneMenu(isShown: look.tap != .flash) {
+			if !console.flashing.contains(list.scene) {
+				SceneActions(look: look, list: list, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
+			}
+		})
 		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
 			Button("Delete Scene", role: .destructive) {
 				console.remove(look, with: cues, context: context)
 			}
 		}
 		.onGeometryChange(for: CGRect.self) { $0.frame(in: .named("tiles")) } action: { frame in
-			size = frame.size
 			arrangement.frames[look.identifier] = frame
 		}
 		.layoutValue(key: TileSpan.self, value: look.size)
@@ -67,15 +61,13 @@ struct SceneTile: View {
 	}
 }
 
-private struct SceneMenu<Items: View, Preview: View>: ViewModifier {
+private struct SceneMenu<Items: View>: ViewModifier {
 	let isShown: Bool
 	@ViewBuilder let items: Items
-	@ViewBuilder let preview: Preview
 	
-	init(isShown: Bool, @ViewBuilder items: () -> Items, @ViewBuilder preview: () -> Preview) {
+	init(isShown: Bool, @ViewBuilder items: () -> Items) {
 		self.isShown = isShown
 		self.items = items()
-		self.preview = preview()
 	}
 	
 	func body(content: Content) -> some View {
@@ -83,8 +75,6 @@ private struct SceneMenu<Items: View, Preview: View>: ViewModifier {
 			content
 				.contextMenu {
 					items
-				} preview: {
-					preview
 				}
 		} else {
 			content

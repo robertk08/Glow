@@ -198,7 +198,9 @@ struct SceneView: View {
 			.sheet(isPresented: $isRetiming) {
 				CueTimingSheet(picked: picked)
 			}
-			.confirmationDialog(picked.count == 1 ? "Delete 1 Cue?" : "Delete \(picked.count) Cues?", isPresented: $isDeletingChosen, titleVisibility: .visible) {
+			.alert(picked.count == 1 ? "Delete 1 Cue?" : "Delete \(picked.count) Cues?", isPresented: $isDeletingChosen) {
+				Button("Cancel", role: .cancel) {}
+				
 				Button("Delete", role: .destructive) {
 					withAnimation {
 						console.delete(picked, from: list, context: context)

@@ -12,7 +12,7 @@ struct TileControls: View {
 			HStack {
 				Spacer(minLength: 0)
 				
-				if list.cues.count > 1, look.size == .small || !look.buttons.contains(.open) {
+				if list.cues.count > 1 {
 					Button("Show Cues", systemImage: "list.bullet") {
 						console.selection.scene = look.identifier
 						console.selection.isSceneOpen = sizeClass != .regular

@@ -168,8 +168,10 @@ private struct CueForm: View {
 					isDeleting = true
 				}
 				.foregroundStyle(.red)
-				.confirmationDialog("Delete Cue \(position + 1)?", isPresented: $isDeleting, titleVisibility: .visible) {
-					Button("Delete Cue", role: .destructive) {
+				.alert("Delete Cue \(position + 1)?", isPresented: $isDeleting) {
+					Button("Cancel", role: .cancel) {}
+					
+					Button("Delete", role: .destructive) {
 						if let look = looks.first(where: { $0.identifier == cue.lookID }) {
 							console.delete([cue], from: CueList(look, cues: cues, fixtures: fixtures), context: context)
 						}
