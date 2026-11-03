@@ -622,8 +622,7 @@ struct Programmer {
 	
 	func applyDefaults() {
 		for target in targets {
-			console.set(target.type.defaults, at: target.start)
-			console.release(target.span)
+			console.restore(target.type.defaults, at: target.start)
 		}
 	}
 	

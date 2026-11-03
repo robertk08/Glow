@@ -127,7 +127,9 @@ These are product decisions the code implements without explaining.
   its settings narrow it to, whatever is selected. Update shows whenever the
   stage differs from what the marked cue plays, on a light that cue holds or
   one touched since, and it writes just the aspects that differ and keeps the
-  cue's name and timing. Show, beside it, does the opposite: it puts the
+  cue's name and timing. A light put back with Reset Light or Reset to
+  Defaults counts as touched even when it was already at its defaults, so
+  Update stores it at its defaults and the cue holds it there when it runs. Show, beside it, does the opposite: it puts the
   marked cue on stage and drops the touches on the lights that cue holds. Both
   wait while a fade or a follow of that scene is running.
 - Opening the builder, marking a cue and closing it with the tick never

@@ -50,6 +50,7 @@ final class Console {
 	private(set) var isConfigured = false
 	
 	private(set) var active: [Int: UInt8] = [:]
+	private var defaulted: Set<Int> = []
 	private(set) var patched: Set<Int> = []
 	private(set) var span = Universe.minimumSlots
 	private(set) var resets = 0
@@ -321,21 +322,32 @@ final class Console {
 		universe.set(values, at: address)
 	}
 	
+	func restore(_ defaults: [UInt8], at start: DMXAddress) {
+		set(defaults, at: start)
+		
+		for slot in start.value..<(start.value + defaults.count) {
+			active[slot] = nil
+			defaulted.insert(slot)
+		}
+	}
+	
 	func isActive(_ address: DMXAddress) -> Bool {
 		active[address.value] != nil
 	}
 	
 	func isChanged(_ address: DMXAddress) -> Bool {
-		active[address.value].map { $0 != universe[address] } ?? false
+		defaulted.contains(address.value) || active[address.value].map { $0 != universe[address] } ?? false
 	}
 	
 	func release(_ span: ClosedRange<Int>, only offset: Int? = nil) {
 		guard let offset else {
 			active = active.filter { !span.contains($0.key) }
+			defaulted.subtract(span)
 			return
 		}
 		
 		active[span.lowerBound + offset - 1] = nil
+		defaulted.remove(span.lowerBound + offset - 1)
 	}
 	
 	var reachable: NodeEndpoint {
@@ -366,6 +378,7 @@ final class Console {
 		}
 		
 		active = [:]
+		defaulted = []
 		map = Data([Wire.mapOpcode])
 		patched = []
 		cover(Universe.minimumSlots)
@@ -414,7 +427,8 @@ final class Console {
 			fixture.invertsPan = mode.invertsPan
 			fixture.invertsTilt = mode.invertsTilt
 			context.insert(fixture)
-			Programmer(type: mode, start: start, console: self).applyDefaults()
+			universe.set(mode.defaults, at: start)
+			release(fixture.range(mode))
 			next += width
 			index += 1
 		}
@@ -826,6 +840,7 @@ final class Console {
 			if !hasAdoptedSource {
 				universe = Universe()
 				active = [:]
+				defaulted = []
 				
 				for fixture in fixtures {
 					guard let type = library.type(fixture.typeID) else { continue }
@@ -844,6 +859,7 @@ final class Console {
 			guard let slot = DMXAddress(address) else { continue }
 			universe.set([0], at: slot)
 			active[address] = nil
+			defaulted.remove(address)
 		}
 		
 		patched = covered

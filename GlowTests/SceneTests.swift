@@ -480,6 +480,35 @@ struct SceneTests {
 		#expect(!rig.recording(.into(cue)).isReady)
 	}
 	
+	@Test func updateStoresALightResetToItsDefaultsEvenWhenItWasAlreadyThere() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 200)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		
+		#expect(!rig.recording(.into(cue)).isReady)
+		
+		Programmer(fixture: rig.fixtures[1], library: rig.library, console: rig.console)?.applyDefaults()
+		
+		#expect(rig.recording(.into(cue)).isReady)
+		#expect(rig.recording(.into(cue)).levels.lights.keys.sorted() == [rig.fixtures[1].identifier])
+		
+		rig.recording(.into(cue)).store(context: rig.context)
+		
+		#expect(cue.levels.lights[rig.fixtures[1].identifier] == Dictionary(uniqueKeysWithValues: Self.wash.defaults.enumerated().map { ($0.offset + 1, $0.element) }))
+		#expect(cue.levels.lights[rig.fixtures[0].identifier] == [1: 200])
+		#expect(!rig.recording(.into(cue)).isReady)
+	}
+	
+	@Test func patchingALightLeavesUpdateAlone() throws {
+		let rig = try rig()
+		let cue = rig.add(1, [(0, 1, 200)])
+		rig.console.play(rig.list, at: 0, snapping: true)
+		rig.console.patch(Self.wash, count: 1, at: 40, named: "Extra", among: rig.fixtures, context: rig.context)
+		
+		#expect(!rig.console.isChanged(DMXAddress(44)!))
+		#expect(!rig.recording(.into(cue)).isReady)
+	}
+	
 	@Test func afterUpdatingOneCueTheNextCueCanStillBeUpdatedToWhatIsOnStage() throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 0), (1, 1, 0)])
