@@ -52,6 +52,12 @@ final class Arrangement {
 		return nil
 	}
 	
+	func frame(of size: TileSize, among looks: [Look]) -> CGSize? {
+		guard width > 0, let row = row(among: looks) else { return nil }
+		let across = min(size.columns, columns)
+		return CGSize(width: column * CGFloat(across) + spacing * CGFloat(across - 1), height: row * CGFloat(size.rows) + spacing * CGFloat(size.rows - 1))
+	}
+	
 	private func origins(among looks: [Look]) -> [String: Int] {
 		let arranged = arranged(looks)
 		let origins = TileLayout.origins(of: arranged.map { size(of: $0) }, at: arranged.map { slot(of: $0) }, columns: columns)
@@ -190,6 +196,16 @@ final class Arrangement {
 		}
 		
 		if previous != nil { moves += 1 }
+	}
+	
+	func resize(_ look: Look, to size: TileSize, among looks: [Look]) {
+		guard width > 0 else {
+			look.size = size
+			return
+		}
+		
+		stretch(look.identifier, to: size, among: looks)
+		settle(among: looks)
 	}
 	
 	func settle(among looks: [Look]) {

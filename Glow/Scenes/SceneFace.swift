@@ -7,7 +7,6 @@ struct SceneFace: View {
 	let look: Look
 	let list: CueList
 	
-	var showsButtons = false
 	var size: TileSize?
 	
 	var body: some View {
@@ -24,9 +23,12 @@ struct SceneFace: View {
 		let tint = look.tint.color ?? .accentColor
 		let fade = console.playback.fades[look.identifier]
 		let upcoming = console.upcoming(list)
+		let hasButtons = size != .small && !look.buttons.isEmpty
+		let isInline = size == .wide && hasButtons
+		let header = isInline ? AnyLayout(HStackLayout(spacing: 12)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
 		
 		VStack(alignment: .leading, spacing: 8) {
-			HStack(alignment: .top) {
+			header {
 				Image(systemName: look.symbol)
 					.font(.title3)
 					.foregroundStyle(isOn ? Color.white : tint)
@@ -34,62 +36,48 @@ struct SceneFace: View {
 					.background(isOn ? tint : tint.opacity(0.16), in: .circle)
 					.symbolEffect(.bounce, value: index)
 				
-				Spacer(minLength: 0)
-				
-				if showsButtons, size == .wide {
-					TileButtons(look: look, list: list)
-				}
-			}
-			
-			VStack(alignment: .leading, spacing: 2) {
-				Text(look.name)
-					.font(.headline)
-					.lineLimit(1)
-				
-				if isLarge, list.cues.count > 1 {
-					ViewThatFits(in: .vertical) {
-						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 3)
-						
-						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 2)
-						
-						CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 1)
-					}
-				} else {
-					CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
-						HStack(spacing: 4) {
-							if look.tap == .flash {
-								Image(systemName: SceneAction.flash.symbol)
-							}
+				VStack(alignment: .leading, spacing: 2) {
+					Text(look.name)
+						.font(.headline)
+						.lineLimit(1)
+					
+					if isLarge, list.cues.count > 1 {
+						ViewThatFits(in: .vertical) {
+							CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 3)
 							
-							Text(list.status(at: index).isEmpty ? " " : list.status(at: index))
-								.contentTransition(.numericText())
+							CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 2)
+							
+							CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 1)
 						}
+					} else {
+						CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
+							HStack(spacing: 4) {
+								if look.tap == .flash {
+									Image(systemName: SceneAction.flash.symbol)
+								}
+								
+								Text(list.status(at: index).isEmpty ? " " : list.status(at: index))
+									.contentTransition(.numericText())
+							}
+						}
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
+						.lineLimit(1)
+						.animation(.snappy(duration: 0.3), value: index)
 					}
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.lineLimit(1)
-					.animation(.snappy(duration: 0.3), value: index)
 				}
+				.padding(.trailing, isInline ? 44 : 0)
 			}
-			
-			if isLarge {
-				Spacer(minLength: 0)
-			}
+			.frame(maxHeight: .infinity, alignment: .topLeading)
 			
 			if list.cues.count > 1 {
 				CueProgress(list: list, index: index, fade: fade, tint: tint)
-					.padding(.vertical, 6)
+					.padding(.vertical, isInline ? 0 : 6)
 			}
 			
-			if isLarge {
-				Group {
-					if showsButtons {
-						TileButtons(look: look, list: list)
-					} else {
-						Color.clear
-					}
-				}
-				.frame(height: controls)
+			if hasButtons {
+				Color.clear
+					.frame(height: controls)
 			}
 		}
 		.foregroundStyle(.primary)

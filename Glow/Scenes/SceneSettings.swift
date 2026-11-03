@@ -5,11 +5,10 @@ struct SceneSettings: View {
 	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var context
+	@Environment(Arrangement.self) private var arrangement
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
-	@Environment(\.dynamicTypeSize) private var typeSize
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
 	@Bindable var look: Look
 	
@@ -28,7 +27,7 @@ struct SceneSettings: View {
 	@ViewBuilder private var content: some View {
 		let tint = look.tint.color ?? .accentColor
 		let list = CueList(look, cues: cues, fixtures: fixtures)
-		let column = typeSize.isAccessibilitySize ? 300 : tileWidth
+		let tile = arrangement.frame(of: look.size, among: looks)
 		
 		Form {
 			Section {
@@ -37,23 +36,31 @@ struct SceneSettings: View {
 					.submitLabel(.done)
 					.focused($isNaming)
 			} header: {
-				TileLayout(minimum: column, spacing: 12) {
-					SceneFace(look: look, list: list, showsButtons: true)
-						.layoutValue(key: TileSpan.self, value: look.size)
-				}
-				.frame(width: look.size == .small ? column : column * 2 + 12)
-				.frame(maxWidth: .infinity)
-				.padding(.top, 8)
-				.padding(.bottom, 28)
-				.foregroundStyle(.primary)
-				.textCase(nil)
-				.allowsHitTesting(false)
-				.accessibilityHidden(true)
+				SceneFace(look: look, list: list)
+					.overlay {
+						TileControls(look: look, list: list)
+					}
+					.frame(width: tile?.width, height: tile?.height)
+					.frame(maxWidth: .infinity)
+					.padding(.top, 8)
+					.padding(.bottom, 28)
+					.foregroundStyle(.primary)
+					.textCase(nil)
+					.allowsHitTesting(false)
+					.accessibilityHidden(true)
 			}
 			
 			Section {
+				Picker("Size", selection: Binding { look.size } set: { arrangement.resize(look, to: $0, among: looks) }) {
+					ForEach(TileSize.allCases) { size in
+						Text(size.name)
+							.tag(size)
+					}
+				}
+				.pickerStyle(.segmented)
+				
 				Picker("Tap", selection: $look.tap) {
-					ForEach(SceneAction.taps) { action in
+					ForEach(SceneAction.allCases) { action in
 						Label(action.name, systemImage: action.symbol)
 							.tag(action)
 					}
@@ -71,7 +78,7 @@ struct SceneSettings: View {
 						look.buttons.move(fromOffsets: from, toOffset: to)
 					}
 					
-					ForEach(SceneAction.buttons.filter { !look.buttons.contains($0) }) { action in
+					ForEach(SceneAction.allCases.filter { !look.buttons.contains($0) }) { action in
 						SceneButtonRow(action: action, isOn: false, tint: tint) {
 							look.shows(action, true)
 						}
@@ -101,6 +108,7 @@ struct SceneSettings: View {
 			}
 		}
 		.animation(.snappy(duration: 0.3), value: look.buttons)
+		.animation(.snappy(duration: 0.3), value: look.size)
 		.navigationTitle(look.name)
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {

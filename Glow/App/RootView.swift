@@ -11,6 +11,7 @@ struct RootView: View {
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
 	@State private var returning: String?
+	@State private var arrangement = Arrangement()
 	@Namespace private var transition
 	
 	private var tabs: some View {
@@ -87,6 +88,7 @@ struct RootView: View {
 					}
 			}
 		}
+		.environment(arrangement)
 		.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)
 		.task {
 			shows.reach(console, library: library)

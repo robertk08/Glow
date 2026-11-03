@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TileButtons: View {
 	@Environment(Console.self) private var console
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	@ScaledMetric(relativeTo: .headline) private var height = 44
 	
 	let look: Look
@@ -16,18 +17,20 @@ struct TileButtons: View {
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let upcoming = console.upcoming(list)
-		let isLarge = look.size == .large
 		let tint = look.tint.color ?? .accentColor
 		
-		GlassEffectContainer(spacing: isLarge ? 10 : 6) {
-			HStack(spacing: isLarge ? 10 : 6) {
+		GlassEffectContainer(spacing: 10) {
+			HStack(spacing: 10) {
 				ForEach(look.buttons) { action in
-					let isEnabled = Look.enables(action, live: index, upcoming: upcoming, count: list.cues.count)
+					let isEnabled = Look.enables(action, live: index, upcoming: upcoming, count: list.cues.count, isFlashing: console.flashing.contains(list.scene))
 					let isProminent = action == .next && index != nil && isEnabled
-					let isWide = isLarge && (action == .next || !look.buttons.contains(.next))
+					let isWide = action == .next || !look.buttons.contains(.next)
 					
 					Button {
-						if action != .flash {
+						if action == .open {
+							console.selection.scene = look.identifier
+							console.selection.isSceneOpen = sizeClass != .regular
+						} else if action != .flash {
 							console.run(action, on: list)
 						}
 					} label: {
@@ -36,7 +39,7 @@ struct TileButtons: View {
 							.font(.body.weight(.semibold))
 							.foregroundStyle(isProminent ? AnyShapeStyle(.white) : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
 							.contentTransition(.symbolEffect(.replace))
-							.frame(minWidth: isLarge ? height : 48, maxWidth: isWide ? .infinity : isLarge ? height : 48, minHeight: isLarge ? height : 40)
+							.frame(maxWidth: isWide ? .infinity : height, minHeight: height)
 							.glassEffect(.regular.tint(isProminent ? tint : nil).interactive(isEnabled), in: .capsule)
 							.contentShape(.capsule)
 					}

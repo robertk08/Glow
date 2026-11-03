@@ -351,6 +351,15 @@ private struct ChosenBar: View {
 				}
 				.frame(maxWidth: .infinity)
 				
+				Menu("Copy to Scene", systemImage: "doc.on.doc") {
+					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+						Button(other.name, systemImage: other.symbol) {
+							console.copy(picked, to: other, among: cues, context: context)
+						}
+					}
+				}
+				.frame(maxWidth: .infinity)
+				
 				Button("Delete", systemImage: "trash", role: .destructive) {
 					isDeleting = true
 				}

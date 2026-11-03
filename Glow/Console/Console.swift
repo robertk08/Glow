@@ -80,7 +80,7 @@ final class Console {
 	private var running: Task<Void, Never>?
 	private var sent = 0
 	private var acked = 0
-	private var flashing: Set<String> = []
+	private(set) var flashing: Set<String> = []
 	private var continued: [String: String] = [:]
 	
 	private static let endpointKey = "node.endpoint"
@@ -588,6 +588,20 @@ final class Console {
 		for (offset, cue) in chosen.enumerated() {
 			cue.lookID = look.identifier
 			cue.sortIndex = start + Double(offset)
+		}
+	}
+	
+	func copy(_ chosen: [Cue], to look: Look, among cues: [Cue], context: ModelContext) {
+		let start = (look.cues(among: cues).last?.sortIndex ?? 0).rounded(.down) + 1
+		
+		for (offset, cue) in chosen.enumerated() {
+			var entry = cue.entry
+			entry.identifier = Identifier.fresh()
+			entry.scene = look.identifier
+			entry.sortIndex = start + Double(offset)
+			let copy = Cue(lookID: look.identifier, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
+			copy.take(entry)
+			context.insert(copy)
 		}
 	}
 	

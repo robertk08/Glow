@@ -58,7 +58,7 @@ final class Look {
 		set { sizeValue = newValue.rawValue }
 	}
 	
-	static func enables(_ action: SceneAction, live index: Int?, upcoming: Int?, count: Int) -> Bool {
+	static func enables(_ action: SceneAction, live index: Int?, upcoming: Int?, count: Int, isFlashing: Bool) -> Bool {
 		guard count > 0 else { return false }
 		
 		switch action {
@@ -66,7 +66,7 @@ final class Look {
 		case .back: return index != nil && count > 1
 		case .restart: return index.map { $0 > 0 } ?? false
 		case .stop: return index != nil
-		case .flash: return index == nil
+		case .flash: return index == nil || isFlashing
 		case .toggle, .open: return true
 		}
 	}

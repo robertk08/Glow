@@ -5,12 +5,9 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 	case flash = 1
 	case next = 2
 	case back = 3
-	case open = 5
 	case restart = 6
 	case stop = 7
-	
-	static let taps: [SceneAction] = [.next, .toggle, .flash, .open]
-	static let buttons: [SceneAction] = [.toggle, .flash, .next, .back, .restart, .stop]
+	case open = 5
 	
 	var id: Int { rawValue }
 	
@@ -30,8 +27,11 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		switch self {
 		case .toggle: "Turns It On and Off"
 		case .flash: "Flashes It While Held"
+		case .back: "Runs the Previous Cue"
+		case .restart: "Runs the First Cue"
+		case .stop: "Turns It Off"
 		case .open: "Opens It"
-		default: "Runs the Next Cue"
+		case .next: "Runs the Next Cue"
 		}
 	}
 	

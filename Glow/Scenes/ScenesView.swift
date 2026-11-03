@@ -6,13 +6,13 @@ struct ScenesView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.modelContext) private var context
 	@Environment(\.dynamicTypeSize) private var typeSize
+	@Environment(Arrangement.self) private var arrangement
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	@State private var customizing: Look?
 	@State private var isEditing = false
-	@State private var arrangement = Arrangement()
 	@State private var position = ScrollPosition()
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
 	
@@ -48,13 +48,11 @@ struct ScenesView: View {
 		}
 		.overlay(alignment: .topLeading) {
 			if let look = looks.first(where: { $0.identifier == arrangement.lifted }), let floating = arrangement.floating {
-				SceneFace(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])])
-					.overlay(alignment: .topTrailing) {
-						Image(systemName: "slider.horizontal.3")
-							.font(.body.weight(.semibold))
-							.foregroundStyle(.secondary)
-							.frame(width: 44, height: 44)
-							.padding(11)
+				let list = lists[look.identifier, default: CueList(look, cues: [], fixtures: [])]
+				
+				SceneFace(look: look, list: list)
+					.overlay {
+						TileControls(look: look, list: list, isEditing: true)
 					}
 					.frame(width: floating.width, height: floating.height)
 					.scaleEffect(arrangement.isSettling ? 1 : 1.05)
