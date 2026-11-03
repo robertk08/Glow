@@ -537,7 +537,7 @@ struct SceneTests {
 		#expect(rig.recording(.into(first)).levels.lights.keys.sorted() == [rig.fixtures[2].identifier])
 	}
 	
-	@Test func randomArrangingPutsTheTileUnderTheFingerAndSlidesOnlyCoveredTilesStraightDown() async throws {
+	@Test func randomMovesAndResizesLandWhereAskedAndSlideOnlyCoveredTilesStraightDown() {
 		var seed: UInt64 = 0x2545F4914F6CDD1D
 		
 		func roll(_ count: Int) -> Int {
@@ -545,147 +545,56 @@ struct SceneTests {
 			return Int((seed >> 33) % UInt64(count))
 		}
 		
-		let rig = try rig()
-		let sizes: [TileSize] = [.small, .small, .wide, .large, .small, .wide, .small]
-		
-		for size in sizes {
-			let look = Look.fresh(among: rig.looks, context: rig.context)
-			look.size = size
-		}
-		
-		let arrangement = Arrangement()
-		arrangement.width = 352
-		let columns = arrangement.columns
-		
-		func place(_ looks: [Look]) -> [String: Int] {
-			let origins = TileLayout.origins(of: looks.map(\.size), at: looks.map { arrangement.slot(of: $0) }, columns: columns)
+		for session in 0..<400 {
+			let columns = [1, 2, 3, 4][roll(4)]
+			let tiles = (0..<(1 + roll(9))).map { (id: "t\($0)", size: TileSize.allCases[roll(3)], slot: roll(20)) }
+			var board = Board(columns: columns, tiles: tiles)
 			
-			for (look, origin) in zip(looks, origins) {
-				let across = min(look.size.columns, columns)
-				arrangement.frames[look.identifier] = CGRect(x: Double(origin % columns) * 182, y: Double(origin / columns) * 112, width: Double(across) * 170 + Double(across - 1) * 12, height: Double(look.size.rows) * 100 + Double(look.size.rows - 1) * 12)
-			}
-			
-			return Dictionary(uniqueKeysWithValues: zip(looks.map(\.identifier), origins))
-		}
-		
-		for session in 0..<300 {
-			try await Task.sleep(for: .milliseconds(1))
-			let looks = arrangement.arranged(rig.looks)
-			let before = place(looks)
-			let indexes = rig.looks.map(\.sortIndex)
-			let lifted = looks[roll(looks.count)]
-			let start = arrangement.frames[lifted.identifier]!
-			_ = arrangement.pick(lifted.identifier)
-			arrangement.hold(at: CGPoint(x: start.width / 2, y: start.height / 2), among: looks)
-			
-			for _ in 0..<roll(8) {
-				arrangement.drag(to: CGPoint(x: Double(roll(360)), y: Double(roll(900))))
-				#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote while dragging")
-			}
-			
-			let shown = Dictionary(uniqueKeysWithValues: looks.map { ($0.identifier, arrangement.slot(of: $0)) })
-			arrangement.drop(among: looks)
-			try? rig.context.save()
-			let after = place(arrangement.arranged(rig.looks))
-			let moved = before.keys.filter { before[$0] != after[$0] }
-			#expect(after == shown, "session \(session) landed somewhere other than where it was shown")
-			let landed = Set(TileLayout.cells(of: lifted.size, at: after[lifted.identifier]!, columns: columns))
-			
-			for other in moved where other != lifted.identifier {
-				let size = rig.looks.first { $0.identifier == other }!.size
-				#expect(!landed.isDisjoint(with: TileLayout.cells(of: size, at: before[other]!, columns: columns)), "session \(session) moved a tile the drop did not cover")
-				#expect(after[other]! > before[other]! && after[other]! % columns == before[other]! % columns, "session \(session) moved a covered tile other than straight down")
+			for step in 0..<6 {
+				let before = board
+				let id = tiles[roll(tiles.count)].id
+				let size = TileSize.allCases[roll(3)]
+				let target = roll(30)
 				
-				var higher = after[other]! - columns
-				
-				while higher > before[other]! {
-					let cells = Set(TileLayout.cells(of: size, at: higher, columns: columns))
-					let blocked = rig.looks.contains { look in look.identifier != other && !cells.isDisjoint(with: TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)) }
-					#expect(blocked, "session \(session) slid a tile further down than it had to")
-					higher -= columns
+				if roll(2) == 0 {
+					board.place(id, at: target)
+					#expect(board.origins[id] == board.fitted(board.sizes[id]!, at: target), "session \(session) step \(step) did not land where asked")
+				} else {
+					board.resize(id, to: size)
+					#expect(board.sizes[id] == size)
+					#expect(board.origins[id] == board.fitted(size, at: before.origins[id]!), "session \(session) step \(step) moved a resized tile further than it had to")
 				}
-			}
-			
-			if moved.isEmpty {
-				#expect(rig.looks.map(\.sortIndex) == indexes, "session \(session) wrote without a move")
-			}
-			
-			var cells = Set<Int>()
-			
-			for look in rig.looks {
-				let covered = TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)
-				#expect(cells.isDisjoint(with: covered), "session \(session) put two tiles on one spot")
-				cells.formUnion(covered)
+				
+				let landed = Set(board.cells(of: id))
+				var taken = Set<Int>()
+				
+				for other in board.origins.keys {
+					let cells = Set(board.cells(of: other))
+					#expect(taken.isDisjoint(with: cells), "session \(session) step \(step) put two tiles on one spot")
+					#expect(board.cells(of: other).allSatisfy { $0 % columns >= board.origins[other]! % columns }, "session \(session) step \(step) wrapped a tile around the edge")
+					taken.formUnion(cells)
+					guard other != id, let old = before.origins[other], let new = board.origins[other], old != new else { continue }
+					#expect(!landed.isDisjoint(with: before.cells(of: other)), "session \(session) step \(step) moved a tile it did not cover")
+					#expect(new > old && new % columns == old % columns, "session \(session) step \(step) moved a covered tile other than straight down")
+				}
 			}
 		}
 	}
 	
-	@Test func randomResizingChangesOnlyThatTileAndSlidesOnlyCoveredTilesStraightDown() async throws {
-		var seed: UInt64 = 0x9E3779B97F4A7C15
-		
-		func roll(_ count: Int) -> Int {
-			seed = seed &* 6364136223846793005 &+ 1442695040888963407
-			return Int((seed >> 33) % UInt64(count))
-		}
-		
+	@Test func arrangingWritesSlotsTheGridShowsUnchanged() throws {
 		let rig = try rig()
 		
-		for size in [TileSize.small, .wide, .small, .large, .small, .small, .wide] {
+		for size in [TileSize.small, .wide, .large, .small, .wide] {
 			let look = Look.fresh(among: rig.looks, context: rig.context)
 			look.size = size
 		}
 		
-		let arrangement = Arrangement()
-		arrangement.width = 352
-		let columns = arrangement.columns
+		var board = Board(columns: 2, looks: rig.looks)
+		board.place(rig.looks[3].identifier, at: 0)
+		board.resize(rig.looks[1].identifier, to: .large)
+		board.write(to: rig.looks)
 		
-		func place(_ looks: [Look]) -> [String: Int] {
-			let origins = TileLayout.origins(of: looks.map { arrangement.size(of: $0) }, at: looks.map { arrangement.slot(of: $0) }, columns: columns)
-			
-			for (look, origin) in zip(looks, origins) {
-				let size = arrangement.size(of: look)
-				let across = min(size.columns, columns)
-				arrangement.frames[look.identifier] = CGRect(x: Double(origin % columns) * 182, y: Double(origin / columns) * 112, width: Double(across) * 170 + Double(across - 1) * 12, height: Double(size.rows) * 100 + Double(size.rows - 1) * 12)
-			}
-			
-			return Dictionary(uniqueKeysWithValues: zip(looks.map(\.identifier), origins))
-		}
-		
-		for session in 0..<100 {
-			try await Task.sleep(for: .milliseconds(1))
-			let looks = arrangement.arranged(rig.looks)
-			let before = place(looks)
-			let sizes = Dictionary(uniqueKeysWithValues: rig.looks.map { ($0.identifier, $0.size) })
-			let indexes = rig.looks.map(\.sortIndex)
-			let stretched = looks[roll(looks.count)]
-			
-			for _ in 0...roll(6) {
-				arrangement.stretch(stretched.identifier, by: CGSize(width: Double(roll(400)) - 200, height: Double(roll(400)) - 200), among: looks)
-				_ = place(arrangement.arranged(looks))
-				#expect(rig.looks.map(\.sortIndex) == indexes && rig.looks.allSatisfy { $0.size == sizes[$0.identifier] }, "session \(session) wrote while resizing")
-			}
-			
-			let shown = place(arrangement.arranged(looks))
-			arrangement.settle(among: looks)
-			try? rig.context.save()
-			let after = place(arrangement.arranged(rig.looks))
-			#expect(after == shown, "session \(session) landed somewhere other than where it was shown")
-			#expect(rig.looks.allSatisfy { $0.identifier == stretched.identifier || $0.size == sizes[$0.identifier] }, "session \(session) resized another tile")
-			let grown = Set(TileLayout.cells(of: stretched.size, at: after[stretched.identifier]!, columns: columns))
-			
-			for look in rig.looks where look.identifier != stretched.identifier && after[look.identifier] != before[look.identifier] {
-				#expect(!grown.isDisjoint(with: TileLayout.cells(of: look.size, at: before[look.identifier]!, columns: columns)), "session \(session) moved a tile the new size did not cover")
-				#expect(after[look.identifier]! > before[look.identifier]! && after[look.identifier]! % columns == before[look.identifier]! % columns, "session \(session) moved a covered tile other than straight down")
-			}
-			
-			var cells = Set<Int>()
-			
-			for look in rig.looks {
-				let covered = TileLayout.cells(of: look.size, at: after[look.identifier]!, columns: columns)
-				#expect(cells.isDisjoint(with: covered), "session \(session) put two tiles on one spot")
-				cells.formUnion(covered)
-			}
-		}
+		#expect(Board(columns: 2, looks: rig.looks) == board)
 	}
 	
 	@Test func deletingSeveralCuesWithTheLiveOneMovesTheStageToTheNearestKeptCueBefore() throws {

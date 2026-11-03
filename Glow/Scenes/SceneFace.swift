@@ -7,7 +7,6 @@ struct SceneFace: View {
 	let look: Look
 	let list: CueList
 	
-	var size: TileSize?
 	
 	var body: some View {
 		if !look.isGone {
@@ -18,7 +17,7 @@ struct SceneFace: View {
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let isOn = index != nil
-		let size = size ?? look.size
+		let size = look.size
 		let isLarge = size == .large
 		let tint = look.tint.color ?? .accentColor
 		let fade = console.playback.fades[look.identifier]
@@ -49,7 +48,7 @@ struct SceneFace: View {
 							
 							CueWindow(list: list, index: index, upcoming: upcoming, fade: fade, lines: 1)
 						}
-					} else {
+					} else if !isInline || look.tap == .flash || !list.status(at: index).isEmpty || console.isMoving(look.identifier) {
 						CueStatus(fade: fade, follow: index.flatMap { list.cues[$0].follow }) {
 							HStack(spacing: 4) {
 								if look.tap == .flash {
