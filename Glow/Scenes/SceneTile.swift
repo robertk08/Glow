@@ -48,8 +48,10 @@ struct SceneTile: View {
 				SceneActions(look: look, list: list, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
 			}
 		})
-		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
-			Button("Delete Scene", role: .destructive) {
+		.alert("Delete \(look.name)?", isPresented: $isDeleting) {
+			Button("Cancel", role: .cancel) {}
+			
+			Button("Delete", role: .destructive) {
 				console.remove(look, with: cues, context: context)
 			}
 		}

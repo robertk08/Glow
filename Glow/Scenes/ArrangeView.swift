@@ -128,8 +128,10 @@ struct ArrangeView: View {
 					}
 				}
 			}
-			.confirmationDialog("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, titleVisibility: .visible, presenting: deleting) { look in
-				Button("Delete Scene", role: .destructive) {
+			.alert("Delete \(deleting?.name ?? "")?", isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } }, presenting: deleting) { look in
+				Button("Cancel", role: .cancel) {}
+				
+				Button("Delete", role: .destructive) {
 					console.remove(look, with: cues, context: context)
 				}
 			}
