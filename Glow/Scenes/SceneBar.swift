@@ -18,6 +18,8 @@ struct SceneBar: View {
 			if let look = looks.first(where: { $0.identifier == shown }), let list = lists.first(where: { $0.scene == shown }) {
 				let index = list.index(of: console.playback.cue(of: look.identifier))
 				let tint = look.tint.color ?? .accentColor
+				let canGoBack = index.flatMap(list.previous(before:)) != nil
+				let isAtEnd = console.upcoming(list) == nil
 				
 				HStack(spacing: 4) {
 					Button {
@@ -58,11 +60,14 @@ struct SceneBar: View {
 							Button("Back", systemImage: SceneAction.back.symbol) {
 								console.back(list)
 							}
+							.foregroundStyle(canGoBack ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
+							.disabled(!canGoBack)
 							
 							Button("Next Cue", systemImage: SceneAction.next.symbol) {
 								console.go(list)
 							}
-							.disabled(console.upcoming(list) == nil)
+							.foregroundStyle(isAtEnd ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+							.disabled(isAtEnd)
 						}
 						
 						Button("Turn Off", systemImage: "stop.fill") {

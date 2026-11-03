@@ -17,12 +17,13 @@ struct TileButtons: View {
 	@ViewBuilder private var content: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let upcoming = console.upcoming(list)
+		let isOn = index != nil && !look.buttons.contains(.stop)
 		let tint = look.tint.color ?? .accentColor
 		
 		GlassEffectContainer(spacing: 10) {
 			HStack(spacing: 10) {
 				ForEach(look.buttons) { action in
-					let isEnabled = Look.enables(action, live: index, upcoming: upcoming, count: list.cues.count, isFlashing: console.flashing.contains(list.scene))
+					let isEnabled = look.enables(action, live: index, upcoming: upcoming, list: list, isFlashing: console.flashing.contains(list.scene))
 					let isProminent = action == .next && index != nil && isEnabled
 					let isWide = action == .next || !look.buttons.contains(.next)
 					
@@ -34,7 +35,7 @@ struct TileButtons: View {
 							console.run(action, on: list)
 						}
 					} label: {
-						Label(action.name(isOn: index != nil), systemImage: action.symbol(isOn: index != nil))
+						Label(action.name(isOn: isOn), systemImage: action.symbol(isOn: isOn))
 							.labelStyle(.iconOnly)
 							.font(.body.weight(.semibold))
 							.foregroundStyle(isProminent ? AnyShapeStyle(.white) : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))

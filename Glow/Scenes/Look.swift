@@ -58,20 +58,22 @@ final class Look {
 		set { sizeValue = newValue.rawValue }
 	}
 	
-	static func enables(_ action: SceneAction, live index: Int?, upcoming: Int?, count: Int, isFlashing: Bool) -> Bool {
-		guard count > 0 else { return false }
+	func enables(_ action: SceneAction, live index: Int?, upcoming: Int?, list: CueList, isFlashing: Bool) -> Bool {
+		guard !list.cues.isEmpty else { return false }
 		
 		switch action {
 		case .next: return upcoming != nil
-		case .back: return index != nil && count > 1
+		case .back: return list.cues.count > 1 && index.flatMap(list.previous(before:)) != nil
 		case .restart: return index.map { $0 > 0 } ?? false
 		case .stop: return index != nil
 		case .flash: return index == nil || isFlashing
-		case .toggle, .open: return true
+		case .toggle: return index == nil || !buttons.contains(.stop)
+		case .open: return true
 		}
 	}
 	
 	func shows(_ button: SceneAction, _ isShown: Bool) {
+		if sizeValue == nil { sizeValue = size.rawValue }
 		buttons = buttons.filter { $0 != button } + (isShown ? [button] : [])
 	}
 	

@@ -477,7 +477,12 @@ final class Console {
 	func run(_ action: SceneAction, on list: CueList) {
 		switch action {
 		case .toggle: toggle(list)
-		case .next: go(list)
+		case .next:
+			if upcoming(list) == nil {
+				stop(list)
+			} else {
+				go(list)
+			}
 		case .back: back(list)
 		case .restart: play(list, at: 0)
 		case .stop: stop(list)

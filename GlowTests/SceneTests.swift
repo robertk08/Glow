@@ -217,6 +217,72 @@ struct SceneTests {
 		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier && rig.value(1) == 20 }
 	}
 	
+	@Test func backStopsAtTheFirstCueUnlessTheSceneLoops() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		
+		#expect(rig.list.previous(before: 0) == nil)
+		
+		rig.console.go(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == first.identifier }
+		
+		rig.console.back(rig.list)
+		
+		#expect(rig.console.playback.cue(of: rig.look.identifier) == first.identifier)
+		#expect(!rig.look.enables(.back, live: 0, upcoming: 1, list: rig.list, isFlashing: false))
+		
+		rig.look.loops = true
+		
+		#expect(rig.look.enables(.back, live: 0, upcoming: 1, list: rig.list, isFlashing: false))
+		
+		rig.console.back(rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier && rig.value(1) == 20 }
+	}
+	
+	@Test func tappingANextTileAfterTheLastCueTurnsItOffAndTheNextTapStartsAgain() async throws {
+		let rig = try rig()
+		let first = rig.add(1, [(0, 1, 10)])
+		let second = rig.add(2, [(0, 1, 20)])
+		
+		rig.console.run(.next, on: rig.list)
+		rig.console.run(.next, on: rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == second.identifier }
+		
+		rig.console.run(.next, on: rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == nil }
+		
+		rig.console.run(.next, on: rig.list)
+		try await until { rig.console.playback.cue(of: rig.look.identifier) == first.identifier && rig.value(1) == 10 }
+	}
+	
+	@Test func onAndOffBesideStopOnlyStartsTheScene() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 10)])
+		rig.look.buttons = [.toggle]
+		
+		#expect(rig.look.enables(.toggle, live: 0, upcoming: nil, list: rig.list, isFlashing: false))
+		
+		rig.look.buttons = [.toggle, .stop]
+		
+		#expect(!rig.look.enables(.toggle, live: 0, upcoming: nil, list: rig.list, isFlashing: false))
+		#expect(rig.look.enables(.toggle, live: nil, upcoming: 0, list: rig.list, isFlashing: false))
+		#expect(rig.look.enables(.stop, live: 0, upcoming: nil, list: rig.list, isFlashing: false))
+	}
+	
+	@Test func removingTheLastButtonKeepsTheTileItsSize() throws {
+		let rig = try rig()
+		rig.look.buttonValues = [SceneAction.toggle.rawValue]
+		
+		#expect(rig.look.sizeValue == nil)
+		#expect(rig.look.size == .wide)
+		
+		rig.look.shows(.toggle, false)
+		
+		#expect(rig.look.buttons.isEmpty)
+		#expect(rig.look.size == .wide)
+	}
+	
 	@Test func aCueWithAFollowRunsTheNextOneByItselfAfterItsDelay() async throws {
 		let rig = try rig()
 		let first = rig.add(1, [(0, 1, 10)])

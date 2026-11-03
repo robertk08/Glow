@@ -184,6 +184,7 @@ private struct SceneActions: View {
 				Button("Previous Cue", systemImage: SceneAction.back.symbol) {
 					console.back(list)
 				}
+				.disabled(index.flatMap(list.previous(before:)) == nil)
 			}
 			
 			if !list.cues.isEmpty {

@@ -43,6 +43,7 @@ nonisolated struct CueList: Sendable {
 	
 	func previous(before index: Int) -> Int? {
 		guard !cues.isEmpty else { return nil }
+		guard index > 0 || loops else { return nil }
 		return (index + cues.count - 1) % cues.count
 	}
 	

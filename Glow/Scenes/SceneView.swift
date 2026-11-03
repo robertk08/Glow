@@ -340,25 +340,27 @@ private struct ChosenBar: View {
 				}
 				.frame(maxWidth: .infinity)
 				
-				Menu("Move to Scene", systemImage: "arrow.right.square") {
-					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
-						Button(other.name, systemImage: other.symbol) {
-							withAnimation {
-								console.move(picked, from: list, to: other, among: cues)
+				if looks.count > 1 {
+					Menu("Move to Scene", systemImage: "arrow.right.square") {
+						ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+							Button(other.name, systemImage: other.symbol) {
+								withAnimation {
+									console.move(picked, from: list, to: other, among: cues)
+								}
 							}
 						}
 					}
-				}
-				.frame(maxWidth: .infinity)
-				
-				Menu("Copy to Scene", systemImage: "doc.on.doc") {
-					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
-						Button(other.name, systemImage: other.symbol) {
-							console.copy(picked, to: other, among: cues, context: context)
+					.frame(maxWidth: .infinity)
+					
+					Menu("Copy to Scene", systemImage: "doc.on.doc") {
+						ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+							Button(other.name, systemImage: other.symbol) {
+								console.copy(picked, to: other, among: cues, context: context)
+							}
 						}
 					}
+					.frame(maxWidth: .infinity)
 				}
-				.frame(maxWidth: .infinity)
 				
 				Button("Delete", systemImage: "trash", role: .destructive) {
 					isDeleting = true
@@ -367,6 +369,7 @@ private struct ChosenBar: View {
 				.frame(maxWidth: .infinity)
 			}
 			.labelStyle(.iconOnly)
+			.menuOrder(.fixed)
 			.font(.title3)
 			.frame(maxWidth: .infinity)
 			.frame(height: height)
@@ -391,6 +394,7 @@ private struct Transport: View {
 		let tint = look.tint.color ?? .accentColor
 		let steps = list.cues.count > 1
 		let isOn = index != nil
+		let canGoBack = index.flatMap(list.previous(before:)) != nil
 		let isAtEnd = steps && upcoming == nil
 		let isLit = isOn && !isAtEnd
 		
@@ -401,12 +405,13 @@ private struct Transport: View {
 						console.back(list)
 					} label: {
 						Image(systemName: SceneAction.back.symbol)
+							.foregroundStyle(canGoBack ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
 							.frame(width: height, height: height)
-							.glassEffect(.regular.interactive(isOn), in: .circle)
+							.glassEffect(.regular.interactive(canGoBack), in: .circle)
 					}
 					.accessibilityLabel("Back")
 					.keyboardShortcut(.leftArrow, modifiers: [])
-					.disabled(!isOn)
+					.disabled(!canGoBack)
 				}
 				
 				Button {
@@ -461,7 +466,7 @@ private struct Transport: View {
 		.lineLimit(1)
 		.padding(.horizontal)
 		.padding(.vertical, 8)
-		.animation(.snappy(duration: 0.25), value: [isOn, isAtEnd])
+		.animation(.snappy(duration: 0.25), value: [isOn, isAtEnd, canGoBack])
 		.animation(.snappy(duration: 0.3), value: upcoming)
 	}
 }
