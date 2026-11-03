@@ -499,6 +499,20 @@ struct SceneTests {
 		#expect(!rig.recording(.into(cue)).isReady)
 	}
 	
+	@Test func updateLeavesWhatOnlyEarlierCuesHoldAloneWhileTheSceneIsOff() throws {
+		let rig = try rig()
+		rig.add(1, [(1, 5, 30), (0, 5, 30)])
+		let cue = rig.add(2, [(0, 1, 200)])
+		
+		#expect(rig.recording(.into(cue)).levels.lights.keys.sorted() == [rig.fixtures[0].identifier])
+		
+		rig.recording(.into(cue)).store(context: rig.context)
+		
+		#expect(cue.levels.lights[rig.fixtures[0].identifier] == [1: 0])
+		#expect(cue.levels.lights[rig.fixtures[1].identifier] == nil)
+		#expect(!rig.recording(.into(cue)).isReady)
+	}
+	
 	@Test func patchingALightLeavesUpdateAlone() throws {
 		let rig = try rig()
 		let cue = rig.add(1, [(0, 1, 200)])
@@ -1006,7 +1020,7 @@ struct SceneTests {
 					let after = rig.recording(.into(marked))
 					#expect(!after.isReady, "\(place) Update stayed after updating")
 					
-					for (light, slots) in after.tracked.lights {
+					for (light, slots) in marked.levels.lights {
 						let fixture = rig.fixtures.first { $0.identifier == light }!
 						
 						for (slot, value) in slots {
@@ -1067,14 +1081,18 @@ struct SceneTests {
 				var shows = false
 				
 				for fixture in rig.fixtures {
-					let owned = tracked.lights[fixture.identifier] ?? [:]
+					let played = tracked.lights[fixture.identifier] ?? [:]
+					let owned = current.levels.lights[fixture.identifier] ?? [:]
 					
 					for slot in 1...7 {
 						guard let address = fixture.start.offset(by: slot - 1), addresses.contains(address.value) else { continue }
 						
+						if let value = played[slot] {
+							shows = shows || rig.console.value(at: address) != value
+						}
+						
 						if let value = owned[slot] {
 							differs = differs || rig.console.value(at: address) != value
-							shows = shows || rig.console.value(at: address) != value
 						} else {
 							differs = differs || rig.console.isChanged(address)
 						}

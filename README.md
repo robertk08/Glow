@@ -125,9 +125,11 @@ These are product decisions the code implements without explaining.
 - The builder records what is on stage. A new cue stores the lights and
   aspects the scene's cues already hold, every light for a new scene, or what
   its settings narrow it to, whatever is selected. Update shows whenever the
-  stage differs from what the marked cue plays, on a light that cue holds or
-  one touched since, and it writes just the aspects that differ and keeps the
-  cue's name and timing. A light put back with Reset Light or Reset to
+  stage differs from what the marked cue itself holds, or a channel was
+  touched since, and it writes just the aspects that differ and keeps the
+  cue's name and timing. What only earlier cues hold is left out unless it
+  was touched, so updating a cue while its scene is off never pulls in their
+  lights or aspects. A light put back with Reset Light or Reset to
   Defaults counts as touched even when it was already at its defaults, so
   Update stores it at its defaults and the cue holds it there when it runs. Show, beside it, does the opposite: it puts the
   marked cue on stage and drops the touches on the lights that cue holds. Both

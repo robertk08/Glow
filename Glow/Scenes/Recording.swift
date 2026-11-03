@@ -134,12 +134,14 @@ final class Recording: Identifiable {
 	
 	var levels: Levels {
 		var levels = Levels()
-		let tracked = tracked
+		var held = Levels()
+		
+		if case let .into(cue) = destination { held = cue.levels }
 		
 		for fixture in fixtures where lights.contains(fixture.identifier) {
 			guard let type = library.type(fixture.typeID) else { continue }
 			
-			let owned = tracked.lights[fixture.identifier] ?? [:]
+			let owned = held.lights[fixture.identifier] ?? [:]
 			let differing = type.channels.filter { channel in
 				channel.offsets.contains { offset in
 					guard let address = fixture.start.offset(by: offset - 1) else { return false }
