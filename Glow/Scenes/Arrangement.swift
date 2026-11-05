@@ -9,7 +9,7 @@ final class Arrangement {
 	let spacing: CGFloat = 12
 	
 	var columns: Int {
-		TileLayout.columns(in: width, minimum: minimum, spacing: spacing)
+		UIDevice.current.userInterfaceIdiom == .pad && width + spacing >= (minimum + spacing) * 4 ? 4 : 2
 	}
 	
 	private var column: CGFloat {
@@ -27,8 +27,7 @@ final class Arrangement {
 	
 	func frame(of size: TileSize, among looks: [Look]) -> CGSize? {
 		guard width > 0, let row = row(among: looks) else { return nil }
-		let across = min(size.columns, columns)
-		return CGSize(width: column * CGFloat(across) + spacing * CGFloat(across - 1), height: row * CGFloat(size.rows) + spacing * CGFloat(size.rows - 1))
+		return CGSize(width: column * CGFloat(size.columns) + spacing * CGFloat(size.columns - 1), height: row * CGFloat(size.rows) + spacing * CGFloat(size.rows - 1))
 	}
 	
 	func resize(_ look: Look, to size: TileSize, among looks: [Look]) {

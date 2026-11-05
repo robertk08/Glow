@@ -114,7 +114,7 @@ struct ArrangeView: View {
 				}
 				.modifier(DropTracking(board: board, dragged: dragged, cell: cell, spacing: spacing, landing: $landing))
 				.animation(.smooth(duration: 0.2), value: landing)
-				.frame(maxWidth: .infinity)
+				.frame(minWidth: 0, maxWidth: .infinity)
 				.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
 				.padding()
 			}

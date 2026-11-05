@@ -28,19 +28,19 @@ nonisolated struct Board: Equatable {
 	
 	func fitted(_ size: TileSize, at cell: Int) -> Int {
 		let cell = max(cell, 0)
-		return cell / columns * columns + min(cell % columns, columns - min(size.columns, columns))
+		return cell - cell % size.columns
 	}
 	
 	func frame(of id: String, cell: CGSize, spacing: CGFloat) -> CGSize {
 		let size = sizes[id] ?? .small
-		let across = CGFloat(min(size.columns, columns))
+		let across = CGFloat(size.columns)
 		return CGSize(width: across * cell.width + (across - 1) * spacing, height: CGFloat(size.rows) * cell.height + CGFloat(size.rows - 1) * spacing)
 	}
 	
 	func origin(of id: String, at point: CGPoint, cell: CGSize, spacing: CGFloat) -> Int? {
 		guard let size = sizes[id] else { return nil }
 		let frame = frame(of: id, cell: cell, spacing: spacing)
-		let column = Int(((point.x - frame.width / 2) / (cell.width + spacing)).rounded())
+		let column = Int(((point.x - frame.width / 2) / ((cell.width + spacing) * CGFloat(size.columns))).rounded()) * size.columns
 		let row = Int(((point.y - frame.height / 2) / (cell.height + spacing)).rounded())
 		return fitted(size, at: max(row, 0) * columns + min(max(column, 0), columns - 1))
 	}
@@ -57,10 +57,15 @@ nonisolated struct Board: Equatable {
 	}
 	
 	@MainActor func write(to looks: [Look]) {
+		let placed = Array(origins)
+		let spots = placed.map(\.value)
+		let filled = placed.map { sizes[$0.key] ?? .small }
+		let slots = Dictionary(zip(placed.map(\.key), columns == 2 ? spots : TileLayout.gathered(spots, sizes: filled)), uniquingKeysWith: { first, _ in first })
+		
 		for look in looks {
 			if let size = sizes[look.identifier], size != look.size { look.size = size }
-			guard let origin = origins[look.identifier], Double(origin) != look.sortIndex else { continue }
-			look.sortIndex = Double(origin)
+			guard let slot = slots[look.identifier], Double(slot) != look.sortIndex else { continue }
+			look.sortIndex = Double(slot)
 		}
 	}
 	

@@ -9,11 +9,12 @@ nonisolated struct TileSlot: LayoutValueKey {
 }
 
 struct TileLayout: Layout {
+	let columns: Int
 	let minimum: CGFloat
 	let spacing: CGFloat
 	
 	func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-		let width = proposal.width ?? minimum * 2 + spacing
+		let width = proposal.width ?? minimum * CGFloat(columns) + spacing * CGFloat(columns - 1)
 		let placed = cells(of: subviews, width: width)
 		return CGSize(width: width, height: placed.map { $0.frame.maxY }.max() ?? 0)
 	}
@@ -24,17 +25,8 @@ struct TileLayout: Layout {
 		}
 	}
 	
-	static func columns(in width: CGFloat, minimum: CGFloat, spacing: CGFloat) -> Int {
-		max(1, Int((width + spacing) / (minimum + spacing)))
-	}
-	
 	static func cells(of size: TileSize, at origin: Int, columns: Int) -> [Int] {
-		let across = min(size.columns, columns)
-		return (0..<size.rows).flatMap { line in (0..<across).map { origin + line * columns + $0 } }
-	}
-	
-	static func fits(_ size: TileSize, at origin: Int, columns: Int) -> Bool {
-		origin >= 0 && origin % columns + min(size.columns, columns) <= columns
+		(0..<size.rows).flatMap { line in (0..<size.columns).map { origin + line * columns + $0 } }
 	}
 	
 	static func origins(of sizes: [TileSize], at slots: [Int], columns: Int) -> [Int] {
@@ -44,24 +36,53 @@ struct TileLayout: Layout {
 		for (size, slot) in zip(sizes, slots) {
 			var origin = max(slot, 0)
 			
-			while !fits(size, at: origin, columns: columns) || !taken.isDisjoint(with: cells(of: size, at: origin, columns: columns)) {
+			while origin % size.columns != 0 || !taken.isDisjoint(with: cells(of: size, at: origin, columns: 2)) {
 				origin += 1
 			}
 			
-			taken.formUnion(cells(of: size, at: origin, columns: columns))
+			taken.formUnion(cells(of: size, at: origin, columns: 2))
 			origins.append(origin)
 		}
 		
-		return origins
+		return columns == 2 ? origins : spread(origins, sizes: sizes)
+	}
+	
+	static func spread(_ slots: [Int], sizes: [TileSize]) -> [Int] {
+		let tall = Set(zip(slots, sizes).filter { $0.1 == .large }.map { $0.0 / 2 })
+		var halves: [Int: Int] = [:]
+		var taken = Set<Int>()
+		var half = 0
+		
+		for row in 0...((slots.max() ?? 0) / 2) where !tall.contains(row - 1) {
+			while taken.contains(half) {
+				half += 1
+			}
+			
+			halves[row] = half
+			taken.formUnion(tall.contains(row) ? [half, half + 2] : [half])
+		}
+		
+		return slots.map { (halves[$0 / 2] ?? 0) * 2 + $0 % 2 }
+	}
+	
+	static func gathered(_ origins: [Int], sizes: [TileSize]) -> [Int] {
+		let tall = Set(zip(origins, sizes).filter { $0.1 == .large }.map { $0.0 / 2 })
+		var rows: [Int: Int] = [:]
+		var row = 0
+		
+		for half in 0...((origins.max() ?? 0) / 2) where !tall.contains(half - 2) {
+			rows[half] = row
+			row += tall.contains(half) ? 2 : 1
+		}
+		
+		return origins.map { (rows[$0 / 2] ?? 0) * 2 + $0 % 2 }
 	}
 	
 	private func cells(of subviews: Subviews, width: CGFloat) -> [(index: Int, frame: CGRect)] {
-		let columns = Self.columns(in: width, minimum: minimum, spacing: spacing)
 		let column = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
 		let sizes = subviews.map { $0[TileSpan.self] }
 		let heights = zip(subviews, sizes).map { subview, size in
-			let across = min(size.columns, columns)
-			let width = column * CGFloat(across) + spacing * CGFloat(across - 1)
+			let width = column * CGFloat(size.columns) + spacing * CGFloat(size.columns - 1)
 			return (size.rows, (subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows))
 		}
 		let height = heights.filter { $0.0 == 1 }.map(\.1).max() ?? heights.map(\.1).max() ?? 0
@@ -69,9 +90,8 @@ struct TileLayout: Layout {
 		var cells: [(index: Int, frame: CGRect)] = []
 		
 		for (index, size) in sizes.enumerated() {
-			let across = min(size.columns, columns)
 			let origin = origins[index]
-			let frame = CGRect(x: CGFloat(origin % columns) * (column + spacing), y: CGFloat(origin / columns) * (height + spacing), width: column * CGFloat(across) + spacing * CGFloat(across - 1), height: height * CGFloat(size.rows) + spacing * CGFloat(size.rows - 1))
+			let frame = CGRect(x: CGFloat(origin % columns) * (column + spacing), y: CGFloat(origin / columns) * (height + spacing), width: column * CGFloat(size.columns) + spacing * CGFloat(size.columns - 1), height: height * CGFloat(size.rows) + spacing * CGFloat(size.rows - 1))
 			cells.append((index, frame))
 		}
 		

@@ -607,7 +607,7 @@ struct SceneTests {
 		}
 		
 		for session in 0..<400 {
-			let columns = [1, 2, 3, 4][roll(4)]
+			let columns = [2, 4][roll(2)]
 			let tiles = (0..<(1 + roll(9))).map { (id: "t\($0)", size: TileSize.allCases[roll(3)], slot: roll(20)) }
 			var board = Board(columns: columns, tiles: tiles)
 			
@@ -647,6 +647,55 @@ struct SceneTests {
 		}
 	}
 	
+	@Test nonisolated func everyBoardReadsTheSameOnTwoAndFourColumns() {
+		var seed: UInt64 = 0x9E3779B97F4A7C15
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
+		for session in 0..<600 {
+			let sizes = (0..<(1 + roll(10))).map { _ in TileSize.allCases[roll(3)] }
+			let slots = TileLayout.origins(of: sizes, at: sizes.map { _ in roll(24) }.sorted(), columns: 2)
+			let spread = TileLayout.origins(of: sizes, at: slots, columns: 4)
+			var taken = Set<Int>()
+			
+			for (origin, size) in zip(spread, sizes) {
+				let cells = TileLayout.cells(of: size, at: origin, columns: 4)
+				#expect(taken.isDisjoint(with: cells), "session \(session) put two tiles on one spot")
+				#expect(origin % size.columns == 0, "session \(session) split a tile across the middle")
+				taken.formUnion(cells)
+			}
+			
+			#expect(TileLayout.gathered(spread, sizes: sizes) == slots, "session \(session) lost the layout going to four columns and back")
+			#expect(TileLayout.spread(TileLayout.gathered(spread, sizes: sizes), sizes: sizes) == spread, "session \(session) lost the layout going to two columns and back")
+			
+			if !sizes.contains(.large) {
+				#expect(spread == slots, "session \(session) moved a spot without a large tile in play")
+			}
+		}
+	}
+	
+	@Test nonisolated func aLargeTileKeepsItsNeighboursInReadingOrderOnFourColumns() {
+		let sizes: [TileSize] = [.large, .small, .small, .small, .small, .wide]
+		let slots = [0, 4, 5, 6, 7, 8]
+		
+		#expect(TileLayout.origins(of: sizes, at: slots, columns: 4) == [0, 2, 3, 6, 7, 8])
+	}
+	
+	@Test nonisolated func aDropOnFourColumnsStaysAFixedSpotAfterGoingThroughStorage() {
+		var board = Board(columns: 4, tiles: [(id: "a", size: .large, slot: 0), (id: "b", size: .small, slot: 4), (id: "c", size: .wide, slot: 6), (id: "d", size: .small, slot: 8)])
+		board.place("d", at: 15)
+		let ids = ["a", "b", "c", "d"]
+		let spots = ids.map { board.origins[$0]! }
+		let filled = ids.map { board.sizes[$0]! }
+		let slots = TileLayout.gathered(spots, sizes: filled)
+		let read = Board(columns: 4, tiles: ids.indices.map { (id: ids[$0], size: filled[$0], slot: slots[$0]) })
+		
+		#expect(read == board)
+	}
+	
 	@Test func arrangingWritesSlotsTheGridShowsUnchanged() throws {
 		let rig = try rig()
 		
@@ -661,6 +710,29 @@ struct SceneTests {
 		board.write(to: rig.looks)
 		
 		#expect(Board(columns: 2, looks: rig.looks) == board)
+		
+		var wide = Board(columns: 4, looks: rig.looks)
+		wide.place(rig.looks[2].identifier, at: 13)
+		wide.resize(rig.looks[0].identifier, to: .large)
+		wide.write(to: rig.looks)
+		
+		#expect(Board(columns: 4, looks: rig.looks) == wide)
+	}
+	
+	@Test func nothingShowsInTheInspectorUntilAScenePlaysOrIsPicked() throws {
+		let rig = try rig()
+		rig.add(1, [(0, 1, 50)])
+		
+		#expect(rig.console.shownScene(among: [rig.look.identifier]) == nil)
+		
+		rig.console.play(rig.list, at: 0)
+		#expect(rig.console.shownScene(among: [rig.look.identifier]) == rig.look.identifier)
+		
+		rig.console.stop(rig.list)
+		#expect(rig.console.shownScene(among: [rig.look.identifier]) == nil)
+		
+		rig.console.selection.scene = rig.look.identifier
+		#expect(rig.console.shownScene(among: [rig.look.identifier]) == rig.look.identifier)
 	}
 	
 	@Test func deletingSeveralCuesWithTheLiveOneMovesTheStageToTheNearestKeptCueBefore() throws {

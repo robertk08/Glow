@@ -13,12 +13,12 @@ struct ScenesView: View {
 	
 	@State private var customizing: Look?
 	@State private var isArranging = false
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 150
 	
 	private var tiles: some View {
 		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
 		
-		return TileLayout(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
+		return TileLayout(columns: arrangement.columns, minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			ForEach(looks) { look in
 				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, isArranging: $isArranging, customizing: $customizing)
 			}
@@ -105,7 +105,12 @@ struct ScenesView: View {
 			SceneSettings(look: look)
 		}
 		.sheet(isPresented: $isArranging) {
-			ArrangeView(columns: arrangement.columns)
+			if arrangement.columns == 4 {
+				ArrangeView(columns: 4)
+					.presentationSizing(.page)
+			} else {
+				ArrangeView(columns: 2)
+			}
 		}
 	}
 }

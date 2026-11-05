@@ -121,6 +121,13 @@ These are product decisions the code implements without explaining.
   flashes. Every tile keeps its own spot, like a button on a desk. A held tile
   moves alone into an empty spot, or trades places with the tile it is dropped
   on, and nothing else moves. Empty spots stay empty and show as outlines.
+- A scene has one spot, shared by every device. A phone always shows two
+  columns, an iPad shows four when they fit and two when they do not. One row
+  of four is two rows of two side by side, so without a large tile the spot is
+  the same cell on both. A large tile fills two of those halves, one above the
+  other, the tiles after it keep their reading order, and a layout made on
+  either size reads back unchanged on the other. Wide and large tiles never
+  cross the middle of a row of four.
 - A new scene loops.
 - The builder records what is on stage. A new cue stores the lights and
   aspects the scene's cues already hold, every light for a new scene, or what
