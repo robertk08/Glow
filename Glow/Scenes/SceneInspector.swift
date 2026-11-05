@@ -13,7 +13,7 @@ struct SceneInspector: View {
 				.id(look.identifier)
 		} else {
 			ContentUnavailableView {
-				Label("No Scenes Yet", systemImage: "theatermasks")
+				Label(looks.isEmpty ? "No Scenes Yet" : "Nothing Selected", systemImage: "theatermasks")
 			}
 			.safeAreaBar(edge: .bottom) {
 				MasterBar(isRaised: true)

@@ -516,7 +516,7 @@ final class Console {
 	}
 	
 	func shownScene(among scenes: [String]) -> String? {
-		[selection.scene, playback.playing.last?.scene].compactMap { $0 }.first(where: scenes.contains) ?? scenes.first
+		([selection.scene].compactMap { $0 } + playback.playing.map(\.scene).reversed()).first(where: scenes.contains)
 	}
 	
 	func stopAll() {
