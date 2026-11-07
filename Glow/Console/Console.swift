@@ -4,9 +4,7 @@ import SwiftUI
 
 @Observable @MainActor
 final class Console {
-	private(set) var universe = Universe() {
-		didSet { ring() }
-	}
+	private(set) var universe = Universe()
 	
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
@@ -29,9 +27,7 @@ final class Console {
 		didSet { level() }
 	}
 	
-	var isMuted = false {
-		didSet { ring() }
-	}
+	var isMuted = false
 	
 	var lists: [String: CueList] = [:] {
 		didSet { resume() }
@@ -57,16 +53,12 @@ final class Console {
 	private(set) var commands = 0
 	
 	private let connection = NodeLink()
-	private let bell: AsyncStream<Void>
-	private let ringer: AsyncStream<Void>.Continuation
 	private let noticer: AsyncStream<Wire.Notice>.Continuation
 	private let stage = stage_new()!
 	private let born = ContinuousClock.now
 	private var outbox: [URLSessionWebSocketTask.Message] = []
 	private var draining: Task<Void, Never>?
-	private var isSynced = false {
-		didSet { ring() }
-	}
+	private var isSynced = false
 	private var events: Task<Void, Never>?
 	private var frames = FrameStream()
 	private var scratch = [UInt8](repeating: 0, count: Int(STAGE_FRAME_MAX))
@@ -91,7 +83,6 @@ final class Console {
 	private static let ackPatience = Duration.seconds(1)
 	
 	init() {
-		(bell, ringer) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
 		(notices, noticer) = AsyncStream<Wire.Notice>.makeStream()
 		
 		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
@@ -118,9 +109,12 @@ final class Console {
 		}
 		
 		Task { [weak self] in
-			guard let bell = self?.bell else { return }
+			let changes = Observations<(Universe, Bool, Bool, Double, Bool), Never>.untilFinished { [weak self] in
+				guard let self else { return .finish }
+				return .next((universe, isMuted, isSynced, master, blackout))
+			}
 			
-			for await _ in bell {
+			for await _ in changes {
 				self?.tick()
 				try? await Task.sleep(for: .milliseconds(10))
 			}
@@ -298,13 +292,8 @@ final class Console {
 		post(Wire.Command.span(reach).message)
 	}
 	
-	private func ring() {
-		ringer.yield()
-	}
-	
 	private func level() {
 		stage_levels(stage, Float(master), blackout)
-		ring()
 	}
 	
 	private var now: UInt32 {
