@@ -226,7 +226,7 @@ private struct GroupChip: View {
 		.toggleStyle(.button)
 		.buttonStyle(.glass)
 		.buttonBorderShape(.capsule)
-		.tint(group.tint.color ?? .accentColor)
+		.tint(group.tint.color)
 		.contextMenu {
 			Button("Edit Group", systemImage: "slider.horizontal.3") {
 				editing = group

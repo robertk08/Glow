@@ -27,7 +27,7 @@ struct SceneSettings: View {
 	}
 	
 	@ViewBuilder private var content: some View {
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		let list = CueList(look, cues: cues, fixtures: fixtures)
 		let tile = arrangement.frame(of: look.size, among: looks)
 		

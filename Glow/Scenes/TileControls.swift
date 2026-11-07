@@ -21,7 +21,7 @@ struct TileControls: View {
 					}
 					.labelStyle(.iconOnly)
 					.font(.body.weight(.semibold))
-					.foregroundStyle(isShown ? AnyShapeStyle(look.tint.color ?? .accentColor) : AnyShapeStyle(.secondary))
+					.foregroundStyle(isShown ? AnyShapeStyle(look.tint.color) : AnyShapeStyle(.secondary))
 					.frame(width: 44, height: 44)
 					.contentShape(.rect)
 					.hoverEffect(.highlight)

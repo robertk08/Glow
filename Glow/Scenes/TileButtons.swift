@@ -18,7 +18,7 @@ struct TileButtons: View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let upcoming = console.upcoming(list)
 		let isOn = index != nil && !look.buttons.contains(.stop)
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		
 		GlassEffectContainer(spacing: 10) {
 			HStack(spacing: 10) {

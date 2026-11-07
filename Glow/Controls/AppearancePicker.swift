@@ -22,7 +22,7 @@ struct AppearancePicker: View {
 						tint.wrappedValue = option
 					} label: {
 						Circle()
-							.fill(option.color ?? Color(.tertiarySystemFill))
+							.fill(option == .none ? Color(.tertiarySystemFill) : option.color)
 							.frame(width: 30, height: 30)
 							.overlay {
 								Image(systemName: "slash.circle")
@@ -37,7 +37,7 @@ struct AppearancePicker: View {
 							}
 					}
 					.buttonStyle(.plain)
-					.accessibilityLabel(option.rawValue.capitalized)
+					.accessibilityLabel(option.name)
 					.accessibilityAddTraits(tint.wrappedValue == option ? .isSelected : [])
 				}
 			}

@@ -19,7 +19,7 @@ struct SceneFace: View {
 		let isOn = index != nil
 		let size = look.size
 		let isLarge = size == .large
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		let fade = console.playback.fades[look.identifier]
 		let upcoming = console.upcoming(list)
 		let hasButtons = size != .small && !look.buttons.isEmpty

@@ -36,7 +36,7 @@ struct SceneView: View {
 		let upcoming = held.count > 1 ? console.upcoming(list) : nil
 		let armed = console.selection.armed[look.identifier]
 		let fade = console.playback.fades[look.identifier]
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		let picked = held.filter { chosen.contains($0.identifier) }
 		
 		NavigationStack {
@@ -394,7 +394,7 @@ private struct Transport: View {
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let upcoming = console.upcoming(list)
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		let steps = list.cues.count > 1
 		let isOn = index != nil
 		let canGoBack = index.flatMap(list.previous(before:)) != nil

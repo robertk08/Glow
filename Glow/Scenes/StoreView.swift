@@ -66,7 +66,7 @@ struct StoreView: View {
 									.minimumScaleFactor(0.8)
 									.frame(maxWidth: .infinity)
 								}
-								.tint(group.tint.color ?? .accentColor)
+								.tint(group.tint.color)
 							}
 						}
 						.toggleStyle(.button)

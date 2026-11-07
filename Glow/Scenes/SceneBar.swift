@@ -17,7 +17,7 @@ struct SceneBar: View {
 		Group {
 			if let look = looks.first(where: { $0.identifier == shown }), let list = lists.first(where: { $0.scene == shown }) {
 				let index = list.index(of: console.playback.cue(of: look.identifier))
-				let tint = look.tint.color ?? .accentColor
+				let tint = look.tint.color
 				let canGoBack = index.flatMap(list.previous(before:)) != nil
 				let isAtEnd = console.upcoming(list) == nil
 				

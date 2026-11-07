@@ -47,7 +47,7 @@ private struct BuilderPanel: View {
 			let canUpdate = !isMoving && update?.isReady == true
 			let isOnStage = isMoving || update?.isOnStage ?? true
 			let hasChanged = console.hasChanged(look, among: cues)
-			let tint = look.tint.color ?? .accentColor
+			let tint = look.tint.color
 			
 			VStack(alignment: .leading, spacing: 14) {
 				HStack(spacing: 12) {

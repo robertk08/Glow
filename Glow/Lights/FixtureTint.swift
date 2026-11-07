@@ -8,9 +8,9 @@ nonisolated enum FixtureTint: String, CaseIterable, Identifiable, Sendable {
 	
 	var name: String { rawValue.capitalized }
 	
-	var color: Color? {
+	var color: Color {
 		switch self {
-		case .none: nil
+		case .none: .accentColor
 		case .red: .red
 		case .orange: .orange
 		case .yellow: .yellow

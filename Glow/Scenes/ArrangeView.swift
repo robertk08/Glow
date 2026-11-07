@@ -173,7 +173,7 @@ private struct Block: View {
 	let isPushed: Bool
 	
 	var body: some View {
-		let tint = look.tint.color ?? .accentColor
+		let tint = look.tint.color
 		
 		VStack(alignment: .leading, spacing: 4) {
 			Image(systemName: look.symbol)
