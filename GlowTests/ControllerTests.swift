@@ -209,6 +209,7 @@ struct ControllerTests {
 		let light = try #require(Rig.first.lights.first)
 		let dimmer = try #require(DMXAddress(light.address + 7))
 		let look = Look(name: "Probe Steps", sortIndex: 2)
+		look.loops = true
 		var high = Levels()
 		high.set(200, slot: 8, of: light.identifier)
 		var low = Levels()
