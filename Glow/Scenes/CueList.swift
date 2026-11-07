@@ -98,6 +98,23 @@ nonisolated struct CueList: Sendable {
 		return trimmed
 	}
 	
+	func tracked(through index: Int) -> [UInt8?] {
+		var state = [UInt8?](repeating: nil, count: Universe.channelCount + 1)
+		
+		for cue in cues.prefix(index + 1) {
+			Levels.read(cue.levels) { light, mask, values in
+				guard let start = starts[light] else { return }
+				
+				Levels.visit(mask, values) { slot, value in
+					guard let address = start.offset(by: slot - 1) else { return }
+					state[address.value] = value
+				}
+			}
+		}
+		
+		return state
+	}
+	
 	func program(from index: Int, snapping: Bool = false) -> Data {
 		var changes: [[(address: Int, value: UInt8)]] = []
 		var owned = [Bool](repeating: false, count: Universe.channelCount + 1)

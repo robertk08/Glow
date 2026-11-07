@@ -1304,7 +1304,7 @@ struct SceneTests {
 				let now = look.cues(among: rig.cues)
 				guard let current = rig.console.marked(among: now).map({ now[$0] }) else { continue }
 				let update = rig.recording(.into(current))
-				let tracked = update.tracked
+				let tracked = now.prefix(through: now.firstIndex { $0.identifier == current.identifier } ?? 0).reduce(Levels()) { $0.merging($1.levels) }
 				var differs = false
 				var shows = false
 				

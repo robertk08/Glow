@@ -118,44 +118,45 @@ final class Recording: Identifiable {
 		!levels.isEmpty
 	}
 	
-	var tracked: Levels {
-		guard case let .into(cue) = destination else { return Levels() }
-		let held = looks.first { $0.identifier == cue.lookID }?.cues(among: cues) ?? [cue]
-		let index = held.firstIndex { $0.identifier == cue.identifier } ?? 0
-		return held.prefix(index + 1).reduce(Levels()) { $0.merging($1.levels) }
+	private var placed: (list: CueList, index: Int)? {
+		guard case let .into(cue) = destination, let look = looks.first(where: { $0.identifier == cue.lookID }) else { return nil }
+		let list = CueList(look, cues: cues, fixtures: fixtures)
+		return list.index(of: cue.identifier).map { (list, $0) }
 	}
 	
 	var isOnStage: Bool {
-		!tracked.lights.contains { light, slots in
-			guard let fixture = fixtures.first(where: { $0.identifier == light }) else { return false }
-			return slots.contains { slot, value in fixture.start.offset(by: slot - 1).map { console.value(at: $0) != value } ?? false }
+		guard let (list, index) = placed else { return true }
+		let tracked = list.tracked(through: index)
+		
+		return !tracked.indices.contains { address in
+			guard let value = tracked[address], let slot = DMXAddress(address) else { return false }
+			return console.value(at: slot) != value
 		}
 	}
 	
 	var levels: Levels {
 		var levels = Levels()
 		var held = Levels()
+		let chosen = lights
 		
 		if case let .into(cue) = destination { held = cue.levels }
 		
-		for fixture in fixtures where lights.contains(fixture.identifier) {
+		for fixture in fixtures where chosen.contains(fixture.identifier) {
 			guard let type = library.type(fixture.typeID) else { continue }
 			
 			let owned = held.lights[fixture.identifier] ?? [:]
-			let differing = type.channels.filter { channel in
+			let differing = Set(type.channels.filter { channel in
 				channel.offsets.contains { offset in
 					guard let address = fixture.start.offset(by: offset - 1) else { return false }
 					guard let value = owned[offset] else { return console.isChanged(address) }
 					return value != console.value(at: address)
 				}
-			}
-			let stored = features.filter { isNew || type.channels(storedWith: $0).contains(where: differing.contains) }.flatMap(type.channels(storedWith:))
+			}.map(\.offset))
+			let stored = Set(features.filter { isNew || type.channels(storedWith: $0).contains { differing.contains($0.offset) } }.flatMap(type.channels(storedWith:)).flatMap(\.offsets))
 			
-			for channel in type.channels where stored.contains(channel) {
-				for offset in channel.offsets {
-					guard let address = fixture.start.offset(by: offset - 1) else { continue }
-					levels.set(console.value(at: address), slot: offset, of: fixture.identifier)
-				}
+			for offset in stored {
+				guard let address = fixture.start.offset(by: offset - 1) else { continue }
+				levels.set(console.value(at: address), slot: offset, of: fixture.identifier)
 			}
 		}
 		
@@ -232,40 +233,7 @@ final class Recording: Identifiable {
 		}
 		
 		try? context.save()
-		release(levels)
 		
-		guard let landing, console.playback.cue(of: landing.look.identifier) != nil else { return }
-		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
-		guard let index = list.index(of: landing.cue) else { return }
-		console.land(list, at: index)
-	}
-	
-	func show() {
-		guard case let .into(cue) = destination, let look = looks.first(where: { $0.identifier == cue.lookID }) else { return }
-		let list = CueList(look, cues: cues, fixtures: fixtures)
-		guard let index = list.index(of: cue.identifier) else { return }
-		
-		guard console.playback.cue(of: look.identifier) != nil else {
-			for fixture in fixtures {
-				for (slot, value) in tracked.lights[fixture.identifier] ?? [:] {
-					guard let address = fixture.start.offset(by: slot - 1) else { continue }
-					console.set(value, at: address)
-				}
-			}
-			
-			release(tracked)
-			return
-		}
-		
-		release(tracked)
-		console.play(list, at: index, snapping: true)
-	}
-	
-	private func lights(in draft: CueDraft) -> Set<String> {
-		(draft.lights ?? Set(fixtures.map(\.identifier))).intersection(fixtures.map(\.identifier))
-	}
-	
-	private func release(_ levels: Levels) {
 		for fixture in fixtures {
 			guard let slots = levels.lights[fixture.identifier] else { continue }
 			
@@ -274,5 +242,28 @@ final class Recording: Identifiable {
 				console.release(address.value...address.value)
 			}
 		}
+		
+		guard let landing, console.playback.cue(of: landing.look.identifier) != nil else { return }
+		let list = CueList(landing.look, cues: (try? context.fetch(FetchDescriptor<Cue>())) ?? [], fixtures: fixtures)
+		guard let index = list.index(of: landing.cue) else { return }
+		console.land(list, at: index)
+	}
+	
+	func show() {
+		guard let (list, index) = placed else { return }
+		let isPlaying = console.playback.cue(of: list.scene) != nil
+		
+		for (address, value) in list.tracked(through: index).enumerated() {
+			guard let value, let slot = DMXAddress(address) else { continue }
+			if !isPlaying { console.set(value, at: slot) }
+			console.release(address...address)
+		}
+		
+		guard isPlaying else { return }
+		console.play(list, at: index, snapping: true)
+	}
+	
+	private func lights(in draft: CueDraft) -> Set<String> {
+		(draft.lights ?? Set(fixtures.map(\.identifier))).intersection(fixtures.map(\.identifier))
 	}
 }
