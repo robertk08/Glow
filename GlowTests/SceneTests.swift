@@ -677,6 +677,55 @@ struct SceneTests {
 		}
 	}
 	
+	@Test nonisolated func randomEditsOnPhonesAndTabletsKeepOneLayoutThroughStorage() {
+		var seed: UInt64 = 0xD1B54A32D192ED03
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
+		for session in 0..<300 {
+			let ids = (0..<(1 + roll(9))).map { "t\($0)" }
+			var tiles = ids.map { (id: $0, size: TileSize.allCases[roll(3)], slot: roll(20)) }
+			
+			for step in 0..<8 {
+				let columns = [2, 4][roll(2)]
+				var board = Board(columns: columns, tiles: tiles)
+				let before = board
+				let id = ids[roll(ids.count)]
+				
+				if roll(2) == 0 {
+					board.place(id, at: roll(32))
+				} else {
+					board.resize(id, to: TileSize.allCases[roll(3)])
+				}
+				
+				let spots = ids.map { board.origins[$0]! }
+				let sizes = ids.map { board.sizes[$0]! }
+				let slots = columns == 2 ? spots : TileLayout.gathered(spots, sizes: sizes)
+				tiles = ids.indices.map { (id: ids[$0], size: sizes[$0], slot: slots[$0]) }
+				#expect(Board(columns: columns, tiles: tiles) == board, "session \(session) step \(step) read back a different layout on the device that edited it")
+				
+				for other in ids where other != id && before.origins[other] != board.origins[other] {
+					#expect(!Set(board.cells(of: id)).isDisjoint(with: before.cells(of: other)), "session \(session) step \(step) moved a tile the edit did not cover")
+				}
+				
+				for width in [2, 4] {
+					let shown = Board(columns: width, tiles: tiles)
+					var taken = Set<Int>()
+					
+					for tile in ids {
+						let cells = Set(shown.cells(of: tile))
+						#expect(taken.isDisjoint(with: cells), "session \(session) step \(step) overlapped tiles on \(width) columns")
+						#expect(shown.origins[tile]! % shown.sizes[tile]!.columns == 0, "session \(session) step \(step) split a tile on \(width) columns")
+						taken.formUnion(cells)
+					}
+				}
+			}
+		}
+	}
+	
 	@Test nonisolated func aDropReportsOnlyTheTilesItPushed() {
 		let before = Board(columns: 4, tiles: [(id: "a", size: .small, slot: 0), (id: "b", size: .wide, slot: 2), (id: "c", size: .small, slot: 4)])
 		var after = before
@@ -741,6 +790,58 @@ struct SceneTests {
 		
 		rig.console.selection.scene = rig.look.identifier
 		#expect(rig.console.shownScene(among: [rig.look.identifier]) == rig.look.identifier)
+	}
+	
+	@Test func randomPicksStartsStopsAndFlashesShowWhatAUserExpects() async throws {
+		let rig = try rig()
+		let looks = [rig.look, Look.fresh(among: rig.looks, context: rig.context), Look.fresh(among: rig.looks, context: rig.context)]
+		let scenes = looks.map(\.identifier)
+		
+		for (index, look) in looks.enumerated() {
+			rig.add(1, to: look, [(index, 1, 80)])
+		}
+		
+		var seed: UInt64 = 0x94D049BB133111EB
+		var pick: String?
+		var started: [String] = []
+		
+		func roll(_ count: Int) -> Int {
+			seed = seed &* 6364136223846793005 &+ 1442695040888963407
+			return Int((seed >> 33) % UInt64(count))
+		}
+		
+		for step in 0..<400 {
+			let look = looks[roll(looks.count)]
+			let list = rig.list(of: look)
+			let shownBefore = rig.console.shownScene(among: scenes)
+			
+			switch roll(5) {
+			case 0:
+				rig.console.selection.scene = look.identifier
+				pick = look.identifier
+			case 1:
+				if let picked = pick, !started.contains(picked), picked != look.identifier { pick = nil }
+				rig.console.play(list, at: 0)
+				started.removeAll { $0 == look.identifier }
+				started.append(look.identifier)
+			case 2:
+				rig.console.stop(list)
+				started.removeAll { $0 == look.identifier }
+			case 3:
+				guard !started.contains(look.identifier) else { continue }
+				rig.console.flash(list, isHeld: true)
+				#expect(rig.console.shownScene(among: scenes) == shownBefore, "step \(step) a held flash moved the sidebar")
+				rig.console.flash(list, isHeld: false)
+			default:
+				guard let picked = pick, !started.contains(picked) else { continue }
+				rig.console.selection.scene = nil
+				pick = nil
+			}
+			
+			#expect(rig.console.selection.scene == pick, "step \(step) kept the wrong pick")
+			#expect(rig.console.shownScene(among: scenes) == pick ?? started.last, "step \(step) showed the wrong scene")
+			try await Task.sleep(for: .milliseconds(1))
+		}
 	}
 	
 	@Test func theInspectorFollowsAStartedSceneUnlessThePickedOneIsRunning() throws {

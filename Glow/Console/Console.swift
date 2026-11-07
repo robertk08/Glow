@@ -533,7 +533,7 @@ final class Console {
 	}
 	
 	func shownScene(among scenes: [String]) -> String? {
-		([selection.scene].compactMap { $0 } + playback.playing.map(\.scene).reversed()).first(where: scenes.contains)
+		([selection.scene].compactMap { $0 } + playback.playing.map(\.scene).filter { !flashing.contains($0) }.reversed()).first(where: scenes.contains)
 	}
 	
 	func stopAll() {

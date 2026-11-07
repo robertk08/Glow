@@ -131,7 +131,7 @@ These are product decisions the code implements without explaining.
   cross the middle of a row of four.
 - The iPad sidebar shows the scene you picked, otherwise the one that started
   last, otherwise nothing. Starting a scene moves the sidebar to it unless the
-  picked scene is running. A flash never moves it. Opening a sheet or cue
+  picked scene is running. A flash never moves it or clears a pick. Opening a sheet or cue
   editing from the sidebar pins that scene. The close button clears a pick on a
   scene that is not running.
 - With a keyboard, Space and the right arrow are Go, the left arrow is Back,
