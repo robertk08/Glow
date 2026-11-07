@@ -677,6 +677,14 @@ struct SceneTests {
 		}
 	}
 	
+	@Test nonisolated func aDropReportsOnlyTheTilesItPushed() {
+		let before = Board(columns: 4, tiles: [(id: "a", size: .small, slot: 0), (id: "b", size: .wide, slot: 2), (id: "c", size: .small, slot: 4)])
+		var after = before
+		after.place("a", at: 2)
+		
+		#expect(after.pushed(from: before, moving: "a") == ["b"])
+	}
+	
 	@Test nonisolated func aLargeTileKeepsItsNeighboursInReadingOrderOnFourColumns() {
 		let sizes: [TileSize] = [.large, .small, .small, .small, .small, .wide]
 		let slots = [0, 4, 5, 6, 7, 8]
@@ -733,6 +741,35 @@ struct SceneTests {
 		
 		rig.console.selection.scene = rig.look.identifier
 		#expect(rig.console.shownScene(among: [rig.look.identifier]) == rig.look.identifier)
+	}
+	
+	@Test func theInspectorFollowsAStartedSceneUnlessThePickedOneIsRunning() throws {
+		let rig = try rig()
+		let other = Look.fresh(among: rig.looks, context: rig.context)
+		let scenes = [rig.look.identifier, other.identifier]
+		rig.add(1, [(0, 1, 50)])
+		rig.add(1, to: other, [(1, 1, 60)])
+		
+		rig.console.selection.scene = rig.look.identifier
+		rig.console.play(rig.list(of: other), at: 0)
+		#expect(rig.console.shownScene(among: scenes) == other.identifier)
+		
+		rig.console.stop(rig.list(of: other))
+		rig.console.play(rig.list, at: 0)
+		rig.console.selection.scene = rig.look.identifier
+		rig.console.play(rig.list(of: other), at: 0)
+		#expect(rig.console.shownScene(among: scenes) == rig.look.identifier)
+		
+		rig.console.stop(rig.list)
+		rig.console.stop(rig.list(of: other))
+		rig.console.selection.scene = rig.look.identifier
+		rig.console.flash(rig.list(of: other), isHeld: true)
+		#expect(rig.console.shownScene(among: scenes) == rig.look.identifier)
+		rig.console.flash(rig.list(of: other), isHeld: false)
+		
+		rig.console.selection.isSceneOpen = true
+		rig.console.play(rig.list(of: other), at: 0)
+		#expect(rig.console.selection.scene == rig.look.identifier)
 	}
 	
 	@Test func deletingSeveralCuesWithTheLiveOneMovesTheStageToTheNearestKeptCueBefore() throws {

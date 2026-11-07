@@ -7,6 +7,7 @@ struct LightsView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.modelContext) private var context
 	@Environment(\.dynamicTypeSize) private var typeSize
+	@Environment(Arrangement.self) private var arrangement
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
@@ -101,6 +102,8 @@ struct LightsView: View {
 	}
 	
 	var body: some View {
+		let placement = arrangement.isCramped ? ToolbarItemPlacement.bottomBar : .topBarTrailing
+		
 		Group {
 			if fixtures.isEmpty {
 				ContentUnavailableView {
@@ -127,9 +130,9 @@ struct LightsView: View {
 		.toolbar {
 			LinkStatusButton()
 			
-			ToolbarSpacer(.flexible, placement: .topBarTrailing)
+			ToolbarSpacer(.flexible, placement: placement)
 			
-			ToolbarItem(placement: .topBarTrailing) {
+			ToolbarItem(placement: placement) {
 				Button("Reorder", systemImage: "arrow.up.arrow.down") {
 					isOrdering = true
 				}
@@ -137,16 +140,16 @@ struct LightsView: View {
 			}
 			
 			if shows.canUndo {
-				ToolbarItem(placement: .topBarTrailing) {
+				ToolbarItem(placement: placement) {
 					Button("Undo", systemImage: "arrow.uturn.backward") {
 						context.undoManager?.undo()
 					}
 				}
 			}
 			
-			ToolbarSpacer(.fixed, placement: .topBarTrailing)
+			ToolbarSpacer(.fixed, placement: placement)
 			
-			ToolbarItem(placement: .topBarTrailing) {
+			ToolbarItem(placement: placement) {
 				Menu("Add", systemImage: "plus") {
 					Button("Add Light", systemImage: "lightbulb") {
 						isAdding = true

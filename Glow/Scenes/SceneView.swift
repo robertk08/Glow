@@ -143,7 +143,7 @@ struct SceneView: View {
 								.transition(.move(edge: .bottom).combined(with: .opacity))
 						}
 					} else if !held.isEmpty {
-						Transport(look: look, list: list)
+						Transport(look: look, list: list, depth: isSheet ? 1 : 0)
 					}
 					
 					if !isSheet {
@@ -165,6 +165,12 @@ struct SceneView: View {
 				} else if isSheet {
 					ToolbarItem(placement: .topBarLeading) {
 						Button(role: .close) { dismiss() }
+					}
+				} else if console.selection.scene == look.identifier, index == nil {
+					ToolbarItem(placement: .topBarLeading) {
+						Button(role: .close) {
+							console.selection.scene = nil
+						}
 					}
 				}
 				
@@ -211,6 +217,9 @@ struct SceneView: View {
 			}
 			.onChange(of: editMode.isEditing) {
 				chosen = []
+			}
+			.onChange(of: isCustomizing || editing != nil || editMode.isEditing) { _, isBusy in
+				if isBusy, !isSheet { console.selection.scene = look.identifier }
 			}
 			.sheet(isPresented: $isCustomizing) {
 				SceneSettings(look: look)
@@ -380,6 +389,7 @@ private struct Transport: View {
 	
 	let look: Look
 	let list: CueList
+	let depth: Int
 	
 	var body: some View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
@@ -403,7 +413,6 @@ private struct Transport: View {
 							.glassEffect(.regular.interactive(canGoBack), in: .circle)
 					}
 					.accessibilityLabel("Back")
-					.keyboardShortcut(.leftArrow, modifiers: [])
 					.disabled(!canGoBack)
 				}
 				
@@ -437,7 +446,6 @@ private struct Transport: View {
 					.frame(height: height)
 					.glassEffect(.regular.tint(isLit ? tint : nil).interactive(!isAtEnd), in: .capsule)
 				}
-				.keyboardShortcut(.rightArrow, modifiers: [])
 				.disabled(isAtEnd)
 				
 				if steps {
@@ -452,6 +460,30 @@ private struct Transport: View {
 					.disabled(!isOn)
 				}
 			}
+		}
+		.background {
+			Group {
+				Button("Go") {
+					console.press(steps ? .next : .toggle, on: list, depth: depth)
+				}
+				.keyboardShortcut(.rightArrow, modifiers: [])
+				.disabled(isAtEnd)
+				
+				Button("Go") {
+					console.press(steps ? .next : .toggle, on: list, depth: depth)
+				}
+				.keyboardShortcut(.space, modifiers: [])
+				.disabled(isAtEnd)
+				
+				Button("Back") {
+					console.press(.back, on: list, depth: depth)
+				}
+				.keyboardShortcut(.leftArrow, modifiers: [])
+				.disabled(!canGoBack)
+			}
+			.opacity(0)
+			.allowsHitTesting(false)
+			.accessibilityHidden(true)
 		}
 		.buttonStyle(.plain)
 		.font(.headline)

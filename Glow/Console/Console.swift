@@ -506,6 +506,23 @@ final class Console {
 		}
 	}
 	
+	func isCovered(beyond depth: Int = 0) -> Bool {
+		guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene, var top = scene.keyWindow?.rootViewController else { return false }
+		var covers = 0
+		
+		while let next = top.presentedViewController {
+			covers += 1
+			top = next
+		}
+		
+		return covers > depth
+	}
+	
+	func press(_ action: SceneAction, on list: CueList, depth: Int) {
+		guard !isCovered(beyond: depth) else { return }
+		run(action, on: list)
+	}
+	
 	func toggle(_ list: CueList) {
 		guard list.index(of: playback.cue(of: list.scene)) == nil else {
 			stop(list)
@@ -557,6 +574,7 @@ final class Console {
 		let start = Date.now.addingTimeInterval(cue.delay)
 		flashing.remove(list.scene)
 		selection.armed[list.scene] = nil
+		if !snapping { selection.follow(list.scene, isIdle: selection.scene.map { playback.cue(of: $0) == nil } ?? false) }
 		playback.play(cue.identifier, of: list.scene, fade: snapping ? Fade(start: .now, end: .now, follows: false) : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
 	}
 	

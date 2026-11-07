@@ -60,6 +60,8 @@ struct LightTile: View {
 		.padding(14)
 		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))
+		.contentShape(.hoverEffect, .rect(cornerRadius: 24, style: .continuous))
+		.hoverEffect(.highlight)
 		.gesture(SidewaysDrag {
 			origin = programmer?.brightness ?? 0
 		} moved: { distance in

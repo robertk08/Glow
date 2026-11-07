@@ -39,6 +39,11 @@ final class Selection {
 		self.isNew = isNew
 	}
 	
+	func follow(_ started: String, isIdle: Bool) {
+		guard isIdle, !isSceneOpen, scene != started else { return }
+		scene = nil
+	}
+	
 	func contains(_ fixture: Fixture) -> Bool {
 		identifiers.contains(fixture.identifier)
 	}

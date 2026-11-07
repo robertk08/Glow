@@ -43,6 +43,8 @@ struct TileButtons: View {
 							.frame(maxWidth: isWide ? .infinity : height, minHeight: height)
 							.glassEffect(.regular.tint(isProminent ? tint : nil).interactive(isEnabled), in: .capsule)
 							.contentShape(.capsule)
+							.contentShape(.hoverEffect, .capsule)
+							.hoverEffect(.highlight)
 					}
 					.buttonStyle(PressStyle(flashes: action == .flash) { isHeld in
 						console.flash(list, isHeld: isHeld)

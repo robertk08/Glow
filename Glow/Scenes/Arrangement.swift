@@ -4,12 +4,13 @@ import SwiftUI
 final class Arrangement {
 	var frames: [String: CGRect] = [:]
 	var width: CGFloat = 0
-	var minimum: CGFloat = 168
+	var minimum: CGFloat = 146
+	var isCramped = false
 	
 	let spacing: CGFloat = 12
 	
 	var columns: Int {
-		UIDevice.current.userInterfaceIdiom == .pad && width + spacing >= (minimum + spacing) * 4 ? 4 : 2
+		width + spacing >= (minimum + spacing) * 4 ? 4 : 2
 	}
 	
 	private var column: CGFloat {

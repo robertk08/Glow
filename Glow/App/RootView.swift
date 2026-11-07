@@ -37,7 +37,12 @@ struct RootView: View {
 			}
 		}
 		.tabViewStyle(.sidebarAdaptable)
+		.defaultAdaptableTabBarPlacement(.tabBar)
 		.tabBarMinimizeBehavior(.never)
+	}
+	
+	private var isCompact: Bool {
+		sizeClass == .compact || UIDevice.current.userInterfaceIdiom == .phone
 	}
 	
 	var body: some View {
@@ -48,8 +53,9 @@ struct RootView: View {
 				Color.clear
 			} else if !shows.isLoaded {
 				WaitingView()
-			} else if sizeClass == .compact {
+			} else if isCompact {
 				tabs
+					.environment(\.horizontalSizeClass, .compact)
 					.tabViewBottomAccessory {
 						if console.selection.section == "scenes" {
 							SceneBar(transition: transition)
@@ -76,6 +82,7 @@ struct RootView: View {
 					}
 			} else {
 				tabs
+					.onGeometryChange(for: Bool.self) { $0.size.width < 720 } action: { arrangement.isCramped = $0 }
 					.inspector(isPresented: .constant(console.selection.section != "settings")) {
 						Group {
 							if console.selection.section == "scenes" {
@@ -89,6 +96,15 @@ struct RootView: View {
 			}
 		}
 		.environment(arrangement)
+		.background {
+			Button("All Off") {
+				console.stopAll()
+			}
+			.keyboardShortcut(".", modifiers: .command)
+			.opacity(0)
+			.allowsHitTesting(false)
+			.accessibilityHidden(true)
+		}
 		.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)
 		.task {
 			shows.reach(console, library: library)
@@ -112,6 +128,12 @@ struct RootView: View {
 				self.returning = nil
 			} else if after != nil {
 				console.selection.section = "lights"
+			}
+		}
+		.onChange(of: isCompact) {
+			if !isCompact {
+				console.selection.isSceneOpen = false
+				console.selection.isProgrammerOpen = false
 			}
 		}
 		.onChange(of: scenePhase) {

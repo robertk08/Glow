@@ -5,11 +5,12 @@ struct SceneTile: View {
 	@Environment(Console.self) private var console
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
 	let look: Look
 	let list: CueList
 	let arrangement: Arrangement
+	let looks: [Look]
+	let cues: [Cue]
 	
 	@Binding var isArranging: Bool
 	@Binding var customizing: Look?
@@ -38,6 +39,8 @@ struct SceneTile: View {
 		.buttonStyle(PressStyle(flashes: look.tap == .flash) { isHeld in
 			console.flash(list, isHeld: isHeld)
 		})
+		.contentShape(.hoverEffect, .rect(cornerRadius: 24, style: .continuous))
+		.hoverEffect(.highlight)
 		.accessibilityHint(look.tap.tapName)
 		.overlay {
 			TileControls(look: look, list: list)
@@ -45,7 +48,7 @@ struct SceneTile: View {
 		.contentShape(.contextMenuPreview, .rect(cornerRadius: 24, style: .continuous))
 		.modifier(SceneMenu(isShown: look.tap != .flash) {
 			if !console.flashing.contains(list.scene) {
-				SceneActions(look: look, list: list, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
+				SceneActions(look: look, list: list, looks: looks, cues: cues, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
 			}
 		})
 		.confirmationDialog("Delete \(look.name)?", isPresented: $isDeleting, titleVisibility: .visible) {
@@ -86,11 +89,11 @@ private struct SceneActions: View {
 	@Environment(Console.self) private var console
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
-	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
 	
 	let look: Look
 	let list: CueList
+	let looks: [Look]
+	let cues: [Cue]
 	
 	@Binding var isArranging: Bool
 	@Binding var isDeleting: Bool

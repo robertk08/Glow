@@ -88,6 +88,14 @@ nonisolated struct Board: Equatable {
 		}
 	}
 	
+	func pushed(from before: Board, moving id: String) -> Set<String> {
+		Set(origins.keys.filter { $0 != id && origins[$0] != before.origins[$0] })
+	}
+	
+	func top(of id: String, cell: CGSize, spacing: CGFloat) -> CGFloat {
+		CGFloat((origins[id] ?? 0) / columns) * (cell.height + spacing)
+	}
+	
 	func distance(from start: Int, to origin: Int) -> (Int, Int, Int, Int) {
 		let rows = origin / columns - start / columns
 		let across = origin % columns - start % columns

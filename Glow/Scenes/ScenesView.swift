@@ -13,14 +13,14 @@ struct ScenesView: View {
 	
 	@State private var customizing: Look?
 	@State private var isArranging = false
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 150
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 146
 	
 	private var tiles: some View {
 		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
 		
 		return TileLayout(columns: arrangement.columns, minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			ForEach(looks) { look in
-				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, isArranging: $isArranging, customizing: $customizing)
+				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, looks: looks, cues: cues, isArranging: $isArranging, customizing: $customizing)
 			}
 		}
 		.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { arrangement.width = $0 }
@@ -36,6 +36,7 @@ struct ScenesView: View {
 	
 	var body: some View {
 		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
+		let placement = arrangement.isCramped ? ToolbarItemPlacement.bottomBar : .topBarTrailing
 		
 		Group {
 			if looks.isEmpty {
@@ -67,10 +68,12 @@ struct ScenesView: View {
 		.toolbar {
 			LinkStatusButton()
 			
-			ToolbarSpacer(.flexible, placement: .topBarTrailing)
+			if !arrangement.isCramped {
+				ToolbarSpacer(.flexible, placement: placement)
+			}
 			
 			if isPlaying {
-				ToolbarItem(placement: .topBarTrailing) {
+				ToolbarItem(placement: placement) {
 					Button("All Off", systemImage: "stop.fill") {
 						console.stopAll()
 					}
@@ -78,26 +81,31 @@ struct ScenesView: View {
 					.tint(.red)
 				}
 				
-				ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				ToolbarSpacer(arrangement.isCramped ? .flexible : .fixed, placement: placement)
+			} else if arrangement.isCramped {
+				ToolbarSpacer(.flexible, placement: placement)
 			}
 			
-			ToolbarItem(placement: .topBarTrailing) {
+			ToolbarItem(placement: placement) {
 				Button("Edit") {
 					isArranging = true
 				}
 				.disabled(looks.isEmpty)
 			}
 			
-			ToolbarSpacer(.fixed, placement: .topBarTrailing)
+			ToolbarSpacer(.fixed, placement: placement)
 			
-			ToolbarItem(placement: .topBarTrailing) {
+			ToolbarItem(placement: placement) {
 				Button("New Scene", systemImage: "plus") {
+					guard !console.isCovered() else { return }
+					
 					if console.selection.building == nil {
 						console.selection.build(Look.fresh(among: looks, context: context).identifier, isNew: true)
 					} else {
 						console.selection.section = "lights"
 					}
 				}
+				.keyboardShortcut("n", modifiers: .command)
 				.disabled(fixtures.isEmpty)
 			}
 		}
@@ -105,12 +113,7 @@ struct ScenesView: View {
 			SceneSettings(look: look)
 		}
 		.sheet(isPresented: $isArranging) {
-			if arrangement.columns == 4 {
-				ArrangeView(columns: 4)
-					.presentationSizing(.page)
-			} else {
-				ArrangeView(columns: 2)
-			}
+			ArrangeView(columns: arrangement.columns)
 		}
 	}
 }

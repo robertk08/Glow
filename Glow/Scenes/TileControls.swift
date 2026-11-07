@@ -22,6 +22,7 @@ struct TileControls: View {
 					.foregroundStyle(.secondary)
 					.frame(width: 44, height: 44)
 					.contentShape(.rect)
+					.hoverEffect(.highlight)
 					.buttonStyle(.plain)
 					.transition(.scale.combined(with: .opacity))
 				}

@@ -17,6 +17,9 @@ struct ArrangeView: View {
 	@State private var height: CGFloat = 76
 	@State private var deleting: Look?
 	@State private var customizing: Look?
+	@State private var pushed = Set<String>()
+	@State private var position = ScrollPosition()
+	@State private var scrolled = CGRect.zero
 	
 	var body: some View {
 		let board = Board(columns: columns, looks: looks)
@@ -28,7 +31,7 @@ struct ArrangeView: View {
 			ScrollView {
 				ZStack(alignment: .topLeading) {
 					if let first = looks.first {
-						Block(look: first)
+						Block(look: first, isPushed: false)
 							.frame(width: cell.width)
 							.fixedSize(horizontal: false, vertical: true)
 							.hidden()
@@ -44,25 +47,15 @@ struct ArrangeView: View {
 							.accessibilityHidden(true)
 					}
 					
-					if let dragged, let landing {
-						let frame = board.frame(of: dragged, cell: cell, spacing: spacing)
-						let tint = looks.first { $0.identifier == dragged }?.tint.color ?? .accentColor
-						
-						RoundedRectangle(cornerRadius: 18, style: .continuous)
-							.fill(tint.opacity(0.3))
-							.frame(width: frame.width, height: frame.height)
-							.offset(x: CGFloat(landing % columns) * (cell.width + spacing), y: CGFloat(landing / columns) * (cell.height + spacing))
-							.allowsHitTesting(false)
-							.transition(.opacity)
-					}
-					
 					ForEach(looks) { look in
 						let origin = board.origins[look.identifier] ?? 0
 						let frame = board.frame(of: look.identifier, cell: cell, spacing: spacing)
 						
-						Block(look: look)
+						Block(look: look, isPushed: pushed.contains(look.identifier))
 							.frame(width: frame.width, height: frame.height)
 							.contentShape(.rect(cornerRadius: 18, style: .continuous))
+							.contentShape(.hoverEffect, .rect(cornerRadius: 18, style: .continuous))
+							.hoverEffect(.highlight)
 							.contentShape(.dragPreview, .rect(cornerRadius: 18, style: .continuous))
 							.contentShape(.contextMenuPreview, .rect(cornerRadius: 18, style: .continuous))
 							.onTapGesture {
@@ -75,6 +68,7 @@ struct ArrangeView: View {
 										var resized = Board(columns: columns, looks: looks)
 										resized.resize(look.identifier, to: size)
 										dropped = nil
+										pushed = resized.pushed(from: Board(columns: columns, looks: looks), moving: look.identifier)
 										resized.write(to: looks)
 									}
 								}) {
@@ -101,6 +95,17 @@ struct ArrangeView: View {
 							.accessibilityValue(board.sizes[look.identifier]?.name ?? "")
 							.accessibilityHint("Customizes it.")
 					}
+					
+					if let landing, let look = looks.first(where: { $0.identifier == dragged }) {
+						let frame = board.frame(of: look.identifier, cell: cell, spacing: spacing)
+						
+						Block(look: look, isPushed: true)
+							.frame(width: frame.width, height: frame.height)
+							.offset(x: CGFloat(landing % columns) * (cell.width + spacing), y: CGFloat(landing / columns) * (cell.height + spacing))
+							.allowsHitTesting(false)
+							.accessibilityHidden(true)
+							.transition(.opacity)
+					}
 				}
 				.frame(width: width, height: max(CGFloat(rows) * (cell.height + spacing) - spacing, 0), alignment: .topLeading)
 				.dropDestination(for: String.self) { items, session in
@@ -108,6 +113,7 @@ struct ArrangeView: View {
 					var moved = board
 					moved.place(scene, at: origin)
 					dropped = scene
+					pushed = moved.pushed(from: board, moving: scene)
 					moved.write(to: looks)
 					dragged = nil
 					landing = nil
@@ -118,6 +124,25 @@ struct ArrangeView: View {
 				.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
 				.padding()
 			}
+			.scrollPosition($position)
+			.onScrollGeometryChange(for: CGRect.self) { CGRect(x: 0, y: $0.contentOffset.y + $0.contentInsets.top, width: 0, height: $0.containerSize.height) } action: { _, visible in
+				scrolled = visible
+			}
+			.onChange(of: pushed) {
+				guard let lowest = pushed.max(by: { board.top(of: $0, cell: cell, spacing: spacing) < board.top(of: $1, cell: cell, spacing: spacing) }) else { return }
+				let bottom = board.top(of: lowest, cell: cell, spacing: spacing) + board.frame(of: lowest, cell: cell, spacing: spacing).height + 32
+				guard bottom > scrolled.maxY else { return }
+				
+				withAnimation(.smooth(duration: 0.4)) {
+					position.scrollTo(y: bottom - scrolled.height)
+				}
+			}
+			.task(id: pushed) {
+				guard !pushed.isEmpty else { return }
+				try? await Task.sleep(for: .seconds(1.5))
+				pushed = []
+			}
+			.animation(.smooth(duration: 0.4), value: pushed)
 			.background(Color(.systemGroupedBackground))
 			.navigationTitle("Edit Scenes")
 			.navigationBarTitleDisplayMode(.inline)
@@ -140,11 +165,21 @@ struct ArrangeView: View {
 			}
 			.sensoryFeedback(.impact(weight: .light), trigger: board)
 		}
+		.presentationSizing(ArrangeSizing(columns: columns))
+	}
+}
+
+private struct ArrangeSizing: PresentationSizing {
+	let columns: Int
+	
+	func proposedSize(for root: PresentationSizingRoot, context: PresentationSizingContext) -> ProposedViewSize {
+		columns == 4 ? PagePresentationSizing.page.proposedSize(for: root, context: context) : FormPresentationSizing.form.proposedSize(for: root, context: context)
 	}
 }
 
 private struct Block: View {
 	let look: Look
+	let isPushed: Bool
 	
 	var body: some View {
 		let tint = look.tint.color ?? .accentColor
@@ -166,6 +201,11 @@ private struct Block: View {
 		.padding(12)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18, style: .continuous))
+		.overlay {
+			RoundedRectangle(cornerRadius: 18, style: .continuous)
+				.fill(tint.opacity(isPushed ? 0.3 : 0))
+				.allowsHitTesting(false)
+		}
 	}
 }
 
