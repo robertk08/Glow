@@ -9,7 +9,6 @@ final class Selection {
 	var isSceneOpen = false
 	var section = "lights"
 	var scene: String?
-	var armed: [String: String] = [:]
 	var draft = CueDraft()
 	var seed = CueDraft()
 	var marked: String?
@@ -83,10 +82,6 @@ final class Selection {
 		guard !identifiers.isSubset(of: patched) else { return }
 		identifiers.formIntersection(patched)
 		isProgrammerOpen = isProgrammerOpen && !isEmpty
-	}
-	
-	func arm(_ cue: String, of scene: String) {
-		armed[scene] = armed[scene] == cue ? nil : cue
 	}
 	
 	func clear() {

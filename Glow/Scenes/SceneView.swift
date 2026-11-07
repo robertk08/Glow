@@ -34,8 +34,8 @@ struct SceneView: View {
 		let index = list.index(of: console.playback.cue(of: look.identifier))
 		let live = index.map { held[$0].identifier }
 		let upcoming = held.count > 1 ? console.upcoming(list) : nil
-		let armed = console.selection.armed[look.identifier]
-		let fade = console.playback.fades[look.identifier]
+		let armed = console.playback.armed(of: look.identifier)
+		let fade = console.playback.fade(of: look.identifier)
 		let tint = look.tint.color
 		let picked = held.filter { chosen.contains($0.identifier) }
 		
@@ -58,7 +58,7 @@ struct SceneView: View {
 							ForEach(Array(held.enumerated()), id: \.element.identifier) { position, cue in
 								Button {
 									if !editMode.isEditing {
-										console.selection.arm(cue.identifier, of: look.identifier)
+										console.arm(cue.identifier, of: look.identifier)
 									} else if chosen.contains(cue.identifier) {
 										chosen.remove(cue.identifier)
 									} else {
@@ -428,7 +428,7 @@ private struct Transport: View {
 							VStack(spacing: 1) {
 								Label("Go", systemImage: SceneAction.next.symbol)
 								
-								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
+								CueStatus(fade: console.playback.fade(of: look.identifier), follow: index.flatMap { list.cues[$0].follow }) {
 									Text(upcoming.map(list.heading(at:)) ?? "End")
 										.contentTransition(.numericText())
 								}

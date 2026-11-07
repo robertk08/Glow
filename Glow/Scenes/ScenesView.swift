@@ -17,12 +17,12 @@ struct ScenesView: View {
 	@ScaledMetric(relativeTo: .headline) private var tileWidth = 150
 	
 	private var tiles: some View {
-		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
+		let lists = console.lists
 		let shown = sizeClass == .regular ? console.shownScene(among: looks.map(\.identifier)) : nil
 		
 		return TileLayout(columns: arrangement.columns, minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			ForEach(looks) { look in
-				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, looks: looks, cues: cues, isShown: look.identifier == shown, isArranging: $isArranging, customizing: $customizing)
+				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], looks: looks, cues: cues, isShown: look.identifier == shown, isArranging: $isArranging, customizing: $customizing)
 					.id(look.identifier)
 			}
 		}
@@ -38,7 +38,7 @@ struct ScenesView: View {
 	}
 	
 	var body: some View {
-		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
+		let isPlaying = console.playback.order.contains { scene in looks.contains { $0.identifier == scene } }
 		Group {
 			if looks.isEmpty {
 				ContentUnavailableView {

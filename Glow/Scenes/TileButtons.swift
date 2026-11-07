@@ -23,7 +23,7 @@ struct TileButtons: View {
 		GlassEffectContainer(spacing: 10) {
 			HStack(spacing: 10) {
 				ForEach(look.buttons) { action in
-					let isEnabled = look.enables(action, live: index, upcoming: upcoming, list: list, isFlashing: console.flashing.contains(list.scene))
+					let isEnabled = look.enables(action, live: index, upcoming: upcoming, list: list, isFlashing: console.playback.isFlashing(list.scene))
 					let isProminent = action == .next && index != nil && isEnabled
 					let isWide = action == .next || !look.buttons.contains(.next)
 					

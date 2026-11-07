@@ -98,8 +98,9 @@ struct RootView: View {
 			.opacity(0)
 			.allowsHitTesting(false)
 			.accessibilityHidden(true)
+			
+			CommandFeedback()
 		}
-		.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)
 		.task {
 			shows.reach(console, library: library)
 		}
@@ -147,5 +148,14 @@ struct RootView: View {
 			})
 			top.present(alert, animated: true)
 		}
+	}
+}
+
+private struct CommandFeedback: View {
+	@Environment(Console.self) private var console
+	
+	var body: some View {
+		Color.clear
+			.sensoryFeedback(.impact(weight: .medium), trigger: console.commands)
 	}
 }

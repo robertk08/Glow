@@ -5,10 +5,10 @@ struct SceneTile: View {
 	@Environment(Console.self) private var console
 	@Environment(\.modelContext) private var context
 	@Environment(\.horizontalSizeClass) private var sizeClass
+	@Environment(Arrangement.self) private var arrangement
 	
 	let look: Look
 	let list: CueList
-	let arrangement: Arrangement
 	let looks: [Look]
 	let cues: [Cue]
 	let isShown: Bool
@@ -47,7 +47,7 @@ struct SceneTile: View {
 		}
 		.contentShape(.contextMenuPreview, .rect(cornerRadius: 24, style: .continuous))
 		.modifier(SceneMenu(isShown: look.tap != .flash) {
-			if !console.flashing.contains(list.scene) {
+			if !console.playback.isFlashing(list.scene) {
 				SceneActions(look: look, list: list, looks: looks, cues: cues, isArranging: $isArranging, isDeleting: $isDeleting, customizing: $customizing)
 			}
 		})

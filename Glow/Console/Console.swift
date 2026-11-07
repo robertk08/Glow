@@ -74,7 +74,6 @@ final class Console {
 	private var sent = 0
 	private var acked = 0
 	private var commanded = ContinuousClock.now
-	private(set) var flashing: Set<String> = []
 	private var continued: [String: String] = [:]
 	
 	private static let endpointKey = "node.endpoint"
@@ -359,7 +358,6 @@ final class Console {
 	
 	func closeShow(keepingLook: Bool = false) {
 		playback = Playback()
-		flashing = []
 		continued = [:]
 		stage_clear(stage)
 		
@@ -522,7 +520,7 @@ final class Console {
 	}
 	
 	func shownScene(among scenes: [String]) -> String? {
-		([selection.scene].compactMap { $0 } + playback.playing.map(\.scene).filter { !flashing.contains($0) }.reversed()).first(where: scenes.contains)
+		([selection.scene].compactMap { $0 } + playback.order.filter { !playback.isFlashing($0) }.reversed()).first(where: scenes.contains)
 	}
 	
 	func stopAll() {
@@ -533,14 +531,15 @@ final class Console {
 	
 	func flash(_ list: CueList, isHeld: Bool) {
 		guard isHeld else {
-			guard flashing.remove(list.scene) != nil else { return }
+			guard playback.isFlashing(list.scene) else { return }
+			playback.flash(list.scene, false)
 			stop(list, snapping: true)
 			return
 		}
 		
 		guard playback.cue(of: list.scene) == nil, !list.cues.isEmpty else { return }
 		play(list, at: 0, snapping: true)
-		flashing.insert(list.scene)
+		playback.flash(list.scene, true)
 	}
 	
 	func go(_ list: CueList) {
@@ -548,8 +547,12 @@ final class Console {
 		play(list, at: index)
 	}
 	
+	func arm(_ cue: String, of scene: String) {
+		playback.arm(playback.armed(of: scene) == cue ? nil : cue, of: scene)
+	}
+	
 	func upcoming(_ list: CueList) -> Int? {
-		list.index(of: selection.armed[list.scene]) ?? list.next(after: list.index(of: playback.cue(of: list.scene)))
+		list.index(of: playback.armed(of: list.scene)) ?? list.next(after: list.index(of: playback.cue(of: list.scene)))
 	}
 	
 	func back(_ list: CueList) {
@@ -561,15 +564,13 @@ final class Console {
 		guard list.cues.indices.contains(index), command(.play, scene: list.scene, body: list.program(from: index, snapping: snapping)) else { return }
 		let cue = list.cues[index]
 		let start = Date.now.addingTimeInterval(cue.delay)
-		flashing.remove(list.scene)
-		selection.armed[list.scene] = nil
 		if !snapping { selection.follow(list.scene, isIdle: selection.scene.map { playback.cue(of: $0) == nil } ?? false) }
 		playback.play(cue.identifier, of: list.scene, fade: snapping ? Fade(start: .now, end: .now, follows: false) : Fade(start: start, end: start.addingTimeInterval(cue.fade)))
+		playback.arm(nil, of: list.scene)
 	}
 	
 	func land(_ list: CueList, at index: Int) {
 		guard list.cues.indices.contains(index), command(.land, scene: list.scene, body: list.program(from: index, snapping: list.cues[index].follow == nil)) else { return }
-		flashing.remove(list.scene)
 		playback.play(list.cues[index].identifier, of: list.scene, fade: Fade(start: .now, end: .now, follows: false))
 	}
 	
@@ -648,8 +649,8 @@ final class Console {
 			selection.marked = (before ?? after)?.identifier
 		}
 		
-		if let armed = selection.armed[list.scene], gone.contains(armed) {
-			selection.armed[list.scene] = nil
+		if let armed = playback.armed(of: list.scene), gone.contains(armed) {
+			playback.arm(nil, of: list.scene)
 		}
 		
 		guard let live = playback.cue(of: list.scene), gone.contains(live), let index = list.index(of: live) else { return }
@@ -670,7 +671,7 @@ final class Console {
 	}
 	
 	func isMoving(_ scene: String) -> Bool {
-		guard let fade = playback.fades[scene] else { return false }
+		guard let fade = playback.fade(of: scene) else { return false }
 		guard fade.end <= .now else { return true }
 		guard fade.follows, let list = lists[scene], let index = list.index(of: playback.cue(of: scene)) else { return false }
 		return list.cues[index].follow != nil && list.next(after: index) != nil
@@ -747,7 +748,6 @@ final class Console {
 		var writer = ByteWriter()
 		writer.number(CueList.milliseconds(fade))
 		guard command(.stop, scene: scene, body: writer.data) else { return }
-		flashing.remove(scene)
 		playback.stop(scene, fade: fade)
 	}
 	
@@ -775,9 +775,8 @@ final class Console {
 		guard state.count >= 4 else { return }
 		if Int(state[1]) == (isMuted ? Self.ownClient : node?.client) { acked = Int(state[2]) | Int(state[3]) << 8 }
 		if ContinuousClock.now - commanded > Self.ackPatience { acked = sent }
-		guard acked == sent, let fresh = Playback(state, at: .now) else { return }
-		if fresh.playing != playback.playing || fresh.fades.keys != playback.fades.keys { playback = fresh }
-		continued = continued.filter { scene, cue in fresh.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants && $0.caller != 0xFF } }
+		guard acked == sent, playback.adopt(state, at: .now) else { return }
+		continued = continued.filter { scene, cue in playback.playing.contains { $0.scene == scene && $0.cue == cue && $0.wants && $0.caller != 0xFF } }
 		resume()
 	}
 	

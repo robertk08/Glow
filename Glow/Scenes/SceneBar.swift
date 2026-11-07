@@ -4,18 +4,14 @@ import SwiftUI
 struct SceneBar: View {
 	@Environment(Console.self) private var console
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	
 	let transition: Namespace.ID
 	
 	var body: some View {
-		let lists = CueList.all(looks, cues: cues, fixtures: fixtures)
-		let playing = console.playback.playing.map(\.scene)
-		let shown = console.shownScene(among: lists.map(\.scene).filter(playing.contains))
+		let shown = console.shownScene(among: looks.map(\.identifier).filter(console.playback.order.contains))
 		
 		Group {
-			if let look = looks.first(where: { $0.identifier == shown }), let list = lists.first(where: { $0.scene == shown }) {
+			if let look = looks.first(where: { $0.identifier == shown }), let list = console.lists[look.identifier] {
 				let index = list.index(of: console.playback.cue(of: look.identifier))
 				let tint = look.tint.color
 				let canGoBack = index.flatMap(list.previous(before:)) != nil
@@ -36,7 +32,7 @@ struct SceneBar: View {
 								Text(look.name)
 									.font(.subheadline.weight(.medium))
 								
-								CueStatus(fade: console.playback.fades[look.identifier], follow: index.flatMap { list.cues[$0].follow }) {
+								CueStatus(fade: console.playback.fade(of: look.identifier), follow: index.flatMap { list.cues[$0].follow }) {
 									if !list.status(at: index).isEmpty {
 										Text(list.status(at: index))
 									}

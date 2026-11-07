@@ -1072,7 +1072,7 @@ struct SceneTests {
 		rig.console.discard(rig.look, among: rig.cues, fixtures: rig.fixtures, context: rig.context)
 		
 		#expect(rig.console.playback.cue(of: rig.look.identifier) == playing)
-		#expect(rig.console.playback.fades[rig.look.identifier]?.follows != false)
+		#expect(rig.console.playback.fade(of: rig.look.identifier)?.follows != false)
 	}
 	
 	@Test func aRunningFadeOrFollowCountsAsMovingAndASnappedCueDoesNot() throws {

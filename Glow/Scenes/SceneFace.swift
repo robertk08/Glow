@@ -20,7 +20,7 @@ struct SceneFace: View {
 		let size = look.size
 		let isLarge = size == .large
 		let tint = look.tint.color
-		let fade = console.playback.fades[look.identifier]
+		let fade = console.playback.fade(of: look.identifier)
 		let upcoming = console.upcoming(list)
 		let hasButtons = size != .small && !look.buttons.isEmpty
 		let isInline = size == .wide && hasButtons
@@ -87,7 +87,7 @@ struct SceneFace: View {
 				Rectangle()
 					.fill(tint.opacity(0.22))
 					.scaleEffect(x: 1, y: isOn ? 1 : 0, anchor: .bottom)
-					.animation(isOn ? fade?.rise ?? .snappy(duration: 0.25) : Fade.fall(over: console.playback.falls[look.identifier] ?? 0), value: isOn)
+					.animation(isOn ? fade?.rise ?? .snappy(duration: 0.25) : Fade.fall(over: console.playback.fall(of: look.identifier)), value: isOn)
 					.clipShape(.rect(cornerRadius: 24, style: .continuous))
 			}
 		}
