@@ -11,6 +11,7 @@ struct SceneTile: View {
 	let arrangement: Arrangement
 	let looks: [Look]
 	let cues: [Cue]
+	let isShown: Bool
 	
 	@Binding var isArranging: Bool
 	@Binding var customizing: Look?
@@ -43,7 +44,7 @@ struct SceneTile: View {
 		.hoverEffect(.highlight)
 		.accessibilityHint(look.tap.tapName)
 		.overlay {
-			TileControls(look: look, list: list)
+			TileControls(look: look, list: list, isShown: isShown)
 		}
 		.contentShape(.contextMenuPreview, .rect(cornerRadius: 24, style: .continuous))
 		.modifier(SceneMenu(isShown: look.tap != .flash) {

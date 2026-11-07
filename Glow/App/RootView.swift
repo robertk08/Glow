@@ -41,10 +41,6 @@ struct RootView: View {
 		.tabBarMinimizeBehavior(.never)
 	}
 	
-	private var isCompact: Bool {
-		sizeClass == .compact || UIDevice.current.userInterfaceIdiom == .phone
-	}
-	
 	var body: some View {
 		@Bindable var selection = console.selection
 		
@@ -53,9 +49,8 @@ struct RootView: View {
 				Color.clear
 			} else if !shows.isLoaded {
 				WaitingView()
-			} else if isCompact {
+			} else if sizeClass == .compact {
 				tabs
-					.environment(\.horizontalSizeClass, .compact)
 					.tabViewBottomAccessory {
 						if console.selection.section == "scenes" {
 							SceneBar(transition: transition)
@@ -126,12 +121,13 @@ struct RootView: View {
 			} else if after == nil, let returning {
 				console.selection.section = returning
 				self.returning = nil
+				if looks.contains(where: { $0.identifier == before }) { console.selection.scene = before }
 			} else if after != nil {
 				console.selection.section = "lights"
 			}
 		}
-		.onChange(of: isCompact) {
-			if isCompact {
+		.onChange(of: sizeClass) {
+			if sizeClass == .compact {
 				arrangement.isCramped = false
 			} else {
 				console.selection.isSceneOpen = false

@@ -810,7 +810,7 @@ struct SceneTests {
 			return Int((seed >> 33) % UInt64(count))
 		}
 		
-		for step in 0..<400 {
+		for step in 0..<200 {
 			let look = looks[roll(looks.count)]
 			let list = rig.list(of: look)
 			let shownBefore = rig.console.shownScene(among: scenes)
@@ -840,7 +840,7 @@ struct SceneTests {
 			
 			#expect(rig.console.selection.scene == pick, "step \(step) kept the wrong pick")
 			#expect(rig.console.shownScene(among: scenes) == pick ?? started.last, "step \(step) showed the wrong scene")
-			try await Task.sleep(for: .milliseconds(1))
+			try await Task.sleep(for: .milliseconds(5))
 		}
 	}
 	

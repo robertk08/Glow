@@ -4,7 +4,7 @@ import SwiftUI
 final class Arrangement {
 	var frames: [String: CGRect] = [:]
 	var width: CGFloat = 0
-	var minimum: CGFloat = 146
+	var minimum: CGFloat = 168
 	var isCramped = false
 	
 	let spacing: CGFloat = 12

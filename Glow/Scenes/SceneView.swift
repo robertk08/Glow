@@ -181,7 +181,7 @@ struct SceneView: View {
 								editMode = .inactive
 							}
 						} else {
-							Button("Edit") {
+							Button("Select") {
 								editMode = .active
 							}
 						}

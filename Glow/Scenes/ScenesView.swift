@@ -6,6 +6,7 @@ struct ScenesView: View {
 	@Environment(ShowLibrary.self) private var shows
 	@Environment(\.modelContext) private var context
 	@Environment(\.dynamicTypeSize) private var typeSize
+	@Environment(\.horizontalSizeClass) private var sizeClass
 	@Environment(Arrangement.self) private var arrangement
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
@@ -13,14 +14,16 @@ struct ScenesView: View {
 	
 	@State private var customizing: Look?
 	@State private var isArranging = false
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 146
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 150
 	
 	private var tiles: some View {
 		let lists = Dictionary(CueList.all(looks, cues: cues, fixtures: fixtures).map { ($0.scene, $0) }, uniquingKeysWith: { first, _ in first })
+		let shown = sizeClass == .regular ? console.shownScene(among: looks.map(\.identifier)) : nil
 		
 		return TileLayout(columns: arrangement.columns, minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			ForEach(looks) { look in
-				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, looks: looks, cues: cues, isArranging: $isArranging, customizing: $customizing)
+				SceneTile(look: look, list: lists[look.identifier, default: CueList(look, cues: [], fixtures: [])], arrangement: arrangement, looks: looks, cues: cues, isShown: look.identifier == shown, isArranging: $isArranging, customizing: $customizing)
+					.id(look.identifier)
 			}
 		}
 		.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { arrangement.width = $0 }
@@ -58,8 +61,17 @@ struct ScenesView: View {
 					.disabled(fixtures.isEmpty)
 				}
 			} else {
-				ScrollView {
-					tiles
+				ScrollViewReader { proxy in
+					ScrollView {
+						tiles
+					}
+					.onChange(of: console.selection.scene) { _, scene in
+						guard let scene else { return }
+						
+						withAnimation(.smooth(duration: 0.4)) {
+							proxy.scrollTo(scene)
+						}
+					}
 				}
 			}
 		}
