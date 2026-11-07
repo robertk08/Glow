@@ -992,13 +992,13 @@ struct SceneTests {
 	@Test func addingCuesToAnotherSceneWhileBuildingKeepsTheOpenBuilder() throws {
 		let rig = try rig()
 		let other = Look.fresh(among: rig.looks, context: rig.context)
-		rig.console.selection.section = "scenes"
+		rig.console.selection.section = .scenes
 		rig.console.selection.build(rig.look.identifier)
-		rig.console.selection.section = "scenes"
+		rig.console.selection.section = .scenes
 		rig.console.selection.build(other.identifier)
 		
 		#expect(rig.console.selection.building == rig.look.identifier)
-		#expect(rig.console.selection.section == "lights")
+		#expect(rig.console.selection.section == .lights)
 	}
 	
 	@Test func deletingTheMarkedCueMarksTheOneBeforeIt() throws {

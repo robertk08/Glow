@@ -108,7 +108,7 @@ struct ScenesView: View {
 					if console.selection.building == nil {
 						console.selection.build(Look.fresh(among: looks, context: context).identifier, isNew: true)
 					} else {
-						console.selection.section = "lights"
+						console.selection.section = .lights
 					}
 				}
 				.keyboardShortcut("n", modifiers: .command)

@@ -3,11 +3,17 @@ import SwiftUI
 
 @Observable
 final class Selection {
+	enum Section {
+		case lights
+		case scenes
+		case settings
+	}
+	
 	private(set) var identifiers: Set<String> = []
 	
 	var isProgrammerOpen = false
 	var isSceneOpen = false
-	var section = "lights"
+	var section = Section.lights
 	var scene: String?
 	var draft = CueDraft()
 	var seed = CueDraft()
@@ -30,7 +36,7 @@ final class Selection {
 	
 	func build(_ scene: String, isNew: Bool = false) {
 		guard building == nil else {
-			section = "lights"
+			section = .lights
 			return
 		}
 		

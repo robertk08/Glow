@@ -10,7 +10,7 @@ struct RootView: View {
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
-	@State private var returning: String?
+	@State private var returning: Selection.Section?
 	@State private var arrangement = Arrangement()
 	@Namespace private var transition
 	
@@ -18,19 +18,19 @@ struct RootView: View {
 		@Bindable var selection = console.selection
 		
 		return TabView(selection: $selection.section) {
-			Tab("Lights", systemImage: "lightbulb", value: "lights") {
+			Tab("Lights", systemImage: "lightbulb", value: .lights) {
 				NavigationStack {
 					LightsView()
 				}
 			}
 			
-			Tab("Scenes", systemImage: "theatermasks", value: "scenes") {
+			Tab("Scenes", systemImage: "theatermasks", value: .scenes) {
 				NavigationStack {
 					ScenesView()
 				}
 			}
 			
-			Tab("Settings", systemImage: "gearshape", value: "settings") {
+			Tab("Settings", systemImage: "gearshape", value: .settings) {
 				NavigationStack {
 					SettingsView()
 				}
@@ -52,7 +52,7 @@ struct RootView: View {
 			} else if sizeClass == .compact {
 				tabs
 					.tabViewBottomAccessory {
-						if console.selection.section == "scenes" {
+						if console.selection.section == .scenes {
 							SceneBar(transition: transition)
 						} else {
 							ConsoleBar(transition: transition)
@@ -77,9 +77,9 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.inspector(isPresented: .constant(console.selection.section != "settings")) {
+					.inspector(isPresented: .constant(console.selection.section != .settings)) {
 						Group {
-							if console.selection.section == "scenes" {
+							if console.selection.section == .scenes {
 								SceneInspector()
 							} else {
 								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
@@ -117,13 +117,13 @@ struct RootView: View {
 		.onChange(of: console.selection.building) { before, after in
 			if before == nil, after != nil {
 				returning = console.selection.section
-				console.selection.section = "lights"
+				console.selection.section = .lights
 			} else if after == nil, let returning {
 				console.selection.section = returning
 				self.returning = nil
 				if looks.contains(where: { $0.identifier == before }) { console.selection.scene = before }
 			} else if after != nil {
-				console.selection.section = "lights"
+				console.selection.section = .lights
 			}
 		}
 		.onChange(of: sizeClass) {
