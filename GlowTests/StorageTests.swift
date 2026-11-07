@@ -77,6 +77,45 @@ struct StorageTests {
 		}
 	}
 	
+	@Test func aLightJoinsAndLeavesAGroupFromEitherSide() throws {
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let context = container.mainContext
+		let front = FixtureGroup(name: "Front", sortIndex: 0)
+		let back = FixtureGroup(name: "Back", sortIndex: 1)
+		let par = Fixture(typeID: "par", name: "Par", address: DMXAddress(1)!, sortIndex: 0)
+		context.insert(front)
+		context.insert(back)
+		context.insert(par)
+		try context.save()
+		
+		par.belong(to: front, true)
+		par.belong(to: front, true)
+		try context.save()
+		
+		#expect(par.belongs(to: front))
+		#expect(!par.belongs(to: back))
+		#expect(front.members.map(\.identifier) == [par.identifier])
+		#expect(par.entry.groups == [front.identifier])
+		
+		par.take(par.entry, groups: [front, back])
+		par.belong(to: back, true)
+		try context.save()
+		
+		#expect(Set(par.entry.groups) == [front.identifier, back.identifier])
+		#expect(back.members.map(\.identifier) == [par.identifier])
+		
+		par.belong(to: front, false)
+		try context.save()
+		
+		#expect(front.members.isEmpty)
+		#expect(par.entry.groups == [back.identifier])
+		
+		context.delete(back)
+		try context.save()
+		
+		#expect(par.groups.isEmpty)
+	}
+	
 	@Test func aWholeLookCostsLessThanFifteenBytesPerLight() async throws {
 		let show = Self.rig()
 		let files = await ShowLibrary.snapshot(of: show, folders: [.cues])

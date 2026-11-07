@@ -10,7 +10,7 @@ final class FixtureGroup {
 	var tintName: String?
 	
 	@Relationship(deleteRule: .nullify, inverse: \Fixture.groups)
-	var fixtures: [Fixture]? = []
+	var fixtures: [Fixture] = []
 	
 	init(name: String, sortIndex: Double) {
 		identifier = Identifier.fresh()
@@ -31,7 +31,7 @@ final class FixtureGroup {
 	}
 	
 	var members: [Fixture] {
-		(fixtures ?? []).sorted { $0.address < $1.address }
+		fixtures.sorted { $0.address < $1.address }
 	}
 	
 	var tint: FixtureTint {

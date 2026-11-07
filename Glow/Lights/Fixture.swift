@@ -11,7 +11,7 @@ final class Fixture {
 	var symbolOverride: String?
 	var invertsPan: Bool = false
 	var invertsTilt: Bool = false
-	var groups: [FixtureGroup]? = []
+	var groups: [FixtureGroup] = []
 	
 	init(typeID: String, name: String, address: DMXAddress, sortIndex: Double) {
 		identifier = Identifier.fresh()
@@ -22,7 +22,7 @@ final class Fixture {
 	}
 	
 	var entry: ShowContents.Light {
-		ShowContents.Light(identifier: identifier, typeID: typeID, name: name, address: address, sortIndex: sortIndex, symbol: symbolOverride, groups: (groups ?? []).map(\.identifier).sorted(), invertsPan: invertsPan, invertsTilt: invertsTilt)
+		ShowContents.Light(identifier: identifier, typeID: typeID, name: name, address: address, sortIndex: sortIndex, symbol: symbolOverride, groups: groups.map(\.identifier).sorted(), invertsPan: invertsPan, invertsTilt: invertsTilt)
 	}
 	
 	func take(_ entry: ShowContents.Light, groups: [FixtureGroup]) {
@@ -41,15 +41,15 @@ final class Fixture {
 	}
 	
 	func belongs(to group: FixtureGroup) -> Bool {
-		(groups ?? []).contains { $0.identifier == group.identifier }
+		groups.contains { $0.identifier == group.identifier }
 	}
 	
 	func belong(to group: FixtureGroup, _ isMember: Bool) {
 		if isMember {
 			guard !belongs(to: group) else { return }
-			groups = (groups ?? []) + [group]
+			groups.append(group)
 		} else {
-			groups?.removeAll { $0.identifier == group.identifier }
+			groups.removeAll { $0.identifier == group.identifier }
 		}
 	}
 	
