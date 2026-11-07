@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct Show: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct Show: Identifiable, Codable, Equatable, Sendable {
 	var id: String
 	var name: String
 	

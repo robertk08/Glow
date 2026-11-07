@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct NodeEndpoint: Sendable, Hashable, Codable {
+nonisolated struct NodeEndpoint: Sendable, Equatable, Codable {
 	var host: String
 	var port = 80
 	var session: String?

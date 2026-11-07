@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct EmitterMix: Equatable, Sendable {
+nonisolated struct EmitterMix: Sendable {
 	private var levels: [Attribute: Double]
 	
 	init(_ levels: [Attribute: Double] = [:]) {

@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum Refusal: String, Sendable, Equatable {
+nonisolated enum Refusal: String, Sendable {
 	case storage
 	case limit
 	

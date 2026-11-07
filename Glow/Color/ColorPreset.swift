@@ -1,7 +1,7 @@
 import Foundation
 
-nonisolated struct ColorPreset: Identifiable, Equatable, Sendable {
-	nonisolated enum Recipe: Equatable, Sendable {
+nonisolated struct ColorPreset: Identifiable, Sendable {
+	nonisolated enum Recipe: Sendable {
 		case white(kelvin: Double)
 		case colour(LightColor)
 		case ultraviolet

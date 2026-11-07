@@ -1,6 +1,6 @@
 import Foundation
 
-struct NodeNetwork: Decodable, Sendable, Identifiable, Hashable {
+struct NodeNetwork: Decodable, Sendable, Identifiable, Equatable {
 	var ssid: String
 	var rssi: Int
 	var secure: Bool

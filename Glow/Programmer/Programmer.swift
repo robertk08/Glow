@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 struct Programmer {
-	nonisolated struct Target: Equatable, Sendable {
+	nonisolated struct Target: Sendable {
 		let type: FixtureType
 		let start: DMXAddress
 		var invertsPan = false

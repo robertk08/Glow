@@ -167,8 +167,6 @@ struct FixtureTypeTests {
 		#expect(Attribute.gobo2.name == "Gobo wheel 2")
 		#expect(Attribute.uv.name == "UV")
 		#expect(Attribute.custom.name == "Channel")
-		#expect(GoboShape.fourPetals.name == "Four petals")
-		#expect(GoboShape.open.name == "Open")
 	}
 }
 

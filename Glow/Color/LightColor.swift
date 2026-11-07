@@ -1,6 +1,6 @@
 import SwiftUI
 
-nonisolated struct LightColor: Hashable, Sendable {
+nonisolated struct LightColor: Equatable, Sendable {
 	var red: Double
 	var green: Double
 	var blue: Double
