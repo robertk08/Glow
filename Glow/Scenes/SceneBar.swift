@@ -23,8 +23,7 @@ struct SceneBar: View {
 				
 				HStack(spacing: 4) {
 					Button {
-						console.selection.scene = look.identifier
-						console.selection.isSceneOpen = true
+						console.selection.open(scene: look.identifier, isSheet: true)
 					} label: {
 						HStack(spacing: 8) {
 							Image(systemName: look.symbol)

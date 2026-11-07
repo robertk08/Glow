@@ -27,8 +27,7 @@ struct SceneTile: View {
 	@ViewBuilder private var content: some View {
 		Button {
 			if look.tap == .open {
-				console.selection.scene = look.identifier
-				console.selection.isSceneOpen = sizeClass != .regular
+				console.selection.open(scene: look.identifier, isSheet: sizeClass != .regular)
 			} else if list.cues.isEmpty {
 				console.selection.build(look.identifier)
 			} else {
@@ -125,8 +124,7 @@ private struct SceneActions: View {
 		
 		Section {
 			Button("Show Cues", systemImage: "list.bullet") {
-				console.selection.scene = look.identifier
-				console.selection.isSceneOpen = sizeClass != .regular
+				console.selection.open(scene: look.identifier, isSheet: sizeClass != .regular)
 			}
 			
 			Button("Add Cues", systemImage: "plus") {

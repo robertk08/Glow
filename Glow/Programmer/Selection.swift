@@ -39,6 +39,11 @@ final class Selection {
 		self.isNew = isNew
 	}
 	
+	func open(scene: String, isSheet: Bool) {
+		self.scene = scene
+		isSceneOpen = isSheet
+	}
+	
 	func follow(_ started: String, isIdle: Bool) {
 		guard isIdle, !isSceneOpen, scene != started else { return }
 		scene = nil

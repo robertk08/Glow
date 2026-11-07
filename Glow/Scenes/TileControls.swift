@@ -16,8 +16,7 @@ struct TileControls: View {
 				
 				if list.cues.count > 1 || isShown {
 					Button("Show Cues", systemImage: "list.bullet") {
-						console.selection.scene = look.identifier
-						console.selection.isSceneOpen = sizeClass != .regular
+						console.selection.open(scene: look.identifier, isSheet: sizeClass != .regular)
 					}
 					.labelStyle(.iconOnly)
 					.font(.body.weight(.semibold))

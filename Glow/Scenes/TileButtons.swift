@@ -29,8 +29,7 @@ struct TileButtons: View {
 					
 					Button {
 						if action == .open {
-							console.selection.scene = look.identifier
-							console.selection.isSceneOpen = sizeClass != .regular
+							console.selection.open(scene: look.identifier, isSheet: sizeClass != .regular)
 						} else if action != .flash {
 							console.run(action, on: list)
 						}
