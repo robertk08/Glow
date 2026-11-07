@@ -10,7 +10,7 @@ actor NodeLink {
 		case password(isSet: Bool)
 		case passwordRefused(PasswordOutcome)
 		case latency(TimeInterval)
-		case pong(Int, Wire.Usage?)
+		case pong(Int, Wire.Usage)
 		case usage(Wire.Usage)
 		case frame(ack: Int, runs: [(start: DMXAddress, values: [UInt8])])
 		case master(Double)
@@ -253,9 +253,7 @@ actor NodeLink {
 			return
 		}
 		
-		if let usage {
-			continuation.yield(.usage(usage))
-		}
+		continuation.yield(.usage(usage))
 		
 		guard let sent = pings.removeValue(forKey: seq) else { return }
 		continuation.yield(.latency(Date().timeIntervalSince(sent)))

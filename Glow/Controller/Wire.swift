@@ -256,8 +256,8 @@ nonisolated enum Wire {
 				if let set = envelope.set { return .password(isSet: set) }
 				return .passwordRefused(envelope.refused == "wrong" ? .wrong(wait: envelope.wait ?? 0) : .failed)
 			case "pong":
-				guard let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return .pong(envelope.seq ?? 0, nil) }
-				return .pong(envelope.seq ?? 0, Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))
+				guard let seq = envelope.seq, let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return nil }
+				return .pong(seq, Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))
 			case "master":
 				guard let level = envelope.level else { return nil }
 				return .master(level)
