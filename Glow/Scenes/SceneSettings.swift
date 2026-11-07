@@ -22,6 +22,8 @@ struct SceneSettings: View {
 				content
 			}
 		}
+		.frame(idealWidth: 680)
+		.presentationSizing(.form.fitted(horizontal: true, vertical: false))
 	}
 	
 	@ViewBuilder private var content: some View {

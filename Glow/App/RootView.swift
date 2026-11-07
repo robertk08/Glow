@@ -77,7 +77,6 @@ struct RootView: View {
 					}
 			} else {
 				tabs
-					.onGeometryChange(for: Bool.self) { $0.size.width < 720 } action: { arrangement.isCramped = $0 }
 					.inspector(isPresented: .constant(console.selection.section != "settings")) {
 						Group {
 							if console.selection.section == "scenes" {
@@ -127,9 +126,7 @@ struct RootView: View {
 			}
 		}
 		.onChange(of: sizeClass) {
-			if sizeClass == .compact {
-				arrangement.isCramped = false
-			} else {
+			if sizeClass != .compact {
 				console.selection.isSceneOpen = false
 				console.selection.isProgrammerOpen = false
 			}

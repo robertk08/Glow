@@ -39,8 +39,6 @@ struct ScenesView: View {
 	
 	var body: some View {
 		let isPlaying = console.playback.playing.contains { entry in looks.contains { $0.identifier == entry.scene } }
-		let placement = arrangement.isCramped ? ToolbarItemPlacement.bottomBar : .topBarTrailing
-		
 		Group {
 			if looks.isEmpty {
 				ContentUnavailableView {
@@ -80,12 +78,10 @@ struct ScenesView: View {
 		.toolbar {
 			LinkStatusButton()
 			
-			if !arrangement.isCramped {
-				ToolbarSpacer(.flexible, placement: placement)
-			}
+			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			
 			if isPlaying {
-				ToolbarItem(placement: placement) {
+				ToolbarItem(placement: .topBarTrailing) {
 					Button("All Off", systemImage: "stop.fill") {
 						console.stopAll()
 					}
@@ -93,21 +89,19 @@ struct ScenesView: View {
 					.tint(.red)
 				}
 				
-				ToolbarSpacer(arrangement.isCramped ? .flexible : .fixed, placement: placement)
-			} else if arrangement.isCramped {
-				ToolbarSpacer(.flexible, placement: placement)
+				ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			}
 			
-			ToolbarItem(placement: placement) {
+			ToolbarItem(placement: .topBarTrailing) {
 				Button("Edit") {
 					isArranging = true
 				}
 				.disabled(looks.isEmpty)
 			}
 			
-			ToolbarSpacer(.fixed, placement: placement)
+			ToolbarSpacer(.fixed, placement: .topBarTrailing)
 			
-			ToolbarItem(placement: placement) {
+			ToolbarItem(placement: .topBarTrailing) {
 				Button("New Scene", systemImage: "plus") {
 					guard !console.isCovered() else { return }
 					

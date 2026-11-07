@@ -165,15 +165,6 @@ struct ArrangeView: View {
 			}
 			.sensoryFeedback(.impact(weight: .light), trigger: board)
 		}
-		.presentationSizing(ArrangeSizing(columns: columns))
-	}
-}
-
-private struct ArrangeSizing: PresentationSizing {
-	let columns: Int
-	
-	func proposedSize(for root: PresentationSizingRoot, context: PresentationSizingContext) -> ProposedViewSize {
-		columns == 4 ? PagePresentationSizing.page.proposedSize(for: root, context: context) : FormPresentationSizing.form.proposedSize(for: root, context: context)
 	}
 }
 
