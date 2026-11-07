@@ -113,14 +113,15 @@ These are product decisions the code implements without explaining.
   keeps what earlier cues set, and going back undoes what later cues changed.
   After the last cue Go does nothing, unless the scene loops.
 - A cue's number is its position in the scene, so an inserted cue renumbers the
-  ones after it. A scene written before loops existed reads as not looping.
+  ones after it.
 - A tap on a cue in a scene's list only marks it as the next cue, and Go plays
   it, so a stray tap never changes the stage mid show.
-- Playing and arranging are separate. In the Scenes edit mode a tap customizes
-  a tile and never plays it, and flash tiles are set up, since holding them
-  flashes. Every tile keeps its own spot, like a button on a desk. A held tile
-  moves alone into an empty spot, or trades places with the tile it is dropped
-  on, and nothing else moves. Empty spots stay empty and show as outlines.
+- Playing and arranging are separate. Edit Scenes shows plain blocks, where a
+  tap customizes a scene and never plays it, and flash tiles are set up, since
+  holding them flashes. Every tile keeps its own spot, like a button on a desk.
+  A moved tile lands where it is dropped, each tile it covers goes to the
+  nearest free spot, and nothing else moves. Empty spots stay empty and show as
+  outlines.
 - A scene has one spot, shared by every device. A phone shows two columns and
   stays upright, an iPad shows four when they fit and two when they do not. One row
   of four is two rows of two side by side, so without a large tile the spot is
