@@ -131,7 +131,9 @@ struct RootView: View {
 			}
 		}
 		.onChange(of: isCompact) {
-			if !isCompact {
+			if isCompact {
+				arrangement.isCramped = false
+			} else {
 				console.selection.isSceneOpen = false
 				console.selection.isProgrammerOpen = false
 			}

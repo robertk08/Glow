@@ -507,7 +507,7 @@ final class Console {
 	}
 	
 	func isCovered(beyond depth: Int = 0) -> Bool {
-		guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene, var top = scene.keyWindow?.rootViewController else { return false }
+		guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene, var top = scene.keyWindow?.rootViewController else { return false }
 		var covers = 0
 		
 		while let next = top.presentedViewController {
