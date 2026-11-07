@@ -2,7 +2,6 @@ import Foundation
 
 nonisolated struct NodeEndpoint: Sendable, Equatable, Codable {
 	var host: String
-	var port = 80
 	var session: String?
 	
 	static let fallback = NodeEndpoint(host: "glow.local")
@@ -12,7 +11,6 @@ nonisolated struct NodeEndpoint: Sendable, Equatable, Codable {
 		var components = URLComponents()
 		components.scheme = scheme
 		components.host = host
-		components.port = port == 80 ? nil : port
 		components.path = path
 		return components.url
 	}
