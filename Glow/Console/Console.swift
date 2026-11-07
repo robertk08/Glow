@@ -56,7 +56,7 @@ final class Console {
 	private let noticer: AsyncStream<Wire.Notice>.Continuation
 	private let stage = stage_new()!
 	private let born = ContinuousClock.now
-	private var outbox: [URLSessionWebSocketTask.Message] = []
+	private var outbox: [Wire.Message] = []
 	private var draining: Task<Void, Never>?
 	private var isSynced = false
 	private var events: Task<Void, Never>?
@@ -919,7 +919,7 @@ final class Console {
 		drain()
 	}
 	
-	private func post(_ message: URLSessionWebSocketTask.Message) {
+	private func post(_ message: Wire.Message) {
 		guard !isMuted else { return }
 		outbox.append(message)
 		drain()

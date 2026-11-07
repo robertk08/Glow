@@ -49,7 +49,7 @@ actor NodeLink {
 		}
 	}
 	
-	func send(_ message: URLSessionWebSocketTask.Message) async {
+	func send(_ message: Wire.Message) async {
 		guard let connection else { return }
 		var content = Data()
 		var opcode = NWProtocolWebSocket.Opcode.binary
@@ -60,8 +60,6 @@ actor NodeLink {
 		case let .string(text):
 			content = Data(text.utf8)
 			opcode = .text
-		@unknown default:
-			return
 		}
 		
 		let context = NWConnection.ContentContext(identifier: "message", metadata: [NWProtocolWebSocket.Metadata(opcode: opcode)])
@@ -217,8 +215,8 @@ actor NodeLink {
 		}
 	}
 	
-	private func message(from link: NWConnection) async -> URLSessionWebSocketTask.Message? {
-		await withCheckedContinuation { (done: CheckedContinuation<URLSessionWebSocketTask.Message?, Never>) in
+	private func message(from link: NWConnection) async -> Wire.Message? {
+		await withCheckedContinuation { (done: CheckedContinuation<Wire.Message?, Never>) in
 			link.receiveMessage { content, context, _, error in
 				let metadata = context?.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata
 				

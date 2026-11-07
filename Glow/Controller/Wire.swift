@@ -12,6 +12,11 @@ nonisolated enum Wire {
 		case play, land, stop, more
 	}
 	
+	nonisolated enum Message: Sendable {
+		case data(Data)
+		case string(String)
+	}
+	
 	static func frame(_ runs: [(start: DMXAddress, values: [UInt8])], seq: Int) -> Data {
 		var writer = ByteWriter()
 		writer.byte(frameOpcode)
@@ -61,7 +66,7 @@ nonisolated enum Wire {
 		case removeShow(String)
 		case openShow(String)
 		
-		var message: URLSessionWebSocketTask.Message {
+		var message: Message {
 			let fields: [String: Any] = switch self {
 			case .hello: ["t": "hello"]
 			case let .unlock(key, nonce): ["t": "unlock", "proof": Passkey.proof("unlock", nonce: nonce, key: key)]
@@ -191,7 +196,7 @@ nonisolated enum Wire {
 		return Array(latest.values)
 	}
 	
-	static func event(_ message: URLSessionWebSocketTask.Message) -> NodeLink.Event? {
+	static func event(_ message: Message) -> NodeLink.Event? {
 		switch message {
 		case let .data(data):
 			let bytes = [UInt8](data)
@@ -279,8 +284,6 @@ nonisolated enum Wire {
 			default:
 				return nil
 			}
-		@unknown default:
-			return nil
 		}
 	}
 }
