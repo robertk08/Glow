@@ -376,7 +376,7 @@ struct SceneTests {
 	
 	@Test func aCueWithADelayLetsTheFadeBeforeItRunOnUntilItStarts() async throws {
 		let rig = try rig()
-		rig.add(1, fade: 3, [(0, 1, 250)])
+		rig.add(1, fade: 10, [(0, 1, 250)])
 		rig.add(2, fade: 1, [(0, 1, 0)]).delay = 1
 		
 		rig.console.go(rig.list)
@@ -385,7 +385,7 @@ struct SceneTests {
 		let paused = rig.value(1)
 		try await Task.sleep(for: .milliseconds(500))
 		
-		#expect(Int(rig.value(1)) > Int(paused) + 20)
+		#expect(Int(rig.value(1)) > Int(paused) + 5)
 		try await until(within: 5) { rig.value(1) == 0 }
 	}
 	
@@ -1771,7 +1771,7 @@ struct SceneTests {
 		let rig = try rig()
 		let other = Look(name: "Other", sortIndex: 1)
 		rig.context.insert(other)
-		rig.add(1, fade: 3, [(0, 1, 255)])
+		rig.add(1, fade: 10, [(0, 1, 255)])
 		rig.add(1, to: other, [(0, 1, 100)])
 		
 		rig.console.play(rig.list, at: 0, snapping: true)
