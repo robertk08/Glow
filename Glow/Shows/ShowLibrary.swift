@@ -2,7 +2,7 @@ import Observation
 import SwiftData
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class ShowLibrary {
 	private(set) var shows: [Show] = []
 	private(set) var activeID = ""

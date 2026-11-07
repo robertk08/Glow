@@ -2,7 +2,7 @@ import Observation
 import SwiftData
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class Recording: Identifiable {
 	enum Destination {
 		case cue(Look, after: Cue?)

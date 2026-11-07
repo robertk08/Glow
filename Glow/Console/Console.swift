@@ -2,7 +2,7 @@ import Observation
 import SwiftData
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class Console {
 	private(set) var universe = Universe()
 	

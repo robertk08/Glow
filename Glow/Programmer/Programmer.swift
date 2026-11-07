@@ -1,6 +1,5 @@
 import SwiftUI
 
-@MainActor
 struct Programmer {
 	nonisolated struct Target: Sendable {
 		let type: FixtureType

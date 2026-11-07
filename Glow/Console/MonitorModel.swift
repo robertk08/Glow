@@ -1,7 +1,7 @@
 import Observation
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class MonitorModel {
 	var patchedOnly = false
 	var showsSource = false

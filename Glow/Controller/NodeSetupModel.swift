@@ -2,7 +2,7 @@ import NetworkExtension
 import Observation
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class NodeSetupModel {
 	enum Step: Equatable {
 		case findController, chooseNetwork, password, joining, done

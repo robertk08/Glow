@@ -1,6 +1,6 @@
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class Arrangement {
 	var frames: [String: CGRect] = [:]
 	var width: CGFloat = 0

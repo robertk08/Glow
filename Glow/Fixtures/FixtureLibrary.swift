@@ -2,7 +2,7 @@ import Observation
 import SwiftData
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class FixtureLibrary {
 	private(set) var builtIn: [FixtureType] = []
 	private(set) var made: [FixtureType] = []

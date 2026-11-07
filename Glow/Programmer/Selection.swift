@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-@Observable @MainActor
+@Observable
 final class Selection {
 	private(set) var identifiers: Set<String> = []
 	
