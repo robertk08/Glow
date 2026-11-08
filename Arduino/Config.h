@@ -17,7 +17,7 @@ static const uint16_t GLOW_PORT = 80;
 
 static const uint32_t WIFI_RETRY_MS = 10000;
 
-#define GLOW_SETUP_SSID "Glow Setup"
+#define GLOW_AP_SSID    "Glow Controller"
 #define GLOW_SETUP_IP   IPAddress(192, 168, 4, 1)
 #define GLOW_SETUP_MASK IPAddress(255, 255, 255, 0)
 

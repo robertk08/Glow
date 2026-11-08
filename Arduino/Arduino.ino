@@ -21,7 +21,7 @@ static void report() {
   for (int slot = 0; slot < Creds::SLOTS; slot++) {
     if (Creds::ssid(slot)[0]) Serial.printf("%s \"%s\"", slot ? "," : "", Creds::ssid(slot));
   }
-  if (Net::apUp()) Serial.printf(", \"%s\" is up", GLOW_SETUP_SSID);
+  if (Net::apUp()) Serial.printf(", \"%s\" is up", GLOW_AP_SSID);
   if (Net::own()) Serial.print(F(" and carries shows"));
   Serial.println();
 }

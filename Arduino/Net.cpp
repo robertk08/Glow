@@ -122,12 +122,12 @@ void raiseAp(uint32_t ms) {
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(GLOW_SETUP_IP, GLOW_SETUP_IP, GLOW_SETUP_MASK);
-  if (!WiFi.softAP(GLOW_SETUP_SSID, nullptr, 1, 0, WEBSOCKETS_SERVER_CLIENT_MAX)) {
+  if (!WiFi.softAP(GLOW_AP_SSID, nullptr, 1, 0, WEBSOCKETS_SERVER_CLIENT_MAX)) {
     Serial.println(F("setup: the access point would not start"));
     return;
   }
   g_ap.up = true;
-  Serial.printf("setup: \"%s\" is up\n", GLOW_SETUP_SSID);
+  Serial.printf("setup: \"%s\" is up\n", GLOW_AP_SSID);
 }
 
 void lowerAp() {
@@ -135,7 +135,7 @@ void lowerAp() {
   WiFi.softAPdisconnect(true);
   g_ap = {};
   WiFi.mode(WIFI_STA);
-  Serial.printf("setup: \"%s\" is down\n", GLOW_SETUP_SSID);
+  Serial.printf("setup: \"%s\" is down\n", GLOW_AP_SSID);
 }
 
 void joined() {
@@ -372,7 +372,7 @@ void useOwn() {
   g_sta           = {};
   WiFi.disconnect();
   raiseAp(0);
-  Serial.printf("wifi: \"%s\" carries shows\n", GLOW_SETUP_SSID);
+  Serial.printf("wifi: \"%s\" carries shows\n", GLOW_AP_SSID);
 }
 
 void forget() {

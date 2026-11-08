@@ -43,7 +43,7 @@ final class NodeSetupModel {
 		configuration.joinOnce = true
 		
 		guard await ControllerWiFi.join(configuration) else {
-			failure = "Could not join Glow Setup. Check that the controller is powered on, then try again. You can also join Glow Setup in the Settings app."
+			failure = "Could not join \(ControllerWiFi.name). Check that the controller is powered on, then try again. You can also join \(ControllerWiFi.name) in the Settings app."
 			return
 		}
 		
@@ -51,7 +51,7 @@ final class NodeSetupModel {
 			guard !Task.isCancelled else { return }
 			if let info = await store.setup(at: .setup) {
 				if let expectedNodeID, info.id != expectedNodeID {
-					failure = "Glow Setup belongs to a different controller. Power off other controllers being set up and try again."
+					failure = "\(ControllerWiFi.name) belongs to a different controller. Power off other controllers being set up and try again."
 					return
 				}
 				nodeID = info.id
@@ -62,7 +62,7 @@ final class NodeSetupModel {
 			try? await Task.sleep(for: .seconds(2))
 		}
 		
-		failure = "Glow Setup did not respond. Check that the controller is powered on and try again."
+		failure = "\(ControllerWiFi.name) did not respond. Check that the controller is powered on and try again."
 	}
 	
 	func loadNetworks() async {
@@ -80,7 +80,7 @@ final class NodeSetupModel {
 			return
 		}
 		
-		failure = "The controller never sent back a list of networks. Check that your iPhone is still on Glow Setup and try again."
+		failure = "The controller never sent back a list of networks. Check that your iPhone is still on \(ControllerWiFi.name) and try again."
 	}
 	
 	func choose(network: NodeNetwork) {

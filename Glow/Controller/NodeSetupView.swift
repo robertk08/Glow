@@ -50,7 +50,7 @@ private struct FindingController: View {
 		Group {
 			if let failure = model.failure {
 				ContentUnavailableView {
-					Label("Can't Reach Glow Setup", systemImage: "wifi.exclamationmark")
+					Label("Can't Reach \(ControllerWiFi.name)", systemImage: "wifi.exclamationmark")
 				} description: {
 					Text(failure)
 				} actions: {
@@ -63,7 +63,7 @@ private struct FindingController: View {
 					.controlSize(.large)
 				}
 			} else {
-				Working(label: Label("Joining Glow Setup", systemImage: "wifi.router"), text: Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller."))
+				Working(label: Label("Joining \(ControllerWiFi.name)", systemImage: "wifi.router"), text: Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller."))
 			}
 		}
 		.task {

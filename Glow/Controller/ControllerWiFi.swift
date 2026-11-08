@@ -2,7 +2,7 @@ import NetworkExtension
 import SwiftUI
 
 enum ControllerWiFi {
-	static let name = "Glow Setup"
+	static let name = "Glow Controller"
 	
 	static func use(console: Console) async -> String? {
 		let store = NodeStore()
