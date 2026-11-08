@@ -70,6 +70,14 @@ struct SettingsView: View {
 				} footer: {
 					Text("Nothing you changed in the demo was kept, and none of it reached a controller.")
 				}
+			} else {
+				Section {
+					Button("Explore a Demo", systemImage: "sparkles") {
+						shows.startDemo()
+					}
+				} footer: {
+					Text("Try things out without touching the lights or the show on the controller.")
+				}
 			}
 		}
 		.navigationTitle("Settings")

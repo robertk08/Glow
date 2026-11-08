@@ -36,6 +36,7 @@ final class ShowLibrary {
 	private var pruned: Set<NodeStore.Folder> = []
 	private var lastSync = Date.distantPast
 	private var isSettled = false
+	private var endsOnConnect = false
 	private var queue: Task<Void, Never>?
 	private var pending: Task<Void, Never>?
 	private var retry: Task<Void, Never>?
@@ -120,7 +121,7 @@ final class ShowLibrary {
 		
 		dropping?.cancel()
 		dropping = nil
-		stopDemo()
+		if endsOnConnect { stopDemo() }
 	}
 	
 	func startDemo() {
@@ -128,11 +129,22 @@ final class ShowLibrary {
 		guard let url = Bundle.main.url(forResource: "Demo", withExtension: "json") else { return }
 		guard let data = try? Data(contentsOf: url), let file = try? decoder.decode(ShowFile.self, from: data), file.isReadable else { return }
 		
-		let show = Show(name: file.name)
-		held = [show.id: file.show]
-		demo = ShowList(active: show.id, shows: [show])
-		isDemo = true
-		follow()
+		endsOnConnect = console?.link.isConnected != true
+		
+		enqueue {
+			guard !self.isDemo else { return }
+			
+			if self.isLoaded {
+				await self.synchronise(Self.everything, draining: true)
+			}
+			
+			let show = Show(name: file.name)
+			self.isDemo = true
+			self.unload()
+			self.held = [show.id: file.show]
+			self.demo = ShowList(active: show.id, shows: [show])
+			self.follow()
+		}
 	}
 	
 	func settle(_ phase: ScenePhase) {

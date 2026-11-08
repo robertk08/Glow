@@ -27,7 +27,12 @@ final class Console {
 		didSet { level() }
 	}
 	
-	var isMuted = false
+	var isMuted = false {
+		didSet {
+			guard oldValue, !isMuted else { return }
+			connect()
+		}
+	}
 	
 	var lists: [String: CueList] = [:] {
 		didSet { resume() }
@@ -142,6 +147,7 @@ final class Console {
 				usage = nil
 				return
 			}
+			guard !isMuted else { return }
 			hasAdoptedSource = false
 			announcedMaster = nil
 			announcedBlackout = nil
@@ -159,13 +165,13 @@ final class Console {
 				UserDefaults.standard.set(info.address, forKey: Self.addressKey)
 			}
 			
-			if info.hasSource {
+			if !info.hasSource {
+				isSynced = true
+			} else if !isMuted {
 				master = info.master
 				blackout = info.blackout
 				announcedMaster = info.master
 				announcedBlackout = info.blackout
-			} else {
-				isSynced = true
 			}
 			
 			if let offered, let lock {
@@ -226,17 +232,21 @@ final class Console {
 		case .pong:
 			break
 		case let .frame(ack, runs):
+			guard !isMuted else { return }
 			frames.adopt(runs, ack: ack, into: &universe)
 			guard runs.count == 1, runs[0].start.value == 1, runs[0].values.count == Universe.channelCount else { return }
 			hasAdoptedSource = true
 			isSynced = true
 		case let .master(level):
+			guard !isMuted else { return }
 			master = level
 			announcedMaster = level
 		case let .blackout(on):
+			guard !isMuted else { return }
 			blackout = on
 			announcedBlackout = on
 		case let .playback(state):
+			guard !isMuted else { return }
 			take(state)
 		case let .notice(notice):
 			noticer.yield(notice)

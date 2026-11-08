@@ -54,8 +54,9 @@ bridge.
 - **The controller is the desk.** It stores every show and runs playback.
   Devices are terminals with nothing on disk: on connect a device loads the show
   into an in-memory SwiftData store, and disconnected it shows a waiting screen
-  with setup and a demo. The controller is the only copy of the shows, and
-  export is the backup.
+  with setup and a demo. Settings opens the demo while connected too, muted
+  from the controller, and leaving it reloads the show and reconnects. The
+  controller is the only copy of the shows, and export is the backup.
 - **The app owns meaning, the controller does not.** The app computes channel
   values from fixture definitions and sends the patch map. The controller never
   parses a show object and does not know what a folder means, so a new kind of
