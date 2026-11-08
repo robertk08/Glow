@@ -10,6 +10,8 @@ void tick();
 bool        up();
 bool        apUp();
 bool        provisioned();
+bool        own();
+String      wifi();
 const char *joinState();
 void        confirm();
 const char *id();
@@ -35,5 +37,6 @@ void provision(const char *ssid, const char *user, const char *password);
 
 void forget();       // erases, then reboots
 void enterSetup();
+void useOwn();
 
 }  // namespace Net

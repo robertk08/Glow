@@ -15,6 +15,9 @@ const char *password(int slot);
 bool save(const char *ssid, const char *user, const char *password);
 bool forget();
 
+bool own();
+bool keepOwn(bool on);
+
 uint8_t bumpBootCount();
 void    clearBootCount();
 

@@ -88,12 +88,15 @@ struct WaitingView: View {
 					
 					if shows.standby.offersSetup {
 						VStack(spacing: 8) {
-							NavigationLink("Set Up Controller") {
-								NodeView()
+							Button("Connect Controller to Wi-Fi", systemImage: "wifi.router") {
+								console.selection.isSetupOpen = true
 							}
 							.buttonStyle(.glassProminent)
 							
-							Button("Explore a Demo") {
+							UseControllerWiFiButton(asks: false)
+								.buttonStyle(.glass)
+							
+							Button("Explore a Demo", systemImage: "sparkles") {
 								shows.startDemo()
 							}
 							.buttonStyle(.glass)

@@ -23,6 +23,15 @@ struct LinkStatusButton: ToolbarContent {
 				}
 				.frame(idealWidth: 420, idealHeight: 620)
 			}
+			.onChange(of: console.selection.isSetupOpen) {
+				guard console.selection.isSetupOpen, isShowing else { return }
+				console.selection.isSetupOpen = false
+				isShowing = false
+				Task {
+					try? await Task.sleep(for: .seconds(0.5))
+					console.selection.isSetupOpen = true
+				}
+			}
 		}
 	}
 }

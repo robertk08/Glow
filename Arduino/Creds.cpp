@@ -11,6 +11,7 @@ const char *KEY_SSID[] = {"ssid", "ssid1"};
 const char *KEY_USER[] = {"user", "user1"};
 const char *KEY_PASS[] = {"pass", "pass1"};
 const char *KEY_BOOTS  = "boots";
+const char *KEY_OWN    = "own";
 
 Preferences g_nvs;
 bool        g_open = false;
@@ -22,6 +23,7 @@ struct Network {
 };
 
 Network g_net[SLOTS] = {};
+bool    g_own        = false;
 
 void copyInto(char *dst, size_t size, const char *src) {
   if (!src) src = "";
@@ -60,11 +62,13 @@ bool begin() {
     g_nvs.getString(KEY_USER[slot], g_net[slot].user, sizeof(g_net[slot].user));
     g_nvs.getString(KEY_PASS[slot], g_net[slot].pass, sizeof(g_net[slot].pass));
   }
+  g_own = g_nvs.getBool(KEY_OWN, false);
 
   Serial.print(have() ? F("wifi: stored") : F("wifi: no network stored"));
   for (int slot = 0; slot < SLOTS; slot++) {
     if (g_net[slot].ssid[0]) Serial.printf("%s \"%s\"", slot ? "," : "", g_net[slot].ssid);
   }
+  if (g_own) Serial.print(F(", running its own network"));
   Serial.println();
   return true;
 }
@@ -88,8 +92,17 @@ bool save(const char *ssid, const char *user, const char *password) {
 
 bool forget() {
   for (int slot = 0; slot < SLOTS; slot++) g_net[slot] = Network{};
+  g_own = false;
   if (!g_open) return false;
-  return Flash::guarded([] { return store(0) && store(1); });
+  return Flash::guarded([] { return store(0) && store(1) && (!g_nvs.isKey(KEY_OWN) || g_nvs.remove(KEY_OWN)); });
+}
+
+bool own() { return g_own; }
+
+bool keepOwn(bool on) {
+  g_own = on;
+  if (!g_open) return false;
+  return Flash::guarded([on] { return on ? g_nvs.putBool(KEY_OWN, true) > 0 : !g_nvs.isKey(KEY_OWN) || g_nvs.remove(KEY_OWN); });
 }
 
 uint8_t bumpBootCount() {

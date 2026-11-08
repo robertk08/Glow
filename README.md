@@ -224,8 +224,8 @@ whichever answers first.
 - With a password set, `hello` is answered `locked` until the client proves the
   key with an HMAC over a nonce. Neither password nor key crosses the network to
   unlock, and the controller keeps only the key. HTTP needs the `X-Glow-Session`
-  from `status`, except `/api/info`, `/api/scan` and provisioning over the
-  setup network. Traffic is not encrypted.
+  from `status`, except `/api/info`, `/api/scan`, provisioning and `/api/own`
+  over the setup network. Traffic is not encrypted.
 
 ## Controller
 
@@ -249,7 +249,7 @@ XLR is male. If nothing decodes, swap `D+/A` and `D-/B`.
 for shows. With the custom scheme the compiler reports the whole flash as the
 maximum, so check the binary against `app0`.
 
-Serial console at 115200: `net`, `setup`, `forget`, `home`, `unpair`,
+Serial console at 115200: `net`, `setup`, `own`, `forget`, `home`, `unpair`,
 `password`, `key`.
 
 **Restarts keep the look.** Before the controller restarts itself it keeps the
@@ -258,16 +258,19 @@ and sends the same output again as soon as it boots. Running fades and chases
 stop. It also restarts itself when free memory stays under 24 KB for five
 seconds, because the network stops receiving at that point.
 
-**Recovery.** A controller with no stored network raises the open network **Glow
-Setup**, and the app provisions it from Settings › Controller. A controller
-that finds none of its stored networks for a minute raises Glow Setup as its
-own network, and keeps it while any device is on it. Join Glow Setup in
-Settings › Wi-Fi and the app reaches the controller at 192.168.4.1 and works
-as on any other network, for up to five devices. The setup network carries
-shows only in that case, never while a controller has no network stored or is
-joining one. Three power
-cycles of under five seconds each raise the setup network and remove the
-password. Networks and the password live in NVS and survive reflashing.
+**Recovery.** A controller with no stored network raises the open network
+**Glow Setup**. **Connect Controller to Wi-Fi**, on the waiting screen and in
+Settings › Controller, moves it onto a Wi-Fi network. **Use Controller’s
+Wi-Fi** keeps it on Glow Setup for shows instead, until it is connected to a
+Wi-Fi network again, and the app joins Glow Setup and reaches it at
+192.168.4.1, for up to five devices. A controller that finds none of its
+stored networks for a minute also carries shows on Glow Setup, keeps it while
+any device is on it, and goes back to its network once none is. The setup
+network carries shows only in those two cases, never on a controller waiting
+to be set up or joining a network. Three power cycles of under five seconds
+each raise the setup network and remove the password. Networks, the choice of
+the controller’s own Wi-Fi and the password live in NVS and survive
+reflashing.
 
 ## Toolchain
 

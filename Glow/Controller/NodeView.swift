@@ -3,7 +3,6 @@ import SwiftUI
 struct NodeView: View {
 	@Environment(Console.self) private var console
 	
-	@State private var isSettingUp = false
 	@State private var isForgetting = false
 	@State private var isProtecting = false
 	@State private var failure: String?
@@ -28,46 +27,56 @@ struct NodeView: View {
 				}
 			}
 			
-			if let node = console.node {
+			Section {
+				if console.link.isConnected, let node = console.node {
+					LabeledContent("Wi-Fi", value: node.wifi.isEmpty ? ControllerWiFi.name : node.wifi)
+				}
+				
+				Button("Connect Controller to Wi-Fi", systemImage: "wifi.router") {
+					console.selection.isSetupOpen = true
+				}
+				
+				if !console.link.isConnected || console.node?.isOwn != true {
+					UseControllerWiFiButton(asks: console.link.isConnected && console.node?.wifi.isEmpty == false)
+				}
+			} header: {
+				Text("Network")
+			} footer: {
+				if console.link.isConnected, let node = console.node {
+					Text(node.isOwn ? "Phones join \(ControllerWiFi.name) to control the lights, up to five at once." : node.wifi.isEmpty ? "The controller can’t find its Wi-Fi, so phones join \(ControllerWiFi.name) for now." : "Phones on \(node.wifi) control the lights.")
+				}
+			}
+			
+			if console.link.isConnected, let node = console.node {
 				Section {
 					Button(node.passwordAction, systemImage: "lock") {
 						console.passwordOutcome = nil
 						isProtecting = true
 					}
-					.disabled(!console.link.isConnected)
-				}
-			}
-			
-			Section {
-				Button("Change Wi-Fi Network", systemImage: "wifi.router") {
-					isSettingUp = true
 				}
 				
-				Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
-					isForgetting = true
-				}
-				.foregroundStyle(.red)
-				.disabled(!console.link.isConnected)
-				.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
-					Button("Forget", role: .destructive) {
-						Task {
-							do {
-								try await NodeStore().command("forget", at: console.reachable)
-							} catch {
-								failure = error.localizedDescription
+				Section {
+					Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
+						isForgetting = true
+					}
+					.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
+						Button("Forget", role: .destructive) {
+							Task {
+								do {
+									try await NodeStore().command("forget", at: console.reachable)
+								} catch {
+									failure = error.localizedDescription
+								}
 							}
 						}
+					} message: {
+						Text("It restarts and you set it up from scratch.")
 					}
-				} message: {
-					Text("It restarts and you set it up from scratch.")
 				}
 			}
 		}
 		.navigationTitle("Controller")
 		.navigationBarTitleDisplayMode(.inline)
-		.sheet(isPresented: $isSettingUp) {
-			NodeSetupView()
-		}
 		.sheet(isPresented: $isProtecting) {
 			PasswordView()
 		}

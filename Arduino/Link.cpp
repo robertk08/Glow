@@ -460,6 +460,8 @@ void greet(uint8_t num) {
   out["src"] = g_haveSource;
   out["client"] = num;
   out["ip"] = Net::address(g_ws.remoteIP(num));
+  out["own"] = Net::own();
+  out["wifi"] = Net::wifi();
   out["master"] = g_master;
   out["blackout"] = g_blackout;
   out["id"] = Net::id();

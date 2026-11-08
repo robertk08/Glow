@@ -150,6 +150,7 @@ void tickJoin(bool connected) {
   if (connected && g_join.letGo) {
     g_join.active = false;
     g_sta.slot    = 0;
+    if (Creds::own()) Creds::keepOwn(false);
     if (Creds::save(g_join.ssid, g_join.user, g_join.pass)) Serial.printf("wifi: \"%s\" stored\n", g_join.ssid);
     else Serial.println(F("wifi: the network could not be stored"));
     g_ap.lost       = false;
@@ -163,7 +164,7 @@ void tickJoin(bool connected) {
   g_join.failed = true;
   Serial.printf("wifi: could not join \"%s\"\n", g_join.ssid);
 
-  if (Creds::have()) {
+  if (Creds::have() && !Creds::own()) {
     choose();
     raiseAp(SETUP_AP_MS);
   } else {
@@ -235,7 +236,7 @@ void begin() {
     Access::forget();
   }
 
-  if (!Creds::have()) {
+  if (!Creds::have() || Creds::own()) {
     raiseAp(0);
     return;
   }
@@ -280,6 +281,8 @@ const char *joinState() {
 bool        up()          { return g_sta.up; }
 bool        apUp()        { return g_ap.up; }
 bool        provisioned() { return Creds::have(); }
+bool        own()         { return Creds::own(); }
+String      wifi()        { return g_sta.up ? WiFi.SSID() : String(); }
 const char *id()          { return g_id; }
 IPAddress   ip()          { return g_sta.up ? WiFi.localIP() : WiFi.softAPIP(); }
 
@@ -290,7 +293,7 @@ bool fromSetupAp(const IPAddress &peer) {
 }
 
 bool serves(const IPAddress &peer) {
-  return !fromSetupAp(peer) || (g_ap.lost && !g_join.active);
+  return !fromSetupAp(peer) || ((g_ap.lost || Creds::own()) && !g_join.active);
 }
 
 String address(const IPAddress &peer) {
@@ -359,6 +362,17 @@ void provision(const char *ssid, const char *user, const char *password) {
 
 void enterSetup() {
   raiseAp(SETUP_AP_MS);
+}
+
+void useOwn() {
+  if (!Creds::keepOwn(true)) Serial.println(F("wifi: running its own network until the next restart"));
+  g_join.active   = false;
+  g_ap.lost       = false;
+  g_ap.confirming = false;
+  g_sta           = {};
+  WiFi.disconnect();
+  raiseAp(0);
+  Serial.printf("wifi: \"%s\" carries shows\n", GLOW_SETUP_SSID);
 }
 
 void forget() {

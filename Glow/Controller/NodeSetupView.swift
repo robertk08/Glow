@@ -18,7 +18,7 @@ struct NodeSetupView: View {
 				case .done: Finished(model: model)
 				}
 			}
-			.navigationTitle("Controller Setup")
+			.navigationTitle("Connect to Wi-Fi")
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {

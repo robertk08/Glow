@@ -90,6 +90,9 @@ struct RootView: View {
 			}
 		}
 		.environment(arrangement)
+		.sheet(isPresented: $selection.isSetupOpen) {
+			NodeSetupView()
+		}
 		.background {
 			Button("All Off") {
 				console.stopAll()

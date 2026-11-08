@@ -13,6 +13,7 @@ final class Selection {
 	
 	var isProgrammerOpen = false
 	var isSceneOpen = false
+	var isSetupOpen = false
 	var section = Section.lights
 	var scene: String?
 	var draft = CueDraft()

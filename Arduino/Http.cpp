@@ -327,7 +327,8 @@ void route(Visit &v) {
   v.target[strcspn(v.target, "?")] = '\0';
 
   bool post = !strcmp(v.method, "POST");
-  bool open = !strcmp(v.target, "/api/info") || !strcmp(v.target, "/api/scan") || (!strcmp(v.target, "/api/provision") && Net::fromSetupAp(c.remoteIP()));
+  bool setup = !strcmp(v.target, "/api/provision") || !strcmp(v.target, "/api/own");
+  bool open  = !strcmp(v.target, "/api/info") || !strcmp(v.target, "/api/scan") || (setup && Net::fromSetupAp(c.remoteIP()));
   if (!open && !Link::admits(v.session)) return answer(c, 403);
 
   if (!strcmp(v.target, "/api/info") && !strcmp(v.method, "GET")) {
@@ -340,6 +341,10 @@ void route(Visit &v) {
     answer(c, 200);
     c.stop();
     Net::enterSetup();
+  } else if (!strcmp(v.target, "/api/own") && post) {
+    answer(c, 200);
+    c.stop();
+    Net::useOwn();
   } else if (!strcmp(v.target, "/api/forget") && post) {
     answer(c, 200);
     c.stop();

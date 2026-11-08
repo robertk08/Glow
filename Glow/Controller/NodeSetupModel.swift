@@ -39,10 +39,10 @@ final class NodeSetupModel {
 			}
 		}
 		
-		let configuration = NEHotspotConfiguration(ssid: "Glow Setup")
+		let configuration = NEHotspotConfiguration(ssid: ControllerWiFi.name)
 		configuration.joinOnce = true
 		
-		guard await join(configuration) else {
+		guard await ControllerWiFi.join(configuration) else {
 			failure = "Could not join Glow Setup. Check that the controller is powered on, then try again. You can also join Glow Setup in the Settings app."
 			return
 		}
@@ -81,16 +81,6 @@ final class NodeSetupModel {
 		}
 		
 		failure = "The controller never sent back a list of networks. Check that your iPhone is still on Glow Setup and try again."
-	}
-	
-	private func join(_ configuration: NEHotspotConfiguration) async -> Bool {
-		do {
-			try await NEHotspotConfigurationManager.shared.apply(configuration)
-			return true
-		} catch {
-			let error = error as NSError
-			return error.domain == NEHotspotConfigurationErrorDomain && error.code == NEHotspotConfigurationError.alreadyAssociated.rawValue
-		}
 	}
 	
 	func choose(network: NodeNetwork) {
@@ -133,7 +123,7 @@ final class NodeSetupModel {
 				
 				if info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != NodeEndpoint.setup.host {
 					provisioned = NodeEndpoint(host: info.ip)
-					NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: "Glow Setup")
+					NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: ControllerWiFi.name)
 					
 					if selected?.enterprise != true {
 						let configuration: NEHotspotConfiguration
@@ -143,7 +133,7 @@ final class NodeSetupModel {
 							configuration = NEHotspotConfiguration(ssid: ssid)
 						}
 						
-						if await !join(configuration) {
+						if await !ControllerWiFi.join(configuration) {
 							failure = "The controller joined \(ssid). Join that network in Settings to control it."
 						}
 					}
