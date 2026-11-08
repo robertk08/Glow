@@ -15,7 +15,9 @@ void        confirm();
 const char *id();
 IPAddress   ip();
 
-bool fromSetupAp(const IPAddress &peer);
+bool   fromSetupAp(const IPAddress &peer);
+bool   serves(const IPAddress &peer);
+String address(const IPAddress &peer);
 
 struct Network {
   char    ssid[33];

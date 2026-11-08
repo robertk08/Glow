@@ -75,7 +75,7 @@ actor NodeLink {
 		while !Task.isCancelled {
 			var hosts: [String] = []
 			
-			for host in [preferred, endpoint.host, NodeEndpoint.fallback.host] {
+			for host in [preferred, endpoint.host, NodeEndpoint.fallback.host, NodeEndpoint.setup.host] {
 				guard let host, !hosts.contains(host) else { continue }
 				hosts.append(host)
 			}

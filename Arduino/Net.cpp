@@ -4,6 +4,7 @@
 #include "Creds.h"
 
 #include <ESPmDNS.h>
+#include <WebSocketsServer.h>
 #include <WiFi.h>
 #include <esp_eap_client.h>
 #include <esp_mac.h>
@@ -121,7 +122,7 @@ void raiseAp(uint32_t ms) {
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(GLOW_SETUP_IP, GLOW_SETUP_IP, GLOW_SETUP_MASK);
-  if (!WiFi.softAP(GLOW_SETUP_SSID)) {
+  if (!WiFi.softAP(GLOW_SETUP_SSID, nullptr, 1, 0, WEBSOCKETS_SERVER_CLIENT_MAX)) {
     Serial.println(F("setup: the access point would not start"));
     return;
   }
@@ -286,6 +287,15 @@ bool fromSetupAp(const IPAddress &peer) {
   if (!g_ap.up) return false;
   IPAddress ap = WiFi.softAPIP();
   return peer[0] == ap[0] && peer[1] == ap[1] && peer[2] == ap[2];
+}
+
+bool serves(const IPAddress &peer) {
+  return !fromSetupAp(peer) || (g_ap.lost && !g_join.active);
+}
+
+String address(const IPAddress &peer) {
+  if (fromSetupAp(peer)) return WiFi.softAPIP().toString();
+  return g_sta.up ? WiFi.localIP().toString() : String();
 }
 
 int scan(Network *out, int max) {

@@ -259,7 +259,13 @@ stop. It also restarts itself when free memory stays under 24 KB for five
 seconds, because the network stops receiving at that point.
 
 **Recovery.** A controller with no stored network raises the open network **Glow
-Setup**, and the app provisions it from Settings › Controller. Three power
+Setup**, and the app provisions it from Settings › Controller. A controller
+that finds none of its stored networks for a minute raises Glow Setup as its
+own network, and keeps it while any device is on it. Join Glow Setup in
+Settings › Wi-Fi and the app reaches the controller at 192.168.4.1 and works
+as on any other network, for up to five devices. The setup network carries
+shows only in that case, never while a controller has no network stored or is
+joining one. Three power
 cycles of under five seconds each raise the setup network and remove the
 password. Networks and the password live in NVS and survive reflashing.
 

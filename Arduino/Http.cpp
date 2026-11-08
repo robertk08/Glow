@@ -318,7 +318,7 @@ void provision(NetworkClient &c, const char *body, size_t len) {
 void route(Visit &v) {
   NetworkClient &c = *v.client;
 
-  if (!strncmp(v.target, GLOW_WS_PATH, strlen(GLOW_WS_PATH)) && strcmp(v.method, "GET")) return answer(c, 404);
+  if (!strncmp(v.target, GLOW_WS_PATH, strlen(GLOW_WS_PATH)) && (strcmp(v.method, "GET") || !Net::serves(c.remoteIP()))) return answer(c, 404);
   if (!strncmp(v.target, GLOW_WS_PATH, strlen(GLOW_WS_PATH))) {
     Link::adopt(v.client, v.target);
     v.client = nullptr;

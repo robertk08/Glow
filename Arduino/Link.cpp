@@ -459,7 +459,7 @@ void greet(uint8_t num) {
   out["fw"] = GLOW_FW_VERSION;
   out["src"] = g_haveSource;
   out["client"] = num;
-  out["ip"] = Net::up() ? Net::ip().toString() : String();
+  out["ip"] = Net::address(g_ws.remoteIP(num));
   out["master"] = g_master;
   out["blackout"] = g_blackout;
   out["id"] = Net::id();
