@@ -28,27 +28,15 @@ enum ControllerWiFi {
 		return nil
 	}
 	
-	static func rejoin(_ ssid: String, console: Console) async -> String? {
-		let store = NodeStore()
-		
+	static func leave(console: Console) async -> String? {
 		do {
-			try await store.command("rejoin", at: console.reachable, fields: ["ssid": ssid])
+			try await NodeStore().command("stored", at: console.reachable)
 		} catch {
 			return "The controller did not switch. Check the connection and try again."
 		}
 		
-		for _ in 0..<15 {
-			try? await Task.sleep(for: .seconds(2))
-			guard let info = await store.setup(at: .setup) else { continue }
-			if info.didRefuse { return "The controller could not reach \(ssid), so it keeps running \(name)." }
-			guard info.hasJoined(ssid: ssid), !info.ip.isEmpty, info.ip != NodeEndpoint.setup.host else { continue }
-			
-			NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: name)
-			console.endpoint = NodeEndpoint(host: info.ip)
-			return nil
-		}
-		
-		return "\(name) did not respond. Check that the controller is powered on and try again."
+		console.endpoint = .fallback
+		return nil
 	}
 	
 	private static func tell(_ store: NodeStore) async -> Bool {
@@ -77,7 +65,7 @@ enum ControllerWiFi {
 struct UseWiFiButton: View {
 	@Environment(Console.self) private var console
 	
-	var ssid: String?
+	var leaves = false
 	let asks: Bool
 	
 	@State private var isAsking = false
@@ -98,7 +86,7 @@ struct UseWiFiButton: View {
 				if isWorking {
 					ProgressView()
 				} else {
-					Image(systemName: ssid == nil ? "antenna.radiowaves.left.and.right" : "wifi")
+					Image(systemName: leaves ? "wifi" : "antenna.radiowaves.left.and.right")
 				}
 			}
 		}
@@ -108,8 +96,8 @@ struct UseWiFiButton: View {
 				use()
 			}
 		} message: {
-			if let ssid {
-				Text("The controller leaves \(ControllerWiFi.name) and joins \(ssid). Every phone goes back to \(ssid) to control the lights.")
+			if leaves {
+				Text("The controller goes back to its Wi-Fi network. If it can’t find it within a minute, it runs \(ControllerWiFi.name) again.")
 			} else {
 				Text("The controller leaves \(console.node?.wifi ?? "its network") and runs \(ControllerWiFi.name). Every phone joins \(ControllerWiFi.name) to control the lights.")
 			}
@@ -122,14 +110,14 @@ struct UseWiFiButton: View {
 	}
 	
 	private var title: String {
-		ssid.map { "Use \($0)" } ?? "Use Controller’s Wi-Fi"
+		leaves ? "Use Wi-Fi Network" : "Use Controller’s Wi-Fi"
 	}
 	
 	private func use() {
 		isWorking = true
 		Task {
-			if let ssid {
-				failure = await ControllerWiFi.rejoin(ssid, console: console)
+			if leaves {
+				failure = await ControllerWiFi.leave(console: console)
 			} else {
 				failure = await ControllerWiFi.use(console: console)
 			}

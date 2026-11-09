@@ -30,12 +30,13 @@ static void run(const char *line) {
   if      (!strcmp(line, "net"))      report();
   else if (!strcmp(line, "setup"))    Net::enterSetup();
   else if (!strcmp(line, "own"))      Net::useOwn();
+  else if (!strcmp(line, "stored"))   Net::useStored();
   else if (!strcmp(line, "forget"))   Net::forget();
   else if (!strcmp(line, "home"))     HomeKit::report();
   else if (!strcmp(line, "unpair"))   HomeKit::unpair();
   else if (!strcmp(line, "password")) Link::forgetPassword();
   else if (!strcmp(line, "key"))      Access::report();
-  else Serial.println(F("commands: net | setup | own | forget | home | unpair | password | key"));
+  else Serial.println(F("commands: net | setup | own | stored | forget | home | unpair | password | key"));
 }
 
 static void pollSerial() {
@@ -77,7 +78,7 @@ void setup() {
   Http::begin();
   HomeKit::showChanged();
 
-  Serial.println(F("commands: net | setup | own | forget | home | unpair | password | key"));
+  Serial.println(F("commands: net | setup | own | stored | forget | home | unpair | password | key"));
 }
 
 void loop() {

@@ -316,20 +316,6 @@ void provision(NetworkClient &c, const char *body, size_t len) {
   Net::provision(ssid, user, password);
 }
 
-void rejoin(NetworkClient &c, const char *body, size_t len) {
-  JsonDocument doc;
-  const char  *ssid;
-  if (deserializeJson(doc, body, len) || !text(doc, "ssid", 32, true, ssid)) return answer(c, 400);
-
-  for (int slot = 0; slot < Creds::SLOTS; slot++) {
-    if (!Creds::ssid(slot)[0] || strcmp(ssid, Creds::ssid(slot))) continue;
-    answer(c, 200);
-    c.stop();
-    return Net::provision(Creds::ssid(slot), Creds::user(slot), Creds::password(slot));
-  }
-  answer(c, 404);
-}
-
 void route(Visit &v) {
   NetworkClient &c = *v.client;
 
@@ -342,7 +328,7 @@ void route(Visit &v) {
   v.target[strcspn(v.target, "?")] = '\0';
 
   bool post = !strcmp(v.method, "POST");
-  bool setup = !strcmp(v.target, "/api/provision") || !strcmp(v.target, "/api/own") || !strcmp(v.target, "/api/rejoin");
+  bool setup = !strcmp(v.target, "/api/provision") || !strcmp(v.target, "/api/own") || !strcmp(v.target, "/api/stored");
   bool open  = !strcmp(v.target, "/api/info") || !strcmp(v.target, "/api/scan") || (setup && Net::fromSetupAp(c.remoteIP()));
   if (!open && !Link::admits(v.session)) return answer(c, 403);
 
@@ -356,8 +342,11 @@ void route(Visit &v) {
     answer(c, 200);
     c.stop();
     Net::enterSetup();
-  } else if (!strcmp(v.target, "/api/rejoin") && post) {
-    rejoin(c, v.body, v.length);
+  } else if (!strcmp(v.target, "/api/stored") && post) {
+    if (!Creds::have()) return answer(c, 404);
+    answer(c, 200);
+    c.stop();
+    Net::useStored();
   } else if (!strcmp(v.target, "/api/own") && post) {
     answer(c, 200);
     c.stop();

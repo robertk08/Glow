@@ -37,8 +37,8 @@ struct NodeView: View {
 				}
 				
 				if console.link.isConnected, let node = console.node, node.isOwn {
-					ForEach(node.stored, id: \.self) { ssid in
-						UseWiFiButton(ssid: ssid, asks: true)
+					if node.hasStored {
+						UseWiFiButton(leaves: true, asks: true)
 					}
 				} else {
 					UseWiFiButton(asks: console.link.isConnected && console.node?.wifi.isEmpty == false)

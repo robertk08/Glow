@@ -376,6 +376,17 @@ void useOwn() {
   Serial.printf("wifi: \"%s\" carries shows\n", GLOW_AP_SSID);
 }
 
+void useStored() {
+  if (!Creds::keepOwn(false)) Serial.println(F("wifi: back on its own network after the next restart"));
+  g_join.active = false;
+  g_sta         = {};
+  delay(200);
+  lowerAp();
+  choose();
+  g_sta.downSince = millis();
+  Serial.println(F("wifi: back to the stored networks"));
+}
+
 void forget() {
   Creds::forget();
   Serial.println(F("wifi: stored networks erased, restarting"));

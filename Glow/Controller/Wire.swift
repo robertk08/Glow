@@ -92,7 +92,7 @@ nonisolated enum Wire {
 		var address: String
 		var isOwn: Bool
 		var wifi: String
-		var stored: [String]
+		var hasStored: Bool
 		var master: Double
 		var blackout: Bool
 		var id: String
@@ -105,7 +105,7 @@ nonisolated enum Wire {
 		}
 		
 		private enum CodingKeys: String, CodingKey {
-			case firmware = "fw", hasSource = "src", client, address = "ip", isOwn = "own", wifi, stored, master, blackout, id, hasPassword = "password", nonce, session
+			case firmware = "fw", hasSource = "src", client, address = "ip", isOwn = "own", wifi, hasStored = "stored", master, blackout, id, hasPassword = "password", nonce, session
 		}
 	}
 	

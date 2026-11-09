@@ -38,5 +38,6 @@ void provision(const char *ssid, const char *user, const char *password);
 void forget();       // erases, then reboots
 void enterSetup();
 void useOwn();
+void useStored();
 
 }  // namespace Net
