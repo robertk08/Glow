@@ -394,7 +394,7 @@ struct ShowSyncTests {
 	}
 	
 	@Test func aJoiningDeviceLearnsTheMasterAndBlackout() throws {
-		let reply = try #require(Wire.event(.string(#"{"t":"status","fw":"2.14.2","src":true,"client":1,"ip":"192.168.1.2","own":false,"wifi":"Stage","master":0.5,"blackout":true,"id":"glow","password":false,"nonce":"","session":""}"#)))
+		let reply = try #require(Wire.event(.string(#"{"t":"status","fw":"2.14.2","src":true,"client":1,"ip":"192.168.1.2","own":false,"wifi":"Stage","stored":["Stage"],"master":0.5,"blackout":true,"id":"glow","password":false,"nonce":"","session":""}"#)))
 		
 		guard case let .status(info) = reply else {
 			Issue.record("expected a status")

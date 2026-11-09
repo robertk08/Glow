@@ -36,8 +36,12 @@ struct NodeView: View {
 					console.selection.isSetupOpen = true
 				}
 				
-				if !console.link.isConnected || console.node?.isOwn != true {
-					UseControllerWiFiButton(asks: console.link.isConnected && console.node?.wifi.isEmpty == false)
+				if console.link.isConnected, let node = console.node, node.isOwn {
+					ForEach(node.stored, id: \.self) { ssid in
+						UseWiFiButton(ssid: ssid, asks: true)
+					}
+				} else {
+					UseWiFiButton(asks: console.link.isConnected && console.node?.wifi.isEmpty == false)
 				}
 			} header: {
 				Text("Network")

@@ -225,8 +225,8 @@ whichever answers first.
 - With a password set, `hello` is answered `locked` until the client proves the
   key with an HMAC over a nonce. Neither password nor key crosses the network to
   unlock, and the controller keeps only the key. HTTP needs the `X-Glow-Session`
-  from `status`, except `/api/info`, `/api/scan`, provisioning and `/api/own`
-  over Glow Controller. Traffic is not encrypted.
+  from `status`, except `/api/info`, `/api/scan`, provisioning, `/api/own`
+  and `/api/rejoin` over Glow Controller. Traffic is not encrypted.
 
 ## Controller
 
@@ -264,7 +264,9 @@ seconds, because the network stops receiving at that point.
 and in Settings › Controller, moves it onto a Wi-Fi network. **Use
 Controller’s Wi-Fi** keeps it on Glow Controller for shows instead, until it
 is connected to a Wi-Fi network again, and the app joins Glow Controller and
-reaches it at 192.168.4.1, for up to five devices. A controller that finds
+reaches it at 192.168.4.1, for up to five devices. There, Settings › Controller
+offers **Use** for each stored network, which joins it without asking for its
+password again. A controller that finds
 none of its stored networks for a minute also carries shows on Glow
 Controller, keeps it while any device is on it, and goes back to its network
 once none is. Glow Controller carries shows only in those two cases, never on

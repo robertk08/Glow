@@ -93,7 +93,7 @@ struct WaitingView: View {
 							}
 							.buttonStyle(.glassProminent)
 							
-							UseControllerWiFiButton(asks: false)
+							UseWiFiButton(asks: false)
 								.buttonStyle(.glass)
 							
 							Button("Explore a Demo", systemImage: "sparkles") {

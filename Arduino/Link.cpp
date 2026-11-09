@@ -1,6 +1,7 @@
 #include "Link.h"
 
 #include "Access.h"
+#include "Creds.h"
 #include "DmxBus.h"
 #include "HomeKit.h"
 #include "Net.h"
@@ -462,6 +463,10 @@ void greet(uint8_t num) {
   out["ip"] = Net::address(g_ws.remoteIP(num));
   out["own"] = Net::own();
   out["wifi"] = Net::wifi();
+  JsonArray stored = out["stored"].to<JsonArray>();
+  for (int slot = 0; slot < Creds::SLOTS; slot++) {
+    if (Creds::ssid(slot)[0]) stored.add(Creds::ssid(slot));
+  }
   out["master"] = g_master;
   out["blackout"] = g_blackout;
   out["id"] = Net::id();

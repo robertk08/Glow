@@ -370,6 +370,7 @@ void useOwn() {
   g_ap.lost       = false;
   g_ap.confirming = false;
   g_sta           = {};
+  delay(200);
   WiFi.disconnect();
   raiseAp(0);
   Serial.printf("wifi: \"%s\" carries shows\n", GLOW_AP_SSID);
