@@ -83,7 +83,7 @@ struct TileLayout: Layout {
 		let sizes = subviews.map { $0[TileSpan.self] }
 		let heights = zip(subviews, sizes).map { subview, size in
 			let width = column * CGFloat(size.columns) + spacing * CGFloat(size.columns - 1)
-			return (size.rows, (subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height - spacing * CGFloat(size.rows - 1)) / CGFloat(size.rows))
+			return (size.rows, subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
 		}
 		let height = heights.filter { $0.0 == 1 }.map(\.1).max() ?? heights.map(\.1).max() ?? 0
 		let origins = Self.origins(of: sizes, at: subviews.map { $0[TileSlot.self] }, columns: columns)
