@@ -264,8 +264,9 @@ seconds, because the network stops receiving at that point.
 and in Settings › Controller, moves it onto a Wi-Fi network. **Use
 Controller’s Wi-Fi** keeps it on Glow Controller for shows instead, until it
 is connected to a Wi-Fi network again, and the app joins Glow Controller and
-reaches it at 192.168.4.1, for up to five devices. There, **Use Wi-Fi Network** in
-Settings › Controller sends it back to its stored networks, and Glow Controller
+reaches it at 192.168.4.1, for up to five devices. There, **Stop Using
+Controller’s Wi-Fi** in Settings › Controller sends it back to its stored
+networks, and Glow Controller
 returns by itself if none is in reach within a minute. A controller that finds
 none of its stored networks for a minute also carries shows on Glow
 Controller, keeps it while any device is on it, and goes back to its network

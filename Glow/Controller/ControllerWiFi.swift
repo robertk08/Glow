@@ -73,7 +73,7 @@ struct UseWiFiButton: View {
 	@State private var failure: String?
 	
 	var body: some View {
-		Button {
+		Button(role: leaves ? .destructive : nil) {
 			if asks {
 				isAsking = true
 			} else {
@@ -92,7 +92,7 @@ struct UseWiFiButton: View {
 		}
 		.disabled(isWorking)
 		.confirmationDialog("\(title)?", isPresented: $isAsking, titleVisibility: .visible) {
-			Button(title) {
+			Button(title, role: leaves ? .destructive : nil) {
 				use()
 			}
 		} message: {
@@ -110,7 +110,7 @@ struct UseWiFiButton: View {
 	}
 	
 	private var title: String {
-		leaves ? "Use Wi-Fi Network" : "Use Controller’s Wi-Fi"
+		leaves ? "Stop Using Controller’s Wi-Fi" : "Use Controller’s Wi-Fi"
 	}
 	
 	private func use() {
