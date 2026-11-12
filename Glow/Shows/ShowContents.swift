@@ -148,20 +148,20 @@ nonisolated struct ShowContents: Codable, Sendable {
 			}
 			
 			var reader = ByteReader(payload)
-			guard let (_, scene) = reader.identifier(), let sortIndex = reader.order(), let fade = reader.tenths(), let delay = reader.tenths(), let follow = reader.number() else { return nil }
+			guard let (_, scene) = reader.identifier(), let sortIndex = reader.order(), let fade = reader.hundredths(), let delay = reader.hundredths(), let follow = reader.number() else { return nil }
 			guard let label = reader.text() else { return nil }
 			let levels = reader.rest
 			guard Levels.read(levels, { _, _, _ in }) else { return nil }
-			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 10, levels: levels)
+			self.init(identifier: identifier, scene: scene, sortIndex: sortIndex, label: label, fade: fade, delay: delay, follow: follow == 0 ? nil : Double(follow - 1) / 100, levels: levels)
 		}
 		
 		var body: Data {
 			var writer = ByteWriter()
 			writer.identifier(scene, tag: 0)
 			writer.order(sortIndex)
-			writer.tenths(fade)
-			writer.tenths(delay)
-			writer.number(follow.map { Int(($0 * 10).rounded()) + 1 } ?? 0)
+			writer.hundredths(fade)
+			writer.hundredths(delay)
+			writer.number(follow.map { Int(($0 * 100).rounded()) + 1 } ?? 0)
 			writer.text(label)
 			writer.bytes([UInt8](levels))
 			

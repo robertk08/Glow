@@ -132,6 +132,18 @@ struct StorageTests {
 		#expect(tracked.body.count / 12 < 20)
 	}
 	
+	@Test func cueTimesKeepTheirHundredthsThroughStorage() throws {
+		for _ in 0..<500 {
+			let fade = Double(Int.random(in: 0...360_000)) / 100
+			let delay = Double(Int.random(in: 0...360_000)) / 100
+			let follow = Bool.random() ? nil : Double(Int.random(in: 0...360_000)) / 100
+			let cue = ShowContents.Cue(identifier: Identifier.fresh(), scene: Identifier.fresh(), sortIndex: 1, fade: fade, delay: delay, follow: follow)
+			let read = try #require(ShowContents.Cue(identifier: cue.identifier, body: cue.body))
+			
+			#expect(read == cue)
+		}
+	}
+	
 	@Test func aLightCostsLessThanOneHundredTwentyBytes() async throws {
 		let show = Self.rig()
 		let files = await ShowLibrary.snapshot(of: show, folders: [.lights])

@@ -41,8 +41,8 @@ nonisolated struct ByteReader {
 		return nil
 	}
 	
-	mutating func tenths() -> Double? {
-		number().map { Double($0) / 10 }
+	mutating func hundredths() -> Double? {
+		number().map { Double($0) / 100 }
 	}
 	
 	mutating func double() -> Double? {

@@ -27,8 +27,8 @@ nonisolated struct ByteWriter {
 		data.append(UInt8(rest))
 	}
 	
-	mutating func tenths(_ seconds: Double) {
-		number(Int((seconds * 10).rounded()))
+	mutating func hundredths(_ seconds: Double) {
+		number(Int((seconds * 100).rounded()))
 	}
 	
 	mutating func double(_ value: Double) {

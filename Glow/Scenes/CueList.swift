@@ -79,7 +79,7 @@ nonisolated struct CueList: Sendable {
 	}
 	
 	static func seconds(_ value: Double) -> String {
-		"\(value.formatted(.number.precision(.fractionLength(0...1)))) s"
+		"\(value.formatted(.number.precision(.fractionLength(0...2)))) s"
 	}
 	
 	func status(at index: Int?) -> String {
