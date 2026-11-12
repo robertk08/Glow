@@ -57,13 +57,6 @@ struct WaitingView: View {
 			.scrollDismissesKeyboard(.interactively)
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 10) {
-					if shows.standby.showsLink {
-						Text(console.link.name)
-							.font(.footnote)
-							.foregroundStyle(.secondary)
-							.transition(.opacity)
-					}
-					
 					if shows.standby == .locked, let lock = console.lock {
 						VStack(spacing: 8) {
 							if let until = console.lockedUntil {

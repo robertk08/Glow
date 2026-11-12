@@ -20,11 +20,4 @@ enum Standby: Equatable {
 		case .starting, .locked, .ready: false
 		}
 	}
-	
-	var showsLink: Bool {
-		switch self {
-		case .searching: true
-		case .starting, .welcome, .locked, .ready: false
-		}
-	}
 }
