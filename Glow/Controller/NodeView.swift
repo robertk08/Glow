@@ -63,7 +63,7 @@ struct NodeView: View {
 					Button("Forget All Wi-Fi Networks", systemImage: "trash", role: .destructive) {
 						isForgetting = true
 					}
-					.tint(.red)
+					.listItemTint(.red)
 					.confirmationDialog("Forget all Wi-Fi networks?", isPresented: $isForgetting, titleVisibility: .visible) {
 						Button("Forget", role: .destructive) {
 							Task {
