@@ -579,7 +579,6 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strcmp(t, "ping")) {
     JsonDocument out;
     out["t"]          = "pong";
-    out["seq"]        = doc["seq"];
     out["ram"]        = ESP.getHeapSize() - ESP.getFreeHeap();
     out["ramTotal"]   = ESP.getHeapSize();
     out["store"]      = Store::used();

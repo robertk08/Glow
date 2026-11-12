@@ -11,7 +11,7 @@ struct NodeView: View {
 		List {
 			Section {
 				LabeledContent {
-					Text(console.link.summary(latency: console.latency))
+					Text(console.link.name)
 						.foregroundStyle(console.link.tint)
 				} label: {
 					Text("Status")

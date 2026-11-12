@@ -21,11 +21,6 @@ nonisolated enum LinkState: Sendable, Equatable {
 		}
 	}
 	
-	func summary(latency: TimeInterval?) -> String {
-		guard self == .connected, let latency else { return name }
-		return "Connected · \(Int(latency * 1000)) ms"
-	}
-	
 	var symbol: String {
 		switch self {
 		case .offline: "wifi.slash"

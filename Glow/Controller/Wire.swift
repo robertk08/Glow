@@ -57,7 +57,7 @@ nonisolated enum Wire {
 		case hello
 		case unlock(key: Data, nonce: String)
 		case password(old: Data?, new: Data?, nonce: String)
-		case ping(seq: Int)
+		case ping
 		case blackout(Bool)
 		case master(Double)
 		case span(Int)
@@ -71,7 +71,7 @@ nonisolated enum Wire {
 			case .hello: ["t": "hello"]
 			case let .unlock(key, nonce): ["t": "unlock", "proof": Passkey.proof("unlock", nonce: nonce, key: key)]
 			case let .password(old, new, nonce): ["t": "password", "proof": Passkey.proof("change", nonce: nonce, key: old), "key": Passkey.wrap(new, nonce: nonce, key: old)]
-			case let .ping(seq): ["t": "ping", "seq": seq]
+			case .ping: ["t": "ping"]
 			case let .blackout(on): ["t": "blackout", "on": on]
 			case let .master(level): ["t": "master", "level": level]
 			case let .span(slots): ["t": "span", "slots": slots]
@@ -227,7 +227,6 @@ nonisolated enum Wire {
 		case let .string(text):
 			struct Envelope: Decodable {
 				var t: String
-				var seq: Int?
 				var level: Double?
 				var on: Bool?
 				var show: String?
@@ -264,8 +263,8 @@ nonisolated enum Wire {
 				if let set = envelope.set { return .password(isSet: set) }
 				return .passwordRefused(envelope.refused == "wrong" ? .wrong(wait: envelope.wait ?? 0) : .failed)
 			case "pong":
-				guard let seq = envelope.seq, let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return nil }
-				return .pong(seq, Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))
+				guard let ram = envelope.ram, let ramTotal = envelope.ramTotal, let store = envelope.store, let storeTotal = envelope.storeTotal else { return nil }
+				return .usage(Usage(memory: ram, memoryTotal: ramTotal, storage: store, storageTotal: storeTotal))
 			case "master":
 				guard let level = envelope.level else { return nil }
 				return .master(level)

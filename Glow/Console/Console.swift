@@ -8,7 +8,6 @@ final class Console {
 	
 	private(set) var link: LinkState = .offline
 	private(set) var node: Wire.NodeInfo?
-	private(set) var latency: TimeInterval?
 	private(set) var usage: Wire.Usage?
 	private(set) var playback = Playback()
 	private(set) var lock: Wire.Lock?
@@ -225,12 +224,8 @@ final class Console {
 		case let .passwordRefused(outcome):
 			proposed = nil
 			passwordOutcome = outcome
-		case let .latency(value):
-			latency = value
 		case let .usage(value):
 			usage = value
-		case .pong:
-			break
 		case let .frame(ack, runs):
 			guard !isMuted else { return }
 			frames.adopt(runs, ack: ack, into: &universe)

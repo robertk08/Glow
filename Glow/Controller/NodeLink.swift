@@ -9,8 +9,6 @@ actor NodeLink {
 		case locked(Wire.Lock)
 		case password(isSet: Bool)
 		case passwordRefused(PasswordOutcome)
-		case latency(TimeInterval)
-		case pong(Int, Wire.Usage)
 		case usage(Wire.Usage)
 		case frame(ack: Int, runs: [(start: DMXAddress, values: [UInt8])])
 		case master(Double)
@@ -29,8 +27,6 @@ actor NodeLink {
 	private var heartbeat: Task<Void, Never>?
 	private var lastHeard = Date()
 	private var preferred: String?
-	private var pings: [Int: Date] = [:]
-	private var seq = 0
 	
 	private let queue = DispatchQueue(label: "glow.link")
 	
@@ -239,22 +235,12 @@ actor NodeLink {
 		heartbeat = nil
 		connection?.cancel()
 		connection = nil
-		pings.removeAll()
 	}
 	
 	private func receive(_ event: Event?) {
 		lastHeard = Date()
 		guard let event else { return }
-		
-		guard case let .pong(seq, usage) = event else {
-			continuation.yield(event)
-			return
-		}
-		
-		continuation.yield(.usage(usage))
-		
-		guard let sent = pings.removeValue(forKey: seq) else { return }
-		continuation.yield(.latency(Date().timeIntervalSince(sent)))
+		continuation.yield(event)
 	}
 	
 	private func startHeartbeat() {
@@ -275,10 +261,7 @@ actor NodeLink {
 			return
 		}
 		
-		seq += 1
-		pings[seq] = Date()
-		pings = pings.filter { Date().timeIntervalSince($0.value) < 10 }
-		let message = Wire.Command.ping(seq: seq).message
+		let message = Wire.Command.ping.message
 		
 		Task {
 			await send(message)

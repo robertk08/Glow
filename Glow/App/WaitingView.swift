@@ -5,7 +5,6 @@ struct WaitingView: View {
 	@Environment(ShowLibrary.self) private var shows
 	
 	@State private var password = ""
-	@FocusState private var isTyping: Bool
 	
 	var body: some View {
 		NavigationStack {
@@ -27,25 +26,39 @@ struct WaitingView: View {
 				}
 				.font(.system(size: 42, weight: .bold))
 				.padding(.top, 20)
-				.padding(.bottom, 2)
 				
-				Group {
-					FeatureRow(systemImage: "rectangle.stack", title: "Shows Live on the Controller", description: "The patch, the groups and the scenes are kept on the controller, so this device holds nothing of its own.")
-					
-					FeatureRow(systemImage: "arrow.triangle.2.circlepath", title: "Every Device in Step", description: "Phones and iPads on one controller see the same rig, and a scene saved on any of them appears on the rest.")
-					
-					FeatureRow(systemImage: "bolt", title: "Straight Down the Line", description: "What you change reaches the lights over DMX as you touch it, with no round trip to wait for.")
+				if shows.standby.offersSetup {
+					VStack(spacing: 12) {
+						Button("Connect to My Wi-Fi", systemImage: "wifi.router") {
+							console.selection.isSetupOpen = true
+						}
+						.buttonStyle(.glassProminent)
+						
+						UseWiFiButton(name: "Connect Directly", asks: false)
+							.buttonStyle(.glass)
+						
+						Button("Try Without a Controller", systemImage: "sparkles") {
+							shows.startDemo()
+						}
+						.buttonStyle(.glass)
+					}
+					.font(.headline)
+					.controlSize(.extraLarge)
+					.buttonSizing(.flexible)
+					.padding(.top, 40)
+					.padding(.horizontal)
+					.transition(.opacity)
 				}
-				.opacity(isTyping ? 0 : 1)
 			}
-			.frame(maxWidth: 700)
-			.animation(.smooth(duration: 0.35), value: isTyping)
+			.defaultScrollAnchor(.center, for: .alignment)
+			.frame(maxWidth: 500)
+			.animation(.smooth(duration: 0.35), value: shows.standby)
 			.toolbar(.hidden, for: .navigationBar)
 			.scrollDismissesKeyboard(.interactively)
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 10) {
 					if shows.standby.showsLink {
-						Text(console.link.summary(latency: console.latency))
+						Text(console.link.name)
 							.font(.footnote)
 							.foregroundStyle(.secondary)
 							.transition(.opacity)
@@ -66,7 +79,6 @@ struct WaitingView: View {
 							SecureField("Password", text: $password)
 								.textContentType(.password)
 								.submitLabel(.go)
-								.focused($isTyping)
 								.onSubmit {
 									console.unlock(password: password)
 								}
@@ -85,61 +97,11 @@ struct WaitingView: View {
 						.padding(.top)
 						.transition(.opacity)
 					}
-					
-					if shows.standby.offersSetup {
-						VStack(spacing: 8) {
-							Button("Connect Controller to Wi-Fi", systemImage: "wifi.router") {
-								console.selection.isSetupOpen = true
-							}
-							.buttonStyle(.glassProminent)
-							
-							UseWiFiButton(asks: false)
-								.buttonStyle(.glass)
-							
-							Button("Explore a Demo", systemImage: "sparkles") {
-								shows.startDemo()
-							}
-							.buttonStyle(.glass)
-						}
-						.font(.headline)
-						.controlSize(.large)
-						.buttonSizing(.flexible)
-						.transition(.opacity)
-					}
 				}
 				.frame(maxWidth: 700)
 				.padding([.horizontal, .bottom])
 				.animation(.smooth(duration: 0.35), value: shows.standby)
 			}
 		}
-	}
-}
-
-private struct FeatureRow: View {
-	let systemImage: String
-	let title: LocalizedStringKey
-	let description: LocalizedStringKey
-	
-	var body: some View {
-		HStack(spacing: 16) {
-			Image(systemName: systemImage)
-				.resizable()
-				.scaledToFit()
-				.frame(width: 44, height: 44)
-				.foregroundStyle(Color.accentColor)
-			
-			VStack(alignment: .leading, spacing: 6) {
-				Text(title)
-					.font(.headline)
-				
-				Text(description)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-			}
-			.minimumScaleFactor(0.8)
-			
-			Spacer()
-		}
-		.padding([.top, .leading])
 	}
 }

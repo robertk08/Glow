@@ -342,14 +342,13 @@ struct ShowSyncTests {
 	}
 	
 	@Test func aPongCarriesTheControllersMemoryAndStorage() throws {
-		let reply = try #require(Wire.event(.string(#"{"t":"pong","seq":4,"ram":120000,"ramTotal":320000,"store":8192,"storeTotal":6225920}"#)))
+		let reply = try #require(Wire.event(.string(#"{"t":"pong","ram":120000,"ramTotal":320000,"store":8192,"storeTotal":6225920}"#)))
 		
-		guard case let .pong(seq, usage) = reply else {
+		guard case let .usage(usage) = reply else {
 			Issue.record("expected a pong")
 			return
 		}
 		
-		#expect(seq == 4)
 		#expect(usage == Wire.Usage(memory: 120000, memoryTotal: 320000, storage: 8192, storageTotal: 6225920))
 	}
 	

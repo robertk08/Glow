@@ -65,6 +65,7 @@ enum ControllerWiFi {
 struct UseWiFiButton: View {
 	@Environment(Console.self) private var console
 	
+	var name: String?
 	var leaves = false
 	let asks: Bool
 	
@@ -111,7 +112,7 @@ struct UseWiFiButton: View {
 	}
 	
 	private var title: String {
-		leaves ? "Stop Using Controller’s Wi-Fi" : "Use Controller’s Wi-Fi"
+		name ?? (leaves ? "Stop Using Controller’s Wi-Fi" : "Use Controller’s Wi-Fi")
 	}
 	
 	private func use() {
