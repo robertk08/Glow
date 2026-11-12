@@ -29,7 +29,7 @@ struct WaitingView: View {
 				
 				if shows.standby.offersSetup {
 					VStack(spacing: 12) {
-						Button("Connect to My Wi-Fi", systemImage: "wifi.router") {
+						Button("Connect to a Wi-Fi Network", systemImage: "wifi.router") {
 							console.selection.isSetupOpen = true
 						}
 						.buttonStyle(.glassProminent)
