@@ -60,10 +60,11 @@ struct NodeView: View {
 				}
 				
 				Section {
-					Button("Forget Wi-Fi Network", systemImage: "trash", role: .destructive) {
+					Button("Forget All Wi-Fi Networks", systemImage: "trash", role: .destructive) {
 						isForgetting = true
 					}
-					.confirmationDialog("Forget the network?", isPresented: $isForgetting, titleVisibility: .visible) {
+					.tint(.red)
+					.confirmationDialog("Forget all Wi-Fi networks?", isPresented: $isForgetting, titleVisibility: .visible) {
 						Button("Forget", role: .destructive) {
 							Task {
 								do {

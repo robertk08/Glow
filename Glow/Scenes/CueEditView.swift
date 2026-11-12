@@ -168,6 +168,7 @@ private struct CueForm: View {
 					isDeleting = true
 				}
 				.foregroundStyle(.red)
+				.tint(.red)
 				.confirmationDialog("Delete Cue \(position + 1)?", isPresented: $isDeleting, titleVisibility: .visible) {
 					Button("Delete Cue", role: .destructive) {
 						if let look = looks.first(where: { $0.identifier == cue.lookID }) {

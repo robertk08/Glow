@@ -90,6 +90,7 @@ struct UseWiFiButton: View {
 				}
 			}
 		}
+		.tint(leaves ? .red : nil)
 		.disabled(isWorking)
 		.confirmationDialog("\(title)?", isPresented: $isAsking, titleVisibility: .visible) {
 			Button(title, role: leaves ? .destructive : nil) {

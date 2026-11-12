@@ -368,6 +368,7 @@ private struct ChosenBar: View {
 					isDeleting = true
 				}
 				.foregroundStyle(.red)
+				.tint(.red)
 				.frame(maxWidth: .infinity)
 			}
 			.labelStyle(.iconOnly)
