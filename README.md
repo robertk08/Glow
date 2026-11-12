@@ -260,10 +260,11 @@ stop. It also restarts itself when free memory stays under 24 KB for five
 seconds, because the network stops receiving at that point.
 
 **Recovery.** A controller with no stored network raises the open network
-**Glow Controller**. **Connect Controller to Wi-Fi**, on the waiting screen
-and in Settings › Controller, moves it onto a Wi-Fi network. **Use
-Controller’s Wi-Fi** keeps it on Glow Controller for shows instead, until it
-is connected to a Wi-Fi network again, and the app joins Glow Controller and
+**Glow Controller**. **Connect to a Wi-Fi Network** on the welcome screen,
+or **Connect to Another Wi-Fi Network** in Settings › Controller, moves it
+onto a Wi-Fi network. **Connect Directly** on the welcome screen, or **Use
+Controller’s Wi-Fi** in Settings › Controller, keeps it on Glow Controller
+for shows instead, until it is connected to a Wi-Fi network again, and the app joins Glow Controller and
 reaches it at 192.168.4.1, for up to five devices. There, **Stop Using
 Controller’s Wi-Fi** in Settings › Controller sends it back to its stored
 networks, and Glow Controller

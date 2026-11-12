@@ -32,7 +32,7 @@ struct NodeView: View {
 					LabeledContent("Wi-Fi", value: node.wifi.isEmpty ? ControllerWiFi.name : node.wifi)
 				}
 				
-				Button("Connect Controller to Wi-Fi", systemImage: "wifi.router") {
+				Button("Connect to Another Wi-Fi Network", systemImage: "wifi.router") {
 					console.selection.isSetupOpen = true
 				}
 				
