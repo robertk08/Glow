@@ -231,7 +231,6 @@ private struct Joining: View {
 }
 
 private struct Finished: View {
-	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
 	
 	let model: NodeSetupModel
@@ -241,7 +240,7 @@ private struct Finished: View {
 			Label("Ready", systemImage: "checkmark.circle.fill")
 				.foregroundStyle(.green)
 		} description: {
-			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network") at \(console.endpoint.host). Nothing was typed on it.")
+			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network").")
 		} actions: {
 			Button("Done", systemImage: "checkmark") {
 				dismiss()
