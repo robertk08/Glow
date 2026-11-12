@@ -36,6 +36,7 @@ struct NodeSetupView: View {
 				}
 			}
 		}
+		.onDisappear(perform: model.leave)
 		.presentationDetents([.large])
 		.interactiveDismissDisabled(model.step == .joining && model.failure == nil)
 	}

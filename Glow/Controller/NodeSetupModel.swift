@@ -16,6 +16,7 @@ final class NodeSetupModel {
 	var failure: String?
 	
 	private var nodeID = ""
+	private var leaves = false
 	private var expectedNodeID: String?
 	
 	var canJoin: Bool {
@@ -41,11 +42,14 @@ final class NodeSetupModel {
 		
 		let configuration = NEHotspotConfiguration(ssid: ControllerWiFi.name)
 		configuration.joinOnce = true
+		let isOnController = console.reachable.host == NodeEndpoint.setup.host
 		
 		guard await ControllerWiFi.join(configuration) else {
 			failure = "Could not join \(ControllerWiFi.name). Check that the controller is powered on, then try again. You can also join \(ControllerWiFi.name) in the Settings app."
 			return
 		}
+		
+		leaves = !isOnController
 		
 		for _ in 0..<15 {
 			guard !Task.isCancelled else { return }
@@ -92,6 +96,11 @@ final class NodeSetupModel {
 		} else {
 			step = .joining
 		}
+	}
+	
+	func leave() {
+		guard leaves else { return }
+		NEHotspotConfigurationManager.shared.removeConfiguration(forSSID: ControllerWiFi.name)
 	}
 	
 	func join(console: Console) async {
