@@ -64,13 +64,13 @@ struct SceneFace: View {
 						.lineLimit(1)
 						.animation(.snappy(duration: 0.3), value: index)
 					}
-
+					
 					if isLarge, list.cues.count == 1 {
 						ViewThatFits(in: .vertical) {
 							CueLines(count: 3)
-
+							
 							CueLines(count: 2)
-
+							
 							CueLines(count: 1)
 						}
 						.padding(.top, 8)
@@ -154,7 +154,7 @@ private struct CueWindow: View {
 
 private struct CueLines: View {
 	let count: Int
-
+	
 	var body: some View {
 		VStack(alignment: .leading, spacing: 6) {
 			ForEach(0..<count, id: \.self) { slot in
