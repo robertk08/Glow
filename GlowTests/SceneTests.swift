@@ -1096,6 +1096,22 @@ struct SceneTests {
 		#expect(CueList.milliseconds(-4) == 0)
 	}
 	
+	@Test func typedSecondsTakeAPointOrACommaAndReadBackWhatTheyShow() throws {
+		let style = SecondsStyle()
+		
+		#expect(try style.parse("2.75") == 2.75)
+		#expect(try style.parse("2,75") == 2.75)
+		#expect(try style.parse("0,25") == 0.25)
+		#expect(throws: CocoaError.self) { try style.parse("1,2,3") }
+		#expect(throws: CocoaError.self) { try style.parse("inf") }
+		
+		for _ in 0..<500 {
+			let seconds = Double(Int.random(in: 0...360_000)) / 100
+			
+			#expect(try style.parse(style.format(seconds)) == seconds)
+		}
+	}
+	
 	@Test func theMarkStaysPutWhileTheSceneRunsOn() throws {
 		let rig = try rig()
 		rig.add(1, [(0, 1, 10)])
