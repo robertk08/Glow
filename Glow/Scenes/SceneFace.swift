@@ -64,6 +64,18 @@ struct SceneFace: View {
 						.lineLimit(1)
 						.animation(.snappy(duration: 0.3), value: index)
 					}
+
+					if isLarge, list.cues.count == 1 {
+						ViewThatFits(in: .vertical) {
+							CueLines(count: 3)
+
+							CueLines(count: 2)
+
+							CueLines(count: 1)
+						}
+						.padding(.top, 8)
+						.hidden()
+					}
 				}
 				.padding(.trailing, isInline ? 44 : 0)
 			}
@@ -106,13 +118,8 @@ private struct CueWindow: View {
 	
 	var body: some View {
 		ZStack(alignment: .topLeading) {
-			VStack(alignment: .leading, spacing: 6) {
-				ForEach(0..<min(lines, list.cues.count), id: \.self) { slot in
-					Text(" ")
-						.font(slot == 0 ? .title3.weight(.semibold) : .subheadline)
-				}
-			}
-			.hidden()
+			CueLines(count: min(lines, list.cues.count))
+				.hidden()
 			
 			VStack(alignment: .leading, spacing: 6) {
 				ForEach(Array(list.window(live: index, upcoming: upcoming).prefix(lines).enumerated()), id: \.offset) { slot, position in
@@ -142,6 +149,19 @@ private struct CueWindow: View {
 		}
 		.padding(.top, 8)
 		.animation(.snappy(duration: 0.3), value: [index ?? -1, upcoming ?? -1])
+	}
+}
+
+private struct CueLines: View {
+	let count: Int
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			ForEach(0..<count, id: \.self) { slot in
+				Text(" ")
+					.font(slot == 0 ? .title3.weight(.semibold) : .subheadline)
+			}
+		}
 	}
 }
 
