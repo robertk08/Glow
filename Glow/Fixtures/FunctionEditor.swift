@@ -63,10 +63,10 @@ struct FunctionEditor: View {
 				}
 				
 				if function.unit != nil {
-					TextField("At the start", value: $function.physicalFrom, format: .number)
+					TextField("At the start", value: $function.physicalFrom, format: DecimalStyle())
 						.keyboardType(.numbersAndPunctuation)
 					
-					TextField("At the end", value: $function.physicalTo, format: .number)
+					TextField("At the end", value: $function.physicalTo, format: DecimalStyle())
 						.keyboardType(.numbersAndPunctuation)
 				}
 			} header: {

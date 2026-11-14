@@ -1097,11 +1097,14 @@ struct SceneTests {
 	}
 	
 	@Test func typedSecondsTakeAPointOrACommaAndReadBackWhatTheyShow() throws {
-		let style = SecondsStyle()
+		let style = DecimalStyle()
 		
 		#expect(try style.parse("2.75") == 2.75)
 		#expect(try style.parse("2,75") == 2.75)
 		#expect(try style.parse("0,25") == 0.25)
+		#expect(try style.parse("2,755") == 2.76)
+		#expect(try style.parse("-1.5") == -1.5)
+		#expect(style.format(3600) == "3600")
 		#expect(throws: CocoaError.self) { try style.parse("1,2,3") }
 		#expect(throws: CocoaError.self) { try style.parse("inf") }
 		
@@ -1109,6 +1112,14 @@ struct SceneTests {
 			let seconds = Double(Int.random(in: 0...360_000)) / 100
 			
 			#expect(try style.parse(style.format(seconds)) == seconds)
+		}
+		
+		for _ in 0..<500 {
+			let typed = Double(Int.random(in: -360_000...360_000)) / 1000
+			let read = try style.parse(typed.formatted(.number.grouping(.never).precision(.fractionLength(0...3))))
+			
+			#expect(abs(read - typed) <= 0.005 + 1e-9)
+			#expect(try style.parse(style.format(read)) == read)
 		}
 	}
 	

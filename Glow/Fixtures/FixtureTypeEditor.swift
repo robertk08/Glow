@@ -84,10 +84,10 @@ struct FixtureTypeEditor: View {
 				
 				if draft.movesHead {
 					Section("Movement") {
-						TextField("Pan range in degrees", value: $draft.panDegrees, format: .number)
+						TextField("Pan range in degrees", value: $draft.panDegrees, format: DecimalStyle())
 							.keyboardType(.decimalPad)
 						
-						TextField("Tilt range in degrees", value: $draft.tiltDegrees, format: .number)
+						TextField("Tilt range in degrees", value: $draft.tiltDegrees, format: DecimalStyle())
 							.keyboardType(.decimalPad)
 						
 						Toggle("Invert Pan", isOn: $draft.invertsPan)
