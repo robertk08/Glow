@@ -132,6 +132,28 @@ struct StorageTests {
 		#expect(tracked.body.count / 12 < 20)
 	}
 	
+	@Test func aSceneStillReadsItsButtonsAfterItWasDeletedUnderAnOpenTile() throws {
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		let context = container.mainContext
+		let look = Look(name: "Act One", sortIndex: 1)
+		look.buttons = [.back, .next, .stop]
+		context.insert(look)
+		try context.save()
+		
+		#expect(look.buttons == [.back, .next, .stop])
+		
+		try context.save()
+		
+		for model in try context.fetch(FetchDescriptor<Look>()) {
+			context.delete(model)
+		}
+		
+		try context.save()
+		
+		#expect(look.isGone)
+		#expect(look.buttons == [.back, .next, .stop])
+	}
+	
 	@Test func cueTimesKeepTheirHundredthsThroughStorage() throws {
 		for _ in 0..<500 {
 			let fade = Double(Int.random(in: 0...360_000)) / 100

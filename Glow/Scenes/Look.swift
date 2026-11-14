@@ -9,7 +9,7 @@ final class Look {
 	var symbolOverride: String?
 	var tintName: String?
 	var tapValue: Int = 0
-	var buttonValues: [Int] = []
+	var buttonValues = Data()
 	var sizeValue = TileSize.small.rawValue
 	var loops = false
 	
@@ -49,8 +49,8 @@ final class Look {
 	}
 	
 	var buttons: [SceneAction] {
-		get { buttonValues.compactMap(SceneAction.init(rawValue:)) }
-		set { buttonValues = newValue.map(\.rawValue) }
+		get { buttonValues.compactMap { SceneAction(rawValue: Int($0)) } }
+		set { buttonValues = Data(newValue.map { UInt8($0.rawValue) }) }
 	}
 	
 	var size: TileSize {
