@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct NodeSetupView: View {
-	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.openURL) private var openURL
 	

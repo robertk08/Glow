@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SceneView: View {
 	@Environment(Console.self) private var console
-	@Environment(FixtureLibrary.self) private var library
 	@Environment(\.modelContext) private var context
 	@Environment(\.dismiss) private var dismiss
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
