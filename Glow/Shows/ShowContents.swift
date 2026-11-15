@@ -161,7 +161,7 @@ nonisolated struct ShowContents: Codable, Sendable {
 			writer.order(sortIndex)
 			writer.hundredths(fade)
 			writer.hundredths(delay)
-			writer.number(follow.map { Int(($0 * 100).rounded()) + 1 } ?? 0)
+			writer.number(follow.map { ByteWriter.hundredths(of: $0) + 1 } ?? 0)
 			writer.text(label)
 			writer.bytes([UInt8](levels))
 			

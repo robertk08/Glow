@@ -28,7 +28,12 @@ nonisolated struct ByteWriter {
 	}
 	
 	mutating func hundredths(_ seconds: Double) {
-		number(Int((seconds * 100).rounded()))
+		number(Self.hundredths(of: seconds))
+	}
+	
+	static func hundredths(of seconds: Double) -> Int {
+		guard seconds.isFinite else { return 0 }
+		return Int((min(max(seconds, 0), 3600) * 100).rounded())
 	}
 	
 	mutating func double(_ value: Double) {
