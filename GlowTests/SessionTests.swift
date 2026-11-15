@@ -156,7 +156,9 @@ struct SessionTests {
 			default: if let fixture = fixtures.randomElement() { console.set(UInt8(roll(256)), at: fixture.start) }
 			}
 			
+			try await Task.sleep(for: .milliseconds(1))
 			synced()
+			try await Task.sleep(for: .milliseconds(1))
 			seen.append(contentsOf: cues.filter { cue in !seen.contains { $0 === cue } })
 			
 			for look in looks {

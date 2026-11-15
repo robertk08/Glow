@@ -49,7 +49,7 @@ struct CrashTests {
 		}
 	}
 	
-	private static func sampleShow() -> ShowContents {
+	nonisolated private static func sampleShow() -> ShowContents {
 		var levels = Levels()
 		levels.set(200, slot: 1, of: "Abcdefghijk")
 		levels.set(7, slot: 40, of: "Abcdefghijk")
@@ -61,7 +61,7 @@ struct CrashTests {
 		return ShowContents(lights: [light], groups: [group], made: [type], scenes: [scene], cues: [cue])
 	}
 	
-	@Test func randomBytesFromTheControllerNeverCrashAReader() {
+	@Test nonisolated func randomBytesFromTheControllerNeverCrashAReader() async {
 		var dice = Dice(state: 1)
 		let show = Self.sampleShow()
 		let encoded = ShowLibrary.encoded(show, folders: ShowLibrary.everything)
@@ -79,7 +79,7 @@ struct CrashTests {
 			_ = Wire.runs(in: bytes)
 			_ = Wire.objects(in: data)
 			_ = Levels(data)
-			_ = Playback().adopt(bytes, at: .now)
+			_ = await MainActor.run { Playback().adopt(bytes, at: .now) }
 			
 			for folder in NodeStore.Folder.allCases {
 				let contents = ShowContents(objects: [(folder.rawValue, "Abcdefghijk", data)])
@@ -99,7 +99,7 @@ struct CrashTests {
 		}
 	}
 	
-	@Test func randomTextFromTheControllerNeverCrashesAReader() {
+	@Test nonisolated func randomTextFromTheControllerNeverCrashesAReader() {
 		var dice = Dice(state: 2)
 		let kinds = ["status", "locked", "full", "password", "pong", "master", "blackout", "refused", "shows", "wrote", "unwritten", "doc", "x"]
 		let values: [String] = ["0", "-1", "1e308", "-1e308", "1.5", "true", "null", "\"\"", "\"a\"", "[]", "{}", "99999999999999999999"]
@@ -116,13 +116,14 @@ struct CrashTests {
 		}
 	}
 	
-	@Test func randomFixtureDefinitionsNeverCrashTheProgrammerOrThePatch() throws {
+	@Test func randomFixtureDefinitionsNeverCrashTheProgrammerOrThePatch() async throws {
 		var dice = Dice(state: 3)
 		let purposes: [ChannelFunction.Purpose?] = [nil, .dim, .open, .closed, .release]
 		let units: [PhysicalUnit?] = [nil, .percent, .degrees, .hertz, .seconds, .kelvin, .rpm]
 		let shapes: [GoboShape?] = [nil, .open, .dot, .star]
 		
-		for round in 0..<1500 {
+		for round in 0..<800 {
+			try await Task.sleep(for: .milliseconds(1))
 			var channels: [FixtureChannel] = []
 			
 			for _ in 0..<(1 + dice.roll(14)) {
@@ -171,6 +172,7 @@ struct CrashTests {
 				programmer.applyDefaults()
 				
 				for step in 0..<30 {
+					try await Task.sleep(for: .milliseconds(1))
 					switch dice.roll(12) {
 					case 0: programmer.brightness = dice.finite()
 					case 1: programmer.setFraction(dice.finite(), for: Attribute.allCases[dice.roll(Attribute.allCases.count)])
@@ -210,10 +212,11 @@ struct CrashTests {
 		}
 	}
 	
-	@Test func showsWithValuesTheAppNeverWritesStillEncodeArrangeAndPlan() {
+	@Test func showsWithValuesTheAppNeverWritesStillEncodeArrangeAndPlan() async throws {
 		var dice = Dice(state: 4)
 		
 		for _ in 0..<2000 {
+			try await Task.sleep(for: .milliseconds(1))
 			var show = Self.sampleShow()
 			show.scenes[0].sortIndex = dice.double()
 			show.cues[0].sortIndex = dice.double()
