@@ -174,8 +174,8 @@ struct CrashTests {
 				for step in 0..<30 {
 					try await Task.sleep(for: .milliseconds(1))
 					switch dice.roll(12) {
-					case 0: programmer.brightness = dice.finite()
-					case 1: programmer.setFraction(dice.finite(), for: Attribute.allCases[dice.roll(Attribute.allCases.count)])
+					case 0: programmer.brightness = dice.double()
+					case 1: programmer.setFraction(dice.double(), for: Attribute.allCases[dice.roll(Attribute.allCases.count)])
 					case 2: programmer.apply(LightColor(red: dice.finite(), green: dice.finite(), blue: dice.finite()))
 					case 3: programmer.apply(kelvin: dice.finite())
 					case 4: programmer.toggleOn()

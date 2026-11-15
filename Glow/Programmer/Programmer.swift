@@ -292,7 +292,7 @@ struct Programmer {
 	}
 	
 	private func setFraction(_ newValue: Double, for attribute: Attribute, in target: Target) {
-		guard let channel = target.type.channel(attribute) else { return }
+		guard let channel = target.type.channel(attribute), !newValue.isNaN else { return }
 		let wanted = min(max(newValue, 0), 1)
 		let clamped = target.inverts(attribute) ? 1 - wanted : wanted
 		setRaw(Int((clamped * Double(channel.maximum)).rounded()), of: channel, in: target)
@@ -351,6 +351,7 @@ struct Programmer {
 			return total / Double(count)
 		}
 		nonmutating set {
+			guard !newValue.isNaN else { return }
 			let level = min(max(newValue, 0), 1)
 			
 			for target in targets where target.type.dims {
