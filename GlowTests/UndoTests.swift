@@ -30,6 +30,7 @@ struct UndoTests {
 		let undo = try #require(context.undoManager)
 		var undone = 0
 		var erased = 0
+		var gone: [ShowContents.Cue] = []
 		
 		var fixtures: [Fixture] { (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
 		var groups: [FixtureGroup] { (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
@@ -45,7 +46,7 @@ struct UndoTests {
 		}
 		
 		for step in 0..<500 {
-			switch roll(16) {
+			switch roll(18) {
 			case 0: if let look = pick(looks) { look.name = "Local \(step)" }
 			case 1: if let fixture = pick(fixtures) { fixture.address = 1 + roll(500) }
 			case 2:
@@ -57,7 +58,11 @@ struct UndoTests {
 			case 5:
 				let group = FixtureGroup(name: "Group \(step)", sortIndex: Double(step))
 				context.insert(group)
-			case 6: if let cue = pick(cues) { context.delete(cue) }
+			case 6:
+				if let cue = pick(cues) {
+					gone.append(cue.entry)
+					context.delete(cue)
+				}
 			case 7: if let fixture = pick(fixtures), roll(3) == 0 { context.delete(fixture) }
 			case 8: if let look = pick(looks), roll(2) == 0 { console.remove(look, with: cues, context: context) }
 			case 9:
@@ -101,6 +106,10 @@ struct UndoTests {
 				for (key, body) in ShowLibrary.encoded(show, folders: ShowLibrary.everything) {
 					let parts = key.split(separator: "/", maxSplits: 1)
 					remote(try #require(NodeStore.Folder(rawValue: String(parts[0]))), String(parts[1]), body)
+				}
+			case 16, 17:
+				if let entry = pick(gone) {
+					remote(.cues, entry.identifier, entry.body)
 				}
 			default:
 				if undo.canUndo {
