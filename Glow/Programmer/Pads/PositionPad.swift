@@ -36,7 +36,7 @@ struct PositionPad: View {
 			GeometryReader { proxy in
 				let size = proxy.size
 				let inset = 16.0
-				let field = CGRect(x: inset, y: inset, width: size.width - inset * 2, height: size.height - inset * 2)
+				let field = CGRect(x: inset, y: inset, width: max(size.width - inset * 2, 1), height: max(size.height - inset * 2, 1))
 				let position = CGPoint(x: field.minX + pan * field.width, y: field.minY + (1 - tilt) * field.height)
 
 				ZStack {
