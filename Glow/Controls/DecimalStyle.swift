@@ -8,7 +8,7 @@ nonisolated struct DecimalStyle: ParseableFormatStyle, ParseStrategy {
 	}
 	
 	func parse(_ value: String) throws -> Double {
-		guard let number = Double(value.filter { !$0.isWhitespace }.replacingOccurrences(of: ",", with: ".")), number.isFinite else { throw CocoaError(.formatting) }
+		guard let number = Double(value.filter { !$0.isWhitespace }.replacingOccurrences(of: ",", with: ".")), (number * 100).isFinite else { throw CocoaError(.formatting) }
 		return (number * 100).rounded() / 100
 	}
 }

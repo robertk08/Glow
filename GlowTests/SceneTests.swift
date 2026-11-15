@@ -1107,6 +1107,7 @@ struct SceneTests {
 		#expect(style.format(3600) == "3600")
 		#expect(throws: CocoaError.self) { try style.parse("1,2,3") }
 		#expect(throws: CocoaError.self) { try style.parse("inf") }
+		#expect(throws: CocoaError.self) { try style.parse("1e307") }
 		
 		for _ in 0..<500 {
 			let seconds = Double(Int.random(in: 0...360_000)) / 100
