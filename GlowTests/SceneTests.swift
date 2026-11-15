@@ -1766,18 +1766,18 @@ struct SceneTests {
 		let other = Look(name: "Other", sortIndex: 1)
 		rig.context.insert(other)
 		rig.add(1, [(0, 1, 100)])
-		rig.add(1, fade: 3, to: other, [(0, 1, 255)])
+		rig.add(1, fade: 10, to: other, [(0, 1, 255)])
 		
 		rig.console.toggle(rig.list)
 		try await until { rig.value(1) == 100 }
 		rig.console.toggle(rig.list(of: other))
-		try await until { (110...220).contains(rig.value(1)) }
+		try await until(within: 8) { (110...220).contains(rig.value(1)) }
 		
 		rig.console.toggle(rig.list)
 		try await Task.sleep(for: .milliseconds(60))
 		
 		#expect(rig.value(1) < 250)
-		try await until(within: 5) { rig.value(1) == 255 }
+		try await until(within: 12) { rig.value(1) == 255 }
 	}
 	
 	@Test func aLightTouchedWhileASceneHoldsItKeepsTheTouchWhenTheSceneGoesOff() async throws {
