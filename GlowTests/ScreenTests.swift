@@ -168,4 +168,178 @@ struct ScreenTests {
 		shows.stopDemo()
 		#expect(shown == 3 * 31)
 	}
+	
+	@Test(arguments: [UInt64(1), 2])
+	func randomActionsOnOpenScreensWhileOtherDevicesChangeAndDeleteWhatTheyShow(seed: UInt64) async throws {
+		var state = seed &* 0x9E3779B97F4A7C15
+		
+		func roll(_ count: Int) -> Int {
+			state = state &* 6364136223846793005 &+ 1442695040888963407
+			return Int((state >> 33) % UInt64(max(count, 1)))
+		}
+		
+		func pick<Item>(_ items: [Item]) -> Item? {
+			items.isEmpty ? nil : items[roll(items.count)]
+		}
+		
+		let console = Console()
+		let library = FixtureLibrary()
+		let shows = ShowLibrary()
+		shows.reach(console, library: library)
+		shows.startDemo()
+		
+		for _ in 0..<300 where !shows.isLoaded {
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		#expect(shows.isLoaded)
+		try await Task.sleep(for: .milliseconds(300))
+		
+		let context = shows.container.mainContext
+		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+		let window = UIWindow(windowScene: scene)
+		let bounds = scene.effectiveGeometry.coordinateSpace.bounds
+		UIView.setAnimationsEnabled(false)
+		defer { UIView.setAnimationsEnabled(true) }
+		
+		var fixtures: [Fixture] { (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		var groups: [FixtureGroup] { (try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		var looks: [Look] { (try? context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		var cues: [Cue] { (try? context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
+		var shown: [any PersistentModel] = []
+		
+		func remote(_ folder: NodeStore.Folder, _ id: String, _ body: Data?) {
+			shows.take(body, at: Wire.Place(show: shows.activeID, folder: folder.rawValue, id: id), in: folder)
+		}
+		
+		func erase(_ model: any PersistentModel) {
+			switch model {
+			case let look as Look: if !look.isGone { remote(.scenes, look.identifier, nil) }
+			case let cue as Cue: if !cue.isDeleted { remote(.cues, cue.identifier, nil) }
+			case let fixture as Fixture: if !fixture.isDeleted { remote(.lights, fixture.identifier, nil) }
+			case let group as FixtureGroup: if !group.isDeleted { remote(.groups, group.identifier, nil) }
+			default: break
+			}
+		}
+		
+		func present() async throws {
+			let fixtures = fixtures
+			let looks = looks
+			let cues = cues
+			let look = pick(looks)
+			let held = look.map { $0.cues(among: cues) } ?? []
+			var content: AnyView
+			shown = []
+			
+			switch roll(14) {
+			case 0, 1: content = AnyView(RootView())
+			case 2, 3: content = AnyView(RootView().environment(\.horizontalSizeClass, .compact))
+			case 4: content = AnyView(ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: true))
+			case 5: content = AnyView(NavigationStack { ChannelsView(programmer: console.programmer(among: fixtures, library: library)) })
+			case 6: content = AnyView(SceneInspector())
+			case 7: content = AnyView(ArrangeView(columns: [2, 4][roll(2)]))
+			default:
+				if let look, roll(2) == 0 {
+					shown = [look] + held
+					content = [AnyView(SceneView(look: look, isSheet: true)), AnyView(SceneSettings(look: look)), AnyView(StoreView(recording: Recording(.cue(look, after: held.last), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)))][roll(3)]
+				} else if let cue = pick(held), roll(2) == 0 {
+					shown = [cue]
+					content = [AnyView(CueEditView(cue: cue)), AnyView(CueTimingSheet(picked: [cue])), AnyView(StoreView(recording: Recording(.into(cue), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)))][roll(3)]
+				} else if let group = pick(groups), roll(2) == 0 {
+					shown = [group]
+					content = AnyView(GroupView(group: group))
+				} else if let fixture = pick(fixtures) {
+					shown = [fixture]
+					content = AnyView(FixtureEditView(fixture: fixture))
+				} else {
+					content = AnyView(RootView())
+				}
+			}
+			
+			let isNarrow = roll(3) == 0
+			window.frame = isNarrow ? CGRect(x: 0, y: 0, width: min(bounds.width, 375), height: bounds.height) : bounds
+			window.rootViewController = UIHostingController(rootView: Presenter(content: content).environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize([DynamicTypeSize.large, .xSmall, .accessibility3][roll(3)]))
+			window.makeKeyAndVisible()
+		}
+		
+		func settle() async throws {
+			for _ in 0..<2 {
+				window.layoutIfNeeded()
+				window.rootViewController?.presentedViewController?.view.layoutIfNeeded()
+				try await Task.sleep(for: .milliseconds(5))
+			}
+		}
+		
+		var erased = 0
+		
+		for step in 0..<400 {
+			if step % 12 == 0 {
+				try await present()
+			}
+			
+			let lists = looks.compactMap { console.lists[$0.identifier] }
+			let list = pick(lists)
+			
+			switch roll(24) {
+			case 0: if let list { console.toggle(list) }
+			case 1: if let list { console.go(list) }
+			case 2: if let list { console.back(list) }
+			case 3: if let list { console.flash(list, isHeld: roll(2) == 0) }
+			case 4: if let list, !list.cues.isEmpty { console.play(list, at: roll(list.cues.count)) }
+			case 5: console.stopAll()
+			case 6: if let fixture = pick(fixtures) { console.selection.toggle(fixture) }
+			case 7: if let group = pick(groups) { console.selection.toggle(group) }
+			case 8: console.selection.section = [Selection.Section.lights, .scenes, .settings][roll(3)]
+			case 9: console.selection.isProgrammerOpen = !console.selection.isEmpty && roll(2) == 0
+			case 10: if let look = pick(looks) { console.selection.open(scene: look.identifier, isSheet: roll(2) == 0) }
+			case 11: if let look = pick(looks) { console.selection.build(look.identifier) } else { console.selection.building = nil }
+			case 12: console.selection.building = nil
+			case 13, 14:
+				if let model = pick(shown), roll(2) == 0 {
+					erased += 1
+					erase(model)
+				} else if let model = pick(Array(fixtures) as [any PersistentModel] + Array(looks) + Array(cues) + Array(groups)) {
+					erased += 1
+					erase(model)
+				}
+			case 15:
+				for model in shown {
+					switch model {
+					case let look as Look: look.name = "Typed \(step)"
+					case let cue as Cue: cue.label = "Typed \(step)"
+					case let fixture as Fixture: fixture.name = "Typed \(step)"
+					case let group as FixtureGroup: group.name = "Typed \(step)"
+					default: break
+					}
+				}
+			case 16: if context.undoManager?.canUndo == true { context.undoManager?.undo() }
+			case 17:
+				if let fixture = pick(fixtures) {
+					console.set(UInt8(roll(256)), at: fixture.start)
+				}
+				
+				if let look = pick(looks) {
+					let cues = cues
+					Recording(.cue(look, after: look.cues(among: cues).last), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues).store(context: context)
+				}
+			case 18: if looks.count < 30 { _ = Look.fresh(among: looks, context: context) }
+			case 19: if let look = pick(looks), roll(3) == 0 { console.remove(look, with: cues, context: context) }
+			case 20: if let fixture = pick(fixtures), fixtures.count < 40 { console.duplicate(fixture, among: fixtures, library: library, context: context) }
+			case 21:
+				let programmer = console.programmer(among: fixtures, library: library)
+				programmer.setFraction(Double(roll(101)) / 100, for: Attribute.allCases[roll(Attribute.allCases.count)])
+			case 22: console.master = Double(roll(101)) / 100
+			default: console.reset(among: fixtures, library: library)
+			}
+			
+			try? context.save()
+			try await settle()
+		}
+		
+		#expect(erased > 20)
+		window.rootViewController = nil
+		window.isHidden = true
+		console.stopAll()
+		shows.stopDemo()
+	}
 }
