@@ -8,7 +8,7 @@ struct BuiltInFixtureTests {
 	private let library = FixtureLibrary()
 	
 	@Test func everyBundledDefinitionLoads() {
-		#expect(library.builtIn.count == 4)
+		#expect(library.builtIn.count == 5)
 		#expect(Set(library.builtIn.map(\.id)).count == library.builtIn.count)
 		#expect(Set(library.types.map(\.id)).count == library.types.count)
 	}
@@ -49,6 +49,7 @@ struct BuiltInFixtureTests {
 		#expect(library.type("stairville-bsw350-32ch")?.channelCount == 32)
 		#expect(library.type("stairville-hl-x180-8ch")?.channelCount == 8)
 		#expect(library.type("mini-moving-head-14ch")?.channelCount == 14)
+		#expect(library.type("martin-mac600-nt-15ch")?.channelCount == 15)
 	}
 	
 	@Test func theMovingHeadsKnowTheirTravel() {
@@ -74,6 +75,24 @@ struct BuiltInFixtureTests {
 		#expect(mode.channel(.dimmerCurve) != nil)
 		#expect(mode.channel(.zoom)?.functions.first?.unit == .degrees)
 		#expect(mode.channel(.control)?.functions.filter(\.requiresConfirmation).count == 16)
+	}
+	
+	@Test func theMacSendsItsLampAndResetCommandsOnlyWhenAskedAndLongEnough() throws {
+		let mode = try #require(library.type("martin-mac600-nt-15ch"))
+		let shutter = try #require(mode.channel(.shutter))
+		let wheel = try #require(mode.channel(.colorWheel))
+		let commands = shutter.functions.filter(\.requiresConfirmation)
+		
+		#expect(mode.mixing == .subtractive)
+		#expect(mode.panDegrees == 440 && mode.tiltDegrees == 306)
+		#expect(mode.channel(.pan)?.fineOffset == 11 && mode.channel(.tilt)?.fineOffset == 13)
+		#expect(shutter.function(containing: shutter.defaultValue)?.purpose == .open)
+		#expect(commands.map(\.label) == ["Reset", "Lamp on", "Lamp off, held for 5 s"])
+		#expect(shutter.function(containing: 250)?.holdSeconds ?? 0 > 5)
+		#expect(wheel.function(containing: wheel.defaultValue)?.purpose == .release)
+		#expect(wheel.functions.flatMap(\.sets).count == 5)
+		#expect(wheel.functions.flatMap(\.sets).allSatisfy { !$0.swatch.isEmpty })
+		#expect(Set(mode.channels.map(\.name)).count == 15 - 2)
 	}
 	
 	@Test func theFresnelCarriesItsFilterLibrary() {

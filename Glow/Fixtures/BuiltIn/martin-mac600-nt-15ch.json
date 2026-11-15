@@ -1,0 +1,453 @@
+{
+  "id": "martin-mac600-nt-15ch",
+  "manufacturer": "Martin",
+  "model": "MAC 600 NT",
+  "symbol": "light.beacon.max",
+  "mixing": "subtractive",
+  "panDegrees": 440,
+  "tiltDegrees": 306,
+  "mode": "15 channel, mode 4",
+  "channels": [
+    {
+      "offset": 1,
+      "attribute": "shutter",
+      "label": "Shutter, strobe, reset and lamp",
+      "defaultValue": 34,
+      "functions": [
+        {
+          "from": 0,
+          "to": 19,
+          "label": "Closed",
+          "purpose": "closed"
+        },
+        {
+          "from": 20,
+          "to": 49,
+          "label": "Open",
+          "purpose": "open"
+        },
+        {
+          "from": 50,
+          "to": 112,
+          "label": "Strobe, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 113,
+          "to": 115,
+          "label": "Closed"
+        },
+        {
+          "from": 116,
+          "to": 122,
+          "label": "Open, reduced lamp power on the E version"
+        },
+        {
+          "from": 123,
+          "to": 127,
+          "label": "Closed"
+        },
+        {
+          "from": 128,
+          "to": 147,
+          "label": "Random strobe, fast"
+        },
+        {
+          "from": 148,
+          "to": 167,
+          "label": "Random strobe, medium"
+        },
+        {
+          "from": 168,
+          "to": 187,
+          "label": "Random strobe, slow"
+        },
+        {
+          "from": 188,
+          "to": 207,
+          "label": "Closed"
+        },
+        {
+          "from": 208,
+          "to": 217,
+          "label": "Reset",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 218,
+          "to": 227,
+          "label": "Closed"
+        },
+        {
+          "from": 228,
+          "to": 237,
+          "label": "Lamp on",
+          "requiresConfirmation": true,
+          "holdSeconds": 3
+        },
+        {
+          "from": 238,
+          "to": 247,
+          "label": "Closed"
+        },
+        {
+          "from": 248,
+          "to": 255,
+          "label": "Lamp off, held for 5 s",
+          "requiresConfirmation": true,
+          "holdSeconds": 6
+        }
+      ]
+    },
+    {
+      "offset": 2,
+      "attribute": "dimmer",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 3,
+      "attribute": "cyan",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 4,
+      "attribute": "magenta",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 5,
+      "attribute": "yellow",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0% to 100%",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 6,
+      "attribute": "colorTemperature",
+      "label": "CTC",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "Cold to warm, 0 to 178 mired",
+          "kind": "proportional"
+        }
+      ]
+    },
+    {
+      "offset": 7,
+      "attribute": "colorWheel",
+      "functions": [
+        {
+          "from": 0,
+          "to": 0,
+          "label": "White",
+          "purpose": "release",
+          "colors": [
+            "ffffff"
+          ]
+        },
+        {
+          "from": 1,
+          "to": 39,
+          "label": "White to red",
+          "kind": "proportional",
+          "colors": [
+            "ffffff",
+            "e4002b"
+          ]
+        },
+        {
+          "from": 40,
+          "to": 79,
+          "label": "Red to green",
+          "kind": "proportional",
+          "colors": [
+            "e4002b",
+            "00a651"
+          ]
+        },
+        {
+          "from": 80,
+          "to": 119,
+          "label": "Green to blue",
+          "kind": "proportional",
+          "colors": [
+            "00a651",
+            "1d3fc4"
+          ]
+        },
+        {
+          "from": 120,
+          "to": 160,
+          "label": "Blue to UV",
+          "kind": "proportional",
+          "colors": [
+            "1d3fc4",
+            "5a1e9e"
+          ]
+        },
+        {
+          "from": 161,
+          "to": 185,
+          "label": "Color",
+          "sets": [
+            {
+              "from": 161,
+              "to": 165,
+              "label": "UV",
+              "colors": [
+                "5a1e9e"
+              ]
+            },
+            {
+              "from": 166,
+              "to": 170,
+              "label": "Blue 108",
+              "colors": [
+                "1d3fc4"
+              ]
+            },
+            {
+              "from": 171,
+              "to": 175,
+              "label": "Green 203",
+              "colors": [
+                "00a651"
+              ]
+            },
+            {
+              "from": 176,
+              "to": 180,
+              "label": "Red 308",
+              "colors": [
+                "e4002b"
+              ]
+            },
+            {
+              "from": 181,
+              "to": 185,
+              "label": "White",
+              "colors": [
+                "ffffff"
+              ]
+            }
+          ]
+        },
+        {
+          "from": 186,
+          "to": 214,
+          "label": "Clockwise scroll, fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 215,
+          "to": 243,
+          "label": "Anticlockwise scroll, slow to fast",
+          "kind": "proportional"
+        },
+        {
+          "from": 244,
+          "to": 247,
+          "label": "Random CMY color, fast"
+        },
+        {
+          "from": 248,
+          "to": 251,
+          "label": "Random CMY color, medium"
+        },
+        {
+          "from": 252,
+          "to": 255,
+          "label": "Random CMY color, slow"
+        }
+      ]
+    },
+    {
+      "offset": 8,
+      "attribute": "custom",
+      "label": "Beam shaper",
+      "functions": [
+        {
+          "from": 0,
+          "to": 0,
+          "label": "Open",
+          "purpose": "open"
+        },
+        {
+          "from": 1,
+          "to": 255,
+          "label": "Turned 0\u00b0 to 180\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 180
+        }
+      ]
+    },
+    {
+      "offset": 9,
+      "attribute": "frost",
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "No frost to full frost",
+          "kind": "proportional",
+          "unit": "percent",
+          "physicalFrom": 0,
+          "physicalTo": 100
+        }
+      ]
+    },
+    {
+      "offset": 10,
+      "attribute": "pan",
+      "fineOffset": 11,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 440\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 440
+        }
+      ]
+    },
+    {
+      "offset": 12,
+      "attribute": "tilt",
+      "fineOffset": 13,
+      "defaultValue": 128,
+      "functions": [
+        {
+          "from": 0,
+          "to": 255,
+          "label": "0\u00b0 to 306\u00b0",
+          "kind": "proportional",
+          "unit": "degrees",
+          "physicalFrom": 0,
+          "physicalTo": 306
+        }
+      ]
+    },
+    {
+      "offset": 14,
+      "attribute": "panTiltSpeed",
+      "label": "Pan and tilt speed",
+      "functions": [
+        {
+          "from": 0,
+          "to": 2,
+          "label": "Tracking"
+        },
+        {
+          "from": 3,
+          "to": 245,
+          "label": "Fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 246,
+          "to": 248,
+          "label": "Tracking, normal movement"
+        },
+        {
+          "from": 249,
+          "to": 251,
+          "label": "Tracking, fast movement"
+        },
+        {
+          "from": 252,
+          "to": 255,
+          "label": "Blackout while moving"
+        }
+      ]
+    },
+    {
+      "offset": 15,
+      "attribute": "speed",
+      "label": "Dimmer, color, beam shaper and frost speed",
+      "functions": [
+        {
+          "from": 0,
+          "to": 2,
+          "label": "Tracking"
+        },
+        {
+          "from": 3,
+          "to": 239,
+          "label": "Fast to slow",
+          "kind": "proportional"
+        },
+        {
+          "from": 240,
+          "to": 242,
+          "label": "Tracking, studio mode off"
+        },
+        {
+          "from": 243,
+          "to": 245,
+          "label": "Tracking, studio mode on"
+        },
+        {
+          "from": 246,
+          "to": 248,
+          "label": "Tracking, shortcuts off"
+        },
+        {
+          "from": 249,
+          "to": 251,
+          "label": "Tracking, shortcuts on"
+        },
+        {
+          "from": 252,
+          "to": 255,
+          "label": "Blackout while the color wheel moves"
+        }
+      ]
+    }
+  ]
+}
