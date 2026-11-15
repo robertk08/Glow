@@ -180,7 +180,7 @@ static bool program(Reader *r, Program *p) {
 }
 
 static float level(const Stage *stage) {
-  if (stage->blackout || stage->master <= 0) return 0;
+  if (stage->blackout || !(stage->master > 0)) return 0;
   return stage->master >= 1 ? 1 : stage->master;
 }
 
@@ -614,9 +614,9 @@ bool stage_forget(Stage *stage, uint8_t client) {
 }
 
 size_t stage_frame(Stage *stage, uint8_t client, bool whole, uint8_t *out, size_t room) {
+  if (room < STAGE_FRAME_MAX || client >= STAGE_CLIENTS) return 0;
   uint8_t mine = (uint8_t)(1u << client);
   size_t  n    = 3;
-  if (room < STAGE_FRAME_MAX || client >= STAGE_CLIENTS) return 0;
   out[0] = STAGE_FRAME;
   out[1] = 0;
   out[2] = 0;
