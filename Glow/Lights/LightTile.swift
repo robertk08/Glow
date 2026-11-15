@@ -56,7 +56,7 @@ struct LightTile: View {
 			}
 		}
 		.foregroundStyle(.primary)
-		.frame(maxWidth: .infinity, alignment: .leading)
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 		.padding(14)
 		.glassEffect(.regular.tint(isSelected ? Color.accentColor.opacity(0.35) : nil).interactive(), in: .rect(cornerRadius: 24, style: .continuous))
 		.contentShape(.rect(cornerRadius: 24, style: .continuous))

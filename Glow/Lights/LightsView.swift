@@ -15,14 +15,11 @@ struct LightsView: View {
 	@State private var isAdding = false
 	@State private var editingFixture: Fixture?
 	@State private var editingGroup: FixtureGroup?
-	@ScaledMetric(relativeTo: .headline) private var tileWidth = 168
+	@State private var arrangement = Arrangement()
+	@ScaledMetric(relativeTo: .headline) private var tileWidth = 150
 	
 	private var clashing: Set<PersistentIdentifier> {
 		Fixture.clashing(among: fixtures, library: library)
-	}
-	
-	private var columns: [GridItem] {
-		[GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 300 : tileWidth), spacing: 12)]
 	}
 	
 	@ViewBuilder private var groupChips: some View {
@@ -53,12 +50,16 @@ struct LightsView: View {
 		let items = ForEach(fixtures) { fixture in
 			LightTile(fixture: fixture, fixtures: fixtures, clashes: clashes.contains(fixture.persistentModelID), editing: $editingFixture)
 		}
-		let grid = LazyVGrid(columns: columns, spacing: 12) {
+		let grid = TileLayout(columns: arrangement.columns, minimum: typeSize.isAccessibilitySize ? 300 : tileWidth, spacing: 12) {
 			if #available(iOS 27.0, *) {
 				items.reorderable()
 			} else {
 				items
 			}
+		}
+		.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { arrangement.width = $0 }
+		.onChange(of: typeSize.isAccessibilitySize ? 300 : tileWidth, initial: true) { _, minimum in
+			arrangement.minimum = minimum
 		}
 		.padding(.horizontal)
 		
