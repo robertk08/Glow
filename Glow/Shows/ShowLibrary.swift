@@ -414,7 +414,7 @@ final class ShowLibrary {
 		return NodeStore.Folder(rawValue: place.folder)
 	}
 	
-	private func take(_ data: Data?, at place: Wire.Place, in folder: NodeStore.Folder) {
+	func take(_ data: Data?, at place: Wire.Place, in folder: NodeStore.Folder) {
 		let related: Set<NodeStore.Folder> = switch folder {
 		case .groups: [.lights]
 		case .lights: [.made]
@@ -428,6 +428,7 @@ final class ShowLibrary {
 			merge(single)
 		} else {
 			remove(folder, identifier: place.id)
+			container.mainContext.undoManager?.removeAllActions()
 		}
 		
 		let after = Self.encoded(contents(related), folders: related)
