@@ -41,6 +41,14 @@ stopped halfway can leave a test password or a show named **Hardware Test**
 behind. Serial `password` removes the password. Only one process can hold the
 serial port, so close any serial monitor first.
 
+`ScreenTests` opens every screen and sheet on the demo show in three text
+sizes, light and dark. It holds the main thread long enough to upset the fade
+tests, so it runs only when asked, once per device:
+
+```bash
+TEST_RUNNER_GLOW_SCREENS=1 xcodebuild test -quiet -scheme Glow -destination 'platform=macOS,arch=arm64,variant=Designed for iPad' -only-testing:GlowTests/ScreenTests -collect-test-diagnostics never
+```
+
 Firmware: install the libraries under Toolchain, run `Arduino/patch_esp_dmx.sh`,
 then compile and upload `Arduino/` with the `arduino-cli` bundled at
 `/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/`,
