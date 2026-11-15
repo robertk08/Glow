@@ -89,19 +89,20 @@ struct Programmer {
 	
 	private func raw(of channel: FixtureChannel, in target: Target) -> Int {
 		let high = Int(value(of: channel, in: target))
-		guard let fine = channel.fineOffset, let address = address(fine, in: target) else { return high }
-		return high * 256 + Int(console.value(at: address))
+		guard let fine = channel.fineOffset else { return high }
+		return high * 256 + Int(address(fine, in: target).map { console.value(at: $0) } ?? 0)
 	}
 	
 	private func setRaw(_ newValue: Int, of channel: FixtureChannel, in target: Target) {
 		let clamped = min(max(newValue, 0), channel.maximum)
 		
-		guard let fine = channel.fineOffset, let address = address(fine, in: target) else {
+		guard let fine = channel.fineOffset else {
 			set(UInt8(clamped), of: channel, in: target)
 			return
 		}
 		
 		set(UInt8(clamped >> 8), of: channel, in: target)
+		guard let address = address(fine, in: target) else { return }
 		console.set(UInt8(clamped & 0xFF), at: address)
 	}
 	
