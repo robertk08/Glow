@@ -64,6 +64,10 @@ struct RootView: View {
 							.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
 							.presentationDragIndicator(.visible)
 							.navigationTransition(.zoom(sourceID: "programmer", in: transition))
+							.environment(console)
+							.environment(library)
+							.environment(shows)
+							.environment(arrangement)
 					}
 					.sheet(isPresented: $selection.isSceneOpen) {
 						if let look = looks.first(where: { $0.identifier == console.selection.scene }) {
@@ -73,6 +77,10 @@ struct RootView: View {
 								.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
 								.presentationDragIndicator(.visible)
 								.navigationTransition(.zoom(sourceID: "scene", in: transition))
+								.environment(console)
+								.environment(library)
+								.environment(shows)
+								.environment(arrangement)
 						}
 					}
 			} else {
@@ -92,6 +100,10 @@ struct RootView: View {
 		.environment(arrangement)
 		.sheet(isPresented: $selection.isSetupOpen) {
 			NodeSetupView()
+				.environment(console)
+				.environment(library)
+				.environment(shows)
+				.environment(arrangement)
 		}
 		.background {
 			Button("All Off") {
