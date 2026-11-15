@@ -36,7 +36,8 @@ final class Look {
 	}
 	
 	var slot: Int {
-		Int(sortIndex.rounded(.up))
+		guard sortIndex.isFinite else { return 0 }
+		return Int(min(max(sortIndex.rounded(.up), 0), 999))
 	}
 	
 	var isGone: Bool {
