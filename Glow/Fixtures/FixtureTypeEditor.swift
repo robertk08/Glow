@@ -116,7 +116,7 @@ struct FixtureTypeEditor: View {
 						library.adopt(draft, replacing: original, among: fixtures, stored: stored, context: context)
 						dismiss()
 					}
-					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || draft.channels.isEmpty || library.isNameTaken(draft))
+					.disabled(draft.model.trimmingCharacters(in: .whitespaces).isEmpty || draft.channels.isEmpty || draft.channelCount > Universe.channelCount || library.isNameTaken(draft))
 				}
 			}
 		}

@@ -63,6 +63,7 @@ nonisolated struct ChannelFunction: Codable, Hashable, Sendable, Identifiable {
 		physicalTo = try container.decodeIfPresent(Double.self, forKey: .physicalTo)
 		requiresConfirmation = try container.decodeIfPresent(Bool.self, forKey: .requiresConfirmation) ?? false
 		holdSeconds = try container.decodeIfPresent(Double.self, forKey: .holdSeconds)
+		guard (0...60).contains(holdSeconds ?? 0) else { throw DecodingError.dataCorruptedError(forKey: .holdSeconds, in: container, debugDescription: "A hold runs past a minute.") }
 		colors = try container.decodeIfPresent([String].self, forKey: .colors) ?? []
 		sets = try container.decodeIfPresent([ChannelSet].self, forKey: .sets) ?? []
 	}

@@ -6,7 +6,7 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		var from: UInt8
 		var to: UInt8
 		
-		func contains(_ value: UInt8) -> Bool { (from...to).contains(value) }
+		func contains(_ value: UInt8) -> Bool { from <= value && value <= to }
 	}
 	
 	var offset: Int
@@ -70,6 +70,7 @@ nonisolated struct FixtureChannel: Codable, Hashable, Sendable, Identifiable {
 		fineDefaultValue = try container.decodeIfPresent(UInt8.self, forKey: .fineDefaultValue) ?? 0
 		enabledBy = try container.decodeIfPresent(Dependency.self, forKey: .enabledBy)
 		functions = try container.decodeIfPresent([ChannelFunction].self, forKey: .functions) ?? []
+		guard ([offset] + (fineOffset.map { [$0] } ?? []) + (enabledBy.map { [$0.offset] } ?? [])).allSatisfy(DMXAddress.range.contains) else { throw DecodingError.dataCorruptedError(forKey: .offset, in: container, debugDescription: "A channel sits outside the universe.") }
 	}
 	
 	func encode(to encoder: any Encoder) throws {
