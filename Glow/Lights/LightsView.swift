@@ -226,6 +226,7 @@ private struct GroupChip: View {
 				.font(.subheadline)
 				.lineLimit(1)
 				.frame(maxWidth: 240)
+				.fixedSize()
 		}
 		.toggleStyle(.button)
 		.buttonStyle(.glass)
