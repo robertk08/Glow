@@ -20,7 +20,15 @@ struct CueTiming: View {
 		
 		SecondsField(title: CueTime.delay.name, symbol: CueTime.delay.symbol, seconds: $delay)
 		
-		Picker(selection: Binding { follow == nil ? false : follow.map { $0 < 0 } == true ? nil : true } set: { follow = $0 == true ? 0 : nil }.animation(.snappy(duration: 0.25))) {
+		Picker(selection: Binding { follow == nil ? false : follow.map { $0 < 0 } == true ? nil : true } set: { isOn in
+			guard let isOn else { return }
+			follow = isOn ? 0 : nil
+		}.animation(.snappy(duration: 0.25))) {
+			if follow.map({ $0 < 0 }) == true {
+				Text("Mixed")
+					.tag(Optional<Bool>.none)
+			}
+			
 			Text("On Go")
 				.tag(Optional(false))
 			
