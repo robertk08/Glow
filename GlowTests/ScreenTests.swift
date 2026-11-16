@@ -72,6 +72,7 @@ struct ScreenTests {
 		}
 		
 		func show(_ content: some View, size: DynamicTypeSize, scheme: ColorScheme) async throws {
+			window.rootViewController?.dismiss(animated: false)
 			if let old = window.rootViewController { retired.append(old) }
 			window.rootViewController = UIHostingController(rootView: content.environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize(size).preferredColorScheme(scheme))
 			window.makeKeyAndVisible()
@@ -263,6 +264,7 @@ struct ScreenTests {
 			
 			let isNarrow = roll(3) == 0
 			window.frame = isNarrow ? CGRect(x: 0, y: 0, width: min(bounds.width, 375), height: bounds.height) : bounds
+			window.rootViewController?.dismiss(animated: false)
 			if let old = window.rootViewController { retired.append(old) }
 			window.rootViewController = UIHostingController(rootView: Presenter(content: content).environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize([DynamicTypeSize.large, .xSmall, .accessibility3][roll(3)]))
 			window.makeKeyAndVisible()
@@ -432,6 +434,7 @@ struct ScreenTests {
 		func host(compact: Bool) {
 			let root = compact ? AnyView(RootView().environment(\.horizontalSizeClass, .compact)) : AnyView(RootView())
 			window.frame = compact ? CGRect(x: 0, y: 0, width: min(bounds.width, 390), height: bounds.height) : bounds
+			window.rootViewController?.dismiss(animated: false)
 			if let old = window.rootViewController { retired.append(old) }
 			window.rootViewController = UIHostingController(rootView: root.environment(console).environment(library).environment(shows).modelContainer(shows.container))
 			window.makeKeyAndVisible()
@@ -566,5 +569,244 @@ struct ScreenTests {
 		window.rootViewController = nil
 		window.isHidden = true
 		retired = []
+	}
+	
+	@Test func everyScreenOfAnEdgeCaseShowStaysInsideItsWindowAtEveryWidthAndTextSize() async throws {
+		let console = Console()
+		let library = FixtureLibrary()
+		let shows = ShowLibrary()
+		shows.reach(console, library: library)
+		shows.startDemo()
+		
+		for _ in 0..<300 where !shows.isLoaded {
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		#expect(shows.isLoaded)
+		try await Task.sleep(for: .milliseconds(300))
+		let context = shows.container.mainContext
+		let long = "Followspot Downstage Centre Left Balcony Rail Position Seven"
+		let unbroken = String(repeating: "W", count: 64)
+		
+		for (index, look) in try context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)])).enumerated() {
+			look.name = [long, unbroken, "🎭🎛️💡🔦🎬🌈", look.name][index % 4]
+		}
+		
+		for (index, cue) in try context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)])).enumerated() {
+			cue.fade = [3600, 59.99, 0.01, cue.fade][index % 4]
+			cue.delay = [3600, 0, 1234.56, cue.delay][index % 4]
+			cue.follow = [3600, nil, 0, cue.follow][index % 4]
+			cue.label = [long, unbroken, "", cue.label][index % 4]
+		}
+		
+		for (index, fixture) in try context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)])).enumerated() {
+			fixture.name = [long, unbroken, fixture.name][index % 3]
+		}
+		
+		for group in try context.fetch(FetchDescriptor<FixtureGroup>()) {
+			group.name = long
+		}
+		
+		try context.save()
+		try await Task.sleep(for: .milliseconds(300))
+		
+		let fixtures = try context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let groups = try context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let looks = try context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let cues = try context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let type = try #require(library.builtIn.max { $0.channels.count < $1.channels.count })
+		let look = try #require(looks.max { $0.cues(among: cues).count < $1.cues(among: cues).count })
+		let held = look.cues(among: cues)
+		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+		let bounds = scene.effectiveGeometry.coordinateSpace.bounds
+		let window = UIWindow(windowScene: scene)
+		var retired: [UIViewController] = []
+		let folder = ProcessInfo.processInfo.environment["GLOW_SNAPSHOTS"].map { $0 == "temporary" ? FileManager.default.temporaryDirectory.appending(path: "GlowSnapshots") : URL(fileURLWithPath: $0) }
+		print("SNAPSHOTS \(folder?.path ?? "")")
+		let device = ProcessInfo.processInfo.isiOSAppOnMac ? "mac" : UIDevice.current.userInterfaceIdiom == .pad ? "pad" : "phone"
+		var outside: [String] = []
+		UIView.setAnimationsEnabled(false)
+		defer { UIView.setAnimationsEnabled(true) }
+		let accessibility = dlopen("/usr/lib/libAccessibility.dylib", RTLD_NOW)
+		let automate = unsafeBitCast(try #require(dlsym(accessibility, "_AXSSetAutomationEnabled")), to: (@convention(c) (Int32) -> Void).self)
+		automate(1)
+		defer { automate(0) }
+		
+		func elements(in view: UIView, into found: inout [NSObject]) {
+			guard !view.isHidden, view.alpha > 0.01 else { return }
+			
+			if view.isAccessibilityElement {
+				found.append(view)
+			}
+			
+			for element in view.accessibilityElements ?? [] {
+				guard let element = element as? NSObject else { continue }
+				
+				if let inner = element as? UIView {
+					elements(in: inner, into: &found)
+				} else if element.isAccessibilityElement {
+					found.append(element)
+				}
+			}
+			
+			for subview in view.subviews {
+				elements(in: subview, into: &found)
+			}
+		}
+		
+		func settle() async throws {
+			for _ in 0..<8 {
+				window.layoutIfNeeded()
+				window.rootViewController?.presentedViewController?.view.layoutIfNeeded()
+				try await Task.sleep(for: .milliseconds(15))
+			}
+		}
+		
+		func check(_ name: String, width: CGFloat, size: DynamicTypeSize, isSheet: Bool) async throws {
+			if let folder {
+				try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+				try Data("\(device) \(Int(width)) \(size) \(name)\n".utf8).write(to: folder.appending(path: "progress.txt"))
+			}
+			
+			try await settle()
+			let top = window.rootViewController?.presentedViewController ?? window.rootViewController
+			let area = (isSheet ? top?.view : window).map { $0.convert($0.bounds, to: nil) } ?? window.bounds
+			var found: [NSObject] = []
+			elements(in: top?.view ?? window, into: &found)
+			let tag = "\(device) \(Int(width)) \(size) \(name)"
+			
+			for element in found where !element.accessibilityFrame.isEmpty && !(element.accessibilityLabel ?? "").isEmpty {
+				var container: Any? = element
+				
+				while let next = container, !(next is UIView) {
+					container = (next as? NSObject).flatMap { $0.responds(to: NSSelectorFromString("accessibilityContainer")) ? $0.value(forKey: "accessibilityContainer") : nil }
+				}
+				
+				var view = container as? UIView
+				var scrolls = false
+				
+				while let current = view, !scrolls {
+					scrolls = (current as? UIScrollView).map { $0.contentSize.width > $0.bounds.width + 1 } ?? false
+					view = current.superview
+				}
+				
+				guard !scrolls else { continue }
+				let frame = element.accessibilityFrame
+				guard frame.minY < area.maxY, frame.maxY > area.minY else { continue }
+				guard frame.maxX > area.maxX + 2 || frame.minX < area.minX - 2 else { continue }
+				outside.append("\(tag): [\(element.accessibilityLabel ?? "?")] \(Int(frame.minX))...\(Int(frame.maxX)) of \(Int(area.minX))...\(Int(area.maxX))")
+			}
+			
+			guard let folder else { return }
+			try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+			let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+				window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+			}
+			try image.pngData()?.write(to: folder.appending(path: "\(tag.replacingOccurrences(of: " ", with: "_")).png"))
+		}
+		
+		func host(_ content: some View, width: CGFloat, size: DynamicTypeSize) {
+			window.rootViewController?.dismiss(animated: false)
+			if let old = window.rootViewController { retired.append(old) }
+			window.frame = CGRect(x: 0, y: 0, width: width, height: bounds.height)
+			window.rootViewController = UIHostingController(rootView: content.environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize(size))
+			window.makeKeyAndVisible()
+		}
+		
+		let widths = Array(Set([bounds.width, 320, ProcessInfo.processInfo.isiOSAppOnMac || UIDevice.current.userInterfaceIdiom == .pad ? 700 : bounds.width])).sorted()
+		
+		for width in widths {
+			for size in [DynamicTypeSize.large, .xxxLarge, .accessibility3] {
+				console.selection.clear()
+				console.selection.building = nil
+				
+				for section in [Selection.Section.lights, .scenes, .settings] {
+					console.selection.section = section
+					host(RootView(), width: width, size: size)
+					try await check("root \(section)", width: width, size: size, isSheet: false)
+				}
+				
+				for fixture in fixtures {
+					console.selection.toggle(fixture)
+				}
+				
+				console.selection.section = .lights
+				host(RootView(), width: width, size: size)
+				try await check("root selected", width: width, size: size, isSheet: false)
+				console.selection.build(look.identifier)
+				try await check("root building", width: width, size: size, isSheet: false)
+				console.selection.building = nil
+				
+				let lists = looks.compactMap { console.lists[$0.identifier] }
+				
+				for list in lists {
+					console.toggle(list)
+					console.go(list)
+				}
+				
+				console.selection.section = .scenes
+				try await check("root scenes playing", width: width, size: size, isSheet: false)
+				console.stopAll()
+				
+				let programmer = console.programmer(among: fixtures, library: library)
+				let screens: [(String, AnyView)] = [
+					("scene", AnyView(SceneView(look: look, isSheet: true))),
+					("programmer", AnyView(ProgrammerView(programmer: programmer, isSheet: true))),
+					("channels", AnyView(NavigationStack { ChannelsView(programmer: programmer) })),
+					("inspector", AnyView(SceneInspector())),
+					("arrange2", AnyView(ArrangeView(columns: 2))),
+					("arrange4", AnyView(ArrangeView(columns: 4))),
+					("settings scene", AnyView(SceneSettings(look: look))),
+					("store new", AnyView(StoreView(recording: Recording(.cue(look, after: held.last), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)))),
+					("store into", AnyView(StoreView(recording: Recording(.into(held[0]), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues)))),
+					("cue edit", AnyView(CueEditView(cue: held[0]))),
+					("cue timing", AnyView(CueTimingSheet(picked: Array(held.prefix(2))))),
+					("fixture edit", AnyView(FixtureEditView(fixture: fixtures[0]))),
+					("group", AnyView(GroupView(group: groups[0]))),
+					("library", AnyView(NavigationStack { LibraryView(patching: .constant(true)) })),
+					("fixture type", AnyView(NavigationStack { FixtureTypeView(type: type, patching: .constant(true)) })),
+					("patch", AnyView(PatchView(mode: type, isPresented: .constant(true)))),
+					("type editor", AnyView(FixtureTypeEditor(type: type))),
+					("channel editor", AnyView(NavigationStack { ChannelEditor(channel: .constant(type.channels[0]), others: type.channels) })),
+					("function editor", AnyView(NavigationStack { FunctionEditor(function: .constant(type.channels.flatMap(\.functions).first { !$0.sets.isEmpty } ?? ChannelFunction(from: 0, to: 255, label: "All"))) })),
+					("shows", AnyView(NavigationStack { ShowsView() })),
+					("node", AnyView(NavigationStack { NodeView() })),
+					("password", AnyView(PasswordView())),
+					("monitor", AnyView(NavigationStack { MonitorView() })),
+					("settings", AnyView(NavigationStack { SettingsView() })),
+					("setup", AnyView(NodeSetupView())),
+					("waiting", AnyView(WaitingView())),
+				]
+				
+				for (name, screen) in screens {
+					host(Presenter(content: screen.dynamicTypeSize(size)), width: width, size: size)
+					
+					for _ in 0..<100 where window.rootViewController?.presentedViewController == nil {
+						try await Task.sleep(for: .milliseconds(10))
+					}
+					
+					try await check(name, width: width, size: size, isSheet: true)
+					guard name == "programmer" else { continue }
+					
+					for feature in FeatureGroup.allCases.dropFirst() {
+						var found: [NSObject] = []
+						elements(in: window, into: &found)
+						_ = found.first { $0.accessibilityLabel == feature.name }?.accessibilityActivate()
+						try await check("programmer \(feature.name)", width: width, size: size, isSheet: true)
+					}
+				}
+			}
+		}
+		
+		for line in outside {
+			print("OUTSIDE \(line)")
+		}
+		
+		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
+		window.rootViewController = nil
+		window.isHidden = true
+		retired = []
+		#expect(outside.isEmpty, "\(outside.count) elements reach past their window")
 	}
 }

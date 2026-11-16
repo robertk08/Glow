@@ -45,7 +45,11 @@ serial port, so close any serial monitor first.
 sizes, light and dark, acts at random on open screens while other devices
 change and delete what they show, and presses, slides and types at random
 through the whole app. The random presses stay off on the Mac, where a pop-up
-menu waits for a real click. It holds the main thread long enough to upset the
+menu waits for a real click. It also opens every screen of a show with maxed
+times and very long names at 320 points, the device width and 700 points, and
+fails when anything reaches past the window. Set `TEST_RUNNER_GLOW_SNAPSHOTS`
+to a folder (`temporary` on the Mac) to keep a picture of each screen. It holds
+the main thread long enough to upset the
 fade tests, so it runs only when asked, once per device:
 
 ```bash
