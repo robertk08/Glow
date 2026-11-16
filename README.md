@@ -42,8 +42,11 @@ behind. Serial `password` removes the password. Only one process can hold the
 serial port, so close any serial monitor first.
 
 `ScreenTests` opens every screen and sheet on the demo show in three text
-sizes, light and dark. It holds the main thread long enough to upset the fade
-tests, so it runs only when asked, once per device:
+sizes, light and dark, acts at random on open screens while other devices
+change and delete what they show, and presses, slides and types at random
+through the whole app. The random presses stay off on the Mac, where a pop-up
+menu waits for a real click. It holds the main thread long enough to upset the
+fade tests, so it runs only when asked, once per device:
 
 ```bash
 TEST_RUNNER_GLOW_SCREENS=1 xcodebuild test -quiet -scheme Glow -destination 'platform=macOS,arch=arm64,variant=Designed for iPad' -only-testing:GlowTests/ScreenTests -collect-test-diagnostics never

@@ -57,6 +57,7 @@ struct ScreenTests {
 		
 		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
 		let window = UIWindow(windowScene: scene)
+		var retired: [UIViewController] = []
 		window.frame = scene.coordinateSpace.bounds
 		UIView.setAnimationsEnabled(false)
 		defer { UIView.setAnimationsEnabled(true) }
@@ -71,6 +72,7 @@ struct ScreenTests {
 		}
 		
 		func show(_ content: some View, size: DynamicTypeSize, scheme: ColorScheme) async throws {
+			if let old = window.rootViewController { retired.append(old) }
 			window.rootViewController = UIHostingController(rootView: content.environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize(size).preferredColorScheme(scheme))
 			window.makeKeyAndVisible()
 			try await settle()
@@ -163,9 +165,11 @@ struct ScreenTests {
 			}
 		}
 		
+		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
 		window.rootViewController = nil
 		window.isHidden = true
-		shows.stopDemo()
+		retired = []
 		#expect(shown == 3 * 31)
 	}
 	
@@ -198,6 +202,7 @@ struct ScreenTests {
 		let context = shows.container.mainContext
 		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
 		let window = UIWindow(windowScene: scene)
+		var retired: [UIViewController] = []
 		let bounds = scene.effectiveGeometry.coordinateSpace.bounds
 		UIView.setAnimationsEnabled(false)
 		defer { UIView.setAnimationsEnabled(true) }
@@ -258,6 +263,7 @@ struct ScreenTests {
 			
 			let isNarrow = roll(3) == 0
 			window.frame = isNarrow ? CGRect(x: 0, y: 0, width: min(bounds.width, 375), height: bounds.height) : bounds
+			if let old = window.rootViewController { retired.append(old) }
 			window.rootViewController = UIHostingController(rootView: Presenter(content: content).environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container).dynamicTypeSize([DynamicTypeSize.large, .xSmall, .accessibility3][roll(3)]))
 			window.makeKeyAndVisible()
 		}
@@ -280,7 +286,7 @@ struct ScreenTests {
 			let lists = looks.compactMap { console.lists[$0.identifier] }
 			let list = pick(lists)
 			
-			switch roll(24) {
+			switch roll(27) {
 			case 0: if let list { console.toggle(list) }
 			case 1: if let list { console.go(list) }
 			case 2: if let list { console.back(list) }
@@ -329,6 +335,51 @@ struct ScreenTests {
 				let programmer = console.programmer(among: fixtures, library: library)
 				programmer.setFraction(Double(roll(101)) / 100, for: Attribute.allCases[roll(Attribute.allCases.count)])
 			case 22: console.master = Double(roll(101)) / 100
+			case 23, 24, 25:
+				let odd: [Double] = [.nan, .infinity, -.infinity, -1, 0, 1e300, -1e300, 3601, 0.004]
+				let text = ["", " ", String(repeating: "Wide name ", count: 200), "🎭🎛️", "\n\t"][roll(5)]
+				var show = ShowContents()
+				show.scenes = pick(looks).map { [$0.entry] } ?? []
+				show.cues = pick(cues).map { [$0.entry] } ?? []
+				show.lights = pick(fixtures).map { [$0.entry] } ?? []
+				show.groups = pick(groups).map { [$0.entry] } ?? []
+				
+				for index in show.scenes.indices {
+					show.scenes[index].name = text
+					show.scenes[index].sortIndex = odd[roll(odd.count)]
+					show.scenes[index].symbol = ["not.a.symbol", "", "star"][roll(3)]
+					show.scenes[index].tint = ["nonsense", "", "red"][roll(3)]
+					show.scenes[index].buttons = SceneAction.allCases.filter { _ in roll(2) == 0 }
+					show.scenes[index].size = TileSize.allCases[roll(TileSize.allCases.count)]
+				}
+				
+				for index in show.cues.indices {
+					show.cues[index].label = text
+					show.cues[index].sortIndex = odd[roll(odd.count)]
+					show.cues[index].fade = odd[roll(odd.count)]
+					show.cues[index].delay = odd[roll(odd.count)]
+					show.cues[index].follow = roll(2) == 0 ? nil : odd[roll(odd.count)]
+					show.cues[index].scene = pick(looks)?.identifier ?? "Nowhere0000"
+				}
+				
+				for index in show.lights.indices {
+					show.lights[index].name = text
+					show.lights[index].address = [1, 2, 505, 511, 512][roll(5)]
+					show.lights[index].sortIndex = [-1e300, 1e300, 0, -5][roll(4)]
+					show.lights[index].typeID = roll(4) == 0 ? "missing" : show.lights[index].typeID
+					show.lights[index].symbol = roll(2) == 0 ? "not.a.symbol" : nil
+				}
+				
+				for index in show.groups.indices {
+					show.groups[index].name = text
+					show.groups[index].tint = "nonsense"
+				}
+				
+				for (key, body) in ShowLibrary.encoded(show, folders: ShowLibrary.everything) {
+					let parts = key.split(separator: "/", maxSplits: 1)
+					guard let folder = NodeStore.Folder(rawValue: String(parts[0])) else { continue }
+					remote(folder, String(parts[1]), body)
+				}
 			default: console.reset(among: fixtures, library: library)
 			}
 			
@@ -337,9 +388,183 @@ struct ScreenTests {
 		}
 		
 		#expect(erased > 20)
-		window.rootViewController = nil
-		window.isHidden = true
 		console.stopAll()
 		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
+		window.rootViewController = nil
+		window.isHidden = true
+		retired = []
+	}
+	
+	@Test(.enabled(if: !ProcessInfo.processInfo.isiOSAppOnMac, "A pop-up menu on the Mac waits for a real click"), arguments: [UInt64(1), 2, 3])
+	func randomTapsSlidesAndTypingAcrossTheWholeAppOnTheDemoShow(seed: UInt64) async throws {
+		var state = seed &* 0x9E3779B97F4A7C15
+		
+		func roll(_ count: Int) -> Int {
+			state = state &* 6364136223846793005 &+ 1442695040888963407
+			return Int((state >> 33) % UInt64(max(count, 1)))
+		}
+		
+		func pick<Item>(_ items: [Item]) -> Item? {
+			items.isEmpty ? nil : items[roll(items.count)]
+		}
+		
+		let console = Console()
+		let library = FixtureLibrary()
+		let shows = ShowLibrary()
+		shows.reach(console, library: library)
+		shows.startDemo()
+		
+		for _ in 0..<300 where !shows.isLoaded {
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		#expect(shows.isLoaded)
+		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+		let window = UIWindow(windowScene: scene)
+		var retired: [UIViewController] = []
+		let bounds = scene.effectiveGeometry.coordinateSpace.bounds
+		window.frame = bounds
+		UIView.setAnimationsEnabled(false)
+		defer { UIView.setAnimationsEnabled(true) }
+		let avoided = ["Connect", "Wi-Fi", "Network", "Share", "Save to Files", "Import", "Leave", "Demo", "Password", "Forget", "Stop Using", "Controller"]
+		
+		func host(compact: Bool) {
+			let root = compact ? AnyView(RootView().environment(\.horizontalSizeClass, .compact)) : AnyView(RootView())
+			window.frame = compact ? CGRect(x: 0, y: 0, width: min(bounds.width, 390), height: bounds.height) : bounds
+			if let old = window.rootViewController { retired.append(old) }
+			window.rootViewController = UIHostingController(rootView: root.environment(console).environment(library).environment(shows).modelContainer(shows.container))
+			window.makeKeyAndVisible()
+		}
+		
+		func elements(in view: UIView, into found: inout [NSObject]) {
+			guard !view.isHidden, view.alpha > 0.01 else { return }
+			
+			if view.isAccessibilityElement {
+				found.append(view)
+			}
+			
+			for element in view.accessibilityElements ?? [] {
+				guard let element = element as? NSObject else { continue }
+				
+				if let inner = element as? UIView {
+					elements(in: inner, into: &found)
+				} else if element.isAccessibilityElement {
+					found.append(element)
+				}
+			}
+			
+			for subview in view.subviews {
+				elements(in: subview, into: &found)
+			}
+		}
+		
+		func focused(in view: UIView) -> UIView? {
+			if view.isFirstResponder { return view }
+			
+			for subview in view.subviews {
+				if let found = focused(in: subview) { return found }
+			}
+			
+			return nil
+		}
+		
+		func settle() async throws {
+			for _ in 0..<3 {
+				for window in scene.windows {
+					window.layoutIfNeeded()
+				}
+				
+				try await Task.sleep(for: .milliseconds(8))
+			}
+		}
+		
+		let accessibility = dlopen("/usr/lib/libAccessibility.dylib", RTLD_NOW)
+		let automate = unsafeBitCast(try #require(dlsym(accessibility, "_AXSSetAutomationEnabled")), to: (@convention(c) (Int32) -> Void).self)
+		automate(1)
+		defer { automate(0) }
+		host(compact: false)
+		try await settle()
+		var pressed = 0
+		
+		for step in 0..<1500 {
+			if step % 300 == 150 {
+				host(compact: roll(2) == 0)
+				try await settle()
+			}
+			
+			if step % 60 == 30 {
+				console.selection.section = [Selection.Section.lights, .scenes, .scenes, .settings][roll(4)]
+			}
+			
+			var top: UIViewController? = window.rootViewController
+			
+			while let next = top?.presentedViewController, !next.isBeingDismissed {
+				top = next
+			}
+			
+			var found: [NSObject] = []
+			
+			if let view = top?.view, top !== window.rootViewController, roll(5) != 0 {
+				elements(in: view, into: &found)
+			} else {
+				elements(in: window, into: &found)
+			}
+			
+			let tabs = ["Lights", "Scenes", "Settings"]
+			let usable = found.filter { element in
+				let label = element.accessibilityLabel ?? ""
+				let traits = element.accessibilityTraits
+				let isControl = !traits.isDisjoint(with: [.button, .adjustable, .link, .searchField, .keyboardKey]) || element is UITextField || element is UITextView
+				let isTab = tabs.contains(label) && roll(8) != 0
+				return isControl && !isTab && !label.isEmpty && !avoided.contains { label.localizedCaseInsensitiveContains($0) } && !traits.contains(.notEnabled)
+			}
+			
+			if let responder = scene.windows.lazy.compactMap({ focused(in: $0) }).first as? UIKeyInput, roll(3) == 0 {
+				let typed = ["12", "0,5", "3.25", "-7", "99999", "", "Ä🎭", String(repeating: "W", count: 80), "1e9"][roll(9)]
+				print("MONKEY \(step) type \(typed.prefix(12))")
+				responder.insertText(typed)
+				if roll(2) == 0 { responder.insertText("\n") }
+				if roll(3) == 0 { (responder as? UIView)?.resignFirstResponder() }
+			} else if !usable.isEmpty {
+				let element = usable[roll(usable.count)]
+				let label = element.accessibilityLabel ?? ""
+				
+				if let action = pick(element.accessibilityCustomActions ?? []), roll(3) == 0 {
+					print("MONKEY \(step) action \(action.name) on \(label)")
+					_ = action.actionHandler?(action)
+				} else if element.accessibilityTraits.contains(.adjustable), roll(2) == 0 {
+					print("MONKEY \(step) adjust \(label)")
+					
+					for _ in 0...roll(6) {
+						if roll(2) == 0 {
+							element.accessibilityIncrement()
+						} else {
+							element.accessibilityDecrement()
+						}
+					}
+				} else {
+					print("MONKEY \(step) press \(label)")
+					_ = element.accessibilityActivate()
+					pressed += 1
+				}
+			}
+			
+			if step % 40 == 39, let presented = window.rootViewController?.presentedViewController, roll(2) == 0 {
+				print("MONKEY \(step) dismiss")
+				presented.dismiss(animated: false)
+			}
+			
+			try await settle()
+		}
+		
+		#expect(pressed > 500)
+		console.stopAll()
+		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
+		window.rootViewController?.dismiss(animated: false)
+		window.rootViewController = nil
+		window.isHidden = true
+		retired = []
 	}
 }
