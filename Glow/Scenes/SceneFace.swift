@@ -171,7 +171,7 @@ private struct CueProgress: View {
 	let fade: Fade?
 	let tint: Color
 	
-	@State private var width = CGFloat.infinity
+	@State private var width = CGFloat.zero
 	
 	var body: some View {
 		Group {
