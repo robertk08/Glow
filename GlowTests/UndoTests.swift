@@ -5,6 +5,7 @@ import Testing
 @testable import Glow
 
 @MainActor
+@Suite(.serialized)
 struct UndoTests {
 	@Test(arguments: [UInt64(1), 2, 3])
 	func undoNeverCrashesWhileOtherDevicesChangeAndDeleteWhatItWouldRestore(seed: UInt64) async throws {
@@ -118,12 +119,16 @@ struct UndoTests {
 				}
 			}
 			
+			try await Task.sleep(for: .milliseconds(1))
 			try? context.save()
 			try await Task.sleep(for: .milliseconds(1))
+			let held = cues
 			
 			for look in looks {
-				_ = (look.entry, look.cues(among: cues))
+				_ = (look.entry, look.cues(among: held))
 			}
+			
+			try await Task.sleep(for: .milliseconds(1))
 			
 			for fixture in fixtures {
 				_ = fixture.entry
@@ -133,7 +138,7 @@ struct UndoTests {
 				_ = (group.entry, group.members.map(\.entry))
 			}
 			
-			for cue in cues {
+			for cue in held {
 				_ = (cue.entry, cue.levels)
 			}
 		}
