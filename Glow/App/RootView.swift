@@ -52,11 +52,14 @@ struct RootView: View {
 			} else if sizeClass == .compact {
 				tabs
 					.tabViewBottomAccessory {
-						if console.selection.section == .scenes {
-							SceneBar(transition: transition)
-						} else {
-							ConsoleBar(transition: transition)
+						Group {
+							if console.selection.section == .scenes {
+								SceneBar(transition: transition)
+							} else {
+								ConsoleBar(transition: transition)
+							}
 						}
+						.dynamicTypeSize(...DynamicTypeSize.xxLarge)
 					}
 					.sheet(isPresented: $selection.isProgrammerOpen) {
 						ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: true)

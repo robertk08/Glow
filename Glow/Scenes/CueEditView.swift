@@ -45,6 +45,7 @@ private struct CueForm: View {
 	@State private var lights: Set<String>
 	@State private var features = Set(FeatureGroup.allCases)
 	@FocusState private var isLabelling: Bool
+	@ScaledMetric(relativeTo: .subheadline) private var chip = 100.0
 	
 	init(cue: Cue, held: [Cue], identifier: Binding<String>) {
 		self.cue = cue
@@ -59,7 +60,7 @@ private struct CueForm: View {
 		let types = Dictionary(fixtures.compactMap { fixture in library.type(fixture.typeID).map { (fixture.identifier, $0) } }, uniquingKeysWith: { first, _ in first })
 		let stored = fixtures.filter { original.lights[$0.identifier] != nil }
 		let aspects = FeatureGroup.allCases.filter { group in stored.contains { original.features(of: $0.identifier, type: types[$0.identifier]).contains(group) } }
-		let columns = [GridItem(.adaptive(minimum: 100), spacing: 8)]
+		let columns = [GridItem(.adaptive(minimum: chip), spacing: 8)]
 		
 		Form {
 			Section {

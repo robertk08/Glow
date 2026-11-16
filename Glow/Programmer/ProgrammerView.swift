@@ -51,6 +51,7 @@ struct ProgrammerView: View {
 			.safeAreaBar(edge: .bottom) {
 				if !isSheet {
 					MasterBar(isRaised: true)
+						.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 				}
 			}
 			.navigationTitle(programmer.title)
@@ -186,6 +187,8 @@ private struct ColorRows: View {
 }
 
 private struct PositionRows: View {
+	@Environment(\.dynamicTypeSize) private var typeSize
+	
 	let programmer: Programmer
 	
 	var body: some View {
@@ -196,7 +199,9 @@ private struct PositionRows: View {
 					.listRowSeparator(.hidden)
 					.listRowInsets(.init(top: 4, leading: 0, bottom: 4, trailing: 0))
 				
-				HStack(spacing: 10) {
+				let layout = typeSize >= .xxxLarge ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+				
+				layout {
 					Button("Centre", systemImage: "scope") { programmer.centre() }
 					Button("Reset Position", systemImage: "arrow.uturn.backward") { programmer.release(.position) }
 				}

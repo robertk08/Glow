@@ -149,6 +149,7 @@ struct SceneView: View {
 						MasterBar(isRaised: true)
 					}
 				}
+				.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 			}
 			.animation(.snappy(duration: 0.25), value: picked.isEmpty)
 			.navigationTitle(editMode.isEditing && !picked.isEmpty ? "\(picked.count) Selected" : look.name)
@@ -241,35 +242,30 @@ private struct CueRow: View {
 	
 	var body: some View {
 		let cue = list.cues[position]
-		
-		HStack(alignment: .center, spacing: 12) {
-			Text("\(position + 1)")
-				.font(.body.weight(isLive ? .bold : .regular))
-				.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
-				.monospacedDigit()
-				.frame(minWidth: 28, alignment: .trailing)
+		let number = Text("\(position + 1)")
+			.font(.body.weight(isLive ? .bold : .regular))
+			.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
+			.monospacedDigit()
+			.frame(minWidth: 28, alignment: .trailing)
+		let title = VStack(alignment: .leading, spacing: 4) {
+			Text(cue.label.isEmpty ? "Cue \(position + 1)" : cue.label)
+				.fontWeight(isLive ? .semibold : .regular)
+				.foregroundStyle(cue.label.isEmpty ? .secondary : .primary)
+				.lineLimit(2)
+				.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
 			
-			VStack(alignment: .leading, spacing: 4) {
-				Text(cue.label.isEmpty ? "Cue \(position + 1)" : cue.label)
-					.fontWeight(isLive ? .semibold : .regular)
-					.foregroundStyle(cue.label.isEmpty ? .secondary : .primary)
-					.lineLimit(2)
-					.alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
-				
-				if isLive {
-					CueStatus(fade: fade, follow: cue.follow) {
-						if cue.fade + cue.delay > 0 {
-							FadeBar(fade: fade, tint: tint)
-								.padding(.vertical, 5)
-						}
+			if isLive {
+				CueStatus(fade: fade, follow: cue.follow) {
+					if cue.fade + cue.delay > 0 {
+						FadeBar(fade: fade, tint: tint)
+							.padding(.vertical, 5)
 					}
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
 				}
+				.font(.subheadline)
+				.foregroundStyle(.secondary)
 			}
-			
-			Spacer(minLength: 8)
-			
+		}
+		let timing = HStack(spacing: 12) {
 			if isNext {
 				Image(systemName: SceneAction.next.symbol)
 					.font(.subheadline.weight(.semibold))
@@ -282,6 +278,30 @@ private struct CueRow: View {
 			CueTimeline(delay: cue.delay, fade: cue.fade, follow: list.next(after: position) == nil ? nil : cue.follow)
 				.font(.caption2)
 				.foregroundStyle(isLive ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
+		}
+		
+		ViewThatFits(in: .horizontal) {
+			HStack(alignment: .center, spacing: 12) {
+				number
+				
+				title
+				
+				Spacer(minLength: 8)
+				
+				timing
+			}
+			
+			HStack(alignment: .firstTextBaseline, spacing: 12) {
+				number
+				
+				VStack(alignment: .leading, spacing: 6) {
+					title
+					
+					timing
+				}
+				
+				Spacer(minLength: 0)
+			}
 		}
 		.contentShape(.rect)
 		.accessibilityElement(children: .combine)

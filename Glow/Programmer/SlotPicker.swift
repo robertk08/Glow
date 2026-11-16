@@ -8,8 +8,8 @@ struct SlotPicker: View {
 	@State private var pending: Programmer.Choice?
 	@State private var picks = 0
 	
-	private let columns = [GridItem(.adaptive(minimum: 72), spacing: 10)]
-	private let stopColumns = [GridItem(.adaptive(minimum: 76), spacing: 8)]
+	@ScaledMetric(relativeTo: .caption) private var slotWidth = 72.0
+	@ScaledMetric(relativeTo: .caption) private var stopWidth = 76.0
 	
 	@ViewBuilder private var scaleRows: some View {
 		if let scale = programmer.scale(of: channel) {
@@ -33,11 +33,13 @@ struct SlotPicker: View {
 			if !stops.isEmpty {
 				let mode = programmer.mode(of: channel)
 				
-				LazyVGrid(columns: stopColumns, spacing: 8) {
+				LazyVGrid(columns: [GridItem(.adaptive(minimum: stopWidth), spacing: 8)], spacing: 8) {
 					ForEach(stops) { stop in
 						Button(stop.label) {
 							chosen = stop
 						}
+						.lineLimit(1)
+						.minimumScaleFactor(0.8)
 						.frame(maxWidth: .infinity)
 						.tint(stop.id == mode ? Color.accentColor : nil)
 					}
@@ -64,7 +66,7 @@ struct SlotPicker: View {
 		}
 		
 		if !slots.isEmpty, programmer.isMarked(channel) {
-			LazyVGrid(columns: columns, spacing: 12) {
+			LazyVGrid(columns: [GridItem(.adaptive(minimum: slotWidth), spacing: 10)], spacing: 12) {
 				ForEach(slots) { slot in
 					Button {
 						chosen = slot

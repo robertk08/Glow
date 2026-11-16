@@ -8,8 +8,42 @@ struct CueTimeline: View {
 	var height: CGFloat = 9
 	
 	var body: some View {
-		let waiting = height * CueList.span(of: delay)
-		let fading = height * CueList.span(of: fade)
+		ViewThatFits(in: .horizontal) {
+			Segments(delay: delay, fade: fade, follow: follow, height: height, isStretched: true)
+			
+			Segments(delay: delay, fade: fade, follow: follow, height: height, isStretched: false)
+			
+			VStack(alignment: .trailing, spacing: 2) {
+				if delay > 0 {
+					Label(CueList.seconds(delay), systemImage: CueTime.delay.symbol)
+				}
+				
+				Label(CueList.seconds(fade), systemImage: CueTime.fade.symbol)
+				
+				if let follow {
+					Label(CueList.seconds(follow), systemImage: CueTime.follow.symbol)
+				}
+			}
+			.labelStyle(.titleAndIcon)
+			.monospacedDigit()
+			.lineLimit(1)
+			.fixedSize()
+		}
+		.accessibilityElement(children: .ignore)
+		.accessibilityLabel(CueList.timing(delay: delay, fade: fade, follow: follow))
+	}
+}
+
+private struct Segments: View {
+	let delay: Double
+	let fade: Double
+	let follow: Double?
+	let height: CGFloat
+	let isStretched: Bool
+	
+	var body: some View {
+		let waiting = height * (isStretched ? CueList.span(of: delay) : CueList.span(of: 0))
+		let fading = height * (isStretched ? CueList.span(of: fade) : CueList.span(of: 0))
 		
 		HStack(alignment: .top, spacing: 4) {
 			if delay > 0 {
@@ -49,11 +83,5 @@ struct CueTimeline: View {
 		}
 		.monospacedDigit()
 		.fixedSize()
-		.accessibilityElement(children: .ignore)
-		.accessibilityLabel(CueList.timing(delay: delay, fade: fade, follow: follow))
-	}
-	
-	static func width(of seconds: Double, height: CGFloat) -> CGFloat {
-		height * (1.6 + 1.4 * log2(1 + min(seconds, 60)))
 	}
 }

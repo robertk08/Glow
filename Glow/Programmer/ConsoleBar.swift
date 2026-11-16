@@ -13,7 +13,7 @@ struct ConsoleBar: View {
 		
 		return Group {
 			if !console.selection.isEmpty {
-				HStack(spacing: 10) {
+				HStack(spacing: 8) {
 					Button {
 						console.selection.isProgrammerOpen = true
 					} label: {
@@ -43,7 +43,7 @@ struct ConsoleBar: View {
 						Slider(value: programmer.brightnessBinding, in: 0...1) {
 							Text("Brightness")
 						}
-						.frame(minWidth: 70)
+						.frame(minWidth: 48)
 						.tint(programmer.isOn ? programmer.glow : nil)
 						.simultaneousGesture(TapGesture().onEnded {
 							console.selection.isProgrammerOpen = true
@@ -53,6 +53,7 @@ struct ConsoleBar: View {
 					}
 					
 					ClearButton()
+						.fixedSize()
 				}
 				.padding(.horizontal, 12)
 			} else {

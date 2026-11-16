@@ -21,6 +21,7 @@ struct SceneInspector: View {
 			}
 			.safeAreaBar(edge: .bottom) {
 				MasterBar(isRaised: true)
+					.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 			}
 		}
 	}

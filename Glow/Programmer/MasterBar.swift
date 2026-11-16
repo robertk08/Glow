@@ -25,12 +25,13 @@ struct MasterBar: View {
 			Slider(value: $console.master, in: 0...1, neutralValue: 1) {
 				Text("Master")
 			}
-			.frame(minWidth: 140)
+			.frame(minWidth: 100)
 			
 			Text(console.master, format: .percent.precision(.fractionLength(0)))
 				.font(.caption.monospacedDigit())
 				.foregroundStyle(.secondary)
-				.frame(width: 40, alignment: .trailing)
+				.fixedSize()
+				.frame(minWidth: 40, alignment: .trailing)
 			
 			Image(systemName: "power")
 				.font(isRaised ? .headline : .title3)

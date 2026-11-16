@@ -7,12 +7,13 @@ struct StoreView: View {
 	@Environment(\.modelContext) private var context
 	@Query(sort: \Fixture.sortIndex) private var fixtures: [Fixture]
 	@Query(sort: \FixtureGroup.sortIndex) private var groups: [FixtureGroup]
+	@ScaledMetric(relativeTo: .subheadline) private var chip = 100.0
 	
 	@Bindable var recording: Recording
 	
-	private let columns = [GridItem(.adaptive(minimum: 100), spacing: 8)]
-	
 	var body: some View {
+		let columns = [GridItem(.adaptive(minimum: chip), spacing: 8)]
+		
 		NavigationStack {
 			Form {
 				if recording.isNew {

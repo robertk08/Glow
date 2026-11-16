@@ -122,6 +122,7 @@ struct LightsView: View {
 		}
 		.safeAreaInset(edge: .bottom) {
 			BuilderBar()
+				.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 		}
 		.navigationTitle("Lights")
 		.navigationSubtitle(shows.active.name)
@@ -223,6 +224,8 @@ private struct GroupChip: View {
 		Toggle(isOn: Binding { console.selection.contains(group) } set: { _ in console.selection.toggle(group) }) {
 			Label(group.name, systemImage: group.symbol)
 				.font(.subheadline)
+				.lineLimit(1)
+				.frame(maxWidth: 240)
 		}
 		.toggleStyle(.button)
 		.buttonStyle(.glass)
