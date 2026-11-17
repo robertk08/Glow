@@ -94,6 +94,8 @@ private struct IntensityRows: View {
 				}
 			}
 		}
+		
+		ChannelRows(programmer: programmer, channels: programmer.extras(on: .dimmer))
 	}
 }
 

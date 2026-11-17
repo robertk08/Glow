@@ -570,9 +570,9 @@ struct Programmer {
 	var groups: [FeatureGroup] {
 		FeatureGroup.allCases.filter { group in
 			switch group {
-			case .dimmer: dims
-			case .color: mixesColor || channels.contains { page(of: $0) == group }
-			case .position: !axes.isEmpty || channels.contains { page(of: $0) == group }
+			case .dimmer where dims: true
+			case .color where mixesColor: true
+			case .position where !axes.isEmpty: true
 			default: channels.contains { page(of: $0) == group }
 			}
 		}
@@ -580,13 +580,7 @@ struct Programmer {
 	
 	func page(of channel: FixtureChannel) -> FeatureGroup {
 		guard channel.id != shutterChannel?.id else { return .beam }
-		
-		switch channel.attribute {
-		case .dimmer, .colorWheel, .colorMacro, .colorTemperature, .pan, .tilt, .panTiltSpeed, .gobo, .gobo2, .goboRotation, .gobo2Rotation, .shutter, .zoom, .focus: return channel.attribute.group
-		default:
-			guard channel.attribute.isEmitter else { return .control }
-			return channel.attribute.group
-		}
+		return channel.attribute.group
 	}
 	
 	func extras(on group: FeatureGroup) -> [FixtureChannel] {

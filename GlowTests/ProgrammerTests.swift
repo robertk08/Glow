@@ -188,7 +188,7 @@ struct ProgrammerTests {
 		#expect(console.value(at: DMXAddress(12)!) == 0)
 	}
 	
-	@Test func channelsWithoutTheirOwnControlLandOnControl() {
+	@Test func everyChannelSitsOnThePageOfItsFeatureGroup() {
 		let (_, programmer) = rig([
 			FixtureChannel(offset: 1, attribute: .dimmer),
 			FixtureChannel(offset: 2, attribute: .dimmerCurve),
@@ -200,8 +200,10 @@ struct ProgrammerTests {
 			FixtureChannel(offset: 8, attribute: .program),
 		])
 		
-		#expect(programmer.groups == [.dimmer, .position, .gobo, .control])
-		#expect(programmer.extras(on: .control).map(\.attribute) == [.dimmerCurve, .prism, .program])
+		#expect(programmer.groups == [.dimmer, .position, .gobo, .beam, .control])
+		#expect(programmer.extras(on: .dimmer).map(\.attribute) == [.dimmerCurve])
+		#expect(programmer.extras(on: .beam).map(\.attribute) == [.prism])
+		#expect(programmer.extras(on: .control).map(\.attribute) == [.program])
 		#expect(programmer.extras(on: .position).map(\.attribute) == [.panTiltSpeed])
 		#expect(programmer.extras(on: .gobo).map(\.attribute) == [.goboRotation])
 		#expect(programmer.axes == [.pan, .tilt])
@@ -231,10 +233,11 @@ struct ProgrammerTests {
 		let programmer = Programmer(fixtures: fixtures, library: FixtureLibrary(), console: Console())
 		
 		#expect(programmer.groups == [.dimmer, .color, .position, .gobo, .beam, .control])
-		#expect(programmer.extras(on: .beam).map(\.attribute) == [.shutter])
-		#expect(programmer.extras(on: .position).map(\.name) == ["Movement speed"])
-		#expect(programmer.extras(on: .color).map(\.attribute) == [.colorWheel])
-		#expect(programmer.extras(on: .control).map(\.attribute) == [.programSpeed, .program, .reset, .cri, .prism, .prismRotation, .frost, .positionMacro, .dimmerCurve, .control])
+		#expect(programmer.extras(on: .dimmer).map(\.attribute) == [.dimmerCurve])
+		#expect(programmer.extras(on: .color).map(\.attribute) == [.colorWheel, .cri])
+		#expect(programmer.extras(on: .position).map(\.name) == ["Movement speed", "Movement macro"])
+		#expect(programmer.extras(on: .beam).map(\.attribute) == [.shutter, .prism, .prismRotation, .frost])
+		#expect(programmer.extras(on: .control).map(\.attribute) == [.programSpeed, .program, .reset, .control])
 	}
 	
 	@Test func everyChannelSitsOnAPageTheSheetShowsAndNoPageIsEmpty() async throws {
@@ -253,7 +256,7 @@ struct ProgrammerTests {
 			
 			let (_, programmer) = rig(channels)
 			let drawn: [FeatureGroup: [UUID?]] = [
-				.dimmer: [programmer.channel(.dimmer)?.id],
+				.dimmer: [programmer.channel(.dimmer)?.id] + programmer.extras(on: .dimmer).map(\.id),
 				.color: programmer.emitterChannels.map(\.id) + [programmer.macroChannel?.id, programmer.temperatureChannel?.id] + programmer.extras(on: .color).map(\.id),
 				.position: programmer.channels.filter { programmer.axes.contains($0.attribute) }.map(\.id) + programmer.extras(on: .position).map(\.id),
 				.gobo: programmer.goboWheels.flatMap { [$0.id, programmer.spinner(of: $0)?.id] } + programmer.extras(on: .gobo).map(\.id),
