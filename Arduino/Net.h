@@ -8,6 +8,7 @@ void begin();
 void tick();
 
 bool        up();
+bool        deaf();
 bool        apUp();
 bool        provisioned();
 bool        own();

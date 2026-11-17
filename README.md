@@ -277,7 +277,10 @@ Serial console at 115200: `net`, `setup`, `own`, `stored`, `forget`, `home`, `un
 DMX output, the source, master and blackout in memory that survives a restart,
 and sends the same output again as soon as it boots. Running fades and chases
 stop. It also restarts itself when free memory stays under 24 KB for five
-seconds, because the network stops receiving at that point.
+seconds, because the network stops receiving at that point. While joined it
+pings the gateway every 10 seconds, and once the gateway has answered, three
+misses in a row restart it too: a short dip to almost no free memory on a busy
+network can leave the radio deaf while it still counts as joined.
 
 **Recovery.** A controller with no stored network raises the open network
 **Glow Controller**. **Connect to a Wi-Fi Network** on the welcome screen,

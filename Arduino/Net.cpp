@@ -9,9 +9,16 @@
 #include <esp_eap_client.h>
 #include <esp_mac.h>
 #include <esp_system.h>
+#include <ping/ping_sock.h>
+
+#include <atomic>
 
 namespace Net {
 namespace {
+
+const uint32_t PROBE_MS      = 10000;
+const uint32_t PROBE_WAIT_MS = 2000;
+const int      PROBE_MISSES  = 3;
 
 struct SetupNetwork {
   bool     up;
@@ -46,6 +53,10 @@ Join         g_join = {};
 bool         g_bootCleared = false;
 bool         g_scanning    = false;
 char         g_id[13]      = "000000000000";
+
+esp_ping_handle_t g_probe = nullptr;
+std::atomic<int>  g_misses{0};
+std::atomic<bool> g_answered{false};
 
 bool due(uint32_t since, uint32_t ms) { return millis() - since >= ms; }
 
@@ -138,8 +149,36 @@ void lowerAp() {
   Serial.printf("setup: \"%s\" is down\n", GLOW_AP_SSID);
 }
 
+void probe() {
+  if (g_probe) {
+    esp_ping_stop(g_probe);
+    esp_ping_delete_session(g_probe);
+    g_probe = nullptr;
+  }
+  g_misses   = 0;
+  g_answered = false;
+
+  IPAddress gateway = WiFi.gatewayIP();
+  if (!gateway) return;
+
+  esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
+  IP_ADDR4(&config.target_addr, gateway[0], gateway[1], gateway[2], gateway[3]);
+  config.count       = ESP_PING_COUNT_INFINITE;
+  config.interval_ms = PROBE_MS;
+  config.timeout_ms  = PROBE_WAIT_MS;
+
+  esp_ping_callbacks_t callbacks = {};
+  callbacks.on_ping_success = [](esp_ping_handle_t, void *) {
+    g_misses   = 0;
+    g_answered = true;
+  };
+  callbacks.on_ping_timeout = [](esp_ping_handle_t, void *) { g_misses++; };
+  if (esp_ping_new_session(&config, &callbacks, &g_probe) == ESP_OK) esp_ping_start(g_probe);
+}
+
 void joined() {
   MDNS.begin(GLOW_HOSTNAME);
+  probe();
   Serial.printf("wifi: %s on \"%s\" at %d dBm, %s.local\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str(), (int)WiFi.RSSI(), GLOW_HOSTNAME);
   if (g_ap.lost && !g_join.active) lowerAp();
 }
@@ -279,6 +318,7 @@ const char *joinState() {
 }
 
 bool        up()          { return g_sta.up; }
+bool        deaf()        { return g_sta.up && g_answered && g_misses >= PROBE_MISSES; }
 bool        apUp()        { return g_ap.up; }
 bool        provisioned() { return Creds::have(); }
 bool        own()         { return Creds::own(); }

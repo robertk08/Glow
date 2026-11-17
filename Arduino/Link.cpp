@@ -701,6 +701,7 @@ void tick() {
   step();
   if (ESP.getFreeHeap() >= HEAP_FLOOR) g_fed = millis();
   if (millis() - g_fed > STARVED_MS) restart("the memory ran out");
+  if (Net::deaf()) restart("the gateway stopped answering");
 
   for (uint8_t i = 0; i < WEBSOCKETS_SERVER_CLIENT_MAX; i++) {
     if (g_ws.clientIsConnected(i) && (millis() - g_heard[i] > WS_SILENCE_MS || millis() - g_drained[i] > WS_SILENCE_MS)) g_ws.disconnect(i);
