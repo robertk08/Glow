@@ -91,6 +91,16 @@ private struct IntensityRows: View {
 						Image(systemName: "sun.max")
 					}
 					.controlSize(.large)
+					
+					HStack(spacing: 10) {
+						Button(0.0.formatted(.percent.precision(.fractionLength(0))), systemImage: "sun.min") { programmer.brightness = 0 }
+						Button(1.0.formatted(.percent.precision(.fractionLength(0))), systemImage: "sun.max") { programmer.brightness = 1 }
+					}
+					.buttonStyle(.glass)
+					.buttonBorderShape(.capsule)
+					.controlSize(.small)
+					.frame(maxWidth: .infinity)
+					.padding(.top, 8)
 				}
 			}
 		}
