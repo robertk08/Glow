@@ -18,7 +18,7 @@ struct ProgrammerView: View {
 					ContentUnavailableView {
 						Label(programmer.targets.isEmpty ? "Nothing Selected" : "Nothing to Drive", systemImage: "lightbulb")
 					} description: {
-						Text(programmer.targets.isEmpty ? "Tap a light in the grid to take control of it." : "These lights have no channels Glow recognises.")
+						Text(programmer.targets.isEmpty ? "Tap a light in the grid to take control of it." : "These lights have no channels Glow recognizes.")
 					}
 					.listRowBackground(Color.clear)
 					.listRowSeparator(.hidden)
@@ -72,11 +72,13 @@ struct ProgrammerView: View {
 }
 
 private struct IntensityRows: View {
+	@ScaledMetric private var step = 64.0
+	
 	let programmer: Programmer
 	
 	var body: some View {
 		if programmer.dims {
-			Section("Level") {
+			Section("Intensity") {
 				VStack(alignment: .leading, spacing: 4) {
 					Text(programmer.brightness, format: .percent.precision(.fractionLength(0)))
 						.font(.title.weight(.semibold))
@@ -84,7 +86,7 @@ private struct IntensityRows: View {
 						.contentTransition(.numericText())
 					
 					Slider(value: programmer.brightnessBinding, in: 0...1) {
-						Text("Brightness")
+						Text("Intensity")
 					} minimumValueLabel: {
 						Image(systemName: "sun.min")
 					} maximumValueLabel: {
@@ -92,14 +94,20 @@ private struct IntensityRows: View {
 					}
 					.controlSize(.large)
 					
-					HStack(spacing: 10) {
-						Button(0.0.formatted(.percent.precision(.fractionLength(0))), systemImage: "sun.min") { programmer.brightness = 0 }
-						Button(1.0.formatted(.percent.precision(.fractionLength(0))), systemImage: "sun.max") { programmer.brightness = 1 }
+					LazyVGrid(columns: [GridItem(.adaptive(minimum: step), spacing: 8)], spacing: 8) {
+						ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { level in
+							Button {
+								programmer.brightness = level
+							} label: {
+								Text(level, format: .percent.precision(.fractionLength(0)))
+									.monospacedDigit()
+									.frame(maxWidth: .infinity)
+							}
+						}
 					}
 					.buttonStyle(.glass)
 					.buttonBorderShape(.capsule)
 					.controlSize(.small)
-					.frame(maxWidth: .infinity)
 					.padding(.top, 8)
 				}
 			}
@@ -213,7 +221,7 @@ private struct PositionRows: View {
 				let layout = typeSize >= .xxxLarge ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
 				
 				layout {
-					Button("Centre", systemImage: "scope") { programmer.centre() }
+					Button("Center", systemImage: "scope") { programmer.center() }
 					Button("Reset Position", systemImage: "arrow.uturn.backward") { programmer.release(.position) }
 				}
 				.buttonStyle(.glass)

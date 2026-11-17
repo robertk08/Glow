@@ -790,7 +790,7 @@ struct ScreenTests {
 		#expect(shows.isLoaded)
 		try await Task.sleep(for: .milliseconds(300))
 		let context = shows.container.mainContext
-		let long = "Followspot Downstage Centre Left Balcony Rail Position Seven"
+		let long = "Followspot Downstage Center Left Balcony Rail Position Seven"
 		let unbroken = String(repeating: "W", count: 64)
 		
 		for (index, look) in try context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)])).enumerated() {

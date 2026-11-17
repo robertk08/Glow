@@ -104,19 +104,19 @@ private struct SceneActions: View {
 		
 		Section {
 			if list.cues.count > 1, index != nil {
-				Button("Next Cue", systemImage: SceneAction.next.symbol) {
+				Button("Go", systemImage: SceneAction.next.symbol) {
 					console.go(list)
 				}
 				.disabled(console.upcoming(list) == nil)
 				
-				Button("Previous Cue", systemImage: SceneAction.back.symbol) {
+				Button("Back", systemImage: SceneAction.back.symbol) {
 					console.back(list)
 				}
 				.disabled(index.flatMap(list.previous(before:)) == nil)
 			}
 			
 			if !list.cues.isEmpty {
-				Button(index != nil ? "Turn Off" : list.cues.count > 1 ? "Start" : "Turn On", systemImage: SceneAction.toggle.symbol(isOn: index != nil)) {
+				Button(index != nil ? "Turn Off" : "Turn On", systemImage: SceneAction.toggle.symbol(isOn: index != nil)) {
 					console.toggle(list)
 				}
 			}

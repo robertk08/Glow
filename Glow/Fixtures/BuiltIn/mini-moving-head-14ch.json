@@ -195,7 +195,7 @@
     {
       "offset": 13,
       "attribute": "program",
-      "label": "Mode",
+      "label": "Operating mode",
       "functions": [
         {
           "from": 0,

@@ -41,7 +41,7 @@ struct ConsoleBar: View {
 					
 					if programmer.dims {
 						Slider(value: programmer.brightnessBinding, in: 0...1) {
-							Text("Brightness")
+							Text("Intensity")
 						}
 						.frame(minWidth: 48)
 						.tint(programmer.isOn ? programmer.glow : nil)

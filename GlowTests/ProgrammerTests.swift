@@ -26,7 +26,7 @@ struct ProgrammerTests {
 		]
 	}
 	
-	@Test func defaultsPutTheLightAtWhiteAndCentredWithoutTurningItOn() {
+	@Test func defaultsPutTheLightAtWhiteAndCenterdWithoutTurningItOn() {
 		let (console, programmer) = rig(rgbwWithDimmer)
 		
 		#expect(programmer.brightness == 0)
@@ -43,7 +43,7 @@ struct ProgrammerTests {
 		}
 	}
 	
-	@Test func raisingTheDimmerDoesNotStampColourOrPosition() {
+	@Test func raisingTheDimmerDoesNotStampColorOrPosition() {
 		let (console, programmer) = rig(rgbwWithDimmer)
 		programmer.brightness = 1
 		
@@ -55,7 +55,7 @@ struct ProgrammerTests {
 		#expect(programmer.light.red > 0.9 && programmer.light.green > 0.9 && programmer.light.blue > 0.9)
 	}
 	
-	@Test func settingAColourMarksOnlyColourActive() {
+	@Test func settingAColorMarksOnlyColorActive() {
 		let (_, programmer) = rig(rgbwWithDimmer)
 		programmer.apply(LightColor(red: 1, green: 0, blue: 0))
 		
@@ -108,7 +108,7 @@ struct ProgrammerTests {
 		#expect(abs(programmer.fraction(.pan) - 0.5) < 0.0001)
 	}
 	
-	@Test func aSubtractiveHeadTakesColourWithoutTouchingItsDimmer() {
+	@Test func aSubtractiveHeadTakesColorWithoutTouchingItsDimmer() {
 		let (console, programmer) = rig([
 			FixtureChannel(offset: 1, attribute: .dimmer, defaultValue: 255),
 			FixtureChannel(offset: 2, attribute: .cyan),
@@ -155,7 +155,7 @@ struct ProgrammerTests {
 		#expect(!programmer.macroOverridesMix)
 	}
 	
-	@Test func aLightThatDimsThroughItsColoursStillGetsAnIntensityPage() {
+	@Test func aLightThatDimsThroughItsColorsStillGetsAnIntensityPage() {
 		let (_, programmer) = rig([
 			FixtureChannel(offset: 1, attribute: .red),
 			FixtureChannel(offset: 2, attribute: .green),

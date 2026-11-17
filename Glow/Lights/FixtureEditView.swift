@@ -87,7 +87,7 @@ struct FixtureEditView: View {
 				}
 				
 				if type?.movesHead == true {
-					Section("Orientation") {
+					Section("Pan and Tilt") {
 						Toggle("Invert Pan", isOn: $fixture.invertsPan)
 						Toggle("Invert Tilt", isOn: $fixture.invertsTilt)
 					}

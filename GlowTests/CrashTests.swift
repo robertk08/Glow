@@ -179,7 +179,7 @@ struct CrashTests {
 					case 2: programmer.apply(LightColor(red: dice.finite(), green: dice.finite(), blue: dice.finite()))
 					case 3: programmer.apply(kelvin: dice.finite())
 					case 4: programmer.toggleOn()
-					case 5: programmer.centre()
+					case 5: programmer.center()
 					case 6: programmer.release(FeatureGroup.allCases[dice.roll(FeatureGroup.allCases.count)])
 					case 7: if let preset = programmer.presets.first { programmer.apply(preset) }
 					default:

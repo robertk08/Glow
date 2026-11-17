@@ -973,9 +973,9 @@ struct SceneTests {
 		let types = Dictionary(uniqueKeysWithValues: rig.fixtures.map { ($0.identifier, rig.library.type($0.typeID)!) })
 		let all = Set(rig.fixtures.map(\.identifier))
 		
-		let colourless = original.keeping(all, features: Set(FeatureGroup.allCases).subtracting([.color]), types: types)
-		#expect(colourless.lights[rig.fixtures[0].identifier] == [1: 200, 5: 30, 6: 31])
-		#expect(colourless.lights[rig.fixtures[1].identifier] == [1: 100])
+		let colorless = original.keeping(all, features: Set(FeatureGroup.allCases).subtracting([.color]), types: types)
+		#expect(colorless.lights[rig.fixtures[0].identifier] == [1: 200, 5: 30, 6: 31])
+		#expect(colorless.lights[rig.fixtures[1].identifier] == [1: 100])
 		
 		let dark = original.keeping(all, features: Set(FeatureGroup.allCases).subtracting([.dimmer]), types: types)
 		#expect(dark.lights[rig.fixtures[0].identifier] == [2: 10, 3: 20, 5: 30, 6: 31])

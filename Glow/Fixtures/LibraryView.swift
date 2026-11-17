@@ -40,7 +40,7 @@ struct LibraryView: View {
 				}
 			} header: {
 				if !made.isEmpty {
-					Text("Built In")
+					Text("Built-in")
 				}
 			}
 		}

@@ -15,7 +15,7 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 		switch self {
 		case .toggle: "On and Off"
 		case .flash: "Flash"
-		case .next: "Next"
+		case .next: "Go"
 		case .back: "Back"
 		case .open: "Open"
 		case .restart: "Restart"

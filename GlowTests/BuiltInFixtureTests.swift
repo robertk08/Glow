@@ -33,14 +33,14 @@ struct BuiltInFixtureTests {
 		}
 	}
 	
-	@Test func raisingTheDimmerLeavesColourUnsetWhereThereIsARealDimmer() {
+	@Test func raisingTheDimmerLeavesColorUnsetWhereThereIsARealDimmer() {
 		for mode in library.types where mode.channel(.dimmer) != nil && mode.mixesColor {
 			let console = Console()
 			let programmer = Programmer(type: mode, start: DMXAddress(1)!, console: console)
 			programmer.applyDefaults()
 			programmer.brightness = 1
 			
-			#expect(!programmer.isActive(.color), "\(mode.id) stamped colour when the dimmer came up")
+			#expect(!programmer.isActive(.color), "\(mode.id) stamped color when the dimmer came up")
 		}
 	}
 	
@@ -109,7 +109,7 @@ struct BuiltInFixtureTests {
 		#expect(mode.channel(.red)?.isWide == true)
 	}
 	
-	@Test func theFloodKnowsWhichChannelsItsColourDependsOn() {
+	@Test func theFloodKnowsWhichChannelsItsColorDependsOn() {
 		guard let mode = library.type("stairville-hl-x180-8ch") else {
 			Issue.record("missing the 8 channel mode")
 			return

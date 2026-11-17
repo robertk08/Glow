@@ -92,7 +92,6 @@
     {
       "offset": 5,
       "attribute": "colorMacro",
-      "label": "Fixed color pattern",
       "functions": [
         {
           "from": 0,

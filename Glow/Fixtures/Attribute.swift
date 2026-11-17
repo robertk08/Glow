@@ -36,7 +36,7 @@ nonisolated enum Attribute: String, Codable, Sendable, CaseIterable, Identifiabl
 		switch self {
 		case .uv: "UV"
 		case .cri: "Color rendering"
-		case .colorMacro: "Color preset"
+		case .colorMacro: "Built-in colors"
 		case .colorFade: "Color crossfade"
 		case .panTiltSpeed: "Movement speed"
 		case .positionMacro: "Movement macro"

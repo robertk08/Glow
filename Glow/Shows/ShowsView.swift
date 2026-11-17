@@ -92,7 +92,7 @@ struct ShowsView: View {
 				shows.delete(show)
 			}
 		} message: { show in
-			Text("\(show.name) goes with its patch, groups, built fixtures and scenes. There is no undo.")
+			Text("\(show.name) goes with its patch, groups, fixtures made here and scenes. There is no undo.")
 		}
 		.alert("New Show", isPresented: $isNaming) {
 			TextField("Name", text: $newName)

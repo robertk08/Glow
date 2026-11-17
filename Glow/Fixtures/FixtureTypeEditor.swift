@@ -83,7 +83,7 @@ struct FixtureTypeEditor: View {
 				}
 				
 				if draft.movesHead {
-					Section("Movement") {
+					Section("Pan and Tilt") {
 						TextField("Pan range in degrees", value: $draft.panDegrees, format: DecimalStyle())
 							.keyboardType(.decimalPad)
 						

@@ -62,7 +62,7 @@ private struct BuilderPanel: View {
 							.background(tint, in: .circle)
 					}
 					.buttonStyle(.plain)
-					.accessibilityLabel("Icon and Colour")
+					.accessibilityLabel("Icon and Color")
 					.accessibilityAddTraits(isStyling ? .isSelected : [])
 					
 					VStack(alignment: .leading, spacing: 1) {

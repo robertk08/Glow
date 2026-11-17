@@ -37,7 +37,7 @@ struct WaitingView: View {
 						UseWiFiButton(name: "Connect Directly", asks: false)
 							.buttonStyle(.glass)
 						
-						Button("Try Without a Controller", systemImage: "sparkles") {
+						Button("Explore a Demo", systemImage: "sparkles") {
 							shows.startDemo()
 						}
 						.buttonStyle(.glass)

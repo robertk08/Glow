@@ -32,7 +32,7 @@ struct FixtureTypeView: View {
 			
 			Section {
 				if !type.manufacturer.isEmpty {
-					LabeledContent("Make", value: type.manufacturer)
+					LabeledContent("Manufacturer", value: type.manufacturer)
 				}
 				
 				LabeledContent("Model", value: type.model)

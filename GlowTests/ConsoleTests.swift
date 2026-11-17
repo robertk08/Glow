@@ -22,7 +22,7 @@ struct ConsoleTests {
 		#expect(universe[DMXAddress(512)!] == 2)
 	}
 	
-	@MainActor @Test func masterScalesALinearDimmerAndLeavesColourAlone() {
+	@MainActor @Test func masterScalesALinearDimmerAndLeavesColorAlone() {
 		let console = patched(FixtureType(id: "par", model: "Par", channels: [FixtureChannel(offset: 1, attribute: .dimmer), FixtureChannel(offset: 2, attribute: .red)]))
 		console.set([200, 200], at: DMXAddress(1)!)
 		

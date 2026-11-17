@@ -93,7 +93,7 @@ struct SceneSettings: View {
 			Section {
 				AppearancePicker(symbol: Binding { look.symbol } set: { look.symbolOverride = $0 }, tint: $look.tint)
 			} header: {
-				Text("Icon and Colour")
+				Text("Icon and Color")
 			}
 			
 			Section {

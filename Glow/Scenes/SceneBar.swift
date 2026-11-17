@@ -58,7 +58,7 @@ struct SceneBar: View {
 							.foregroundStyle(canGoBack ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
 							.disabled(!canGoBack)
 							
-							Button("Next Cue", systemImage: SceneAction.next.symbol) {
+							Button("Go", systemImage: SceneAction.next.symbol) {
 								console.go(list)
 							}
 							.foregroundStyle(isAtEnd ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))

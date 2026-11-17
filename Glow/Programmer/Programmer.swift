@@ -457,7 +457,7 @@ struct Programmer {
 	}
 	
 	func apply(_ light: LightColor) {
-		apply(ColorPreset(name: "", recipe: .colour(light)))
+		apply(ColorPreset(name: "", recipe: .color(light)))
 	}
 	
 	func apply(kelvin: Double) {
@@ -643,7 +643,7 @@ struct Programmer {
 		}
 	}
 	
-	func centre() {
+	func center() {
 		setFraction(0.5, for: .pan)
 		setFraction(0.5, for: .tilt)
 	}
@@ -672,7 +672,7 @@ struct Programmer {
 	
 	func channelLabel(of channel: FixtureChannel) -> String {
 		guard targets.count == 1, let first = targets.first, let coarse = address(channel.offset, in: first) else {
-			return "CH \(channel.offset)"
+			return "Channel \(channel.offset)"
 		}
 		guard let fine = channel.fineOffset, let second = address(fine, in: first) else {
 			return "DMX \(coarse.value)"

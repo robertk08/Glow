@@ -303,7 +303,6 @@
     {
       "offset": 14,
       "attribute": "colorMacro",
-      "label": "Color preset",
       "functions": [
         {
           "from": 0,
@@ -814,7 +813,7 @@
     {
       "offset": 16,
       "attribute": "control",
-      "label": "Device settings",
+      "label": "Special functions",
       "functions": [
         {
           "from": 0,

@@ -11,8 +11,8 @@ actor NodeStore {
 		
 		var errorDescription: String? {
 			switch self {
-			case .unreachable: "Couldn't reach the node."
-			case .refused: "The node turned those details down."
+			case .unreachable: "Couldn't reach the controller."
+			case .refused: "The controller turned those details down."
 			}
 		}
 	}

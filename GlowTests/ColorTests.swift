@@ -50,20 +50,20 @@ struct ColorTests {
 		#expect(mix[.white] == 1)
 	}
 	
-	@Test func ultravioletIsNeverMixedIntoAColour() {
+	@Test func ultravioletIsNeverMixedIntoAColor() {
 		let mix = EmitterMix.mixing(LightColor(red: 0.3, green: 0, blue: 0.9), emitters: [.red, .green, .blue, .uv], mixing: .additive)
 		
 		#expect(mix[.uv] == 0)
 	}
 	
-	@Test func aWhitePointIsRecognisedFromTheColourItMakes() {
+	@Test func aWhitePointIsRecognizedFromTheColorItMakes() {
 		let found = ColorTemperature.nearest(to: ColorTemperature.light(kelvin: 3000))
 		
 		#expect(found != nil)
 		#expect(abs((found ?? 0) - 3000) <= 50)
 	}
 	
-	@Test func aSaturatedColourHasNoWhitePoint() {
+	@Test func aSaturatedColorHasNoWhitePoint() {
 		#expect(ColorTemperature.nearest(to: LightColor(red: 0, green: 1, blue: 0)) == nil)
 	}
 	

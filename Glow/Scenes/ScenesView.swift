@@ -45,7 +45,7 @@ struct ScenesView: View {
 					Label("No Scenes Yet", systemImage: "theatermasks")
 				} description: {
 					if fixtures.isEmpty {
-						Text("Patch a light first.")
+						Text("Add a light first.")
 					} else {
 						Text("Store what the lights are doing and bring it back with one tap.")
 					}
