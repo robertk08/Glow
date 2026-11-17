@@ -150,6 +150,10 @@ struct RootView: View {
 				console.selection.isProgrammerOpen = false
 			}
 		}
+		.onChange(of: console.selection.section) {
+			console.selection.isSceneOpen = false
+			console.selection.isProgrammerOpen = false
+		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)
 		}

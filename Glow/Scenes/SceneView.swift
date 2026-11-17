@@ -46,7 +46,6 @@ struct SceneView: View {
 					} actions: {
 						Button("Add Cues", systemImage: "plus") {
 							console.selection.build(look.identifier)
-							console.selection.isSceneOpen = false
 						}
 						.buttonStyle(.glassProminent)
 						.controlSize(.large)
@@ -106,7 +105,6 @@ struct SceneView: View {
 							
 							Button {
 								console.selection.build(look.identifier)
-								console.selection.isSceneOpen = false
 							} label: {
 								Label("Add Cues", systemImage: "plus")
 									.foregroundStyle(tint)

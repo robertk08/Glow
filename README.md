@@ -52,7 +52,8 @@ points, the device width and 700 points, and fails when anything reaches past
 the window. Set `TEST_RUNNER_GLOW_SNAPSHOTS` to a folder (`temporary` on the
 Mac) to keep a picture of each screen. Another case patches the whole universe,
 adds 30 scenes of 40 cues, and fails when a main screen takes over a second to
-open or a frame over 250 ms with every scene running. It holds
+open or a frame over 250 ms with every scene running. One more switches tabs
+in the same frame as a sheet opens or closes. It holds
 the main thread long enough to upset the
 fade tests, so it runs only when asked, once per device:
 

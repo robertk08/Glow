@@ -317,6 +317,67 @@ struct ScreenTests {
 		retired = []
 	}
 	
+	@Test(arguments: [0, 10, 100])
+	func switchingTabsInTheSameFrameAsASheetChangeNeverZoomsFromAMissingBar(gap: Int) async throws {
+		let console = Console()
+		let library = FixtureLibrary()
+		let shows = ShowLibrary()
+		shows.reach(console, library: library)
+		shows.startDemo()
+		
+		for _ in 0..<300 where !shows.isLoaded {
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		#expect(shows.isLoaded)
+		try await Task.sleep(for: .milliseconds(300))
+		let fixtures = try shows.container.mainContext.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let looks = try shows.container.mainContext.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let look = try #require(looks.first { console.lists[$0.identifier].map { $0.cues.count > 1 } == true })
+		let list = try #require(console.lists[look.identifier])
+		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+		let window = UIWindow(windowScene: scene)
+		window.frame = scene.effectiveGeometry.coordinateSpace.bounds
+		window.rootViewController = UIHostingController(rootView: RootView().environment(\.horizontalSizeClass, .compact).environment(console).environment(library).environment(shows).modelContainer(shows.container))
+		window.makeKeyAndVisible()
+		console.selection.section = .scenes
+		try await Task.sleep(for: .milliseconds(500))
+		console.go(list)
+		
+		console.selection.toggle(fixtures[0])
+		console.selection.open(scene: look.identifier, isSheet: true)
+		try await Task.sleep(for: .milliseconds(800))
+		console.selection.section = .lights
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.isProgrammerOpen = true
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.isSceneOpen = false
+		try await Task.sleep(for: .milliseconds(1500))
+		console.selection.isProgrammerOpen = false
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.section = .scenes
+		console.selection.open(scene: look.identifier, isSheet: true)
+		try await Task.sleep(for: .milliseconds(800))
+		console.selection.section = .settings
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.isSceneOpen = false
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.section = .scenes
+		console.selection.open(scene: look.identifier, isSheet: true)
+		try await Task.sleep(for: .milliseconds(gap))
+		console.selection.section = .lights
+		console.selection.isProgrammerOpen = true
+		try await Task.sleep(for: .milliseconds(1500))
+		
+		#expect(!console.selection.isSceneOpen)
+		console.stopAll()
+		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
+		window.rootViewController?.dismiss(animated: false)
+		window.rootViewController = nil
+		window.isHidden = true
+	}
+	
 	@Test(arguments: [UInt64(1), 2])
 	func randomActionsOnOpenScreensWhileOtherDevicesChangeAndDeleteWhatTheyShow(seed: UInt64) async throws {
 		var state = seed &* 0x9E3779B97F4A7C15
