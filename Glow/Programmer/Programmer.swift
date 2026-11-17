@@ -570,16 +570,38 @@ struct Programmer {
 	var groups: [FeatureGroup] {
 		FeatureGroup.allCases.filter { group in
 			switch group {
-			case .dimmer: dims || !channels(in: group).isEmpty
-			case .color: mixesColor || !channels(in: group).isEmpty
-			case .position: movesHead || !channels(in: group).isEmpty
-			case .gobo, .beam, .control: !channels(in: group).isEmpty
+			case .dimmer: dims
+			case .color: mixesColor || channels.contains { page(of: $0) == group }
+			case .position: !axes.isEmpty || channels.contains { page(of: $0) == group }
+			default: channels.contains { page(of: $0) == group }
 			}
 		}
 	}
 	
-	func channels(in group: FeatureGroup) -> [FixtureChannel] {
-		channels.filter { $0.attribute.group == group }
+	func page(of channel: FixtureChannel) -> FeatureGroup {
+		guard channel.id != shutterChannel?.id else { return .beam }
+		
+		switch channel.attribute {
+		case .dimmer, .colorWheel, .colorMacro, .colorTemperature, .pan, .tilt, .panTiltSpeed, .gobo, .gobo2, .goboRotation, .gobo2Rotation, .shutter, .zoom, .focus: return channel.attribute.group
+		default:
+			guard channel.attribute.isEmitter else { return .control }
+			return channel.attribute.group
+		}
+	}
+	
+	func extras(on group: FeatureGroup) -> [FixtureChannel] {
+		let drawn: [UUID?] = [macroChannel?.id, temperatureChannel?.id, shutterChannel?.id] + goboWheels.flatMap { [$0.id, spinner(of: $0)?.id] } + (channel(.zoom).map { [$0.id, channel(.focus)?.id] } ?? [])
+		return channels.filter { page(of: $0) == group && !$0.attribute.isEmitter && ![Attribute.dimmer, .pan, .tilt].contains($0.attribute) && !drawn.contains($0.id) }
+	}
+	
+	var axes: [Attribute] {
+		[.pan, .tilt].filter { attribute in targets.contains { $0.type.channel(attribute) != nil } }
+	}
+	
+	func reading(_ attribute: Attribute) -> String {
+		let range = attribute == .pan ? type?.panDegrees : type?.tiltDegrees
+		guard let range else { return fraction(attribute).formatted(.percent.precision(.fractionLength(0))) }
+		return PhysicalUnit.degrees.label(fraction(attribute) * range - range / 2)
 	}
 	
 	func channel(_ attribute: Attribute) -> FixtureChannel? {

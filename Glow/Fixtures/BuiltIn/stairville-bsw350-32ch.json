@@ -891,7 +891,6 @@
     {
       "offset": 30,
       "attribute": "panTiltSpeed",
-      "label": "Pan and tilt speed",
       "functions": [
         {
           "from": 0,

@@ -99,7 +99,7 @@ private struct AxisReading: View {
 	let degrees: Double?
 	
 	var body: some View {
-		Text("\(name) \(degrees.map { PhysicalUnit.degrees.label(-$0 / 2) } ?? "100%")")
+		Text("\(name) \(degrees.map { PhysicalUnit.degrees.label(-$0 / 2) } ?? 1.0.formatted(.percent.precision(.fractionLength(0))))")
 			.hidden()
 			.overlay(alignment: .leading) {
 				Text("\(name) \(degrees.map { PhysicalUnit.degrees.label(fraction * $0 - $0 / 2) } ?? fraction.formatted(.percent.precision(.fractionLength(0))))")

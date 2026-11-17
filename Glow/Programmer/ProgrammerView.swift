@@ -30,7 +30,7 @@ struct ProgrammerView: View {
 				case .position: PositionRows(programmer: programmer)
 				case .gobo: GoboRows(programmer: programmer)
 				case .beam: BeamRows(programmer: programmer)
-				case .control: ChannelRows(programmer: programmer, channels: programmer.channels(in: .control))
+				case .control: ChannelRows(programmer: programmer, channels: programmer.extras(on: .control))
 				}
 				
 				Section {
@@ -94,8 +94,6 @@ private struct IntensityRows: View {
 				}
 			}
 		}
-		
-		ChannelRows(programmer: programmer, channels: programmer.channels(in: .dimmer).filter { $0.attribute != .dimmer })
 	}
 }
 
@@ -158,8 +156,7 @@ private struct ColorRows: View {
 			}
 		}
 		
-		let shown = [programmer.macroChannel?.id, programmer.temperatureChannel?.id]
-		ChannelRows(programmer: programmer, channels: programmer.channels(in: .color).filter { !$0.attribute.isEmitter && !shown.contains($0.id) })
+		ChannelRows(programmer: programmer, channels: programmer.extras(on: .color))
 		
 		if !programmer.emitterChannels.isEmpty {
 			Section {
@@ -191,6 +188,8 @@ private struct PositionRows: View {
 	
 	let programmer: Programmer
 	
+	@State private var showsAxes = false
+	
 	var body: some View {
 		if programmer.movesHead {
 			Section("Aim") {
@@ -214,8 +213,29 @@ private struct PositionRows: View {
 			}
 		}
 		
-		let aimed = programmer.movesHead
-		ChannelRows(programmer: programmer, channels: programmer.channels(in: .position).filter { !aimed || ($0.attribute != .pan && $0.attribute != .tilt) })
+		Section {
+			DisclosureGroup("Pan and Tilt", isExpanded: $showsAxes) {
+				ForEach(programmer.axes) { attribute in
+					VStack(alignment: .leading, spacing: 6) {
+						LabeledContent(attribute.name) {
+							Text(programmer.reading(attribute))
+								.monospacedDigit()
+								.foregroundStyle(.secondary)
+								.contentTransition(.numericText())
+						}
+						
+						Slider(value: programmer.fractionBinding(attribute), in: 0...1, neutralValue: 0.5) {
+							Text(attribute.name)
+						}
+						.tint(attribute.color)
+					}
+				}
+				
+				ForEach(programmer.extras(on: .position)) { channel in
+					ChannelRow(programmer: programmer, channel: channel)
+				}
+			}
+		}
 	}
 }
 
@@ -253,9 +273,7 @@ private struct BeamRows: View {
 			}
 		}
 		
-		let shaped = programmer.channel(.zoom) != nil
-		let shown = [shaped ? programmer.channel(.zoom)?.id : nil, shaped ? programmer.channel(.focus)?.id : nil, shutter?.id]
-		ChannelRows(programmer: programmer, channels: programmer.channels(in: .beam).filter { !shown.contains($0.id) })
+		ChannelRows(programmer: programmer, channels: programmer.extras(on: .beam))
 	}
 }
 
@@ -263,10 +281,7 @@ private struct GoboRows: View {
 	let programmer: Programmer
 	
 	var body: some View {
-		let wheels = programmer.goboWheels
-		let shown = wheels.map(\.id) + wheels.compactMap { programmer.spinner(of: $0)?.id }
-		
-		ForEach(wheels) { wheel in
+		ForEach(programmer.goboWheels) { wheel in
 			if programmer.draws(wheel) {
 				Section(wheel.name) {
 					GoboPad(shape: programmer.shape(of: wheel), label: programmer.standing(of: wheel), tint: programmer.glow, angle: programmer.standingAngle(of: programmer.spinner(of: wheel)), turns: programmer.turns(of: programmer.spinner(of: wheel)))
@@ -285,7 +300,7 @@ private struct GoboRows: View {
 			}
 		}
 		
-		ChannelRows(programmer: programmer, channels: programmer.channels(in: .gobo).filter { !shown.contains($0.id) })
+		ChannelRows(programmer: programmer, channels: programmer.extras(on: .gobo))
 	}
 }
 
