@@ -44,11 +44,15 @@ serial port, so close any serial monitor first.
 `ScreenTests` opens every screen and sheet on the demo show in three text
 sizes, light and dark, acts at random on open screens while other devices
 change and delete what they show, and presses, slides and types at random
-through the whole app. The random presses stay off on the Mac, where a pop-up
-menu waits for a real click. It also opens every screen of a show with maxed
-times and very long names at 320 points, the device width and 700 points, and
-fails when anything reaches past the window. Set `TEST_RUNNER_GLOW_SNAPSHOTS`
-to a folder (`temporary` on the Mac) to keep a picture of each screen. It holds
+through the whole app. On the Mac the random presses skip buttons that open a
+pop-up menu, which waits for a real click there. `TEST_RUNNER_GLOW_SEEDS=<n>`
+shifts the three random seeds by n, so repeated runs cover new paths. It also
+opens every screen of a show with maxed times and very long names at 320
+points, the device width and 700 points, and fails when anything reaches past
+the window. Set `TEST_RUNNER_GLOW_SNAPSHOTS` to a folder (`temporary` on the
+Mac) to keep a picture of each screen. Another case patches the whole universe,
+adds 30 scenes of 40 cues, and fails when a main screen takes over a second to
+open or a frame over 250 ms with every scene running. It holds
 the main thread long enough to upset the
 fade tests, so it runs only when asked, once per device:
 

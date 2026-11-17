@@ -174,6 +174,149 @@ struct ScreenTests {
 		#expect(shown == 3 * 31)
 	}
 	
+	@Test func aShowFilledToTheLimitOpensEveryScreenQuicklyAndStaysResponsiveWithEverySceneRunning() async throws {
+		let console = Console()
+		let library = FixtureLibrary()
+		let shows = ShowLibrary()
+		shows.reach(console, library: library)
+		shows.startDemo()
+		
+		for _ in 0..<300 where !shows.isLoaded {
+			try await Task.sleep(for: .milliseconds(10))
+		}
+		
+		#expect(shows.isLoaded)
+		try await Task.sleep(for: .milliseconds(300))
+		let context = shows.container.mainContext
+		let demo = try context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let small = try #require(demo.min { (library.type($0.typeID)?.channelCount ?? 0) < (library.type($1.typeID)?.channelCount ?? 0) })
+		let width = small.range(library.type(small.typeID)).count
+		var next = (demo.map { $0.range(library.type($0.typeID)).upperBound }.max() ?? 0) + 1
+		var added: [Fixture] = []
+		
+		while next + width - 1 <= Universe.channelCount {
+			let fixture = Fixture(typeID: small.typeID, name: "Extra \(added.count + 1)", address: try #require(DMXAddress(next)), sortIndex: Double(demo.count + added.count))
+			context.insert(fixture)
+			added.append(fixture)
+			next += width
+		}
+		
+		let group = FixtureGroup(name: "Everything", sortIndex: 99)
+		context.insert(group)
+		group.fixtures = demo + added
+		let lights = demo + added
+		var state: UInt64 = 7
+		
+		for scene in 0..<30 {
+			let look = Look(name: "Full \(scene + 1)", sortIndex: Double(100 + scene))
+			context.insert(look)
+			
+			for number in 0..<40 {
+				var levels = Levels()
+				
+				for light in lights {
+					for slot in 1...light.range(library.type(light.typeID)).count {
+						state = state &* 6364136223846793005 &+ 1442695040888963407
+						levels.set(UInt8(truncatingIfNeeded: state >> 40), slot: slot, of: light.identifier)
+					}
+				}
+				
+				let cue = Cue(lookID: look.identifier, sortIndex: Double(number), fade: Double(number % 4), levels: levels)
+				cue.follow = number % 3 == 0 ? 0.5 : nil
+				context.insert(cue)
+			}
+		}
+		
+		try context.save()
+		try await Task.sleep(for: .milliseconds(500))
+		
+		let fixtures = try context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let looks = try context.fetch(FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let cues = try context.fetch(FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)]))
+		let look = try #require(looks.last)
+		let held = look.cues(among: cues)
+		#expect(fixtures.reduce(0) { $0 + $1.range(library.type($1.typeID)).count } > Universe.channelCount - width)
+		#expect(held.count == 40)
+		
+		let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+		let window = UIWindow(windowScene: scene)
+		var retired: [UIViewController] = []
+		window.frame = scene.effectiveGeometry.coordinateSpace.bounds
+		UIView.setAnimationsEnabled(false)
+		defer { UIView.setAnimationsEnabled(true) }
+		var slowest: [(String, Duration)] = []
+		
+		func show(_ name: String, _ content: some View) async throws {
+			var took = Duration.seconds(60)
+			
+			for _ in 0..<3 {
+				window.rootViewController?.dismiss(animated: false)
+				if let old = window.rootViewController { retired.append(old) }
+				let clock = ContinuousClock()
+				took = min(took, clock.measure {
+					window.rootViewController = UIHostingController(rootView: content.environment(console).environment(library).environment(shows).environment(Arrangement()).modelContainer(shows.container))
+					window.makeKeyAndVisible()
+					window.layoutIfNeeded()
+				})
+				try await Task.sleep(for: .milliseconds(50))
+			}
+			
+			print("FULL \(name) \(took)")
+			slowest.append((name, took))
+		}
+		
+		for section in [Selection.Section.lights, .scenes, .settings] {
+			console.selection.section = section
+			try await show("root \(section)", RootView())
+		}
+		
+		group.fixtures.forEach { console.selection.toggle($0) }
+		let programmer = console.programmer(among: fixtures, library: library)
+		try await show("programmer", Presenter(content: ProgrammerView(programmer: programmer, isSheet: true)))
+		try await show("channels", Presenter(content: NavigationStack { ChannelsView(programmer: programmer) }))
+		try await show("scene", Presenter(content: SceneView(look: look, isSheet: true)))
+		try await show("arrange", Presenter(content: ArrangeView(columns: 4)))
+		try await show("store", Presenter(content: StoreView(recording: Recording(.cue(look, after: held.last), console: console, fixtures: fixtures, library: library, looks: looks, cues: cues))))
+		try await show("cue", Presenter(content: CueEditView(cue: held[20])))
+		try await show("group", Presenter(content: GroupView(group: group)))
+		try await show("monitor", Presenter(content: NavigationStack { MonitorView() }))
+		console.selection.section = .scenes
+		try await show("root scenes again", RootView())
+		
+		let clock = ContinuousClock()
+		let started = clock.measure {
+			for list in looks.compactMap({ console.lists[$0.identifier] }) {
+				console.go(list)
+			}
+		}
+		
+		try await Task.sleep(for: .seconds(1))
+		var lag = Duration.zero
+		let end = clock.now + .seconds(3)
+		
+		while clock.now < end {
+			try await Task.sleep(for: .milliseconds(10))
+			lag = max(lag, clock.measure { window.layoutIfNeeded() })
+		}
+		
+		print("FULL start every scene \(started) worst lag \(lag)")
+		#expect(console.playback.playing.count >= looks.count - 1)
+		#expect(started < .milliseconds(500))
+		#expect(lag < .milliseconds(250))
+		
+		for (name, took) in slowest {
+			#expect(took < .seconds(1), "\(name) took \(took)")
+		}
+		
+		console.stopAll()
+		shows.stopDemo()
+		try await Task.sleep(for: .milliseconds(100))
+		window.rootViewController?.dismiss(animated: false)
+		window.rootViewController = nil
+		window.isHidden = true
+		retired = []
+	}
+	
 	@Test(arguments: [UInt64(1), 2])
 	func randomActionsOnOpenScreensWhileOtherDevicesChangeAndDeleteWhatTheyShow(seed: UInt64) async throws {
 		var state = seed &* 0x9E3779B97F4A7C15
@@ -398,7 +541,7 @@ struct ScreenTests {
 		retired = []
 	}
 	
-	@Test(.enabled(if: !ProcessInfo.processInfo.isiOSAppOnMac, "A pop-up menu on the Mac waits for a real click"), arguments: [UInt64(1), 2, 3])
+	@Test(arguments: [UInt64(1), 2, 3].map { $0 + (ProcessInfo.processInfo.environment["GLOW_SEEDS"].flatMap(UInt64.init) ?? 0) })
 	func randomTapsSlidesAndTypingAcrossTheWholeAppOnTheDemoShow(seed: UInt64) async throws {
 		var state = seed &* 0x9E3779B97F4A7C15
 		
@@ -520,7 +663,8 @@ struct ScreenTests {
 				let traits = element.accessibilityTraits
 				let isControl = !traits.isDisjoint(with: [.button, .adjustable, .link, .searchField, .keyboardKey]) || element is UITextField || element is UITextView
 				let isTab = tabs.contains(label) && roll(8) != 0
-				return isControl && !isTab && !label.isEmpty && !avoided.contains { label.localizedCaseInsensitiveContains($0) } && !traits.contains(.notEnabled)
+				let isMenu = ProcessInfo.processInfo.isiOSAppOnMac && (element as? UIControl)?.showsMenuAsPrimaryAction == true
+				return isControl && !isTab && !isMenu && !label.isEmpty && !avoided.contains { label.localizedCaseInsensitiveContains($0) } && !traits.contains(.notEnabled)
 			}
 			
 			if let responder = scene.windows.lazy.compactMap({ focused(in: $0) }).first as? UIKeyInput, roll(3) == 0 {
