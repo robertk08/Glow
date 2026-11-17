@@ -647,6 +647,20 @@ struct SceneTests {
 		}
 	}
 	
+	@Test func newScenesInAnEmptyShowFillTheBoardFromTheFirstSpot() throws {
+		let container = try ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+		var looks: [Look] = []
+		
+		for _ in 0..<5 {
+			looks.append(Look.fresh(among: looks, context: container.mainContext))
+		}
+		
+		for columns in [2, 4] {
+			let board = Board(columns: columns, looks: looks)
+			#expect(looks.map { board.origins[$0.identifier] } == [0, 1, 2, 3, 4], "\(columns) columns")
+		}
+	}
+	
 	@Test nonisolated func everyBoardReadsTheSameOnTwoAndFourColumns() {
 		var seed: UInt64 = 0x9E3779B97F4A7C15
 		

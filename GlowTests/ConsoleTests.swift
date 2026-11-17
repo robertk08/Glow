@@ -58,7 +58,7 @@ struct ConsoleTests {
 	
 	@MainActor @Test func aSortIndexFollowsTheHighestSoFar() {
 		#expect(Console.nextSortIndex([1, 4, 2], sortIndex: \.self) == 5)
-		#expect(Console.nextSortIndex([Double](), sortIndex: \.self) == 1)
+		#expect(Console.nextSortIndex([Double](), sortIndex: \.self) == 0)
 	}
 	
 	@Test func aShowPreservesFixtureOrientation() throws {

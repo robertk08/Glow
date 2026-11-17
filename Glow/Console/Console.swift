@@ -429,7 +429,7 @@ final class Console {
 	}
 	
 	static func nextSortIndex<Item>(_ items: [Item], sortIndex: KeyPath<Item, Double>) -> Double {
-		(items.map { $0[keyPath: sortIndex] }.max() ?? 0) + 1
+		(items.map { $0[keyPath: sortIndex] }.max() ?? -1) + 1
 	}
 	
 	static func sortIndex(between low: Double, and high: Double) -> Double? {
