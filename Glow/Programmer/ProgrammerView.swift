@@ -76,6 +76,8 @@ private struct IntensityRows: View {
 	
 	let programmer: Programmer
 	
+	private let levels = [0.0, 0.25, 0.5, 0.75, 1.0]
+	
 	var body: some View {
 		if programmer.dims {
 			Section("Intensity") {
@@ -94,14 +96,16 @@ private struct IntensityRows: View {
 					}
 					.controlSize(.large)
 					
-					LazyVGrid(columns: [GridItem(.adaptive(minimum: step), spacing: 8)], spacing: 8) {
-						ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { level in
-							Button {
-								programmer.brightness = level
-							} label: {
-								Text(level, format: .percent.precision(.fractionLength(0)))
-									.monospacedDigit()
-									.frame(maxWidth: .infinity)
+					ViewThatFits(in: .horizontal) {
+						HStack(spacing: 8) {
+							ForEach(levels, id: \.self) { level in
+								LevelButton(programmer: programmer, level: level)
+							}
+						}
+						
+						LazyVGrid(columns: [GridItem(.adaptive(minimum: step), spacing: 8)], spacing: 8) {
+							ForEach(levels, id: \.self) { level in
+								LevelButton(programmer: programmer, level: level)
 							}
 						}
 					}
@@ -114,6 +118,22 @@ private struct IntensityRows: View {
 		}
 		
 		ChannelRows(programmer: programmer, channels: programmer.extras(on: .dimmer))
+	}
+}
+
+private struct LevelButton: View {
+	let programmer: Programmer
+	let level: Double
+	
+	var body: some View {
+		Button {
+			programmer.brightness = level
+		} label: {
+			Text(level * 100, format: .number)
+				.monospacedDigit()
+				.frame(maxWidth: .infinity)
+		}
+		.accessibilityLabel(Text(level, format: .percent.precision(.fractionLength(0))))
 	}
 }
 
