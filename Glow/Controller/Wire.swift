@@ -63,6 +63,7 @@ nonisolated enum Wire {
 		case span(Int)
 		case addShow(Show)
 		case renameShow(Show)
+		case sendAllChannels(Show)
 		case removeShow(String)
 		case openShow(String)
 		
@@ -77,6 +78,7 @@ nonisolated enum Wire {
 			case let .span(slots): ["t": "span", "slots": slots]
 			case let .addShow(show): ["t": "show.add", "id": show.id, "name": show.name]
 			case let .renameShow(show): ["t": "show.rename", "id": show.id, "name": show.name]
+			case let .sendAllChannels(show): ["t": "show.channels", "id": show.id, "sendsAllChannels": show.sendsAllChannels]
 			case let .removeShow(identifier): ["t": "show.remove", "id": identifier]
 			case let .openShow(identifier): ["t": "show.open", "id": identifier]
 			}

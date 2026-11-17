@@ -365,6 +365,32 @@ struct ShowSyncTests {
 		#expect(fields == ["t": "show.add", "id": "gala", "name": "Gala"])
 	}
 	
+	@Test func compatibilityModeTravelsWithItsShow() throws {
+		let reply = try #require(Wire.event(.string(#"{"t":"shows","active":"b","shows":[{"id":"a","name":"A"},{"id":"b","name":"B","sendsAllChannels":true}]}"#)))
+		
+		guard case var .notice(.shows(list)) = reply else {
+			Issue.record("expected the show list")
+			return
+		}
+		
+		#expect(list.shows.map(\.sendsAllChannels) == [false, true])
+		
+		var show = list.shows[1]
+		show.sendsAllChannels = false
+		list.apply(.sendAllChannels(show))
+		#expect(list.shows.map(\.sendsAllChannels) == [false, false])
+		
+		guard case let .string(text) = Wire.Command.sendAllChannels(list.shows[0]).message else {
+			Issue.record("expected text")
+			return
+		}
+		
+		let fields = try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+		#expect(fields["t"] as? String == "show.channels")
+		#expect(fields["id"] as? String == "a")
+		#expect(fields["sendsAllChannels"] as? Bool == false)
+	}
+	
 	@Test func aShowNameFitsTheControllersLimitWithoutSplittingACharacter() {
 		let name = Show(name: String(repeating: "é", count: 40)).name
 		

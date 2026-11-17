@@ -16,6 +16,9 @@ nonisolated struct ShowList: Codable, Sendable, Equatable {
 		case let .renameShow(show):
 			guard let index = shows.firstIndex(where: { $0.id == show.id }) else { return }
 			shows[index].name = show.name
+		case let .sendAllChannels(show):
+			guard let index = shows.firstIndex(where: { $0.id == show.id }) else { return }
+			shows[index].sendsAllChannels = show.sendsAllChannels
 		case let .removeShow(identifier):
 			guard shows.count > 1 else { return }
 			shows.removeAll { $0.id == identifier }

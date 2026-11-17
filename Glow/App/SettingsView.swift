@@ -37,8 +37,14 @@ struct SettingsView: View {
 						Label("Show", systemImage: "rectangle.stack")
 					}
 				}
+				
+				Toggle(isOn: Binding(get: { shows.active.sendsAllChannels }, set: { shows.sendAllChannels($0) })) {
+					Label("Compatibility Mode", systemImage: "cable.connector")
+				}
 			} header: {
 				Text("Show")
+			} footer: {
+				Text("Sends all 512 channels in this show, as a lighting desk does. Older fixtures like the Martin MAC 600 need it. Changes then reach the lights about 44 times a second instead of 100.")
 			}
 			
 			Section {

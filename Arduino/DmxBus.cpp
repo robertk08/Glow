@@ -30,8 +30,9 @@ uint8_t g_wire[DMX_PACKET_SIZE];
 SemaphoreHandle_t g_lock     = nullptr;
 SemaphoreHandle_t g_wireLock = nullptr;
 
-volatile int g_used   = DMX_MIN_SLOTS;
-bool         g_paused = false;
+volatile int  g_used   = DMX_MIN_SLOTS;
+volatile bool g_all    = false;
+bool          g_paused = false;
 
 TaskHandle_t g_task = nullptr;
 
@@ -46,11 +47,11 @@ TickType_t periodTicks(int hz) {
 }
 
 void refreshTask(void *) {
-  const TickType_t burst = periodTicks(DMX_BURST_HZ);
-  const TickType_t idle  = periodTicks(DMX_REFRESH_HZ) - burst;
+  const TickType_t burst  = periodTicks(DMX_BURST_HZ);
+  const TickType_t period = periodTicks(DMX_REFRESH_HZ);
 
   for (;;) {
-    size_t length = (size_t)g_used + 1;
+    size_t length = g_all ? DMX_PACKET_SIZE : (size_t)g_used + 1;
 
     {
       Hold hold;
@@ -66,8 +67,10 @@ void refreshTask(void *) {
       xSemaphoreGive(g_wireLock);
     }
 
+    TickType_t started = sent;
     xTaskDelayUntil(&sent, burst);
-    ulTaskNotifyTake(pdTRUE, idle);
+    TickType_t spent = xTaskGetTickCount() - started;
+    ulTaskNotifyTake(pdTRUE, spent < period ? period - spent : 0);
   }
 }
 
@@ -119,6 +122,11 @@ void setUsed(int slots) {
   if (slots < DMX_MIN_SLOTS) slots = DMX_MIN_SLOTS;
   if (slots > SLOT_MAX) slots = SLOT_MAX;
   g_used = slots;
+}
+
+void sendAllChannels(bool on) {
+  g_all = on;
+  xTaskNotifyGive(g_task);
 }
 
 void keep() {

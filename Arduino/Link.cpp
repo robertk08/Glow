@@ -601,7 +601,8 @@ void onText(uint8_t num, const uint8_t *p, size_t len) {
   } else if (!strncmp(t, "show.", 5)) {
     char was[Store::NAME_LIMIT];
     snprintf(was, sizeof(was), "%s", Shows::active());
-    Shows::Outcome outcome  = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "");
+    Shows::Outcome outcome  = Shows::apply(t + 5, doc["id"] | "", doc["name"] | "", doc["sendsAllChannels"] | false);
+    DmxBus::sendAllChannels(Shows::activeSendsAllChannels());
     bool           homeless = outcome == Shows::DONE && HomeKit::showChanged();
     if (strcmp(was, Shows::active())) {
       {

@@ -72,6 +72,7 @@ void setup() {
   Access::begin();
   Store::begin();
   Shows::begin();
+  DmxBus::sendAllChannels(Shows::activeSendsAllChannels());
   Store::sweep();
   Net::begin();
   Link::begin();

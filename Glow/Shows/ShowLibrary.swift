@@ -183,6 +183,12 @@ final class ShowLibrary {
 		change(.renameShow(renamed))
 	}
 	
+	func sendAllChannels(_ sendsAllChannels: Bool) {
+		var changed = active
+		changed.sendsAllChannels = sendsAllChannels
+		change(.sendAllChannels(changed))
+	}
+	
 	func delete(_ show: Show) {
 		guard shows.count > 1 else { return }
 		held[show.id] = nil

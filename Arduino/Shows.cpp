@@ -80,7 +80,7 @@ void begin() {
   if (!save(g_list)) Serial.println(F("shows: the first show could not be stored"));
 }
 
-Outcome apply(const char *op, const char *id, const char *name) {
+Outcome apply(const char *op, const char *id, const char *name, bool sendsAllChannels) {
   if (!strcmp(op, "add")) return change([&](JsonDocument &list) { return add(list, id, name); });
 
   int index = find(g_list, id);
@@ -90,6 +90,14 @@ Outcome apply(const char *op, const char *id, const char *name) {
     if (!strcmp(active(), id)) return DONE;
     return change([&](JsonDocument &list) {
       list["active"] = id;
+      return DONE;
+    });
+  }
+
+  if (!strcmp(op, "channels")) {
+    return change([&](JsonDocument &list) {
+      if (sendsAllChannels) list["shows"][index]["sendsAllChannels"] = true;
+      else list["shows"][index].remove("sendsAllChannels");
       return DONE;
     });
   }
@@ -123,6 +131,11 @@ const char *active() { return g_list["active"] | ""; }
 bool activeNamed(const char *name) {
   int index = find(g_list, active());
   return index >= 0 && !strcmp(g_list["shows"][index]["name"] | "", name);
+}
+
+bool activeSendsAllChannels() {
+  int index = find(g_list, active());
+  return index >= 0 && (g_list["shows"][index]["sendsAllChannels"] | false);
 }
 
 String message() {
