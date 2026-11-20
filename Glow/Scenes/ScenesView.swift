@@ -76,7 +76,7 @@ struct ScenesView: View {
 		.navigationTitle("Scenes")
 		.navigationSubtitle(shows.active.name)
 		.toolbar {
-			LinkStatusButton()
+			DemoButton()
 			
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			

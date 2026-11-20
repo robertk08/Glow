@@ -127,7 +127,7 @@ struct LightsView: View {
 		.navigationTitle("Lights")
 		.navigationSubtitle(shows.active.name)
 		.toolbar {
-			LinkStatusButton()
+			DemoButton()
 			
 			ToolbarSpacer(.flexible, placement: .topBarTrailing)
 			

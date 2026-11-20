@@ -27,11 +27,6 @@ struct ConsoleBar: View {
 							Text(programmer.title)
 								.font(.subheadline.weight(.medium))
 								.lineLimit(1)
-							
-							if !console.link.isConnected {
-								Image(systemName: "wifi.exclamationmark")
-									.foregroundStyle(.orange)
-							}
 						}
 						.contentShape(.rect)
 					}
