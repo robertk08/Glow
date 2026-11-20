@@ -4,11 +4,12 @@ import SwiftUI
 
 @Observable
 final class NodeSetupModel {
-	enum Step: Equatable {
-		case findController, chooseNetwork, password, joining, done
+	enum Page: Hashable {
+		case networks, password, joining, own
 	}
 	
-	var step = Step.findController
+	var path: [Page] = []
+	var isDone = false
 	var networks: [NodeNetwork] = []
 	var selected: NodeNetwork?
 	var user = ""
@@ -18,6 +19,11 @@ final class NodeSetupModel {
 	private var nodeID = ""
 	private var leaves = false
 	private var expectedNodeID: String?
+	
+	var isWorking: Bool {
+		guard let last = path.last, last == .joining || last == .own else { return false }
+		return failure == nil && !isDone
+	}
 	
 	var canJoin: Bool {
 		guard selected?.secure == true else { return selected != nil }
@@ -59,7 +65,7 @@ final class NodeSetupModel {
 					return
 				}
 				nodeID = info.id
-				step = .chooseNetwork
+				path = [.networks]
 				return
 			}
 			
@@ -92,10 +98,28 @@ final class NodeSetupModel {
 		user = ""
 		password = ""
 		if network.secure {
-			step = .password
+			push(.password)
 		} else {
-			step = .joining
+			push(.joining)
 		}
+	}
+	
+	func push(_ page: Page) {
+		failure = nil
+		path.append(page)
+	}
+	
+	func useOwn(console: Console) async {
+		failure = nil
+		
+		guard await ControllerWiFi.tell(store) else {
+			failure = "\(ControllerWiFi.name) did not respond. Check that the controller is powered on and try again."
+			return
+		}
+		
+		leaves = false
+		console.endpoint = .setup
+		isDone = true
 	}
 	
 	func leave() {
@@ -104,7 +128,6 @@ final class NodeSetupModel {
 	}
 	
 	func join(console: Console) async {
-		step = .joining
 		failure = nil
 		
 		guard let ssid = selected?.ssid else { return }
@@ -113,7 +136,6 @@ final class NodeSetupModel {
 			try await store.command("provision", at: .setup, fields: ["ssid": ssid, "user": user, "password": password])
 		} catch {
 			failure = error.localizedDescription
-			step = .password
 			return
 		}
 		
@@ -126,7 +148,6 @@ final class NodeSetupModel {
 			if provisioned == nil, let info = await store.setup(at: .setup), info.id == nodeID {
 				if info.didRefuse {
 					failure = "The controller could not join \(ssid). Check the network and credentials."
-					step = .password
 					return
 				}
 				
@@ -160,7 +181,7 @@ final class NodeSetupModel {
 			password = ""
 			console.endpoint = found
 			failure = nil
-			step = .done
+			isDone = true
 			return
 		}
 		

@@ -39,7 +39,7 @@ enum ControllerWiFi {
 		return nil
 	}
 	
-	private static func tell(_ store: NodeStore) async -> Bool {
+	static func tell(_ store: NodeStore) async -> Bool {
 		for attempt in 0..<10 {
 			if attempt > 0 {
 				try? await Task.sleep(for: .seconds(2))
@@ -65,7 +65,6 @@ enum ControllerWiFi {
 struct UseWiFiButton: View {
 	@Environment(Console.self) private var console
 	
-	var name: String?
 	var leaves = false
 	let asks: Bool
 	
@@ -112,7 +111,7 @@ struct UseWiFiButton: View {
 	}
 	
 	private var title: String {
-		name ?? (leaves ? "Stop Using Controller’s Wi-Fi" : "Use Controller’s Wi-Fi")
+		leaves ? "Stop Using Controller’s Wi-Fi" : "Use Controller’s Wi-Fi"
 	}
 	
 	private func use() {

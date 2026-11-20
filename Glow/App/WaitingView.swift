@@ -29,13 +29,10 @@ struct WaitingView: View {
 				
 				if shows.standby.offersSetup {
 					VStack(spacing: 12) {
-						Button("Connect to a Wi-Fi Network", systemImage: "wifi.router") {
+						Button("Set Up Controller", systemImage: "wifi.router") {
 							console.selection.isSetupOpen = true
 						}
 						.buttonStyle(.glassProminent)
-						
-						UseWiFiButton(name: "Connect Directly", asks: false)
-							.buttonStyle(.glass)
 						
 						Button("Explore a Demo", systemImage: "sparkles") {
 							shows.startDemo()
@@ -57,6 +54,17 @@ struct WaitingView: View {
 			.scrollDismissesKeyboard(.interactively)
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 10) {
+					if shows.standby.offersSetup {
+						HStack(spacing: 8) {
+							ProgressView()
+							
+							Text(console.link == .full ? console.link.name : "Looking for Controller")
+						}
+						.font(.footnote)
+						.foregroundStyle(.secondary)
+						.transition(.opacity)
+					}
+					
 					if shows.standby == .locked, let lock = console.lock {
 						VStack(spacing: 8) {
 							if let until = console.lockedUntil {

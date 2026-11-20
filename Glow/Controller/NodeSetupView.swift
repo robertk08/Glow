@@ -1,48 +1,34 @@
 import SwiftUI
 
 struct NodeSetupView: View {
-	@Environment(\.dismiss) private var dismiss
-	@Environment(\.openURL) private var openURL
+	@Environment(Console.self) private var console
 	
 	@State private var model = NodeSetupModel()
 	
 	var body: some View {
-		NavigationStack {
-			Group {
-				switch model.step {
-				case .findController: FindingController(model: model)
-				case .chooseNetwork: ChoosingNetwork(model: model)
-				case .password: EnteringPassword(model: model)
-				case .joining: Joining(model: model)
-				case .done: Finished(model: model)
-				}
-			}
-			.navigationTitle("Connect to Wi-Fi")
-			.navigationBarTitleDisplayMode(.inline)
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) {
-					Button(role: .close) { dismiss() }
-				}
-				
-				if model.step != .done, model.failure != nil {
-					ToolbarItem(placement: .topBarTrailing) {
-						Button("Open Wi-Fi Settings") {
-							guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-							openURL(url)
-						}
-						.font(.footnote)
+		@Bindable var model = model
+		
+		NavigationStack(path: $model.path) {
+			FindingController(model: model)
+				.navigationDestination(for: NodeSetupModel.Page.self) { page in
+					switch page {
+					case .networks: ChoosingNetwork(model: model)
+					case .password: EnteringPassword(model: model)
+					case .joining, .own: Joining(model: model, page: page)
 					}
 				}
-			}
+		}
+		.task {
+			await model.waitForController(console: console)
 		}
 		.onDisappear(perform: model.leave)
-		.presentationDetents([.large])
-		.interactiveDismissDisabled(model.step == .joining && model.failure == nil)
+		.interactiveDismissDisabled(model.isWorking)
 	}
 }
 
 private struct FindingController: View {
 	@Environment(Console.self) private var console
+	@Environment(\.openURL) private var openURL
 	
 	let model: NodeSetupModel
 	
@@ -61,13 +47,20 @@ private struct FindingController: View {
 					}
 					.buttonStyle(.glassProminent)
 					.controlSize(.large)
+					
+					Button("Open Wi-Fi Settings") {
+						guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+						openURL(url)
+					}
 				}
 			} else {
 				Working(label: Label("Joining \(ControllerWiFi.name)", systemImage: "wifi.router"), text: Text("Keep the controller powered on and allow the Wi-Fi connection when asked. Nothing needs to be typed on the controller."))
 			}
 		}
-		.task {
-			await model.waitForController(console: console)
+		.navigationTitle("Set Up Controller")
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar {
+			CloseButton()
 		}
 	}
 }
@@ -77,7 +70,7 @@ private struct ChoosingNetwork: View {
 	
 	var body: some View {
 		Group {
-			if let failure = model.failure {
+			if let failure = model.failure, model.networks.isEmpty {
 				ContentUnavailableView {
 					Label("No Networks Came Back", systemImage: "antenna.radiowaves.left.and.right.slash")
 				} description: {
@@ -131,10 +124,25 @@ private struct ChoosingNetwork: View {
 							}
 						}
 					}
+					
+					Section {
+						Button("Use Controller’s Wi-Fi", systemImage: "antenna.radiowaves.left.and.right") {
+							model.push(.own)
+						}
+					} footer: {
+						Text("Phones join \(ControllerWiFi.name) to control the lights.")
+					}
 				}
 			}
 		}
+		.navigationTitle("Wi-Fi")
+		.navigationBarTitleDisplayMode(.inline)
+		.navigationBarBackButtonHidden()
+		.toolbar {
+			CloseButton()
+		}
 		.task {
+			guard model.networks.isEmpty else { return }
 			await model.loadNetworks()
 		}
 	}
@@ -148,44 +156,31 @@ private struct EnteringPassword: View {
 	var body: some View {
 		@Bindable var model = model
 		
-		List {
-			Section {
-				if model.selected?.enterprise == true {
-					TextField("Username", text: $model.user)
-						.textContentType(.username)
-						.textInputAutocapitalization(.never)
-						.autocorrectionDisabled()
-				}
-				
-				SecureField("Password", text: $model.password)
-					.textContentType(.password)
-					.submitLabel(.join)
-					.focused($isFocused)
-					.onSubmit {
-						guard model.canJoin else { return }
-						model.step = .joining
-					}
-			} header: {
-				Text(model.selected?.ssid ?? "")
-			} footer: {
-				if let failure = model.failure {
-					Text(failure)
-						.foregroundStyle(.orange)
-				} else {
-					Text("Glow hands this to the controller and never stores it. The controller writes it only once the join succeeds, so a wrong password cannot displace a network that works.")
-				}
+		Form {
+			if model.selected?.enterprise == true {
+				TextField("Username", text: $model.user)
+					.textContentType(.username)
+					.textInputAutocapitalization(.never)
+					.autocorrectionDisabled()
 			}
 			
-			Section {
+			SecureField("Password", text: $model.password)
+				.textContentType(.password)
+				.submitLabel(.join)
+				.focused($isFocused)
+				.onSubmit {
+					guard model.canJoin else { return }
+					model.push(.joining)
+				}
+		}
+		.navigationTitle(model.selected?.ssid ?? "")
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar {
+			ToolbarItem(placement: .confirmationAction) {
 				Button("Join") {
-					model.step = .joining
+					model.push(.joining)
 				}
 				.disabled(!model.canJoin)
-				
-				Button("Pick Another Network") {
-					model.failure = nil
-					model.step = .chooseNetwork
-				}
 			}
 		}
 		.task {
@@ -198,58 +193,67 @@ private struct Joining: View {
 	@Environment(Console.self) private var console
 	
 	let model: NodeSetupModel
+	let page: NodeSetupModel.Page
 	
 	var body: some View {
+		let name = page == .own ? ControllerWiFi.name : model.selected?.ssid ?? ""
+		
 		Group {
-			if let failure = model.failure {
+			if model.isDone {
+				ContentUnavailableView {
+					Label("Ready", systemImage: "checkmark.circle.fill")
+						.foregroundStyle(.green)
+				} description: {
+					Text("The controller is on \(name).")
+				} actions: {
+					Button("Done") {
+						console.selection.isSetupOpen = false
+					}
+					.font(.headline)
+					.buttonStyle(.glassProminent)
+					.controlSize(.large)
+				}
+				.sensoryFeedback(.success, trigger: model.isDone)
+			} else if let failure = model.failure {
 				ContentUnavailableView {
 					Label("The Join Did Not Finish", systemImage: "exclamationmark.triangle")
 				} description: {
 					Text(failure)
 				} actions: {
-					Button("Pick Another Network") {
+					Button("Try Again") {
 						model.failure = nil
-						model.step = .chooseNetwork
 					}
 					.buttonStyle(.glassProminent)
 					.controlSize(.large)
-					
-					Button("Try the Same Network Again") {
-						model.failure = nil
-						model.step = .joining
-					}
 				}
 			} else {
-				Working(label: Label("Joining \(model.selected?.ssid ?? "")", systemImage: "wifi.router"), text: Text("The controller is joining your network and Glow is moving over with it. Keep the app open and allow the Wi-Fi connection when asked."))
+				Working(label: Label("Joining \(name)", systemImage: "wifi.router"), text: Text("Keep the app open and allow the Wi-Fi connection when asked."))
 			}
 		}
+		.navigationTitle(name)
+		.navigationBarTitleDisplayMode(.inline)
+		.navigationBarBackButtonHidden(model.failure == nil)
 		.task(id: model.failure == nil) {
-			guard model.failure == nil else { return }
-			await model.join(console: console)
+			guard model.failure == nil, !model.isDone else { return }
+			
+			if page == .own {
+				await model.useOwn(console: console)
+			} else {
+				await model.join(console: console)
+			}
 		}
 	}
 }
 
-private struct Finished: View {
-	@Environment(\.dismiss) private var dismiss
+private struct CloseButton: ToolbarContent {
+	@Environment(Console.self) private var console
 	
-	let model: NodeSetupModel
-	
-	var body: some View {
-		ContentUnavailableView {
-			Label("Ready", systemImage: "checkmark.circle.fill")
-				.foregroundStyle(.green)
-		} description: {
-			Text(model.failure ?? "The controller is on \(model.selected?.ssid ?? "your network").")
-		} actions: {
-			Button("Done", systemImage: "checkmark") {
-				dismiss()
+	var body: some ToolbarContent {
+		ToolbarItem(placement: .cancellationAction) {
+			Button(role: .close) {
+				console.selection.isSetupOpen = false
 			}
-			.font(.headline)
-			.buttonStyle(.glassProminent)
-			.controlSize(.large)
 		}
-		.sensoryFeedback(.success, trigger: model.step)
 	}
 }
 
