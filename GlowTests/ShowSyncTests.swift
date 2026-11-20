@@ -224,7 +224,7 @@ struct ShowSyncTests {
 		let box = Box()
 		
 		let token = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { note in
-			box.folders = ShowLibrary.changes(in: note).folders
+			box.folders = ShowStore.changes(in: note).folders
 		}
 		defer { NotificationCenter.default.removeObserver(token) }
 		
@@ -252,7 +252,7 @@ struct ShowSyncTests {
 		let box = Box()
 		
 		let token = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { note in
-			box.folders = ShowLibrary.changes(in: note).folders
+			box.folders = ShowStore.changes(in: note).folders
 		}
 		defer { NotificationCenter.default.removeObserver(token) }
 		

@@ -12,7 +12,7 @@ final class ShowLibrary {
 	}
 	private(set) var canUndo = false
 	var refusal: Refusal?
-	let container = ShowLibrary.store()
+	let models = ShowStore()
 	
 	private let store = NodeStore()
 	private let decoder = JSONDecoder()
@@ -67,7 +67,7 @@ final class ShowLibrary {
 		
 		Task { [weak self] in
 			for await note in NotificationCenter.default.notifications(named: ModelContext.didSave) {
-				let (folders, touched) = Self.changes(in: note)
+				let (folders, touched) = ShowStore.changes(in: note)
 				self?.saved(folders, touched: touched)
 			}
 		}
@@ -195,41 +195,12 @@ final class ShowLibrary {
 		change(.removeShow(show.id))
 	}
 	
+	var container: ModelContainer {
+		models.container
+	}
+	
 	func contents(_ folders: Set<NodeStore.Folder> = everything, only identifier: String? = nil) -> ShowContents {
-		let context = container.mainContext
-		var show = ShowContents()
-		var fixtures: [Fixture] = []
-		
-		if !folders.isDisjoint(with: [.lights, .made]) { fixtures = (try? context.fetch(FetchDescriptor<Fixture>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? [] }
-		if folders.contains(.lights) { show.lights = fixtures.map(\.entry) }
-		if folders.contains(.groups) { show.groups = ((try? context.fetch(FetchDescriptor<FixtureGroup>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []).map(\.entry) }
-		
-		if folders.contains(.scenes) {
-			var looks = FetchDescriptor<Look>(sortBy: [SortDescriptor(\.sortIndex)])
-			if let identifier { looks.predicate = #Predicate { $0.identifier == identifier } }
-			show.scenes = ((try? context.fetch(looks)) ?? []).map(\.entry)
-		}
-		
-		if folders.contains(.cues) {
-			var cues = FetchDescriptor<Cue>(sortBy: [SortDescriptor(\.sortIndex)])
-			if let identifier { cues.predicate = #Predicate { $0.identifier == identifier } }
-			show.cues = ((try? context.fetch(cues)) ?? []).map(\.entry)
-		}
-		
-		if folders.contains(.made) {
-			show.made = ((try? context.fetch(FetchDescriptor<StoredFixtureType>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.definition)
-			
-			for fixture in fixtures where !show.made.contains(where: { $0.id == fixture.typeID }) {
-				guard let definition = types?.type(fixture.typeID) else { continue }
-				show.made.append(definition)
-			}
-		}
-		
-		guard let identifier else { return show }
-		show.lights.removeAll { $0.identifier != identifier }
-		show.groups.removeAll { $0.identifier != identifier }
-		show.made.removeAll { $0.id != identifier }
-		return show
+		models.contents(folders, only: identifier, types: types)
 	}
 	
 	func exportable() -> ShowFile {
@@ -433,7 +404,7 @@ final class ShowLibrary {
 			guard single.unreadable.isEmpty else { return }
 			merge(single)
 		} else {
-			remove(folder, identifier: place.id)
+			models.remove(folder, identifier: place.id)
 			container.mainContext.undoManager?.removeAllActions()
 		}
 		
@@ -529,22 +500,6 @@ final class ShowLibrary {
 		try? context.save()
 	}
 	
-	private func remove(_ folder: NodeStore.Folder, identifier: String) {
-		let context = container.mainContext
-		context.undoManager?.disableUndoRegistration()
-		defer { context.undoManager?.enableUndoRegistration() }
-		
-		switch folder {
-		case .lights: discard(#Predicate<Fixture> { $0.identifier == identifier })
-		case .groups: discard(#Predicate<FixtureGroup> { $0.identifier == identifier })
-		case .made: discard(#Predicate<StoredFixtureType> { $0.identifier == identifier })
-		case .scenes: discard(#Predicate<Look> { $0.identifier == identifier })
-		case .cues: discard(#Predicate<Cue> { $0.identifier == identifier })
-		}
-		
-		try? context.save()
-	}
-	
 	private func unload() {
 		retry?.cancel()
 		retry = nil
@@ -561,13 +516,13 @@ final class ShowLibrary {
 		queued = []
 		deferred = []
 		waiting = []
-		clear()
+		models.clear()
 		console?.closeShow(keepingLook: isDemo)
 	}
 	
 	private func fill(with incoming: ShowContents) {
 		merge(incoming)
-		prune(keeping: incoming)
+		models.prune(keeping: incoming)
 		container.mainContext.undoManager?.removeAllActions()
 		sent = [:]
 		queued = []
@@ -736,76 +691,9 @@ final class ShowLibrary {
 		return out
 	}
 	
-	nonisolated static func changes(in note: Notification) -> (folders: Set<NodeStore.Folder>, touched: Set<PersistentIdentifier>?) {
-		guard let info = note.userInfo else { return (everything, nil) }
-		
-		var found: Set<NodeStore.Folder> = []
-		var touched: Set<PersistentIdentifier> = []
-		var sawKey = false
-		
-		for key in [ModelContext.NotificationKey.insertedIdentifiers, .updatedIdentifiers, .deletedIdentifiers] {
-			guard let ids = info[key.rawValue] as? [PersistentIdentifier] ?? info[key] as? [PersistentIdentifier] else { continue }
-			sawKey = true
-			
-			for id in ids {
-				switch id.entityName {
-				case "Fixture": found.formUnion([.lights, .made])
-				case "FixtureGroup": found.insert(.groups)
-				case "StoredFixtureType": found.insert(.made)
-				case "Look": found.insert(.scenes)
-				case "Cue": found.insert(.cues)
-				default: break
-				}
-				
-				if key != .deletedIdentifiers, ["Look", "Cue"].contains(id.entityName) { touched.insert(id) }
-			}
-		}
-		
-		return sawKey ? (found, touched) : (everything, nil)
-	}
-	
 	nonisolated private static func split(_ key: String) -> (NodeStore.Folder, String)? {
 		let parts = key.split(separator: "/", maxSplits: 1)
 		guard parts.count == 2, let folder = NodeStore.Folder(rawValue: String(parts[0])) else { return nil }
 		return (folder, String(parts[1]))
-	}
-	
-	private func prune(keeping show: ShowContents) {
-		let context = container.mainContext
-		let lights = show.lights.map(\.identifier)
-		let groups = show.groups.map(\.identifier)
-		let made = show.made.map(\.id)
-		let scenes = show.scenes.map(\.identifier)
-		let cues = show.cues.map(\.identifier)
-		context.undoManager?.disableUndoRegistration()
-		defer { context.undoManager?.enableUndoRegistration() }
-		
-		discard(#Predicate<Fixture> { !lights.contains($0.identifier) })
-		discard(#Predicate<FixtureGroup> { !groups.contains($0.identifier) })
-		discard(#Predicate<StoredFixtureType> { !made.contains($0.identifier) })
-		discard(#Predicate<Look> { !scenes.contains($0.identifier) })
-		discard(#Predicate<Cue> { !cues.contains($0.identifier) })
-		try? context.save()
-	}
-	
-	private func discard<Model: PersistentModel>(_ predicate: Predicate<Model>) {
-		let context = container.mainContext
-		
-		for model in (try? context.fetch(FetchDescriptor(predicate: predicate))) ?? [] {
-			context.delete(model)
-		}
-	}
-	
-	private func clear() {
-		prune(keeping: ShowContents())
-		container.mainContext.undoManager?.removeAllActions()
-	}
-	
-	private static func store() -> ModelContainer {
-		let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-		let container = try! ModelContainer(for: Fixture.self, FixtureGroup.self, StoredFixtureType.self, Look.self, Cue.self, configurations: configuration)
-		container.mainContext.undoManager = UndoManager()
-		container.mainContext.autosaveEnabled = true
-		return container
 	}
 }
