@@ -134,12 +134,7 @@ struct SceneView: View {
 			}
 			.safeAreaBar(edge: .bottom) {
 				VStack(spacing: 0) {
-					if editMode.isEditing {
-						if !picked.isEmpty {
-							ChosenBar(look: look, list: list, picked: picked, held: held, isRetiming: $isRetiming, isDeleting: $isDeletingChosen)
-								.transition(.move(edge: .bottom).combined(with: .opacity))
-						}
-					} else if !held.isEmpty {
+					if !editMode.isEditing, !held.isEmpty {
 						Transport(look: look, list: list, depth: isSheet ? 1 : 0)
 					}
 					
@@ -149,11 +144,14 @@ struct SceneView: View {
 				}
 				.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 			}
-			.animation(.snappy(duration: 0.25), value: picked.isEmpty)
 			.navigationTitle(editMode.isEditing && !picked.isEmpty ? "\(picked.count) Selected" : look.name)
 			.navigationBarTitleDisplayMode(.inline)
 			.environment(\.editMode, $editMode)
 			.toolbar {
+				if editMode.isEditing, !picked.isEmpty {
+					ChosenBar(look: look, list: list, picked: picked, held: held, looks: looks, cues: cues, isRetiming: $isRetiming, isDeleting: $isDeletingChosen)
+				}
+				
 				if editMode.isEditing {
 					ToolbarItem(placement: .topBarLeading) {
 						Button(picked.count == held.count ? "Deselect All" : "Select All") {
@@ -329,75 +327,59 @@ private struct LoopRow: View {
 	}
 }
 
-private struct ChosenBar: View {
+private struct ChosenBar: ToolbarContent {
 	@Environment(Console.self) private var console
 	@Environment(\.modelContext) private var context
-	@Query(sort: \Look.sortIndex) private var looks: [Look]
-	@Query(sort: \Cue.sortIndex) private var cues: [Cue]
-	@ScaledMetric(relativeTo: .headline) private var height = 54
 	
 	let look: Look
 	let list: CueList
 	let picked: [Cue]
 	let held: [Cue]
+	let looks: [Look]
+	let cues: [Cue]
 	
 	@Binding var isRetiming: Bool
 	@Binding var isDeleting: Bool
 	
-	var body: some View {
-		GlassEffectContainer(spacing: 12) {
-			HStack(spacing: 12) {
-				Button("Timing", systemImage: "timer") {
-					isRetiming = true
-				}
-				.frame(maxWidth: .infinity)
-				
-				Button("Duplicate", systemImage: "plus.square.on.square") {
-					withAnimation {
-						Cue.duplicate(picked, among: held, context: context)
-					}
-				}
-				.frame(maxWidth: .infinity)
-				
-				if looks.count > 1 {
-					Menu("Move to Scene", systemImage: "arrow.right.square") {
-						ForEach(looks.filter { $0.identifier != look.identifier }) { other in
-							Button(other.name, systemImage: other.symbol) {
-								withAnimation {
-									console.move(picked, from: list, to: other, among: cues)
-								}
-							}
-						}
-					}
-					.frame(maxWidth: .infinity)
-					
-					Menu("Copy to Scene", systemImage: "doc.on.doc") {
-						ForEach(looks.filter { $0.identifier != look.identifier }) { other in
-							Button(other.name, systemImage: other.symbol) {
-								Cue.copy(picked, to: other, among: cues, context: context)
-							}
-						}
-					}
-					.frame(maxWidth: .infinity)
-				}
-				
-				Button("Delete", systemImage: "trash", role: .destructive) {
-					isDeleting = true
-				}
-				.foregroundStyle(.red)
-				.listItemTint(.red)
-				.frame(maxWidth: .infinity)
+	var body: some ToolbarContent {
+		ToolbarItemGroup(placement: .bottomBar) {
+			Button("Timing", systemImage: "timer") {
+				isRetiming = true
 			}
-			.labelStyle(.iconOnly)
-			.menuOrder(.fixed)
-			.font(.title3)
-			.frame(maxWidth: .infinity)
-			.frame(height: height)
-			.glassEffect(.regular, in: .capsule)
+			
+			Button("Duplicate", systemImage: "plus.square.on.square") {
+				withAnimation {
+					Cue.duplicate(picked, among: held, context: context)
+				}
+			}
+			
+			if looks.count > 1 {
+				Menu("Move to Scene", systemImage: "arrow.right.square") {
+					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+						Button(other.name, systemImage: other.symbol) {
+							withAnimation {
+								console.move(picked, from: list, to: other, among: cues)
+							}
+						}
+					}
+				}
+				.menuOrder(.fixed)
+				
+				Menu("Copy to Scene", systemImage: "doc.on.doc") {
+					ForEach(looks.filter { $0.identifier != look.identifier }) { other in
+						Button(other.name, systemImage: other.symbol) {
+							Cue.copy(picked, to: other, among: cues, context: context)
+						}
+					}
+				}
+				.menuOrder(.fixed)
+			}
+			
+			Button("Delete", systemImage: "trash", role: .destructive) {
+				isDeleting = true
+			}
+			.tint(.red)
 		}
-		.buttonStyle(.plain)
-		.padding(.horizontal)
-		.padding(.vertical, 8)
 	}
 }
 
