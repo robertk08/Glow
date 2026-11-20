@@ -80,7 +80,7 @@ private struct IntensityRows: View {
 	
 	var body: some View {
 		if programmer.dims {
-			Section("Intensity") {
+			Section {
 				VStack(alignment: .leading, spacing: 4) {
 					Text(programmer.brightness, format: .percent.precision(.fractionLength(0)))
 						.font(.title.weight(.semibold))
@@ -147,7 +147,7 @@ private struct ColorRows: View {
 	
 	var body: some View {
 		if programmer.mixesColor {
-			Section("Color") {
+			Section {
 				ColorPicker("Color", selection: programmer.colorBinding, supportsOpacity: false)
 				
 				LazyVGrid(columns: columns, spacing: 10) {
@@ -286,7 +286,7 @@ private struct BeamRows: View {
 		let shutter = programmer.shutterChannel
 		
 		if programmer.channel(.zoom) != nil {
-			Section("Beam") {
+			Section {
 				BeamPad(zoom: programmer.fractionBinding(.zoom), focus: programmer.fractionBinding(.focus), glow: programmer.glow, degrees: programmer.degrees(.zoom), hasFocus: programmer.channel(.focus) != nil)
 					.listRowBackground(Color.clear)
 					.listRowSeparator(.hidden)

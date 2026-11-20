@@ -116,7 +116,7 @@ private struct SceneActions: View {
 			}
 			
 			if !list.cues.isEmpty {
-				Button(index != nil ? "Turn Off" : "Turn On", systemImage: SceneAction.toggle.symbol(isOn: index != nil)) {
+				Button(index != nil ? "Turn Off" : "Turn On", systemImage: SceneAction.toggle.symbol) {
 					console.toggle(list)
 				}
 			}

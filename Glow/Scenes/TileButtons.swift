@@ -34,7 +34,7 @@ struct TileButtons: View {
 							console.run(action, on: list)
 						}
 					} label: {
-						Label(action.name(isOn: isOn), systemImage: action.symbol(isOn: isOn))
+						Label(action.name(isOn: isOn), systemImage: action.symbol)
 							.labelStyle(.iconOnly)
 							.font(.body.weight(.semibold))
 							.foregroundStyle(isProminent ? AnyShapeStyle(.white) : isEnabled ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))

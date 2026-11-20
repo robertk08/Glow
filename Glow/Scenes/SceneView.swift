@@ -454,7 +454,7 @@ private struct Transport: View {
 								.opacity(0.85)
 							}
 						} else {
-							Label(SceneAction.toggle.name(isOn: isOn), systemImage: SceneAction.toggle.symbol(isOn: isOn))
+							Label(SceneAction.toggle.name(isOn: isOn), systemImage: SceneAction.toggle.symbol)
 								.contentTransition(.symbolEffect(.replace))
 						}
 					}

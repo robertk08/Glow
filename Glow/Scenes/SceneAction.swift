@@ -37,7 +37,7 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 	
 	var symbol: String {
 		switch self {
-		case .toggle: "playpause.fill"
+		case .toggle: "power"
 		case .flash: "bolt.fill"
 		case .next: "forward.end.fill"
 		case .back: "backward.end.fill"
@@ -50,10 +50,5 @@ nonisolated enum SceneAction: Int, Codable, Sendable, CaseIterable, Identifiable
 	func name(isOn: Bool) -> String {
 		guard self == .toggle else { return name }
 		return isOn ? "Turn Off" : "Turn On"
-	}
-	
-	func symbol(isOn: Bool) -> String {
-		guard self == .toggle else { return symbol }
-		return isOn ? "stop.fill" : "play.fill"
 	}
 }
