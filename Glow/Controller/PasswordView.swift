@@ -27,7 +27,7 @@ struct PasswordView: View {
 					SecureField("Confirm Password", text: $confirmation)
 						.textContentType(.newPassword)
 				} footer: {
-					if let message = console.passwordOutcome?.message {
+					if let message = console.access.passwordOutcome?.message {
 						Text(message)
 							.foregroundStyle(.red)
 					}
@@ -36,9 +36,9 @@ struct PasswordView: View {
 				if hasPassword {
 					Section {
 						Button("Remove Password", role: .destructive) {
-							console.protect(current: current, new: "")
+							if let node = console.node { console.access.protect(current: current, new: "", on: node) }
 						}
-						.disabled(current.isEmpty || console.passwordOutcome == .saving)
+						.disabled(current.isEmpty || console.access.passwordOutcome == .saving)
 					}
 				}
 			}
@@ -53,13 +53,13 @@ struct PasswordView: View {
 				
 				ToolbarItem(placement: .confirmationAction) {
 					Button(role: .confirm) {
-						console.protect(current: current, new: new)
+						if let node = console.node { console.access.protect(current: current, new: new, on: node) }
 					}
-					.disabled(new.isEmpty || new != confirmation || (hasPassword && current.isEmpty) || console.passwordOutcome == .saving)
+					.disabled(new.isEmpty || new != confirmation || (hasPassword && current.isEmpty) || console.access.passwordOutcome == .saving)
 				}
 			}
-			.onChange(of: console.passwordOutcome) {
-				if console.passwordOutcome == .saved { dismiss() }
+			.onChange(of: console.access.passwordOutcome) {
+				if console.access.passwordOutcome == .saved { dismiss() }
 			}
 		}
 	}

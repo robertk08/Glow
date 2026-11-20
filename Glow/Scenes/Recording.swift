@@ -105,7 +105,7 @@ final class Recording: Identifiable {
 			let held = look.cues(among: cues)
 			let last = (held.last?.sortIndex ?? 0).rounded(.down) + 1
 			guard let after, let position = held.firstIndex(where: { $0.identifier == after.identifier }), held.indices.contains(position + 1) else { return last }
-			return Console.sortIndex(between: held[position].sortIndex, and: held[position + 1].sortIndex) ?? held[position].sortIndex + 1
+			return Ordering.sortIndex(between: held[position].sortIndex, and: held[position + 1].sortIndex) ?? held[position].sortIndex + 1
 		case let .into(cue): return cue.sortIndex
 		}
 	}

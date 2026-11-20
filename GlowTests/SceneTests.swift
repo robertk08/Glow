@@ -915,7 +915,7 @@ struct SceneTests {
 		}
 		
 		let held = rig.look.cues(among: rig.cues)
-		rig.console.duplicate([held[0], held[2]], among: held, context: rig.context)
+		Cue.duplicate([held[0], held[2]], among: held, context: rig.context)
 		try rig.context.save()
 		let after = rig.look.cues(among: rig.cues)
 		
@@ -952,7 +952,7 @@ struct SceneTests {
 		let start = CueDraft(fade: 2, delay: 0, follow: nil)
 		var end = start
 		end.follow = 0.5
-		rig.console.retime([first, second], from: start, to: end)
+		Cue.retime([first, second], from: start, to: end)
 		
 		#expect(first.fade == 2 && second.fade == 5 && second.delay == 1)
 		#expect(first.follow == 0.5 && second.follow == 0.5)
@@ -960,7 +960,7 @@ struct SceneTests {
 		let mixed = CueDraft(fade: -1, delay: -1, follow: 0.5)
 		var nothing = mixed
 		nothing.follow = nil
-		rig.console.retime([first, second], from: mixed, to: nothing)
+		Cue.retime([first, second], from: mixed, to: nothing)
 		
 		#expect(first.fade == 2 && second.fade == 5 && second.delay == 1 && first.delay == 0)
 		#expect(first.follow == nil && second.follow == nil)
@@ -1310,7 +1310,7 @@ struct SceneTests {
 						var expected = held.map(\.identifier)
 						let moved = expected.remove(at: from)
 						expected.insert(moved, at: to > from ? to - 1 : to)
-						rig.console.move(IndexSet(integer: from), to: to, among: held, sortIndex: \.sortIndex)
+						Ordering.move(IndexSet(integer: from), to: to, among: held, sortIndex: \.sortIndex)
 						try? rig.context.save()
 						#expect(look.cues(among: rig.cues).map(\.identifier) == expected, "\(place) a moved cue did not land where it was dropped")
 					default:

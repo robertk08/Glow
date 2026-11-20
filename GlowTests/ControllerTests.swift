@@ -777,13 +777,13 @@ struct ControllerTests {
 			try #require(await eventually { Rig.first.console.node?.hasPassword == false } != nil, "the key read from the controller did not remove its password")
 		}
 		
-		Rig.first.console.protect(current: "", new: "probe-pass")
+		Rig.first.console.access.protect(current: "", new: "probe-pass", on: try #require(Rig.first.console.node))
 		
-		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		#expect(await eventually { Rig.first.console.access.passwordOutcome == .saved } != nil)
 		Passkey.forget(id: id)
 		#expect(Rig.first.console.node?.hasPassword == true)
 		
-		let took = await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil }
+		let took = await eventually { Rig.second.console.link == .locked && Rig.second.console.access.lock != nil }
 		#expect(took != nil)
 		print("HARDWARE the other device was locked out in \(String(format: "%.2f", took ?? -1))s")
 		
@@ -795,17 +795,17 @@ struct ControllerTests {
 	
 	@Test func aWrongPasswordIsTurnedDown() async throws {
 		try #require(Rig.second.console.link == .locked)
-		Rig.second.console.unlock(password: "not it")
+		Rig.second.console.access.unlock(password: "not it")
 		
-		#expect(await eventually { Rig.second.console.lock?.isWrong == true && !Rig.second.console.isUnlocking } != nil)
+		#expect(await eventually { Rig.second.console.access.lock?.isWrong == true && !Rig.second.console.access.isUnlocking } != nil)
 		#expect(Rig.second.console.link == .locked)
 	}
 	
 	@Test func theRightPasswordIsAskedForOncePerDevice() async throws {
 		let id = try #require(Rig.first.console.node?.id)
-		Rig.second.console.unlock(password: "probe-pass")
+		Rig.second.console.access.unlock(password: "probe-pass")
 		
-		let took = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.console.lock == nil && Rig.second.shows.isLoaded }
+		let took = await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.console.access.lock == nil && Rig.second.shows.isLoaded }
 		#expect(took != nil)
 		#expect(Passkey.stored(id: id) != nil)
 		print("HARDWARE unlocked and loaded in \(String(format: "%.2f", took ?? -1))s")
@@ -818,32 +818,32 @@ struct ControllerTests {
 	}
 	
 	@Test func changingThePasswordNeedsTheCurrentOne() async throws {
-		Rig.first.console.protect(current: "not it", new: "probe-pass-2")
+		Rig.first.console.access.protect(current: "not it", new: "probe-pass-2", on: try #require(Rig.first.console.node))
 		
-		#expect(await eventually { Rig.first.console.passwordOutcome == .wrong(wait: 0) } != nil)
+		#expect(await eventually { Rig.first.console.access.passwordOutcome == .wrong(wait: 0) } != nil)
 		#expect(Rig.second.console.link.isConnected)
 	}
 	
 	@Test func aChangedPasswordLocksTheOthersOutAgain() async throws {
 		let id = try #require(Rig.first.console.node?.id)
-		Rig.first.console.protect(current: "probe-pass", new: "probe-pass-2")
+		Rig.first.console.access.protect(current: "probe-pass", new: "probe-pass-2", on: try #require(Rig.first.console.node))
 		
-		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		#expect(await eventually { Rig.first.console.access.passwordOutcome == .saved } != nil)
 		Passkey.forget(id: id)
-		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil } != nil)
+		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.access.lock != nil } != nil)
 		
-		Rig.second.console.unlock(password: "probe-pass")
-		#expect(await eventually { Rig.second.console.lock?.isWrong == true && !Rig.second.console.isUnlocking } != nil)
+		Rig.second.console.access.unlock(password: "probe-pass")
+		#expect(await eventually { Rig.second.console.access.lock?.isWrong == true && !Rig.second.console.access.isUnlocking } != nil)
 	}
 	
 	@Test func removingThePasswordOpensTheControllerAgain() async throws {
 		let id = try #require(Rig.first.console.node?.id)
 		Passkey.forget(id: id)
 		Rig.second.console.connect()
-		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.lock != nil } != nil)
-		Rig.first.console.protect(current: "probe-pass-2", new: "")
+		#expect(await eventually { Rig.second.console.link == .locked && Rig.second.console.access.lock != nil } != nil)
+		Rig.first.console.access.protect(current: "probe-pass-2", new: "", on: try #require(Rig.first.console.node))
 		
-		#expect(await eventually { Rig.first.console.passwordOutcome == .saved } != nil)
+		#expect(await eventually { Rig.first.console.access.passwordOutcome == .saved } != nil)
 		#expect(await eventually(within: 10) { Rig.second.console.link.isConnected && Rig.second.shows.isLoaded } != nil)
 		#expect(await eventually { Rig.both.allSatisfy { $0.console.node?.hasPassword == false } } != nil)
 		#expect(Passkey.stored(id: id) == nil)

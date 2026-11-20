@@ -54,7 +54,7 @@ struct NodeView: View {
 			if console.link.isConnected, let node = console.node {
 				Section {
 					Button(node.passwordAction, systemImage: "lock") {
-						console.passwordOutcome = nil
+						console.access.passwordOutcome = nil
 						isProtecting = true
 					}
 				}

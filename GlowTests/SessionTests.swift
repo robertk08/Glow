@@ -122,13 +122,13 @@ struct SessionTests {
 					let picked = held.filter { _ in roll(2) == 0 }
 					
 					switch roll(4) {
-					case 0: if cues.count < 60 { console.duplicate(picked, among: held, context: context) }
+					case 0: if cues.count < 60 { Cue.duplicate(picked, among: held, context: context) }
 					case 1: if let list, let other = live.randomElement() { console.move(picked, from: list, to: other, among: cues) }
-					case 2: if cues.count < 60, let other = live.randomElement() { console.copy(picked, to: other, among: cues, context: context) }
+					case 2: if cues.count < 60, let other = live.randomElement() { Cue.copy(picked, to: other, among: cues, context: context) }
 					default:
 						var end = CueDraft()
 						end.fade = 0.03
-						console.retime(picked, from: CueDraft(), to: end)
+						Cue.retime(picked, from: CueDraft(), to: end)
 					}
 				}
 			case 16: if roll(3) == 0 { scenesSeen.append(Look.fresh(among: live, context: context)) }

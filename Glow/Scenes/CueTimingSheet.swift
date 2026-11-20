@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct CueTimingSheet: View {
-	@Environment(Console.self) private var console
 	@Environment(\.dismiss) private var dismiss
 	
 	let picked: [Cue]
@@ -38,7 +37,7 @@ struct CueTimingSheet: View {
 				
 				ToolbarItem(placement: .confirmationAction) {
 					Button(role: .confirm) {
-						console.retime(picked, from: start, to: draft)
+						Cue.retime(picked, from: start, to: draft)
 						dismiss()
 					}
 					.disabled(draft == start)

@@ -97,7 +97,7 @@ struct SceneView: View {
 									}
 								}
 							}
-							.onMove { console.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
+							.onMove { Ordering.move($0, to: $1, among: held, sortIndex: \.sortIndex) }
 							
 							if held.count > 1 {
 								LoopRow(look: look, tint: tint)
@@ -354,7 +354,7 @@ private struct ChosenBar: View {
 				
 				Button("Duplicate", systemImage: "plus.square.on.square") {
 					withAnimation {
-						console.duplicate(picked, among: held, context: context)
+						Cue.duplicate(picked, among: held, context: context)
 					}
 				}
 				.frame(maxWidth: .infinity)
@@ -374,7 +374,7 @@ private struct ChosenBar: View {
 					Menu("Copy to Scene", systemImage: "doc.on.doc") {
 						ForEach(looks.filter { $0.identifier != look.identifier }) { other in
 							Button(other.name, systemImage: other.symbol) {
-								console.copy(picked, to: other, among: cues, context: context)
+								Cue.copy(picked, to: other, among: cues, context: context)
 							}
 						}
 					}

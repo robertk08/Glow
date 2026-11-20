@@ -65,9 +65,9 @@ struct WaitingView: View {
 						.transition(.opacity)
 					}
 					
-					if shows.standby == .locked, let lock = console.lock {
+					if shows.standby == .locked, let lock = console.access.lock {
 						VStack(spacing: 8) {
-							if let until = console.lockedUntil {
+							if let until = console.access.lockedUntil {
 								Text("Too many wrong tries. Try again in \(Text(timerInterval: Date.now...until, countsDown: true)).")
 									.font(.footnote)
 									.foregroundStyle(.secondary)
@@ -81,19 +81,19 @@ struct WaitingView: View {
 								.textContentType(.password)
 								.submitLabel(.go)
 								.onSubmit {
-									console.unlock(password: password)
+									console.access.unlock(password: password)
 								}
 								.padding()
 								.glassEffect()
 							
 							Button("Unlock") {
-								console.unlock(password: password)
+								console.access.unlock(password: password)
 							}
 							.buttonStyle(.glassProminent)
 							.font(.headline)
 							.controlSize(.large)
 							.buttonSizing(.flexible)
-							.disabled(password.isEmpty || console.isUnlocking || console.lockedUntil != nil)
+							.disabled(password.isEmpty || console.access.isUnlocking || console.access.lockedUntil != nil)
 						}
 						.padding(.top)
 						.transition(.opacity)

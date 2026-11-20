@@ -45,4 +45,47 @@ final class Cue {
 		if settled != label { label = settled }
 	}
 	
+	@MainActor static func duplicate(_ chosen: [Cue], among held: [Cue], context: ModelContext) {
+		let picked = Set(chosen.map(\.identifier))
+		guard let last = held.lastIndex(where: { picked.contains($0.identifier) }) else { return }
+		var ordered = held
+		var copies: [Cue] = []
+		
+		for cue in held where picked.contains(cue.identifier) {
+			var entry = cue.entry
+			entry.identifier = Identifier.fresh()
+			let copy = Cue(lookID: cue.lookID, sortIndex: cue.sortIndex, fade: cue.fade, levels: Levels())
+			copy.take(entry)
+			context.insert(copy)
+			copies.append(copy)
+		}
+		
+		ordered.insert(contentsOf: copies, at: last + 1)
+		
+		for (index, cue) in ordered.enumerated() where cue.sortIndex != Double(index + 1) {
+			cue.sortIndex = Double(index + 1)
+		}
+	}
+	
+	@MainActor static func copy(_ chosen: [Cue], to look: Look, among cues: [Cue], context: ModelContext) {
+		let start = (look.cues(among: cues).last?.sortIndex ?? 0).rounded(.down) + 1
+		
+		for (offset, cue) in chosen.enumerated() {
+			var entry = cue.entry
+			entry.identifier = Identifier.fresh()
+			entry.scene = look.identifier
+			entry.sortIndex = start + Double(offset)
+			let copy = Cue(lookID: look.identifier, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
+			copy.take(entry)
+			context.insert(copy)
+		}
+	}
+	
+	@MainActor static func retime(_ chosen: [Cue], from start: CueDraft, to end: CueDraft) {
+		for cue in chosen {
+			if end.fade != start.fade { cue.fade = end.fade }
+			if end.delay != start.delay { cue.delay = end.delay }
+			if end.follow != start.follow { cue.follow = end.follow }
+		}
+	}
 }

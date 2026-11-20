@@ -105,7 +105,7 @@ final class Look {
 	}
 	
 	@MainActor static func fresh(among looks: [Look], context: ModelContext) -> Look {
-		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
+		let look = Look(name: Identifier.unusedName("Scene \(looks.count + 1)", among: looks.map(\.name)), sortIndex: Ordering.nextSortIndex(looks, sortIndex: \.sortIndex))
 		let tints = [FixtureTint.blue, .orange, .purple, .green, .pink, .yellow, .indigo, .red, .mint]
 		look.tint = tints.min { first, second in looks.count { $0.tint == first } < looks.count { $0.tint == second } } ?? .blue
 		look.loops = true
@@ -123,7 +123,7 @@ final class Look {
 	}
 	
 	@MainActor func duplicate(with cues: [Cue], among looks: [Look], context: ModelContext) {
-		let copy = Look(name: Identifier.unusedName(name, among: looks.map(\.name)), sortIndex: Console.nextSortIndex(looks, sortIndex: \.sortIndex))
+		let copy = Look(name: Identifier.unusedName(name, among: looks.map(\.name)), sortIndex: Ordering.nextSortIndex(looks, sortIndex: \.sortIndex))
 		copy.symbolOverride = symbolOverride
 		copy.tintName = tintName
 		copy.tapValue = tapValue

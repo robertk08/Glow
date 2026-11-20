@@ -57,8 +57,8 @@ struct ConsoleTests {
 	}
 	
 	@MainActor @Test func aSortIndexFollowsTheHighestSoFar() {
-		#expect(Console.nextSortIndex([1, 4, 2], sortIndex: \.self) == 5)
-		#expect(Console.nextSortIndex([Double](), sortIndex: \.self) == 0)
+		#expect(Ordering.nextSortIndex([1, 4, 2], sortIndex: \.self) == 5)
+		#expect(Ordering.nextSortIndex([Double](), sortIndex: \.self) == 0)
 	}
 	
 	@Test func aShowPreservesFixtureOrientation() throws {
@@ -99,7 +99,7 @@ struct ConsoleTests {
 			container.mainContext.insert(fixture)
 		}
 		
-		Console().move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
+		Ordering.move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
 		
 		#expect(fixtures.sorted { $0.sortIndex < $1.sortIndex }.map(\.name) == ["Light 1", "Light 2", "Light 0"])
 		#expect(try container.mainContext.fetchCount(FetchDescriptor<Fixture>()) == 3)
@@ -109,7 +109,7 @@ struct ConsoleTests {
 		let fixtures = (0..<5).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
 		let before = fixtures.map(\.sortIndex)
 		
-		Console().move(IndexSet(integer: 4), to: 0, among: fixtures, sortIndex: \.sortIndex)
+		Ordering.move(IndexSet(integer: 4), to: 0, among: fixtures, sortIndex: \.sortIndex)
 		
 		#expect(zip(before, fixtures).filter { $0.0 != $0.1.sortIndex }.count == 1)
 		#expect(fixtures.sorted { $0.sortIndex < $1.sortIndex }.map(\.name) == ["Light 4", "Light 0", "Light 1", "Light 2", "Light 3"])
@@ -119,7 +119,7 @@ struct ConsoleTests {
 		let fixtures = (0..<5).map { Fixture(typeID: "dimmer", name: "Light \($0)", address: DMXAddress($0 + 1)!, sortIndex: Double($0)) }
 		let before = fixtures.map(\.sortIndex)
 		
-		Console().move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
+		Ordering.move(IndexSet(integer: 0), to: 3, among: fixtures, sortIndex: \.sortIndex)
 		
 		#expect(zip(before, fixtures).filter { $0.0 != $0.1.sortIndex }.count == 1)
 		#expect(fixtures[0].sortIndex == 2.5)

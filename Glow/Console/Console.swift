@@ -10,12 +10,9 @@ final class Console {
 	private(set) var node: Wire.NodeInfo?
 	private(set) var usage: Wire.Usage?
 	private(set) var playback = Playback()
-	private(set) var lock: Wire.Lock?
-	private(set) var lockedUntil: Date?
-	private(set) var isUnlocking = false
-	var passwordOutcome: PasswordOutcome?
 	
 	let selection = Selection()
+	let access: Access
 	let notices: AsyncStream<Wire.Notice>
 	
 	var master: Double = 1 {
@@ -65,7 +62,7 @@ final class Console {
 	private(set) var resets = 0
 	private(set) var commands = 0
 	
-	private let connection = NodeLink()
+	private let connection: NodeLink
 	private let noticer: AsyncStream<Wire.Notice>.Continuation
 	private let stage = stage_new()!
 	private let born = ContinuousClock.now
@@ -80,9 +77,6 @@ final class Console {
 	private var announcedBlackout: Bool?
 	private var hasAdoptedSource = false
 	private var hasLoadedPatch = false
-	private var offered: Data?
-	private var proposed: Data?
-	private var pause: Task<Void, Never>?
 	private var running: Task<Void, Never>?
 	private var sent = 0
 	private var acked = 0
@@ -96,12 +90,19 @@ final class Console {
 	
 	init() {
 		(notices, noticer) = AsyncStream<Wire.Notice>.makeStream()
+		let connection = NodeLink()
+		self.connection = connection
+		access = Access(connection: connection)
 		
 		if let data = UserDefaults.standard.data(forKey: Self.endpointKey), let stored = try? JSONDecoder().decode(NodeEndpoint.self, from: data) {
 			endpoint = stored
 			isConfigured = true
 		} else {
 			endpoint = .fallback
+		}
+		
+		access.post = { [weak self] command in
+			self?.send(command)
 		}
 	}
 	
@@ -182,57 +183,12 @@ final class Console {
 				announcedBlackout = info.blackout
 			}
 			
-			if let offered, let lock {
-				Passkey.store(offered, id: lock.id)
-			}
-			
-			offered = nil
-			lock = nil
-			lockedUntil = nil
-			isUnlocking = false
-			pause?.cancel()
-		case .locked(var challenge):
-			if challenge.isWrong, offered == Passkey.stored(id: challenge.id) {
-				Passkey.forget(id: challenge.id)
-				challenge.isWrong = false
-			}
-			
-			lock = challenge
-			offered = nil
-			isUnlocking = false
-			lockedUntil = nil
-			pause?.cancel()
-			
-			guard challenge.wait == 0 else {
-				lockedUntil = Date().addingTimeInterval(TimeInterval(challenge.wait))
-				pause = Task { [weak self] in
-					try? await Task.sleep(for: .seconds(challenge.wait))
-					guard !Task.isCancelled, let self else { return }
-					lockedUntil = nil
-					guard let key = Passkey.stored(id: challenge.id) else { return }
-					offer(key)
-				}
-				return
-			}
-			
-			guard !challenge.isWrong, let key = Passkey.stored(id: challenge.id) else { return }
-			offer(key)
+			access.admit()
+		case let .locked(challenge): access.challenge(challenge)
 		case let .password(isSet):
 			node?.hasPassword = isSet
-			
-			let id = node?.id ?? ""
-			
-			if let proposed {
-				Passkey.store(proposed, id: id)
-			} else {
-				Passkey.forget(id: id)
-			}
-			
-			proposed = nil
-			if passwordOutcome == .saving { passwordOutcome = .saved }
-		case let .passwordRefused(outcome):
-			proposed = nil
-			passwordOutcome = outcome
+			access.protected(id: node?.id ?? "")
+		case let .passwordRefused(outcome): access.refused(outcome)
 		case let .usage(value):
 			usage = value
 		case let .frame(ack, runs):
@@ -254,47 +210,6 @@ final class Console {
 			take(state)
 		case let .notice(notice):
 			noticer.yield(notice)
-		}
-	}
-	
-	func unlock(password: String) {
-		guard let lock, !isUnlocking, lockedUntil == nil else { return }
-		isUnlocking = true
-		
-		Task {
-			offer(await Passkey.derive(password, id: lock.id))
-		}
-	}
-	
-	func protect(current: String, new: String) {
-		guard let node else { return }
-		passwordOutcome = .saving
-		
-		Task {
-			var old: Data?
-			var fresh: Data?
-			
-			if node.hasPassword {
-				old = await Passkey.derive(current, id: node.id)
-			}
-			
-			if !new.isEmpty {
-				fresh = await Passkey.derive(new, id: node.id)
-			}
-			
-			proposed = fresh
-			send(.password(old: old, new: fresh, nonce: node.nonce))
-		}
-	}
-	
-	private func offer(_ key: Data) {
-		guard let lock else { return }
-		isUnlocking = true
-		offered = key
-		let message = Wire.Command.unlock(key: key, nonce: lock.nonce).message
-		
-		Task {
-			await connection.send(message)
 		}
 	}
 	
@@ -409,7 +324,7 @@ final class Console {
 	
 	func duplicate(_ fixture: Fixture, among fixtures: [Fixture], library: FixtureLibrary, context: ModelContext) {
 		let width = max(1, library.type(fixture.typeID)?.channelCount ?? 1)
-		let copy = Fixture(typeID: fixture.typeID, name: Identifier.unusedName(fixture.name, among: fixtures.map(\.name)), address: DMXAddress(clamping: fixture.address + width), sortIndex: Self.nextSortIndex(fixtures, sortIndex: \.sortIndex))
+		let copy = Fixture(typeID: fixture.typeID, name: Identifier.unusedName(fixture.name, among: fixtures.map(\.name)), address: DMXAddress(clamping: fixture.address + width), sortIndex: Ordering.nextSortIndex(fixtures, sortIndex: \.sortIndex))
 		copy.symbolOverride = fixture.symbolOverride
 		copy.invertsPan = fixture.invertsPan
 		copy.invertsTilt = fixture.invertsTilt
@@ -421,7 +336,7 @@ final class Console {
 		let width = max(1, mode.channelCount)
 		let base = name.trimmingCharacters(in: .whitespaces).isEmpty ? mode.model : name
 		var next = address
-		var index = Self.nextSortIndex(fixtures, sortIndex: \.sortIndex)
+		var index = Ordering.nextSortIndex(fixtures, sortIndex: \.sortIndex)
 		
 		for number in 0..<count {
 			guard let start = DMXAddress(next) else { break }
@@ -434,60 +349,6 @@ final class Console {
 			release(fixture.range(mode))
 			next += width
 			index += 1
-		}
-	}
-	
-	static func nextSortIndex<Item>(_ items: [Item], sortIndex: KeyPath<Item, Double>) -> Double {
-		(items.map { $0[keyPath: sortIndex] }.max() ?? -1) + 1
-	}
-	
-	static func sortIndex(between low: Double, and high: Double) -> Double? {
-		let next = low + max(((high - low) * 128).rounded(.down), 1) / 256
-		return next < high ? next : nil
-	}
-	
-	@available(iOS 27.0, *)
-	func move<Item: PersistentModel>(_ difference: ReorderDifference<PersistentIdentifier, ReorderableSingleCollectionIdentifier>, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
-		var destination = items.endIndex
-		
-		if case let .before(id) = difference.destination.position {
-			destination = items.firstIndex { $0.persistentModelID == id } ?? items.endIndex
-		}
-		
-		move(IndexSet(items.indices.filter { difference.sources.contains(items[$0].persistentModelID) }), to: destination, among: items, sortIndex: sortIndex)
-	}
-	
-	func move<Item: PersistentModel>(_ offsets: IndexSet, to destination: Int, among items: [Item], sortIndex: ReferenceWritableKeyPath<Item, Double>) {
-		let lifted = offsets.map { items[$0] }
-		guard !lifted.isEmpty else { return }
-		var ordered = items
-		ordered.remove(atOffsets: offsets)
-		let position = min(max(destination - offsets.count { $0 < destination }, 0), ordered.count)
-		
-		var low = 0.0
-		var step = 1.0
-		
-		if position > 0 {
-			low = ordered[position - 1][keyPath: sortIndex]
-		} else if position < ordered.count, ordered[position][keyPath: sortIndex] <= 0 {
-			low = ordered[position][keyPath: sortIndex] - Double(lifted.count) - 1
-		}
-		
-		if position < ordered.count, position > 0 || ordered[position][keyPath: sortIndex] > 0 {
-			step = ((ordered[position][keyPath: sortIndex] - low) / Double(lifted.count + 1) * 256).rounded(.down) / 256
-		}
-		
-		guard step > 0 else {
-			ordered.insert(contentsOf: lifted, at: position)
-			
-			for (index, item) in ordered.enumerated() {
-				item[keyPath: sortIndex] = Double(index)
-			}
-			return
-		}
-		
-		for (offset, item) in lifted.enumerated() {
-			item[keyPath: sortIndex] = low + step * Double(offset + 1)
 		}
 	}
 	
@@ -601,28 +462,6 @@ final class Console {
 		}
 	}
 	
-	func duplicate(_ chosen: [Cue], among held: [Cue], context: ModelContext) {
-		let picked = Set(chosen.map(\.identifier))
-		guard let last = held.lastIndex(where: { picked.contains($0.identifier) }) else { return }
-		var ordered = held
-		var copies: [Cue] = []
-		
-		for cue in held where picked.contains(cue.identifier) {
-			var entry = cue.entry
-			entry.identifier = Identifier.fresh()
-			let copy = Cue(lookID: cue.lookID, sortIndex: cue.sortIndex, fade: cue.fade, levels: Levels())
-			copy.take(entry)
-			context.insert(copy)
-			copies.append(copy)
-		}
-		
-		ordered.insert(contentsOf: copies, at: last + 1)
-		
-		for (index, cue) in ordered.enumerated() where cue.sortIndex != Double(index + 1) {
-			cue.sortIndex = Double(index + 1)
-		}
-	}
-	
 	func move(_ chosen: [Cue], from list: CueList, to look: Look, among cues: [Cue]) {
 		let picked = Set(chosen.map(\.identifier))
 		release(picked, from: list)
@@ -631,28 +470,6 @@ final class Console {
 		for (offset, cue) in chosen.enumerated() {
 			cue.lookID = look.identifier
 			cue.sortIndex = start + Double(offset)
-		}
-	}
-	
-	func copy(_ chosen: [Cue], to look: Look, among cues: [Cue], context: ModelContext) {
-		let start = (look.cues(among: cues).last?.sortIndex ?? 0).rounded(.down) + 1
-		
-		for (offset, cue) in chosen.enumerated() {
-			var entry = cue.entry
-			entry.identifier = Identifier.fresh()
-			entry.scene = look.identifier
-			entry.sortIndex = start + Double(offset)
-			let copy = Cue(lookID: look.identifier, sortIndex: entry.sortIndex, fade: entry.fade, levels: Levels())
-			copy.take(entry)
-			context.insert(copy)
-		}
-	}
-	
-	func retime(_ chosen: [Cue], from start: CueDraft, to end: CueDraft) {
-		for cue in chosen {
-			if end.fade != start.fade { cue.fade = end.fade }
-			if end.delay != start.delay { cue.delay = end.delay }
-			if end.follow != start.follow { cue.follow = end.follow }
 		}
 	}
 	

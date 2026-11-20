@@ -38,7 +38,7 @@ struct LightsView: View {
 		
 		if #available(iOS 27.0, *) {
 			chips.reorderContainer(for: FixtureGroup.self) { difference in
-				console.move(difference, among: groups, sortIndex: \.sortIndex)
+				Ordering.move(difference, among: groups, sortIndex: \.sortIndex)
 			}
 		} else {
 			chips
@@ -65,7 +65,7 @@ struct LightsView: View {
 		
 		if #available(iOS 27.0, *) {
 			grid.reorderContainer(for: Fixture.self) { difference in
-				console.move(difference, among: fixtures, sortIndex: \.sortIndex)
+				Ordering.move(difference, among: fixtures, sortIndex: \.sortIndex)
 			}
 		} else {
 			grid
@@ -155,7 +155,7 @@ struct LightsView: View {
 					}
 					
 					Button("New Group", systemImage: "square.stack.3d.up") {
-						let group = FixtureGroup(name: "", sortIndex: Console.nextSortIndex(groups, sortIndex: \.sortIndex))
+						let group = FixtureGroup(name: "", sortIndex: Ordering.nextSortIndex(groups, sortIndex: \.sortIndex))
 						context.insert(group)
 						try? context.save()
 						editingGroup = group
@@ -176,7 +176,7 @@ struct LightsView: View {
 							ForEach(groups) { group in
 								Label(group.name, systemImage: group.symbol)
 							}
-							.onMove { console.move($0, to: $1, among: groups, sortIndex: \.sortIndex) }
+							.onMove { Ordering.move($0, to: $1, among: groups, sortIndex: \.sortIndex) }
 						}
 					}
 					
@@ -184,7 +184,7 @@ struct LightsView: View {
 						ForEach(fixtures) { fixture in
 							Label(fixture.name, systemImage: fixture.symbol(library.type(fixture.typeID)))
 						}
-						.onMove { console.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
+						.onMove { Ordering.move($0, to: $1, among: fixtures, sortIndex: \.sortIndex) }
 					}
 				}
 				.environment(\.editMode, .constant(.active))
