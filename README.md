@@ -283,10 +283,10 @@ misses in a row restart it too: a short dip to almost no free memory on a busy
 network can leave the radio deaf while it still counts as joined.
 
 **Recovery.** A controller with no stored network raises the open network
-**Glow Controller**. **Connect to a Wi-Fi Network** on the welcome screen,
+**Glow Controller**. **Set Up Controller** on the welcome screen,
 or **Connect to Another Wi-Fi Network** in Settings › Controller, moves it
-onto a Wi-Fi network. **Connect Directly** on the welcome screen, or **Use
-Controller’s Wi-Fi** in Settings › Controller, keeps it on Glow Controller
+onto a Wi-Fi network. **Use Controller’s Wi-Fi** at the end of that list of
+networks, or in Settings › Controller, keeps it on Glow Controller
 for shows instead, until it is connected to a Wi-Fi network again, and the app joins Glow Controller and
 reaches it at 192.168.4.1, for up to five devices. There, **Stop Using
 Controller’s Wi-Fi** in Settings › Controller sends it back to its stored
