@@ -11,8 +11,8 @@ struct NodeView: View {
 		List {
 			Section {
 				LabeledContent {
-					Text(console.link.name)
-						.foregroundStyle(console.link.tint)
+					Text(console.status.name)
+						.foregroundStyle(console.status.tint)
 				} label: {
 					Text("Status")
 				}

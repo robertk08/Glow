@@ -11,14 +11,14 @@ struct SettingsView: View {
 					NodeView()
 				} label: {
 					LabeledContent {
-						Text(console.link.name)
+						Text(console.network)
 							.foregroundStyle(.secondary)
 					} label: {
 						Label {
 							Text("Controller")
 						} icon: {
-							Image(systemName: console.link.symbol)
-								.foregroundStyle(console.link.tint)
+							Image(systemName: console.status.symbol)
+								.foregroundStyle(console.status.tint)
 						}
 					}
 				}
@@ -41,10 +41,8 @@ struct SettingsView: View {
 				Toggle(isOn: Binding(get: { shows.active.sendsAllChannels }, set: { shows.sendAllChannels($0) })) {
 					Label("Compatibility Mode", systemImage: "cable.connector")
 				}
-			} header: {
-				Text("Show")
 			} footer: {
-				Text("Sends all 512 channels in this show, as a lighting desk does. Older fixtures like the Martin MAC 600 need it. Changes then reach the lights about 44 times a second instead of 100.")
+				Text("Sends all 512 channels in this show, as a lighting desk does, for older fixtures like the Martin MAC 600.")
 			}
 			
 			Section {
@@ -63,14 +61,9 @@ struct SettingsView: View {
 				Text("Fixtures and Output")
 			}
 			
-			Section {
-				LabeledContent("Version", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
-					.textSelection(.enabled)
-			}
-			
 			if shows.isDemo {
 				Section {
-					Button("Leave the Demo", role: .destructive) {
+					Button("Leave the Demo", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
 						shows.stopDemo()
 					}
 				} footer: {
@@ -84,6 +77,12 @@ struct SettingsView: View {
 				} footer: {
 					Text("Try things out without touching the lights or the show on the controller.")
 				}
+			}
+			
+			Section {
+			} footer: {
+				Text("Glow \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+					.textSelection(.enabled)
 			}
 		}
 		.navigationTitle("Settings")

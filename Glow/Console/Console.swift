@@ -49,6 +49,15 @@ final class Console {
 	
 	private(set) var isConfigured = false
 	
+	var status: LinkState {
+		isMuted && !link.isConnected ? .offline : link
+	}
+	
+	var network: String {
+		guard link.isConnected, let node else { return status.name }
+		return node.wifi.isEmpty ? ControllerWiFi.name : node.wifi
+	}
+	
 	private(set) var active: [Int: UInt8] = [:]
 	private var defaulted: Set<Int> = []
 	private(set) var patched: Set<Int> = []
