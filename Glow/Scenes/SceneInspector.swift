@@ -5,11 +5,13 @@ struct SceneInspector: View {
 	@Environment(Console.self) private var console
 	@Query(sort: \Look.sortIndex) private var looks: [Look]
 	
+	var isSheet = false
+	
 	var body: some View {
 		let shown = console.shownScene(among: looks.map(\.identifier))
 		
 		if let look = looks.first(where: { $0.identifier == shown }) {
-			SceneView(look: look)
+			SceneView(look: look, isSheet: isSheet)
 				.id(look.identifier)
 		} else {
 			ContentUnavailableView {

@@ -50,6 +50,16 @@ final class Selection {
 		isSceneOpen = isSheet
 	}
 	
+	func isInspecting(isCompact: Bool) -> Bool {
+		guard isCompact else { return section != .settings }
+		return section == .scenes ? isSceneOpen : isProgrammerOpen
+	}
+	
+	func closeInspector() {
+		isSceneOpen = false
+		isProgrammerOpen = false
+	}
+	
 	func follow(_ started: String, isIdle: Bool) {
 		guard isIdle, !isSceneOpen, scene != started else { return }
 		scene = nil

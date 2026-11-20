@@ -41,6 +41,31 @@ struct RootView: View {
 		.tabBarMinimizeBehavior(.never)
 	}
 	
+	private var inspected: some View {
+		let isCompact = sizeClass == .compact
+		
+		return tabs
+			.inspector(isPresented: Binding { console.selection.isInspecting(isCompact: isCompact) } set: { _ in console.selection.closeInspector() }) {
+				Group {
+					if console.selection.section == .scenes {
+						SceneInspector(isSheet: isCompact)
+							.navigationTransition(.zoom(sourceID: "scene", in: transition))
+					} else {
+						ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: isCompact)
+							.navigationTransition(.zoom(sourceID: "programmer", in: transition))
+					}
+				}
+				.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
+				.presentationDetents([.fraction(0.5), .large])
+				.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
+				.presentationDragIndicator(.visible)
+				.environment(console)
+				.environment(library)
+				.environment(shows)
+				.environment(arrangement)
+			}
+	}
+	
 	var body: some View {
 		@Bindable var selection = console.selection
 		
@@ -50,7 +75,7 @@ struct RootView: View {
 			} else if !shows.isLoaded {
 				WaitingView()
 			} else if sizeClass == .compact {
-				tabs
+				inspected
 					.tabViewBottomAccessory {
 						Group {
 							if console.selection.section == .scenes {
@@ -61,43 +86,8 @@ struct RootView: View {
 						}
 						.dynamicTypeSize(...DynamicTypeSize.xxLarge)
 					}
-					.sheet(isPresented: $selection.isProgrammerOpen) {
-						ProgrammerView(programmer: console.programmer(among: fixtures, library: library), isSheet: true)
-							.presentationDetents([.fraction(0.5), .large])
-							.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
-							.presentationDragIndicator(.visible)
-							.navigationTransition(.zoom(sourceID: "programmer", in: transition))
-							.environment(console)
-							.environment(library)
-							.environment(shows)
-							.environment(arrangement)
-					}
-					.sheet(isPresented: $selection.isSceneOpen) {
-						if let look = looks.first(where: { $0.identifier == console.selection.scene }) {
-							SceneView(look: look, isSheet: true)
-								.id(look.identifier)
-								.presentationDetents([.fraction(0.5), .large])
-								.presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.5)))
-								.presentationDragIndicator(.visible)
-								.navigationTransition(.zoom(sourceID: "scene", in: transition))
-								.environment(console)
-								.environment(library)
-								.environment(shows)
-								.environment(arrangement)
-						}
-					}
 			} else {
-				tabs
-					.inspector(isPresented: .constant(console.selection.section != .settings)) {
-						Group {
-							if console.selection.section == .scenes {
-								SceneInspector()
-							} else {
-								ProgrammerView(programmer: console.programmer(among: fixtures, library: library))
-							}
-						}
-						.inspectorColumnWidth(min: 360, ideal: 420, max: 520)
-					}
+				inspected
 			}
 		}
 		.environment(arrangement)
@@ -145,14 +135,10 @@ struct RootView: View {
 			}
 		}
 		.onChange(of: sizeClass) {
-			if sizeClass != .compact {
-				console.selection.isSceneOpen = false
-				console.selection.isProgrammerOpen = false
-			}
+			if sizeClass != .compact { console.selection.closeInspector() }
 		}
 		.onChange(of: console.selection.section) {
-			console.selection.isSceneOpen = false
-			console.selection.isProgrammerOpen = false
+			console.selection.closeInspector()
 		}
 		.onChange(of: scenePhase) {
 			shows.settle(scenePhase)
