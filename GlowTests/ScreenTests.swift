@@ -7,6 +7,11 @@ import UIKit
 @testable import Glow
 
 private struct Presenter<Content: View>: View {
+	@Environment(Console.self) private var console
+	@Environment(FixtureLibrary.self) private var library
+	@Environment(ShowLibrary.self) private var shows
+	@Environment(Arrangement.self) private var arrangement
+	
 	let content: Content
 	
 	@State private var isOpen = false
@@ -18,6 +23,10 @@ private struct Presenter<Content: View>: View {
 					Color.clear
 						.sheet(isPresented: $isOpen) {
 							content
+								.environment(console)
+								.environment(library)
+								.environment(shows)
+								.environment(arrangement)
 						}
 						.task {
 							isOpen = true
